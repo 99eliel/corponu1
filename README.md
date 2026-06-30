@@ -518,40 +518,25 @@ E salva a **Previsão entrega** como necessidade da OP.
 O usuário não edita mais a necessidade manualmente no Manejo. Ela vem travada da OP para evitar divergência.
 
 
-## Atualização: filtros do Manejo e painel administrativo
+## Versão de recuperação estável
 
-A aba **Manejo** recebeu filtros personalizados:
+Esta versão volta para a base estável antes da criação da aba administrativa de Status Manejo.
 
-```txt
-Buscar geral
-Status
-Referência
-Cor
-Fase
-Facção
-Necessidade
-```
+Mantém:
 
-Foi adicionada uma aba exclusiva para admin:
+- Login Firebase
+- Produtos e referências
+- Ordens de produção
+- Importação de PDF
+- Referências pendentes
+- Manejo em linha
+- Necessidade automática no Manejo
+- Logs
+- Relatórios
 
-```txt
-Status Manejo
-```
+Removido temporariamente:
 
-Nessa aba o admin consegue ver:
+- Aba administrativa Status Manejo
+- Filtros avançados do Status Manejo
 
-```txt
-Total no manejo
-Pendentes
-Organizadas
-Com fase
-Sem fase
-Resumo por fase
-Resumo por facção
-Status por referência
-Lista completa das OPs com status
-```
-
-Também há filtros no painel de admin para localizar rapidamente OPs pendentes, organizadas, por referência, cor, fase, facção ou necessidade.
-
-O botão **Abrir no manejo** leva o admin direto para a OP na aba Manejo.
+Use esta versão para restaurar o sistema caso a versão mais recente tenha quebrado o carregamento.
