@@ -542,21 +542,46 @@ Removido temporariamente:
 Use esta versão para restaurar o sistema caso a versão mais recente tenha quebrado o carregamento.
 
 
-## Versão de diagnóstico do login
+## Atualização: Manejo com filtros por coluna
 
-Esta versão volta para a base estável e adiciona um painel de diagnóstico na tela.
+A aba **Manejo** recebeu filtros no topo para organizar as OPs como uma planilha.
 
-Use esta versão se o sistema não passar do login.
-
-Se aparecer uma caixa laranja com erro:
-
-1. Clique em **Copiar erro**.
-2. Envie o texto do erro para análise.
-
-Também é recomendado limpar cache do PWA:
+Agora é possível filtrar por:
 
 ```txt
-Chrome > Configurações do site > Limpar dados
+Status
+Nº OP
+REF
+SILK
+Data tecido
+Fase
+QTI
+Cor
+Data
+Facção
+Chegada
+Falta
+Produção
+CELU
+Necessidade
 ```
 
-Ou acessar em aba anônima para testar se o problema é cache/service worker.
+Cada filtro mostra somente os valores que existem no sistema. Exemplo:
+
+```txt
+Filtro Cor > PRETO
+```
+
+Ao selecionar **PRETO**, o sistema mostra somente as OPs com essa cor.
+
+### Produção
+
+O campo **Produção** agora é uma **data**, não mais número.
+
+### Coluna / Observação
+
+A coluna **COLUNA / OBSERVAÇÃO** foi removida do Manejo.
+
+### Segurança
+
+Esta versão foi criada em cima da base estável de recuperação e não adiciona nova coleção no Firebase.

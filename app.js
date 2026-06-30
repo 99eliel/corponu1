@@ -1,43 +1,3 @@
-
-window.__ultimoErroSistema = "";
-
-function mostrarErroDiagnostico(mensagem) {
-  window.__ultimoErroSistema = String(mensagem || "Erro desconhecido");
-  const box = document.getElementById("diagnosticBox");
-  const msg = document.getElementById("diagnosticMessage");
-
-  if (box && msg) {
-    msg.textContent = window.__ultimoErroSistema;
-    box.classList.remove("hidden");
-  }
-
-  console.error("[Diagnóstico do sistema]", window.__ultimoErroSistema);
-}
-
-window.addEventListener("error", event => {
-  mostrarErroDiagnostico(`${event.message || "Erro de JavaScript"}\nArquivo: ${event.filename || "-"}\nLinha: ${event.lineno || "-"}:${event.colno || "-"}`);
-});
-
-window.addEventListener("unhandledrejection", event => {
-  const reason = event.reason;
-  mostrarErroDiagnostico(reason?.message || reason || "Promessa rejeitada sem mensagem");
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  const copyBtn = document.getElementById("btnCopyDiagnostic");
-  if (copyBtn) {
-    copyBtn.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(window.__ultimoErroSistema || "");
-        copyBtn.textContent = "Copiado";
-      } catch (error) {
-        copyBtn.textContent = "Não conseguiu copiar";
-      }
-    });
-  }
-});
-
-
 import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
@@ -211,7 +171,6 @@ function configurarVisibilidadeSenhas() {
 
 function configurarAuth() {
   document.getElementById("loginForm").addEventListener("submit", async event => {
-    console.log("[Diagnóstico] Tentativa de login iniciada.");
     event.preventDefault();
 
     const email = document.getElementById("loginEmail").value.trim();
@@ -219,7 +178,6 @@ function configurarAuth() {
 
     try {
       await signInWithEmailAndPassword(auth, email, senha);
-      console.log("[Diagnóstico] Login aceito pelo Firebase Auth.");
     } catch (error) {
       console.error(error);
       toast("Erro ao entrar. Confira e-mail e senha.");
@@ -845,42 +803,52 @@ function configurarManejo() {
   if (busca) {
     busca.addEventListener("input", renderManejoInline);
   }
+
+  [
+    "filtroManejoStatus",
+    "filtroManejoOP",
+    "filtroManejoReferencia",
+    "filtroManejoSilk",
+    "filtroManejoDataTecido",
+    "filtroManejoFase",
+    "filtroManejoQuantidade",
+    "filtroManejoCor",
+    "filtroManejoData",
+    "filtroManejoFaccao",
+    "filtroManejoChegada",
+    "filtroManejoFalta",
+    "filtroManejoProducao",
+    "filtroManejoCelu",
+    "filtroManejoNecessidade"
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("change", renderManejoInline);
+  });
+
+  const limpar = document.getElementById("btnLimparFiltrosManejo");
+  if (limpar) {
+    limpar.addEventListener("click", () => {
+      limparFiltrosColunasManejo();
+      renderManejoInline();
+    });
+  }
 }
 
 function renderManejoInline() {
   const tbody = document.getElementById("listaManejoInline");
   if (!tbody) return;
 
-  const busca = normalizarTexto(document.getElementById("buscaManejoLinha")?.value || "");
-  let ordens = [...state.ordens];
-
-  if (busca) {
-    ordens = ordens.filter(op => {
-      const manejo = getManejoDaOrdem(op);
-      const texto = normalizarTexto([
-        op.numeroOP,
-        op.numeroOPExterno,
-        op.referencia,
-        op.cor,
-        op.produtoNome,
-        manejo?.fase,
-        manejo?.faccao,
-        getNecessidadeDaOrdem(op)
-      ].join(" "));
-
-      return texto.includes(busca);
-    });
-  }
+  const ordens = filtrarOrdensManejoPorColunas();
 
   if (!ordens.length) {
-    tbody.innerHTML = `<tr><td colspan="17" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="16" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = ordens.map(op => {
     const manejo = getManejoDaOrdem(op);
     const rowId = idLinhaManejo(op);
-    const status = manejo ? "Organizada" : "Pendente";
     const rowClass = manejo ? "manejo-row-saved" : "manejo-row-pending";
 
     return `
@@ -896,10 +864,9 @@ function renderManejoInline() {
         <td><input id="${rowId}-faccao" value="${escapeHtml(manejo?.faccao || "")}" list="manejoFaccaoList" placeholder="Facção" /></td>
         <td><input id="${rowId}-chegada" type="date" value="${escapeHtml(manejo?.chegada || "")}" /></td>
         <td><input id="${rowId}-falta" type="number" min="0" step="1" value="${escapeHtml(manejo?.falta ?? "")}" /></td>
-        <td><input id="${rowId}-producao" type="number" min="0" step="1" value="${escapeHtml(manejo?.producao ?? "")}" /></td>
+        <td><input id="${rowId}-producao" type="date" value="${escapeHtml(manejo?.producao || "")}" /></td>
         <td><input id="${rowId}-celu" value="${escapeHtml(manejo?.celu || "")}" /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(getNecessidadeDaOrdem(op))}" readonly /></td>
-        <td><textarea id="${rowId}-coluna" placeholder="Observação">${escapeHtml(manejo?.coluna || "")}</textarea></td>
         <td>${manejoStatusBadge(manejo)}</td>
         <td>
           <div class="manejo-actions">
@@ -912,6 +879,147 @@ function renderManejoInline() {
   }).join("");
 }
 
+function getStatusManejo(op) {
+  return getManejoDaOrdem(op) ? "organizada" : "pendente";
+}
+
+function getValorManejoParaFiltro(op, campo) {
+  const manejo = getManejoDaOrdem(op);
+
+  const mapa = {
+    status: getStatusManejo(op),
+    op: op.numeroOP || "",
+    referencia: op.referencia || "",
+    silk: manejo?.silk || "",
+    dataTecido: manejo?.dataTecido || "",
+    fase: manejo?.fase || "",
+    quantidade: op.quantidade ?? "",
+    cor: op.cor || "",
+    data: manejo?.data || "",
+    faccao: manejo?.faccao || "",
+    chegada: manejo?.chegada || "",
+    falta: manejo?.falta ?? "",
+    producao: manejo?.producao || "",
+    celu: manejo?.celu || "",
+    necessidade: getNecessidadeDaOrdem(op)
+  };
+
+  return String(mapa[campo] ?? "");
+}
+
+function filtrarOrdensManejoPorColunas() {
+  const busca = normalizarTexto(document.getElementById("buscaManejoLinha")?.value || "");
+
+  const filtros = {
+    status: document.getElementById("filtroManejoStatus")?.value || "",
+    op: document.getElementById("filtroManejoOP")?.value || "",
+    referencia: document.getElementById("filtroManejoReferencia")?.value || "",
+    silk: document.getElementById("filtroManejoSilk")?.value || "",
+    dataTecido: document.getElementById("filtroManejoDataTecido")?.value || "",
+    fase: document.getElementById("filtroManejoFase")?.value || "",
+    quantidade: document.getElementById("filtroManejoQuantidade")?.value || "",
+    cor: document.getElementById("filtroManejoCor")?.value || "",
+    data: document.getElementById("filtroManejoData")?.value || "",
+    faccao: document.getElementById("filtroManejoFaccao")?.value || "",
+    chegada: document.getElementById("filtroManejoChegada")?.value || "",
+    falta: document.getElementById("filtroManejoFalta")?.value || "",
+    producao: document.getElementById("filtroManejoProducao")?.value || "",
+    celu: document.getElementById("filtroManejoCelu")?.value || "",
+    necessidade: document.getElementById("filtroManejoNecessidade")?.value || ""
+  };
+
+  return [...state.ordens].filter(op => {
+    const manejo = getManejoDaOrdem(op);
+
+    const textoGeral = normalizarTexto([
+      op.numeroOP,
+      op.numeroOPExterno,
+      op.referencia,
+      op.cor,
+      op.produtoNome,
+      op.quantidade,
+      getNecessidadeDaOrdem(op),
+      manejo?.silk,
+      manejo?.dataTecido,
+      manejo?.fase,
+      manejo?.data,
+      manejo?.faccao,
+      manejo?.chegada,
+      manejo?.falta,
+      manejo?.producao,
+      manejo?.celu
+    ].join(" "));
+
+    if (busca && !textoGeral.includes(busca)) return false;
+
+    return Object.entries(filtros).every(([campo, valor]) => {
+      if (!valor) return true;
+      return getValorManejoParaFiltro(op, campo) === valor;
+    });
+  });
+}
+
+function limparFiltrosColunasManejo() {
+  [
+    "buscaManejoLinha",
+    "filtroManejoStatus",
+    "filtroManejoOP",
+    "filtroManejoReferencia",
+    "filtroManejoSilk",
+    "filtroManejoDataTecido",
+    "filtroManejoFase",
+    "filtroManejoQuantidade",
+    "filtroManejoCor",
+    "filtroManejoData",
+    "filtroManejoFaccao",
+    "filtroManejoChegada",
+    "filtroManejoFalta",
+    "filtroManejoProducao",
+    "filtroManejoCelu",
+    "filtroManejoNecessidade"
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+}
+
+function preencherSelectFiltroManejo(id, valores, labelTodos = "Todos") {
+  const select = document.getElementById(id);
+  if (!select) return;
+
+  const atual = select.value;
+  const limpos = [...new Set(valores.map(valor => String(valor ?? "").trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+
+  select.innerHTML = `<option value="">${labelTodos}</option>` + limpos.map(valor => {
+    return `<option value="${escapeHtml(valor)}">${escapeHtml(valor)}</option>`;
+  }).join("");
+
+  if (limpos.includes(atual)) {
+    select.value = atual;
+  }
+}
+
+function renderFiltrosColunasManejo() {
+  const ordens = [...state.ordens];
+
+  preencherSelectFiltroManejo("filtroManejoOP", ordens.map(op => getValorManejoParaFiltro(op, "op")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoReferencia", ordens.map(op => getValorManejoParaFiltro(op, "referencia")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoSilk", ordens.map(op => getValorManejoParaFiltro(op, "silk")), "Todos");
+  preencherSelectFiltroManejo("filtroManejoDataTecido", ordens.map(op => getValorManejoParaFiltro(op, "dataTecido")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoFase", ordens.map(op => getValorManejoParaFiltro(op, "fase")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoQuantidade", ordens.map(op => getValorManejoParaFiltro(op, "quantidade")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoCor", ordens.map(op => getValorManejoParaFiltro(op, "cor")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoData", ordens.map(op => getValorManejoParaFiltro(op, "data")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoFaccao", ordens.map(op => getValorManejoParaFiltro(op, "faccao")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoChegada", ordens.map(op => getValorManejoParaFiltro(op, "chegada")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoFalta", ordens.map(op => getValorManejoParaFiltro(op, "falta")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoProducao", ordens.map(op => getValorManejoParaFiltro(op, "producao")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoCelu", ordens.map(op => getValorManejoParaFiltro(op, "celu")), "Todos");
+  preencherSelectFiltroManejo("filtroManejoNecessidade", ordens.map(op => getValorManejoParaFiltro(op, "necessidade")), "Todas");
+}
+
+function renderManejoInline
 function getNecessidadeDaOrdem(op) {
   if (!op) return "";
 
@@ -976,10 +1084,10 @@ async function salvarManejoLinha(ordemId) {
     faccao: limparTexto(valorLinhaManejo(ordem, "faccao")).toUpperCase(),
     chegada: valorLinhaManejo(ordem, "chegada") || "",
     falta: Number(valorLinhaManejo(ordem, "falta") || 0),
-    producao: Number(valorLinhaManejo(ordem, "producao") || 0),
+    producao: valorLinhaManejo(ordem, "producao") || "",
     celu: limparTexto(valorLinhaManejo(ordem, "celu")),
     necessidade: getNecessidadeDaOrdem(ordem),
-    coluna: limparTexto(valorLinhaManejo(ordem, "coluna")),
+    coluna: "",
     status: "organizada",
     atualizadoPor: state.currentUser.uid,
     atualizadoEm: serverTimestamp()
@@ -2116,6 +2224,7 @@ function renderTudo() {
   renderProdutos();
   renderProdutosPendentes();
   renderOrdens();
+  renderFiltrosColunasManejo();
   renderManejoInline();
   renderDatalistManejo();
   renderDatalistReferencias();
