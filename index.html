@@ -69,6 +69,7 @@
         <button class="nav-btn" data-page="produtos">Produtos / Referências</button>
         <button class="nav-btn" data-page="ordens">Ordens de Produção</button>
         <button class="nav-btn" data-page="manejo">Manejo</button>
+        <button class="nav-btn admin-only" data-page="adminManejo">Status Manejo</button>
         <button class="nav-btn" data-page="relatorios">Relatórios</button>
         <button class="nav-btn admin-only" data-page="usuarios">Usuários</button>
         <button class="nav-btn admin-only" data-page="logs">Logs / Auditoria</button>
@@ -370,11 +371,53 @@
               <h3>Manejo das ordens de produção</h3>
               <p>Toda OP que entra no sistema aparece aqui automaticamente. Edite os campos direto na linha e salve.</p>
             </div>
-            <input id="buscaManejoLinha" class="search" type="text" placeholder="Buscar OP, ref., cor ou fase..." />
+          </div>
+
+          <div class="filters manejo-filters">
+            <label>
+              Buscar
+              <input id="filtroManejoBusca" type="text" placeholder="OP, ref., cor, fase..." />
+            </label>
+
+            <label>
+              Status
+              <select id="filtroManejoStatus">
+                <option value="">Todos</option>
+                <option value="pendente">Pendente</option>
+                <option value="organizada">Organizada</option>
+              </select>
+            </label>
+
+            <label>
+              Referência
+              <input id="filtroManejoReferencia" type="text" placeholder="Ex: 610" list="referenciasList" />
+            </label>
+
+            <label>
+              Cor
+              <input id="filtroManejoCor" type="text" placeholder="Ex: PRETO" list="coresList" />
+            </label>
+
+            <label>
+              Fase
+              <input id="filtroManejoFase" type="text" placeholder="Ex: COSTURA" list="manejoFasesList" />
+            </label>
+
+            <label>
+              Facção
+              <input id="filtroManejoFaccao" type="text" placeholder="Facção" list="manejoFaccaoList" />
+            </label>
+
+            <label>
+              Necessidade
+              <input id="filtroManejoNecessidade" type="text" placeholder="Data ou semana" />
+            </label>
+
+            <button class="btn" type="button" id="btnLimparFiltrosManejo">Limpar filtros</button>
           </div>
 
           <div class="notice small">
-            <strong>Funcionamento:</strong> Nº OP, REF, QTI e COR vêm das ordens de produção. Os demais campos são preenchidos pelo usuário.
+            <strong>Funcionamento:</strong> Nº OP, REF, QTI, COR e NECESSIDADE vêm das ordens de produção. Os demais campos são preenchidos pelo usuário.
             Fases já usadas aparecem como sugestão, mas sempre é possível digitar uma fase nova.
           </div>
 
@@ -412,11 +455,156 @@
             <option value="NÃO"></option>
             <option value="PENDENTE"></option>
           </datalist>
-          <datalist id="manejoNecessidadeList">
-            <option value="URGENTE"></option>
-            <option value="NORMAL"></option>
-            <option value="BAIXA"></option>
-          </datalist>
+        </div>
+      </section>
+
+
+      <section id="adminManejo" class="page admin-only-block">
+        <div class="cards status-cards">
+          <div class="card">
+            <span>Total no manejo</span>
+            <strong id="adminManejoTotal">0</strong>
+          </div>
+          <div class="card">
+            <span>Pendentes</span>
+            <strong id="adminManejoPendentes">0</strong>
+          </div>
+          <div class="card">
+            <span>Organizadas</span>
+            <strong id="adminManejoOrganizadas">0</strong>
+          </div>
+          <div class="card">
+            <span>Com fase</span>
+            <strong id="adminManejoComFase">0</strong>
+          </div>
+          <div class="card">
+            <span>Sem fase</span>
+            <strong id="adminManejoSemFase">0</strong>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h3>Status das OPs no Manejo</h3>
+              <p>Visão de admin para acompanhar pendências, fases, facções e necessidade.</p>
+            </div>
+          </div>
+
+          <div class="filters admin-manejo-filters">
+            <label>
+              Buscar
+              <input id="filtroAdminManejoBusca" type="text" placeholder="OP, ref., cor, fase..." />
+            </label>
+
+            <label>
+              Status
+              <select id="filtroAdminManejoStatus">
+                <option value="">Todos</option>
+                <option value="pendente">Pendente</option>
+                <option value="organizada">Organizada</option>
+              </select>
+            </label>
+
+            <label>
+              Referência
+              <input id="filtroAdminManejoReferencia" type="text" placeholder="Ex: 610" list="referenciasList" />
+            </label>
+
+            <label>
+              Cor
+              <input id="filtroAdminManejoCor" type="text" placeholder="Ex: PRETO" list="coresList" />
+            </label>
+
+            <label>
+              Fase
+              <input id="filtroAdminManejoFase" type="text" placeholder="Fase" list="manejoFasesList" />
+            </label>
+
+            <label>
+              Facção
+              <input id="filtroAdminManejoFaccao" type="text" placeholder="Facção" list="manejoFaccaoList" />
+            </label>
+
+            <label>
+              Necessidade
+              <input id="filtroAdminManejoNecessidade" type="text" placeholder="Data ou semana" />
+            </label>
+
+            <button class="btn" type="button" id="btnLimparFiltrosAdminManejo">Limpar filtros</button>
+          </div>
+
+          <div class="admin-summary-grid">
+            <div>
+              <h4>Resumo por fase</h4>
+              <div class="table-wrap small-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Fase</th>
+                      <th>Qtd.</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminResumoFases"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <h4>Resumo por facção</h4>
+              <div class="table-wrap small-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Facção</th>
+                      <th>Qtd.</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminResumoFaccoes"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <h4>Status por referência</h4>
+              <div class="table-wrap small-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>REF</th>
+                      <th>Pend.</th>
+                      <th>Org.</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminResumoReferencias"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="admin-manejo-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Nº OP</th>
+                  <th>REF</th>
+                  <th>Cor</th>
+                  <th>QTI</th>
+                  <th>Necessidade</th>
+                  <th>Fase</th>
+                  <th>Facção</th>
+                  <th>Produção</th>
+                  <th>Falta</th>
+                  <th>Chegada</th>
+                  <th>Atualizado em</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="listaAdminManejo"></tbody>
+            </table>
+          </div>
         </div>
       </section>
 

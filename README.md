@@ -488,3 +488,70 @@ ordensProducao/{idDaOP}
 ```
 
 Se aparecer erro de permissão, publique novamente o arquivo `firebase-rules.txt`, mas esta versão usa a permissão já existente da coleção `ordensProducao`.
+
+
+## Atualização: Necessidade automática no Manejo
+
+No **Manejo**, a coluna **NECESSIDADE** agora é preenchida automaticamente com a data/informação da ordem de produção.
+
+A prioridade usada é:
+
+```txt
+1. necessidade
+2. previsaoEntrega
+3. dataNecessidade
+4. dataEntrega
+5. Semana + Mês/Ano da OP
+6. Data de criação da OP
+```
+
+Na importação do PDF, o sistema agora tenta capturar também:
+
+```txt
+Cadastro
+Liberação
+Previsão entrega
+```
+
+E salva a **Previsão entrega** como necessidade da OP.
+
+O usuário não edita mais a necessidade manualmente no Manejo. Ela vem travada da OP para evitar divergência.
+
+
+## Atualização: filtros do Manejo e painel administrativo
+
+A aba **Manejo** recebeu filtros personalizados:
+
+```txt
+Buscar geral
+Status
+Referência
+Cor
+Fase
+Facção
+Necessidade
+```
+
+Foi adicionada uma aba exclusiva para admin:
+
+```txt
+Status Manejo
+```
+
+Nessa aba o admin consegue ver:
+
+```txt
+Total no manejo
+Pendentes
+Organizadas
+Com fase
+Sem fase
+Resumo por fase
+Resumo por facção
+Status por referência
+Lista completa das OPs com status
+```
+
+Também há filtros no painel de admin para localizar rapidamente OPs pendentes, organizadas, por referência, cor, fase, facção ou necessidade.
+
+O botão **Abrir no manejo** leva o admin direto para a OP na aba Manejo.
