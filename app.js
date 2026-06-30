@@ -1,3 +1,61 @@
+
+window.__ultimoErroSistema = "";
+
+function mostrarErroDiagnostico(mensagem, origem = "sistema") {
+  const texto = `[${origem}] ${String(mensagem || "Erro desconhecido")}`;
+  window.__ultimoErroSistema = texto;
+
+  const box = document.getElementById("diagnosticBox");
+  const msg = document.getElementById("diagnosticMessage");
+
+  if (box && msg) {
+    msg.textContent = texto;
+    box.classList.remove("hidden");
+  }
+
+  console.error("[Diagnóstico]", texto);
+}
+
+window.addEventListener("error", event => {
+  mostrarErroDiagnostico(
+    `${event.message || "Erro de JavaScript"}\nArquivo: ${event.filename || "-"}\nLinha: ${event.lineno || "-"}:${event.colno || "-"}`,
+    "window.error"
+  );
+});
+
+window.addEventListener("unhandledrejection", event => {
+  const reason = event.reason;
+  mostrarErroDiagnostico(
+    reason?.stack || reason?.message || reason || "Promessa rejeitada sem mensagem",
+    "unhandledrejection"
+  );
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const copyBtn = document.getElementById("btnCopyDiagnostic");
+  const closeBtn = document.getElementById("btnCloseDiagnostic");
+
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(window.__ultimoErroSistema || "");
+        copyBtn.textContent = "Erro copiado";
+      } catch (error) {
+        copyBtn.textContent = "Não conseguiu copiar";
+      }
+    });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      document.getElementById("diagnosticBox")?.classList.add("hidden");
+    });
+  }
+});
+
+console.log("[Diagnóstico] app.js carregado.");
+
+
 import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
@@ -172,12 +230,15 @@ function configurarVisibilidadeSenhas() {
 function configurarAuth() {
   document.getElementById("loginForm").addEventListener("submit", async event => {
     event.preventDefault();
+    console.log("[Diagnóstico] Clique em entrar recebido.");
 
     const email = document.getElementById("loginEmail").value.trim();
     const senha = document.getElementById("loginSenha").value;
 
     try {
+      console.log("[Diagnóstico] Enviando login para Firebase Auth:", email);
       await signInWithEmailAndPassword(auth, email, senha);
+      console.log("[Diagnóstico] Firebase Auth aceitou o login.");
     } catch (error) {
       console.error(error);
       toast("Erro ao entrar. Confira e-mail e senha.");
@@ -206,6 +267,7 @@ function configurarAuth() {
   });
 
   onAuthStateChanged(auth, async user => {
+    console.log("[Diagnóstico] onAuthStateChanged:", user ? user.uid : "sem usuário");
     limparListeners();
 
     if (!user) {
@@ -2220,18 +2282,23 @@ function baixarBackupAtual() {
 }
 
 function renderTudo() {
-  renderDashboard();
-  renderProdutos();
-  renderProdutosPendentes();
-  renderOrdens();
-  renderFiltrosColunasManejo();
-  renderManejoInline();
-  renderDatalistManejo();
-  renderDatalistReferencias();
-  renderDatalistCores();
-  renderRelatorio();
-  renderLogs();
-  aplicarPermissoesTela();
+  try {
+    renderDashboard();
+      renderProdutos();
+      renderProdutosPendentes();
+      renderOrdens();
+      renderFiltrosColunasManejo();
+      renderManejoInline();
+      renderDatalistManejo();
+      renderDatalistReferencias();
+      renderDatalistCores();
+      renderRelatorio();
+      renderLogs();
+      aplicarPermissoesTela();
+  } catch (error) {
+    console.error(error);
+    mostrarErroDiagnostico(error?.stack || error?.message || error, "renderTudo");
+  }
 }
 
 function renderDashboard() {

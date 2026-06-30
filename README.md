@@ -585,3 +585,30 @@ A coluna **COLUNA / OBSERVAÇÃO** foi removida do Manejo.
 ### Segurança
 
 Esta versão foi criada em cima da base estável de recuperação e não adiciona nova coleção no Firebase.
+
+
+## Versão de diagnóstico da quebra no login
+
+Esta versão é igual à versão do Manejo com filtros por coluna, mas com diagnóstico.
+
+Ela mostra uma caixa laranja se acontecer erro em:
+
+```txt
+JavaScript
+Login
+Carregamento do perfil
+Firestore
+Renderização da tela depois do login
+```
+
+### Como testar
+
+1. Suba esta versão no GitHub.
+2. Abra em aba anônima primeiro.
+3. Tente fazer login.
+4. Se aparecer a caixa laranja, clique em **Copiar erro**.
+5. Envie o erro para análise.
+
+### Importante
+
+Se em aba anônima funcionar, mas no navegador normal não funcionar, o problema é cache/service worker do PWA.

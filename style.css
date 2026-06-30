@@ -968,3 +968,39 @@ small {
     grid-template-columns: 1fr;
   }
 }
+
+
+.diagnostic-box {
+  position: fixed;
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
+  z-index: 99999;
+  background: #fff7ed;
+  color: #7c2d12;
+  border: 1px solid rgba(234, 88, 12, 0.38);
+  box-shadow: 0 18px 55px rgba(15, 23, 42, 0.22);
+  border-radius: 16px;
+  padding: 16px;
+  max-width: 850px;
+  margin: 0 auto;
+}
+
+.diagnostic-box strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.diagnostic-box p {
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
+  font-size: 13px;
+}
+
+.diagnostic-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
