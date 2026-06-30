@@ -866,3 +866,50 @@ small {
   white-space: normal;
   line-height: 1.45;
 }
+
+
+.manejo-inline-table {
+  min-width: 1900px;
+}
+
+.manejo-inline-table input,
+.manejo-inline-table textarea,
+.manejo-inline-table select {
+  min-width: 120px;
+  padding: 8px 9px;
+  font-size: 13px;
+  border-radius: 10px;
+}
+
+.manejo-inline-table textarea {
+  min-width: 190px;
+  min-height: 42px;
+  resize: vertical;
+}
+
+.manejo-readonly {
+  background: #f8fafc;
+  color: #475467;
+  font-weight: 800;
+}
+
+.manejo-row-saved {
+  background: rgba(22, 163, 74, 0.04);
+}
+
+.manejo-row-pending {
+  background: rgba(245, 158, 11, 0.04);
+}
+
+.manejo-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 780px) {
+  .manejo-inline-table input,
+  .manejo-inline-table textarea {
+    min-width: 130px;
+  }
+}

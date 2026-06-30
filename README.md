@@ -430,3 +430,30 @@ Ações
 7. A OP passa de **Pendente** para **Organizada**.
 
 Também foi adicionado o botão **Ver fases**, que filtra os registros de manejo daquela OP.
+
+
+## Correção: Manejo em linha e sem erro de fases
+
+A aba **Manejo** foi alterada para funcionar exatamente como uma planilha.
+
+Agora:
+
+- Toda OP que entra no sistema aparece automaticamente no Manejo.
+- Cada OP aparece em uma linha.
+- Nº OP, REF, QTI e COR vêm automaticamente da ordem de produção.
+- O usuário edita direto na linha:
+  - SILK
+  - DATA TECIDO
+  - FASE
+  - DATA
+  - FACÇÃO
+  - CHEGADA
+  - FALTA
+  - PRODUÇÃO
+  - CELU
+  - NECESSIDADE
+  - COLUNA
+- Depois clica em **Salvar** na própria linha.
+- A OP muda de **Pendente** para **Organizada**.
+
+Também foi removida a dependência da coleção `fasesManejo`, que podia causar o erro **"Erro ao carregar fases do manejo"**. Agora as sugestões de fase são montadas automaticamente a partir dos manejos já salvos.

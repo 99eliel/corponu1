@@ -52,7 +52,6 @@ const state = {
   produtos: [],
   ordens: [],
   manejos: [],
-  fasesManejo: [],
   usuarios: [],
   logs: [],
   pdfImportacaoPendente: [],
@@ -282,7 +281,6 @@ function iniciarListenersFirestore() {
   const produtosQuery = query(collection(db, "produtos"), orderBy("referencia", "asc"));
   const ordensQuery = query(collection(db, "ordensProducao"), orderBy("criadoEm", "desc"));
   const manejosQuery = query(collection(db, "manejos"), orderBy("criadoEm", "desc"));
-  const fasesManejoQuery = query(collection(db, "fasesManejo"), orderBy("nome", "asc"));
 
   state.unsubscribers.push(onSnapshot(produtosQuery, snapshot => {
     state.produtos = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
@@ -308,13 +306,6 @@ function iniciarListenersFirestore() {
     toast("Erro ao carregar manejo. Verifique as permissões.");
   }));
 
-  state.unsubscribers.push(onSnapshot(fasesManejoQuery, snapshot => {
-    state.fasesManejo = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
-    renderDatalistManejo();
-  }, error => {
-    console.error(error);
-    toast("Erro ao carregar fases de manejo.");
-  }));
 
   if (ehAdmin()) {
     const usuariosQuery = query(collection(db, "usuarios"), orderBy("nome", "asc"));
@@ -813,190 +804,230 @@ async function excluirOrdem(id) {
 }
 
 
+
 function configurarManejo() {
-  const form = document.getElementById("formManejo");
-  const opInput = document.getElementById("manejoNumeroOP");
-
-  if (!form || !opInput) return;
-
-  opInput.addEventListener("input", preencherManejoPorOP);
-
-  form.addEventListener("submit", async event => {
-    event.preventDefault();
-
-    const id = document.getElementById("manejoId").value;
-    const numeroOP = String(document.getElementById("manejoNumeroOP").value || "").trim();
-    const ordem = encontrarOrdemParaManejo(numeroOP);
-
-    if (!ordem) {
-      toast("Selecione uma OP válida já cadastrada no sistema.");
-      return;
-    }
-
-    const fase = limparTexto(document.getElementById("manejoFase").value).toUpperCase();
-
-    if (!fase) {
-      toast("Informe a fase do manejo.");
-      return;
-    }
-
-    const dados = {
-      numeroOP: ordem.numeroOP,
-      ordemId: ordem.id,
-      referencia: ordem.referencia,
-      cor: ordem.cor,
-      quantidade: Number(ordem.quantidade || 0),
-
-      silk: limparTexto(document.getElementById("manejoSilk").value).toUpperCase(),
-      dataTecido: document.getElementById("manejoDataTecido").value || "",
-      fase,
-      data: document.getElementById("manejoData").value || "",
-      faccao: limparTexto(document.getElementById("manejoFaccao").value).toUpperCase(),
-      chegada: document.getElementById("manejoChegada").value || "",
-      falta: Number(document.getElementById("manejoFalta").value || 0),
-      producao: Number(document.getElementById("manejoProducao").value || 0),
-      celu: limparTexto(document.getElementById("manejoCelu").value),
-      necessidade: limparTexto(document.getElementById("manejoNecessidade").value).toUpperCase(),
-      coluna: limparTexto(document.getElementById("manejoColuna").value),
-
-      atualizadoPor: state.currentUser.uid,
-      atualizadoEm: serverTimestamp()
-    };
-
-    if (!id) {
-      dados.criadoPor = state.currentUser.uid;
-      dados.criadoEm = serverTimestamp();
-    }
-
-    try {
-      const manejoDocId = id || docIdSeguro(`MANEJO-${ordem.numeroOP}-${fase}-${Date.now()}`);
-
-      await setDoc(doc(db, "manejos", manejoDocId), dados, { merge: true });
-
-      await salvarFaseManejo(fase);
-
-      if (dados.faccao) {
-        await salvarFaseManejo(`FACCAO:${dados.faccao}`, dados.faccao, "faccao");
-      }
-
-      await registrarLog(
-        id ? "manejo_atualizado" : "manejo_criado",
-        "manejo",
-        manejoDocId,
-        `OP ${ordem.numeroOP} | Ref. ${ordem.referencia} | Fase ${fase}`
-      );
-
-      limparFormManejo();
-      toast(id ? "Manejo atualizado." : "Manejo cadastrado.");
-    } catch (error) {
-      console.error(error);
-      toast("Erro ao salvar manejo.");
-    }
-  });
-
-  document.getElementById("btnCancelarManejo").addEventListener("click", limparFormManejo);
-  document.getElementById("buscaManejo").addEventListener("input", renderManejos);
-
-  const buscaOrdemManejo = document.getElementById("buscaOrdemManejo");
-  if (buscaOrdemManejo) {
-    buscaOrdemManejo.addEventListener("input", renderOrdensManejo);
+  const busca = document.getElementById("buscaManejoLinha");
+  if (busca) {
+    busca.addEventListener("input", renderManejoInline);
   }
 }
 
-function encontrarOrdemParaManejo(numeroOP) {
-  const valor = String(numeroOP || "").trim();
-  return state.ordens.find(op => String(op.numeroOP) === valor || String(op.numeroOPExterno) === valor || String(op.id) === valor);
-}
+function renderManejoInline() {
+  const tbody = document.getElementById("listaManejoInline");
+  if (!tbody) return;
 
-function preencherManejoPorOP() {
-  const numeroOP = document.getElementById("manejoNumeroOP").value;
-  const ordem = encontrarOrdemParaManejo(numeroOP);
-  const preview = document.getElementById("manejoPreviewOP");
+  const busca = normalizarTexto(document.getElementById("buscaManejoLinha")?.value || "");
+  let ordens = [...state.ordens];
 
-  if (!ordem) {
-    document.getElementById("manejoReferencia").value = "";
-    document.getElementById("manejoCor").value = "";
-    document.getElementById("manejoQuantidade").value = "";
-    preview.classList.add("hidden");
-    preview.innerHTML = "";
+  if (busca) {
+    ordens = ordens.filter(op => {
+      const manejo = getManejoDaOrdem(op);
+      const texto = normalizarTexto([
+        op.numeroOP,
+        op.numeroOPExterno,
+        op.referencia,
+        op.cor,
+        op.produtoNome,
+        manejo?.fase,
+        manejo?.faccao,
+        manejo?.necessidade
+      ].join(" "));
+
+      return texto.includes(busca);
+    });
+  }
+
+  if (!ordens.length) {
+    tbody.innerHTML = `<tr><td colspan="17" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
     return;
   }
 
-  document.getElementById("manejoReferencia").value = ordem.referencia || "";
-  document.getElementById("manejoCor").value = ordem.cor || "";
-  document.getElementById("manejoQuantidade").value = ordem.quantidade || "";
+  tbody.innerHTML = ordens.map(op => {
+    const manejo = getManejoDaOrdem(op);
+    const rowId = idLinhaManejo(op);
+    const status = manejo ? "Organizada" : "Pendente";
+    const rowClass = manejo ? "manejo-row-saved" : "manejo-row-pending";
 
-  preview.classList.remove("hidden");
-  preview.innerHTML = `
-    <strong>OP encontrada:</strong><br>
-    OP: ${escapeHtml(ordem.numeroOP)} |
-    Referência: ${escapeHtml(ordem.referencia || "-")} |
-    Cor: ${escapeHtml(ordem.cor || "-")} |
-    QTI: ${escapeHtml(ordem.quantidade || "0")}
-  `;
+    return `
+      <tr class="${rowClass}">
+        <td><input class="manejo-readonly" value="${escapeHtml(op.numeroOP || "")}" readonly /></td>
+        <td><input class="manejo-readonly" value="${escapeHtml(op.referencia || "")}" readonly /></td>
+        <td><input id="${rowId}-silk" value="${escapeHtml(manejo?.silk || "")}" list="manejoSilkList" placeholder="SIM/NÃO" /></td>
+        <td><input id="${rowId}-dataTecido" type="date" value="${escapeHtml(manejo?.dataTecido || "")}" /></td>
+        <td><input id="${rowId}-fase" value="${escapeHtml(manejo?.fase || "")}" list="manejoFasesList" placeholder="Digite a fase" /></td>
+        <td><input class="manejo-readonly" type="number" value="${escapeHtml(op.quantidade ?? 0)}" readonly /></td>
+        <td><input class="manejo-readonly" value="${escapeHtml(op.cor || "")}" readonly /></td>
+        <td><input id="${rowId}-data" type="date" value="${escapeHtml(manejo?.data || "")}" /></td>
+        <td><input id="${rowId}-faccao" value="${escapeHtml(manejo?.faccao || "")}" list="manejoFaccaoList" placeholder="Facção" /></td>
+        <td><input id="${rowId}-chegada" type="date" value="${escapeHtml(manejo?.chegada || "")}" /></td>
+        <td><input id="${rowId}-falta" type="number" min="0" step="1" value="${escapeHtml(manejo?.falta ?? "")}" /></td>
+        <td><input id="${rowId}-producao" type="number" min="0" step="1" value="${escapeHtml(manejo?.producao ?? "")}" /></td>
+        <td><input id="${rowId}-celu" value="${escapeHtml(manejo?.celu || "")}" /></td>
+        <td><input id="${rowId}-necessidade" value="${escapeHtml(manejo?.necessidade || "")}" list="manejoNecessidadeList" placeholder="Necessidade" /></td>
+        <td><textarea id="${rowId}-coluna" placeholder="Observação">${escapeHtml(manejo?.coluna || "")}</textarea></td>
+        <td>${manejoStatusBadge(manejo)}</td>
+        <td>
+          <div class="manejo-actions">
+            <button class="btn btn-sm btn-primary" onclick="salvarManejoLinha('${op.id}')">Salvar</button>
+            ${manejo && ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="limparManejoLinha('${op.id}')">Limpar</button>` : ""}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
 }
 
-async function salvarFaseManejo(valor, nomeAlternativo = "", tipo = "fase") {
-  const nome = limparTexto(nomeAlternativo || valor).toUpperCase();
-  if (!nome) return;
+function getManejoDaOrdem(op) {
+  return state.manejos.find(item => {
+    return String(item.ordemId) === String(op.id)
+      || String(item.numeroOP) === String(op.numeroOP);
+  });
+}
 
-  const docId = docIdSeguro(`${tipo}-${nome}`);
+function idLinhaManejo(op) {
+  return `manejo-${docIdSeguro(op.id || op.numeroOP)}`;
+}
 
-  await setDoc(doc(db, "fasesManejo", docId), {
-    nome,
-    tipo,
+function valorLinhaManejo(op, campo) {
+  const el = document.getElementById(`${idLinhaManejo(op)}-${campo}`);
+  return el ? el.value : "";
+}
+
+async function salvarManejoLinha(ordemId) {
+  const ordem = state.ordens.find(op => op.id === ordemId);
+  if (!ordem) {
+    toast("OP não encontrada.");
+    return;
+  }
+
+  const manejoExistente = getManejoDaOrdem(ordem);
+  const fase = limparTexto(valorLinhaManejo(ordem, "fase")).toUpperCase();
+
+  if (!fase) {
+    toast("Informe a fase antes de salvar.");
+    return;
+  }
+
+  const dados = {
+    numeroOP: ordem.numeroOP,
+    ordemId: ordem.id,
+    referencia: ordem.referencia,
+    cor: ordem.cor,
+    quantidade: Number(ordem.quantidade || 0),
+
+    silk: limparTexto(valorLinhaManejo(ordem, "silk")).toUpperCase(),
+    dataTecido: valorLinhaManejo(ordem, "dataTecido") || "",
+    fase,
+    data: valorLinhaManejo(ordem, "data") || "",
+    faccao: limparTexto(valorLinhaManejo(ordem, "faccao")).toUpperCase(),
+    chegada: valorLinhaManejo(ordem, "chegada") || "",
+    falta: Number(valorLinhaManejo(ordem, "falta") || 0),
+    producao: Number(valorLinhaManejo(ordem, "producao") || 0),
+    celu: limparTexto(valorLinhaManejo(ordem, "celu")),
+    necessidade: limparTexto(valorLinhaManejo(ordem, "necessidade")).toUpperCase(),
+    coluna: limparTexto(valorLinhaManejo(ordem, "coluna")),
+
     atualizadoPor: state.currentUser.uid,
     atualizadoEm: serverTimestamp()
-  }, { merge: true });
+  };
+
+  if (!manejoExistente) {
+    dados.criadoPor = state.currentUser.uid;
+    dados.criadoEm = serverTimestamp();
+  }
+
+  try {
+    const manejoDocId = manejoExistente?.id || docIdSeguro(`MANEJO-${ordem.numeroOP}`);
+
+    await setDoc(doc(db, "manejos", manejoDocId), dados, { merge: true });
+
+    await registrarLog(
+      manejoExistente ? "manejo_atualizado" : "manejo_criado",
+      "manejo",
+      manejoDocId,
+      `OP ${ordem.numeroOP} | Ref. ${ordem.referencia} | Fase ${fase}`
+    );
+
+    toast("Manejo salvo.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao salvar manejo.");
+  }
 }
 
-function limparFormManejo() {
-  document.getElementById("manejoId").value = "";
-  document.getElementById("manejoNumeroOP").value = "";
-  document.getElementById("manejoReferencia").value = "";
-  document.getElementById("manejoCor").value = "";
-  document.getElementById("manejoQuantidade").value = "";
-  document.getElementById("manejoSilk").value = "";
-  document.getElementById("manejoDataTecido").value = "";
-  document.getElementById("manejoFase").value = "";
-  document.getElementById("manejoData").value = "";
-  document.getElementById("manejoFaccao").value = "";
-  document.getElementById("manejoChegada").value = "";
-  document.getElementById("manejoFalta").value = "";
-  document.getElementById("manejoProducao").value = "";
-  document.getElementById("manejoCelu").value = "";
-  document.getElementById("manejoNecessidade").value = "";
-  document.getElementById("manejoColuna").value = "";
+async function limparManejoLinha(ordemId) {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode limpar manejo.");
+    return;
+  }
 
-  const preview = document.getElementById("manejoPreviewOP");
-  preview.classList.add("hidden");
-  preview.innerHTML = "";
+  const ordem = state.ordens.find(op => op.id === ordemId);
+  if (!ordem) return;
+
+  const manejo = getManejoDaOrdem(ordem);
+  if (!manejo) return;
+
+  if (!confirm(`Limpar o manejo da OP ${ordem.numeroOP}?`)) return;
+
+  try {
+    await deleteDoc(doc(db, "manejos", manejo.id));
+    await registrarLog("manejo_excluido", "manejo", manejo.id, `OP ${ordem.numeroOP} | Fase ${manejo.fase || "-"}`);
+    toast("Manejo limpo.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao limpar manejo.");
+  }
+}
+
+function manejoStatusBadge(manejo) {
+  if (manejo) {
+    return `<span class="badge ok">Organizada</span>`;
+  }
+
+  return `<span class="badge pending">Pendente</span>`;
+}
+
+function renderDatalistManejo() {
+  const fasesList = document.getElementById("manejoFasesList");
+  const faccaoList = document.getElementById("manejoFaccaoList");
+
+  if (fasesList) {
+    const fases = new Set();
+
+    state.manejos.forEach(item => {
+      if (item.fase) fases.add(String(item.fase).toUpperCase());
+    });
+
+    fasesList.innerHTML = [...fases].sort().map(fase => `<option value="${escapeHtml(fase)}"></option>`).join("");
+  }
+
+  if (faccaoList) {
+    const faccoes = new Set();
+
+    state.manejos.forEach(item => {
+      if (item.faccao) faccoes.add(String(item.faccao).toUpperCase());
+    });
+
+    faccaoList.innerHTML = [...faccoes].sort().map(faccao => `<option value="${escapeHtml(faccao)}"></option>`).join("");
+  }
+}
+
+function renderManejos() {
+  renderManejoInline();
 }
 
 function editarManejo(id) {
   const manejo = state.manejos.find(item => item.id === id);
   if (!manejo) return;
-
   abrirPagina("manejo");
-
-  document.getElementById("manejoId").value = manejo.id;
-  document.getElementById("manejoNumeroOP").value = manejo.numeroOP || "";
-  document.getElementById("manejoReferencia").value = manejo.referencia || "";
-  document.getElementById("manejoCor").value = manejo.cor || "";
-  document.getElementById("manejoQuantidade").value = manejo.quantidade || "";
-  document.getElementById("manejoSilk").value = manejo.silk || "";
-  document.getElementById("manejoDataTecido").value = manejo.dataTecido || "";
-  document.getElementById("manejoFase").value = manejo.fase || "";
-  document.getElementById("manejoData").value = manejo.data || "";
-  document.getElementById("manejoFaccao").value = manejo.faccao || "";
-  document.getElementById("manejoChegada").value = manejo.chegada || "";
-  document.getElementById("manejoFalta").value = manejo.falta ?? "";
-  document.getElementById("manejoProducao").value = manejo.producao ?? "";
-  document.getElementById("manejoCelu").value = manejo.celu || "";
-  document.getElementById("manejoNecessidade").value = manejo.necessidade || "";
-  document.getElementById("manejoColuna").value = manejo.coluna || "";
-
-  preencherManejoPorOP();
+  const op = state.ordens.find(ordem => String(ordem.id) === String(manejo.ordemId) || String(ordem.numeroOP) === String(manejo.numeroOP));
+  if (op) {
+    const busca = document.getElementById("buscaManejoLinha");
+    if (busca) {
+      busca.value = op.numeroOP || "";
+      renderManejoInline();
+    }
+  }
 }
 
 async function excluirManejo(id) {
@@ -1020,183 +1051,24 @@ async function excluirManejo(id) {
   }
 }
 
-
-function renderOrdensManejo() {
-  const tbody = document.getElementById("listaOrdensManejo");
-  if (!tbody) return;
-
-  const busca = normalizarTexto(document.getElementById("buscaOrdemManejo")?.value || "");
-  let ordens = [...state.ordens];
-
-  if (busca) {
-    ordens = ordens.filter(op => {
-      const texto = normalizarTexto([
-        op.numeroOP,
-        op.numeroOPExterno,
-        op.referencia,
-        op.cor,
-        op.produtoNome
-      ].join(" "));
-
-      return texto.includes(busca);
-    });
-  }
-
-  if (!ordens.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty">Nenhuma ordem de produção encontrada.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = ordens.map(op => {
-    const manejosDaOP = state.manejos.filter(item => {
-      return String(item.numeroOP) === String(op.numeroOP)
-        || String(item.ordemId) === String(op.id);
-    });
-
-    const fases = [...new Set(manejosDaOP.map(item => item.fase).filter(Boolean))];
-    const status = manejosDaOP.length ? "Organizada" : "Pendente";
-    const statusClass = manejosDaOP.length ? "manejo-status-ok" : "manejo-status-pendente";
-
-    return `
-      <tr>
-        <td><strong>${escapeHtml(op.numeroOP || "-")}</strong></td>
-        <td>${escapeHtml(op.referencia || "-")}</td>
-        <td>${escapeHtml(op.cor || "-")}</td>
-        <td>${escapeHtml(op.quantidade ?? "0")}</td>
-        <td><span class="badge ${statusClass}">${status}</span></td>
-        <td class="fases-lista">${fases.length ? escapeHtml(fases.join(", ")) : "-"}</td>
-        <td>
-          <button class="btn btn-sm btn-primary" onclick="iniciarManejoParaOrdem('${op.id}')">Organizar</button>
-          ${manejosDaOP.length ? `<button class="btn btn-sm" onclick="filtrarManejosPorOP('${escapeHtml(op.numeroOP)}')">Ver fases</button>` : ""}
-        </td>
-      </tr>
-    `;
-  }).join("");
-}
-
 function iniciarManejoParaOrdem(ordemId) {
-  const ordem = state.ordens.find(op => op.id === ordemId);
-  if (!ordem) {
-    toast("OP não encontrada.");
-    return;
-  }
-
   abrirPagina("manejo");
-  limparFormManejo();
+  const ordem = state.ordens.find(op => op.id === ordemId);
+  if (!ordem) return;
 
-  document.getElementById("manejoNumeroOP").value = ordem.numeroOP || "";
-  preencherManejoPorOP();
-
-  const fase = document.getElementById("manejoFase");
-  if (fase) fase.focus();
-
-  toast("OP carregada. Agora preencha a fase e os demais campos do manejo.");
+  const busca = document.getElementById("buscaManejoLinha");
+  if (busca) {
+    busca.value = ordem.numeroOP || "";
+    renderManejoInline();
+  }
 }
 
 function filtrarManejosPorOP(numeroOP) {
-  const busca = document.getElementById("buscaManejo");
+  abrirPagina("manejo");
+  const busca = document.getElementById("buscaManejoLinha");
   if (busca) {
     busca.value = numeroOP;
-    renderManejos();
-  }
-
-  const lista = document.getElementById("listaManejos");
-  if (lista) {
-    lista.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-}
-
-function renderManejos() {
-  const tbody = document.getElementById("listaManejos");
-  if (!tbody) return;
-
-  const busca = normalizarTexto(document.getElementById("buscaManejo")?.value || "");
-  let manejos = [...state.manejos];
-
-  if (busca) {
-    manejos = manejos.filter(item => {
-      const texto = normalizarTexto([
-        item.numeroOP,
-        item.referencia,
-        item.silk,
-        item.fase,
-        item.cor,
-        item.faccao,
-        item.necessidade,
-        item.coluna
-      ].join(" "));
-      return texto.includes(busca);
-    });
-  }
-
-  if (!manejos.length) {
-    tbody.innerHTML = `<tr><td colspan="16" class="empty">Nenhum manejo cadastrado.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = manejos.map(item => `
-    <tr>
-      <td><strong>${escapeHtml(item.numeroOP || "-")}</strong></td>
-      <td>${escapeHtml(item.referencia || "-")}</td>
-      <td>${escapeHtml(item.silk || "-")}</td>
-      <td>${formatarDataSimples(item.dataTecido)}</td>
-      <td class="manejo-phase">${escapeHtml(item.fase || "-")}</td>
-      <td>${escapeHtml(item.quantidade ?? "0")}</td>
-      <td>${escapeHtml(item.cor || "-")}</td>
-      <td>${formatarDataSimples(item.data)}</td>
-      <td>${escapeHtml(item.faccao || "-")}</td>
-      <td>${formatarDataSimples(item.chegada)}</td>
-      <td>${escapeHtml(item.falta ?? "0")}</td>
-      <td>${escapeHtml(item.producao ?? "0")}</td>
-      <td>${escapeHtml(item.celu || "-")}</td>
-      <td>${escapeHtml(item.necessidade || "-")}</td>
-      <td>${escapeHtml(item.coluna || "-")}</td>
-      <td>
-        <button class="btn btn-sm" onclick="editarManejo('${item.id}')">Editar</button>
-        ${ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="excluirManejo('${item.id}')">Excluir</button>` : ""}
-      </td>
-    </tr>
-  `).join("");
-}
-
-function renderDatalistManejo() {
-  const ordensList = document.getElementById("manejoOrdensList");
-  const fasesList = document.getElementById("manejoFasesList");
-  const faccaoList = document.getElementById("manejoFaccaoList");
-
-  if (ordensList) {
-    ordensList.innerHTML = state.ordens.map(op => {
-      const label = `Ref. ${op.referencia || "-"} | ${op.cor || "-"} | QTI ${op.quantidade || 0}`;
-      return `<option value="${escapeHtml(op.numeroOP)}">${escapeHtml(label)}</option>`;
-    }).join("");
-  }
-
-  if (fasesList) {
-    const fases = new Set();
-
-    state.fasesManejo
-      .filter(item => !item.tipo || item.tipo === "fase")
-      .forEach(item => fases.add(item.nome));
-
-    state.manejos.forEach(item => {
-      if (item.fase) fases.add(String(item.fase).toUpperCase());
-    });
-
-    fasesList.innerHTML = [...fases].sort().map(fase => `<option value="${escapeHtml(fase)}"></option>`).join("");
-  }
-
-  if (faccaoList) {
-    const faccoes = new Set();
-
-    state.fasesManejo
-      .filter(item => item.tipo === "faccao")
-      .forEach(item => faccoes.add(item.nome));
-
-    state.manejos.forEach(item => {
-      if (item.faccao) faccoes.add(String(item.faccao).toUpperCase());
-    });
-
-    faccaoList.innerHTML = [...faccoes].sort().map(faccao => `<option value="${escapeHtml(faccao)}"></option>`).join("");
+    renderManejoInline();
   }
 }
 
@@ -1208,6 +1080,7 @@ function formatarDataSimples(valor) {
   }
   return escapeHtml(valor);
 }
+
 
 function configurarRelatorios() {
   document.querySelectorAll(".report-btn").forEach(btn => {
@@ -2164,8 +2037,7 @@ function renderTudo() {
   renderProdutos();
   renderProdutosPendentes();
   renderOrdens();
-  renderOrdensManejo();
-  renderManejos();
+  renderManejoInline();
   renderDatalistManejo();
   renderDatalistReferencias();
   renderDatalistCores();
@@ -2552,6 +2424,9 @@ window.iniciarCadastroProdutoPelaOrdem = iniciarCadastroProdutoPelaOrdem;
 window.conferirReferenciaPendente = conferirReferenciaPendente;
 window.verOrdensDaReferencia = verOrdensDaReferencia;
 window.editarManejo = editarManejo;
+window.editarManejo = editarManejo;
 window.excluirManejo = excluirManejo;
 window.iniciarManejoParaOrdem = iniciarManejoParaOrdem;
 window.filtrarManejosPorOP = filtrarManejosPorOP;
+window.salvarManejoLinha = salvarManejoLinha;
+window.limparManejoLinha = limparManejoLinha;
