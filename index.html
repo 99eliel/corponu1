@@ -377,123 +377,11 @@
             <strong>Funcionamento:</strong> Nº OP, REF, QTI, COR e NECESSIDADE vêm das ordens de produção. Os demais campos são preenchidos pelo usuário.
             Fases já usadas aparecem como sugestão, mas sempre é possível digitar uma fase nova.
           </div>
-
-
-          <div class="manejo-column-filters">
-            <label>
-              Status
-              <select id="filtroManejoStatus">
-                <option value="">Todos</option>
-                <option value="pendente">Pendente</option>
-                <option value="organizada">Organizada</option>
-              </select>
-            </label>
-
-            <label>
-              Nº OP
-              <select id="filtroManejoOP">
-                <option value="">Todas</option>
-              </select>
-            </label>
-
-            <label>
-              REF
-              <select id="filtroManejoReferencia">
-                <option value="">Todas</option>
-              </select>
-            </label>
-
-            <label>
-              SILK
-              <select id="filtroManejoSilk">
-                <option value="">Todos</option>
-              </select>
-            </label>
-
-            <label>
-              Data tecido
-              <select id="filtroManejoDataTecido">
-                <option value="">Todas</option>
-              </select>
-            </label>
-
-            <label>
-              Fase
-              <select id="filtroManejoFase">
-                <option value="">Todas</option>
-              </select>
-            </label>
-
-            <label>
-              QTI
-              <select id="filtroManejoQuantidade">
-                <option value="">Todas</option>
-              </select>
-            </label>
-
-            <label>
-              Cor
-              <select id="filtroManejoCor">
-                <option value="">Todas</option>
-              </select>
-            </label>
-
-            <label>
-              Data
-              <select id="filtroManejoData">
-                <option value="">Todas</option>
-              </select>
-            </label>
-
-            <label>
-              Facção
-              <select id="filtroManejoFaccao">
-                <option value="">Todas</option>
-              </select>
-            </label>
-
-            <label>
-              Chegada
-              <select id="filtroManejoChegada">
-                <option value="">Todas</option>
-              </select>
-            </label>
-
-            <label>
-              Falta
-              <select id="filtroManejoFalta">
-                <option value="">Todas</option>
-              </select>
-            </label>
-
-            <label>
-              Produção
-              <select id="filtroManejoProducao">
-                <option value="">Todas</option>
-              </select>
-            </label>
-
-            <label>
-              CELU
-              <select id="filtroManejoCelu">
-                <option value="">Todos</option>
-              </select>
-            </label>
-
-            <label>
-              Necessidade
-              <select id="filtroManejoNecessidade">
-                <option value="">Todas</option>
-              </select>
-            </label>
-
-            <button class="btn" id="btnLimparFiltrosManejo" type="button">Limpar filtros</button>
-          </div>
-
-          <div class="table-wrap">
-            <table class="manejo-inline-table">
+<div class="table-wrap">
+            
+<table class="manejo-inline-table">
               <thead>
-                <tr>
+                <tr class="manejo-head-row">
                   <th>Nº OP</th>
                   <th>REF</th>
                   <th>SILK</th>
@@ -510,6 +398,88 @@
                   <th>NECESSIDADE</th>
                   <th>STATUS</th>
                   <th>AÇÕES</th>
+                </tr>
+                <tr class="manejo-filter-row">
+                  <th>
+                    <select id="filtroManejoOP">
+                      <option value="">Todas</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select id="filtroManejoReferencia">
+                      <option value="">Todas</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select id="filtroManejoSilk">
+                      <option value="">Todos</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select id="filtroManejoDataTecido">
+                      <option value="">Todas</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select id="filtroManejoFase">
+                      <option value="">Todas</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select id="filtroManejoQuantidade">
+                      <option value="">Todas</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select id="filtroManejoCor">
+                      <option value="">Todas</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select id="filtroManejoData">
+                      <option value="">Todas</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select id="filtroManejoFaccao">
+                      <option value="">Todas</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select id="filtroManejoChegada">
+                      <option value="">Todas</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select id="filtroManejoFalta">
+                      <option value="">Todas</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select id="filtroManejoProducao">
+                      <option value="">Todas</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select id="filtroManejoCelu">
+                      <option value="">Todos</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select id="filtroManejoNecessidade">
+                      <option value="">Todas</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select id="filtroManejoStatus">
+                      <option value="">Todos</option>
+                      <option value="pendente">Pendente</option>
+                      <option value="organizada">Organizada</option>
+                    </select>
+                  </th>
+                  <th>
+                    <button class="btn btn-sm" id="btnLimparFiltrosManejo" type="button">Limpar</button>
+                  </th>
                 </tr>
               </thead>
               <tbody id="listaManejoInline"></tbody>

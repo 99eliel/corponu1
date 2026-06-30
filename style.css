@@ -968,3 +968,48 @@ small {
     grid-template-columns: 1fr;
   }
 }
+
+
+.manejo-inline-table thead th {
+  vertical-align: middle;
+}
+
+.manejo-head-row th {
+  white-space: nowrap;
+}
+
+.manejo-filter-row th {
+  padding-top: 6px;
+  padding-bottom: 10px;
+  background: #f8fafc;
+}
+
+.manejo-filter-row select {
+  width: 100%;
+  min-width: 95px;
+  padding: 7px 8px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.manejo-filter-row .btn {
+  width: 100%;
+  padding: 7px 8px;
+  font-size: 12px;
+}
+
+.manejo-inline-table {
+  min-width: 1700px;
+}
+
+@media (max-width: 780px) {
+  .manejo-filter-row select {
+    min-width: 82px;
+    font-size: 11px;
+    padding: 6px 7px;
+  }
+}

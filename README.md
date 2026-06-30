@@ -604,3 +604,16 @@ Correções aplicadas:
 - Mantida a alteração de Produção como data.
 - Mantida a remoção da coluna Observação.
 - Adicionado cache-buster no `app.js` para forçar o navegador a carregar o arquivo novo.
+
+
+## Ajuste visual dos filtros do Manejo
+
+Os filtros do Manejo foram reorganizados para ficarem juntos do cabeçalho da tabela.
+
+Agora funciona assim:
+
+- o nome da coluna fica na primeira linha do cabeçalho;
+- o filtro daquela coluna fica logo abaixo;
+- o botão **Limpar** fica na última coluna.
+
+Isso reduz bastante o espaço vertical e deixa o uso mais parecido com planilha.
