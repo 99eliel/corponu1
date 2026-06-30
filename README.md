@@ -617,3 +617,40 @@ Agora funciona assim:
 - o botão **Limpar** fica na última coluna.
 
 Isso reduz bastante o espaço vertical e deixa o uso mais parecido com planilha.
+
+
+## Atualização: Silk com nome/data e fase com botão +
+
+Na aba **Manejo**:
+
+### Silk
+
+O campo **SILK** agora possui:
+
+```txt
+Nome de quem fez
+Data do silk
+```
+
+Ao salvar o manejo, essas informações ficam salvas dentro da própria OP:
+
+```txt
+manejo.silkNome
+manejo.silkData
+```
+
+O campo antigo `manejo.silk` continua sendo preenchido com o nome para manter compatibilidade com filtros antigos.
+
+### Fase com botão +
+
+O campo **FASE** agora possui um botão **+** ao lado.
+
+Funcionamento:
+
+```txt
+Digite uma fase
+Clique no +
+A fase passa a aparecer como sugestão
+```
+
+Essa sugestão fica salva localmente no navegador, como apoio rápido para digitação. Quando uma OP é salva com a fase, ela também passa a aparecer nas sugestões usando os dados salvos no sistema.

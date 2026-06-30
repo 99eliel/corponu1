@@ -52,6 +52,7 @@ const state = {
   produtos: [],
   ordens: [],
   manejos: [],
+  fasesManejoExtras: [],
   usuarios: [],
   logs: [],
   pdfImportacaoPendente: [],
@@ -139,6 +140,7 @@ const reportInfo = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  carregarFasesExtrasManejo();
   configurarVisibilidadeSenhas();
   configurarAuth();
   configurarNavegacao();
@@ -855,9 +857,19 @@ function renderManejoInline() {
       <tr class="${rowClass}">
         <td><input class="manejo-readonly" value="${escapeHtml(op.numeroOP || "")}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(op.referencia || "")}" readonly /></td>
-        <td><input id="${rowId}-silk" value="${escapeHtml(manejo?.silk || "")}" list="manejoSilkList" placeholder="SIM/NÃO" /></td>
+        <td>
+          <div class="silk-fields">
+            <input id="${rowId}-silkNome" value="${escapeHtml(manejo?.silkNome || manejo?.silk || "")}" list="manejoSilkNomesList" placeholder="Nome" />
+            <input id="${rowId}-silkData" type="date" value="${escapeHtml(manejo?.silkData || "")}" title="Data do silk" />
+          </div>
+        </td>
         <td><input id="${rowId}-dataTecido" type="date" value="${escapeHtml(manejo?.dataTecido || "")}" /></td>
-        <td><input id="${rowId}-fase" value="${escapeHtml(manejo?.fase || "")}" list="manejoFasesList" placeholder="Digite a fase" /></td>
+        <td>
+          <div class="fase-plus">
+            <input id="${rowId}-fase" value="${escapeHtml(manejo?.fase || "")}" list="manejoFasesList" placeholder="Digite a fase" />
+            <button class="btn-plus" type="button" onclick="adicionarFaseSugestao('${op.id}')" title="Adicionar fase às sugestões">+</button>
+          </div>
+        </td>
         <td><input class="manejo-readonly" type="number" value="${escapeHtml(op.quantidade ?? 0)}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(op.cor || "")}" readonly /></td>
         <td><input id="${rowId}-data" type="date" value="${escapeHtml(manejo?.data || "")}" /></td>
@@ -890,7 +902,7 @@ function getValorManejoParaFiltro(op, campo) {
     status: getStatusManejo(op),
     op: op.numeroOP || "",
     referencia: op.referencia || "",
-    silk: manejo?.silk || "",
+    silk: manejo?.silkNome || manejo?.silk || "",
     dataTecido: manejo?.dataTecido || "",
     fase: manejo?.fase || "",
     quantidade: op.quantidade ?? "",
@@ -940,6 +952,8 @@ function filtrarOrdensManejoPorColunas() {
       op.quantidade,
       getNecessidadeDaOrdem(op),
       manejo?.silk,
+      manejo?.silkNome,
+      manejo?.silkData,
       manejo?.dataTecido,
       manejo?.fase,
       manejo?.data,
@@ -1007,7 +1021,10 @@ function renderFiltrosColunasManejo() {
   preencherSelectFiltroManejo("filtroManejoReferencia", ordens.map(op => getValorManejoParaFiltro(op, "referencia")), "Todas");
   preencherSelectFiltroManejo("filtroManejoSilk", ordens.map(op => getValorManejoParaFiltro(op, "silk")), "Todos");
   preencherSelectFiltroManejo("filtroManejoDataTecido", ordens.map(op => getValorManejoParaFiltro(op, "dataTecido")), "Todas");
-  preencherSelectFiltroManejo("filtroManejoFase", ordens.map(op => getValorManejoParaFiltro(op, "fase")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoFase", [
+    ...ordens.map(op => getValorManejoParaFiltro(op, "fase")),
+    ...state.fasesManejoExtras
+  ], "Todas");
   preencherSelectFiltroManejo("filtroManejoQuantidade", ordens.map(op => getValorManejoParaFiltro(op, "quantidade")), "Todas");
   preencherSelectFiltroManejo("filtroManejoCor", ordens.map(op => getValorManejoParaFiltro(op, "cor")), "Todas");
   preencherSelectFiltroManejo("filtroManejoData", ordens.map(op => getValorManejoParaFiltro(op, "data")), "Todas");
@@ -1075,8 +1092,13 @@ async function salvarManejoLinha(ordemId) {
     return;
   }
 
+  const silkNome = limparTexto(valorLinhaManejo(ordem, "silkNome")).toUpperCase();
+  const silkData = valorLinhaManejo(ordem, "silkData") || "";
+
   const manejo = {
-    silk: limparTexto(valorLinhaManejo(ordem, "silk")).toUpperCase(),
+    silk: silkNome,
+    silkNome,
+    silkData,
     dataTecido: valorLinhaManejo(ordem, "dataTecido") || "",
     fase,
     data: valorLinhaManejo(ordem, "data") || "",
@@ -1162,12 +1184,62 @@ function manejoStatusBadge(manejo) {
   return `<span class="badge pending">Pendente</span>`;
 }
 
+
+function carregarFasesExtrasManejo() {
+  try {
+    const salvo = JSON.parse(localStorage.getItem("fasesManejoExtras") || "[]");
+    state.fasesManejoExtras = Array.isArray(salvo)
+      ? salvo.map(fase => String(fase || "").trim().toUpperCase()).filter(Boolean)
+      : [];
+  } catch (error) {
+    state.fasesManejoExtras = [];
+  }
+}
+
+function salvarFasesExtrasManejo() {
+  try {
+    localStorage.setItem("fasesManejoExtras", JSON.stringify(state.fasesManejoExtras));
+  } catch (error) {
+    console.warn("Não foi possível salvar sugestões de fase localmente.", error);
+  }
+}
+
+function adicionarFaseSugestao(ordemId) {
+  const ordem = state.ordens.find(op => op.id === ordemId);
+  if (!ordem) {
+    toast("OP não encontrada.");
+    return;
+  }
+
+  const fase = limparTexto(valorLinhaManejo(ordem, "fase")).toUpperCase();
+
+  if (!fase) {
+    toast("Digite uma fase antes de adicionar.");
+    return;
+  }
+
+  if (!state.fasesManejoExtras.includes(fase)) {
+    state.fasesManejoExtras.push(fase);
+    state.fasesManejoExtras.sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+    salvarFasesExtrasManejo();
+  }
+
+  renderDatalistManejo();
+  renderFiltrosColunasManejo();
+  toast(`Fase "${fase}" adicionada às sugestões.`);
+}
+
 function renderDatalistManejo() {
   const fasesList = document.getElementById("manejoFasesList");
   const faccaoList = document.getElementById("manejoFaccaoList");
+  const silkNomesList = document.getElementById("manejoSilkNomesList");
 
   if (fasesList) {
     const fases = new Set();
+
+    state.fasesManejoExtras.forEach(fase => {
+      if (fase) fases.add(String(fase).toUpperCase());
+    });
 
     state.ordens.forEach(op => {
       if (op.manejo?.fase) fases.add(String(op.manejo.fase).toUpperCase());
@@ -1184,6 +1256,17 @@ function renderDatalistManejo() {
     });
 
     faccaoList.innerHTML = [...faccoes].sort().map(faccao => `<option value="${escapeHtml(faccao)}"></option>`).join("");
+  }
+
+  if (silkNomesList) {
+    const nomes = new Set();
+
+    state.ordens.forEach(op => {
+      if (op.manejo?.silkNome) nomes.add(String(op.manejo.silkNome).toUpperCase());
+      else if (op.manejo?.silk) nomes.add(String(op.manejo.silk).toUpperCase());
+    });
+
+    silkNomesList.innerHTML = [...nomes].sort().map(nome => `<option value="${escapeHtml(nome)}"></option>`).join("");
   }
 }
 
@@ -2617,3 +2700,4 @@ window.iniciarManejoParaOrdem = iniciarManejoParaOrdem;
 window.filtrarManejosPorOP = filtrarManejosPorOP;
 window.salvarManejoLinha = salvarManejoLinha;
 window.limparManejoLinha = limparManejoLinha;
+window.adicionarFaseSugestao = adicionarFaseSugestao;
