@@ -280,7 +280,7 @@ function limparListeners() {
 function iniciarListenersFirestore() {
   const produtosQuery = query(collection(db, "produtos"), orderBy("referencia", "asc"));
   const ordensQuery = query(collection(db, "ordensProducao"), orderBy("criadoEm", "desc"));
-  const manejosQuery = query(collection(db, "manejos"), orderBy("criadoEm", "desc"));
+  // Manejo agora fica salvo dentro da própria OP em ordensProducao.manejo
 
   state.unsubscribers.push(onSnapshot(produtosQuery, snapshot => {
     state.produtos = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
@@ -298,13 +298,6 @@ function iniciarListenersFirestore() {
     toast("Erro ao carregar ordens. Verifique as permissões.");
   }));
 
-  state.unsubscribers.push(onSnapshot(manejosQuery, snapshot => {
-    state.manejos = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
-    renderTudo();
-  }, error => {
-    console.error(error);
-    toast("Erro ao carregar manejo. Verifique as permissões.");
-  }));
 
 
   if (ehAdmin()) {
@@ -878,10 +871,16 @@ function renderManejoInline() {
 }
 
 function getManejoDaOrdem(op) {
-  return state.manejos.find(item => {
-    return String(item.ordemId) === String(op.id)
-      || String(item.numeroOP) === String(op.numeroOP);
-  });
+  if (!op) return null;
+
+  if (op.manejo) {
+    return {
+      id: op.id,
+      ...op.manejo
+    };
+  }
+
+  return null;
 }
 
 function idLinhaManejo(op) {
@@ -908,13 +907,7 @@ async function salvarManejoLinha(ordemId) {
     return;
   }
 
-  const dados = {
-    numeroOP: ordem.numeroOP,
-    ordemId: ordem.id,
-    referencia: ordem.referencia,
-    cor: ordem.cor,
-    quantidade: Number(ordem.quantidade || 0),
-
+  const manejo = {
     silk: limparTexto(valorLinhaManejo(ordem, "silk")).toUpperCase(),
     dataTecido: valorLinhaManejo(ordem, "dataTecido") || "",
     fase,
@@ -926,32 +919,40 @@ async function salvarManejoLinha(ordemId) {
     celu: limparTexto(valorLinhaManejo(ordem, "celu")),
     necessidade: limparTexto(valorLinhaManejo(ordem, "necessidade")).toUpperCase(),
     coluna: limparTexto(valorLinhaManejo(ordem, "coluna")),
-
+    status: "organizada",
     atualizadoPor: state.currentUser.uid,
     atualizadoEm: serverTimestamp()
   };
 
   if (!manejoExistente) {
-    dados.criadoPor = state.currentUser.uid;
-    dados.criadoEm = serverTimestamp();
+    manejo.criadoPor = state.currentUser.uid;
+    manejo.criadoEm = serverTimestamp();
   }
 
   try {
-    const manejoDocId = manejoExistente?.id || docIdSeguro(`MANEJO-${ordem.numeroOP}`);
-
-    await setDoc(doc(db, "manejos", manejoDocId), dados, { merge: true });
+    await setDoc(doc(db, "ordensProducao", ordem.id), {
+      manejo,
+      manejoStatus: "organizada",
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
 
     await registrarLog(
       manejoExistente ? "manejo_atualizado" : "manejo_criado",
-      "manejo",
-      manejoDocId,
+      "ordemProducao",
+      ordem.id,
       `OP ${ordem.numeroOP} | Ref. ${ordem.referencia} | Fase ${fase}`
     );
 
-    toast("Manejo salvo.");
+    toast("Manejo salvo. Você pode editar essa linha novamente quando precisar.");
   } catch (error) {
     console.error(error);
-    toast("Erro ao salvar manejo.");
+
+    if (error?.code === "permission-denied") {
+      toast("Sem permissão para salvar manejo. Publique novamente as regras do firebase-rules.txt.");
+    } else {
+      toast(`Erro ao salvar manejo: ${error?.message || "verifique o console"}`);
+    }
   }
 }
 
@@ -970,8 +971,14 @@ async function limparManejoLinha(ordemId) {
   if (!confirm(`Limpar o manejo da OP ${ordem.numeroOP}?`)) return;
 
   try {
-    await deleteDoc(doc(db, "manejos", manejo.id));
-    await registrarLog("manejo_excluido", "manejo", manejo.id, `OP ${ordem.numeroOP} | Fase ${manejo.fase || "-"}`);
+    await setDoc(doc(db, "ordensProducao", ordem.id), {
+      manejo: null,
+      manejoStatus: "pendente",
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+
+    await registrarLog("manejo_excluido", "ordemProducao", ordem.id, `OP ${ordem.numeroOP} | Fase ${manejo.fase || "-"}`);
     toast("Manejo limpo.");
   } catch (error) {
     console.error(error);
@@ -994,8 +1001,8 @@ function renderDatalistManejo() {
   if (fasesList) {
     const fases = new Set();
 
-    state.manejos.forEach(item => {
-      if (item.fase) fases.add(String(item.fase).toUpperCase());
+    state.ordens.forEach(op => {
+      if (op.manejo?.fase) fases.add(String(op.manejo.fase).toUpperCase());
     });
 
     fasesList.innerHTML = [...fases].sort().map(fase => `<option value="${escapeHtml(fase)}"></option>`).join("");
@@ -1004,8 +1011,8 @@ function renderDatalistManejo() {
   if (faccaoList) {
     const faccoes = new Set();
 
-    state.manejos.forEach(item => {
-      if (item.faccao) faccoes.add(String(item.faccao).toUpperCase());
+    state.ordens.forEach(op => {
+      if (op.manejo?.faccao) faccoes.add(String(op.manejo.faccao).toUpperCase());
     });
 
     faccaoList.innerHTML = [...faccoes].sort().map(faccao => `<option value="${escapeHtml(faccao)}"></option>`).join("");
@@ -1017,38 +1024,18 @@ function renderManejos() {
 }
 
 function editarManejo(id) {
-  const manejo = state.manejos.find(item => item.id === id);
-  if (!manejo) return;
   abrirPagina("manejo");
-  const op = state.ordens.find(ordem => String(ordem.id) === String(manejo.ordemId) || String(ordem.numeroOP) === String(manejo.numeroOP));
-  if (op) {
-    const busca = document.getElementById("buscaManejoLinha");
-    if (busca) {
-      busca.value = op.numeroOP || "";
-      renderManejoInline();
-    }
+  const busca = document.getElementById("buscaManejoLinha");
+  const op = state.ordens.find(ordem => String(ordem.id) === String(id) || String(ordem.numeroOP) === String(id));
+
+  if (busca && op) {
+    busca.value = op.numeroOP || "";
+    renderManejoInline();
   }
 }
 
 async function excluirManejo(id) {
-  if (!ehAdmin()) {
-    toast("Apenas admin pode excluir manejo.");
-    return;
-  }
-
-  const manejo = state.manejos.find(item => item.id === id);
-  if (!manejo) return;
-
-  if (!confirm(`Excluir o manejo da OP ${manejo.numeroOP}?`)) return;
-
-  try {
-    await deleteDoc(doc(db, "manejos", id));
-    await registrarLog("manejo_excluido", "manejo", id, `OP ${manejo.numeroOP} | Fase ${manejo.fase || "-"}`);
-    toast("Manejo excluído.");
-  } catch (error) {
-    console.error(error);
-    toast("Erro ao excluir manejo.");
-  }
+  await limparManejoLinha(id);
 }
 
 function iniciarManejoParaOrdem(ordemId) {

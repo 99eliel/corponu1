@@ -457,3 +457,34 @@ Agora:
 - A OP muda de **Pendente** para **Organizada**.
 
 Também foi removida a dependência da coleção `fasesManejo`, que podia causar o erro **"Erro ao carregar fases do manejo"**. Agora as sugestões de fase são montadas automaticamente a partir dos manejos já salvos.
+
+
+## Correção: Manejo salvo dentro da própria OP
+
+Para evitar erro de permissão ao salvar manejo, a lógica foi simplificada:
+
+- O manejo agora é salvo dentro do próprio documento da ordem de produção, no campo `manejo`.
+- Não depende mais da coleção separada `manejos`.
+- Como usuários comuns já podem editar ordens de produção, eles também conseguem salvar e reeditar o manejo.
+- Depois de salvo, o usuário pode alterar a mesma linha e clicar em **Salvar** novamente quantas vezes precisar.
+
+Estrutura salva na OP:
+
+```txt
+ordensProducao/{idDaOP}
+  manejo:
+    silk
+    dataTecido
+    fase
+    data
+    faccao
+    chegada
+    falta
+    producao
+    celu
+    necessidade
+    coluna
+    status
+```
+
+Se aparecer erro de permissão, publique novamente o arquivo `firebase-rules.txt`, mas esta versão usa a permissão já existente da coleção `ordensProducao`.
