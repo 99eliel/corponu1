@@ -377,6 +377,63 @@
             <strong>Funcionamento:</strong> Nº OP, REF, QTI, COR e NECESSIDADE vêm das ordens de produção. Os demais campos são preenchidos pelo usuário.
             Fases já usadas aparecem como sugestão, mas sempre é possível digitar uma fase nova.
           </div>
+
+          <div class="manejo-soma-panel">
+            <div class="soma-cards">
+              <div class="soma-card">
+                <span>OPs filtradas</span>
+                <strong id="somaManejoOps">0</strong>
+              </div>
+              <div class="soma-card">
+                <span>Total de peças / QTI</span>
+                <strong id="somaManejoPecas">0</strong>
+              </div>
+              <div class="soma-card">
+                <span>Total em falta</span>
+                <strong id="somaManejoFalta">0</strong>
+              </div>
+              <div class="soma-card">
+                <span>Status</span>
+                <strong id="somaManejoStatus">0 / 0</strong>
+                <small>Organizadas / Pendentes</small>
+              </div>
+            </div>
+
+            <div class="soma-detalhes">
+              <div>
+                <h4>Soma por fase</h4>
+                <div class="table-wrap soma-table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Fase</th>
+                        <th>OPs</th>
+                        <th>Peças</th>
+                      </tr>
+                    </thead>
+                    <tbody id="somaManejoFases"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h4>Soma por cor</h4>
+                <div class="table-wrap soma-table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Cor</th>
+                        <th>OPs</th>
+                        <th>Peças</th>
+                      </tr>
+                    </thead>
+                    <tbody id="somaManejoCores"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
 <div class="table-wrap">
             
 <table class="manejo-inline-table">
@@ -488,11 +545,6 @@
 
           <datalist id="manejoFasesList"></datalist>
           <datalist id="manejoFaccaoList"></datalist>
-          <datalist id="manejoSilkList">
-            <option value="SIM"></option>
-            <option value="NÃO"></option>
-            <option value="PENDENTE"></option>
-          </datalist>
           <datalist id="manejoSilkNomesList"></datalist>
         </div>
       </section>

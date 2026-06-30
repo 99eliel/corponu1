@@ -654,3 +654,57 @@ A fase passa a aparecer como sugestão
 ```
 
 Essa sugestão fica salva localmente no navegador, como apoio rápido para digitação. Quando uma OP é salva com a fase, ela também passa a aparecer nas sugestões usando os dados salvos no sistema.
+
+
+## Correção: Silk sem SIM/NÃO
+
+A coluna **SILK** no Manejo foi reorganizada.
+
+Agora ela mostra claramente:
+
+```txt
+Nome
+Data
+```
+
+Foi removida a lógica antiga de:
+
+```txt
+SIM
+NÃO
+PENDENTE
+```
+
+Valores antigos como SIM/NÃO/PENDENTE são ignorados nos filtros e nas sugestões de nomes. O Silk agora é tratado como execução, ou seja, **quem fez** e **em qual data fez**.
+
+
+## Atualização: soma automática no Manejo
+
+A aba **Manejo** agora possui um painel de soma que acompanha todos os filtros.
+
+Quando o usuário filtra por cor, fase, facção, status ou qualquer outra coluna, o painel mostra automaticamente:
+
+```txt
+OPs filtradas
+Total de peças / QTI
+Total em falta
+Organizadas / Pendentes
+Soma por fase
+Soma por cor
+```
+
+Exemplo:
+
+```txt
+Filtro Cor = ROSA
+```
+
+O sistema mostra quantas peças existem na cor ROSA e também como elas estão distribuídas por fase.
+
+Exemplo:
+
+```txt
+Filtro Fase = BOJO
+```
+
+O sistema mostra quantas peças estão na fase BOJO.

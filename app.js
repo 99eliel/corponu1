@@ -843,6 +843,8 @@ function renderManejoInline() {
 
   const ordens = filtrarOrdensManejoPorColunas();
 
+  renderResumoSomasManejo(ordens);
+
   if (!ordens.length) {
     tbody.innerHTML = `<tr><td colspan="16" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
     return;
@@ -859,8 +861,14 @@ function renderManejoInline() {
         <td><input class="manejo-readonly" value="${escapeHtml(op.referencia || "")}" readonly /></td>
         <td>
           <div class="silk-fields">
-            <input id="${rowId}-silkNome" value="${escapeHtml(manejo?.silkNome || manejo?.silk || "")}" list="manejoSilkNomesList" placeholder="Nome" />
-            <input id="${rowId}-silkData" type="date" value="${escapeHtml(manejo?.silkData || "")}" title="Data do silk" />
+            <label class="mini-field">
+              <span>Nome</span>
+              <input id="${rowId}-silkNome" value="${escapeHtml(getSilkNomeManejo(manejo))}" list="manejoSilkNomesList" placeholder="Quem fez" />
+            </label>
+            <label class="mini-field">
+              <span>Data</span>
+              <input id="${rowId}-silkData" type="date" value="${escapeHtml(manejo?.silkData || "")}" title="Data do silk" />
+            </label>
           </div>
         </td>
         <td><input id="${rowId}-dataTecido" type="date" value="${escapeHtml(manejo?.dataTecido || "")}" /></td>
@@ -891,6 +899,23 @@ function renderManejoInline() {
   }).join("");
 }
 
+
+function valorSilkAntigoValido(valor) {
+  const texto = limparTexto(valor).toUpperCase();
+  if (!texto) return "";
+  if (["SIM", "NÃO", "NAO", "PENDENTE"].includes(texto)) return "";
+  return texto;
+}
+
+function getSilkNomeManejo(manejo) {
+  if (!manejo) return "";
+
+  const silkNome = valorSilkAntigoValido(manejo.silkNome);
+  if (silkNome) return silkNome;
+
+  return valorSilkAntigoValido(manejo.silk);
+}
+
 function getStatusManejo(op) {
   return getManejoDaOrdem(op) ? "organizada" : "pendente";
 }
@@ -902,7 +927,7 @@ function getValorManejoParaFiltro(op, campo) {
     status: getStatusManejo(op),
     op: op.numeroOP || "",
     referencia: op.referencia || "",
-    silk: manejo?.silkNome || manejo?.silk || "",
+    silk: getSilkNomeManejo(manejo),
     dataTecido: manejo?.dataTecido || "",
     fase: manejo?.fase || "",
     quantidade: op.quantidade ?? "",
@@ -951,8 +976,7 @@ function filtrarOrdensManejoPorColunas() {
       op.produtoNome,
       op.quantidade,
       getNecessidadeDaOrdem(op),
-      manejo?.silk,
-      manejo?.silkNome,
+      getSilkNomeManejo(manejo),
       manejo?.silkData,
       manejo?.dataTecido,
       manejo?.fase,
@@ -1035,6 +1059,80 @@ function renderFiltrosColunasManejo() {
   preencherSelectFiltroManejo("filtroManejoCelu", ordens.map(op => getValorManejoParaFiltro(op, "celu")), "Todos");
   preencherSelectFiltroManejo("filtroManejoNecessidade", ordens.map(op => getValorManejoParaFiltro(op, "necessidade")), "Todas");
 }
+
+
+function numeroQuantidadeOP(op) {
+  const valor = Number(op?.quantidade || 0);
+  return Number.isFinite(valor) ? valor : 0;
+}
+
+function numeroFaltaManejo(op) {
+  const manejo = getManejoDaOrdem(op);
+  const valor = Number(manejo?.falta || 0);
+  return Number.isFinite(valor) ? valor : 0;
+}
+
+function formatarNumeroInteiro(valor) {
+  return Number(valor || 0).toLocaleString("pt-BR");
+}
+
+function agruparSomaManejo(ordens, obterNome) {
+  const mapa = new Map();
+
+  ordens.forEach(op => {
+    const nome = String(obterNome(op) || "Sem informação").trim() || "Sem informação";
+    const atual = mapa.get(nome) || { ops: 0, pecas: 0 };
+
+    atual.ops += 1;
+    atual.pecas += numeroQuantidadeOP(op);
+
+    mapa.set(nome, atual);
+  });
+
+  return [...mapa.entries()]
+    .map(([nome, dados]) => ({ nome, ...dados }))
+    .sort((a, b) => b.pecas - a.pecas || b.ops - a.ops || a.nome.localeCompare(b.nome, "pt-BR", { numeric: true }));
+}
+
+function renderTabelaSomaManejo(tbodyId, linhas) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+
+  if (!linhas.length) {
+    tbody.innerHTML = `<tr><td colspan="3" class="empty">Sem dados.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = linhas.map(item => `
+    <tr>
+      <td><strong>${escapeHtml(item.nome)}</strong></td>
+      <td>${formatarNumeroInteiro(item.ops)}</td>
+      <td>${formatarNumeroInteiro(item.pecas)}</td>
+    </tr>
+  `).join("");
+}
+
+function renderResumoSomasManejo(ordens) {
+  const totalOps = ordens.length;
+  const totalPecas = ordens.reduce((soma, op) => soma + numeroQuantidadeOP(op), 0);
+  const totalFalta = ordens.reduce((soma, op) => soma + numeroFaltaManejo(op), 0);
+  const organizadas = ordens.filter(op => getStatusManejo(op) === "organizada").length;
+  const pendentes = totalOps - organizadas;
+
+  const setText = (id, valor) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = valor;
+  };
+
+  setText("somaManejoOps", formatarNumeroInteiro(totalOps));
+  setText("somaManejoPecas", formatarNumeroInteiro(totalPecas));
+  setText("somaManejoFalta", formatarNumeroInteiro(totalFalta));
+  setText("somaManejoStatus", `${formatarNumeroInteiro(organizadas)} / ${formatarNumeroInteiro(pendentes)}`);
+
+  renderTabelaSomaManejo("somaManejoFases", agruparSomaManejo(ordens, op => getManejoDaOrdem(op)?.fase || "Sem fase"));
+  renderTabelaSomaManejo("somaManejoCores", agruparSomaManejo(ordens, op => op.cor || "Sem cor"));
+}
+
 
 function getNecessidadeDaOrdem(op) {
   if (!op) return "";
@@ -1262,8 +1360,8 @@ function renderDatalistManejo() {
     const nomes = new Set();
 
     state.ordens.forEach(op => {
-      if (op.manejo?.silkNome) nomes.add(String(op.manejo.silkNome).toUpperCase());
-      else if (op.manejo?.silk) nomes.add(String(op.manejo.silk).toUpperCase());
+      const nome = getSilkNomeManejo(op.manejo);
+      if (nome) nomes.add(nome);
     });
 
     silkNomesList.innerHTML = [...nomes].sort().map(nome => `<option value="${escapeHtml(nome)}"></option>`).join("");
