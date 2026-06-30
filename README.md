@@ -390,3 +390,43 @@ fasesManejo
 ```
 
 Atualize as regras do Firebase usando o arquivo `firebase-rules.txt`.
+
+
+## Atualização: OPs automáticas na aba Manejo
+
+A aba **Manejo** agora mostra automaticamente todas as ordens de produção cadastradas no sistema.
+
+Foi criado o painel:
+
+```txt
+Ordens de produção para organizar
+```
+
+Ele mostra:
+
+```txt
+Nº OP
+Referência
+Cor
+QTI
+Status
+Fases lançadas
+Ações
+```
+
+### Status
+
+- **Pendente**: a OP ainda não possui nenhum manejo/fase lançada.
+- **Organizada**: a OP já possui pelo menos uma fase lançada.
+
+### Como usar
+
+1. Entre na aba **Manejo**.
+2. Veja todas as OPs no painel superior.
+3. Clique em **Organizar** na OP desejada.
+4. O sistema preenche automaticamente Nº OP, Referência, Cor e QTI.
+5. O usuário preenche fase, data, facção e demais campos.
+6. Ao salvar, a fase fica vinculada àquela OP.
+7. A OP passa de **Pendente** para **Organizada**.
+
+Também foi adicionado o botão **Ver fases**, que filtra os registros de manejo daquela OP.

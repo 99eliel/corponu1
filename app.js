@@ -896,6 +896,11 @@ function configurarManejo() {
 
   document.getElementById("btnCancelarManejo").addEventListener("click", limparFormManejo);
   document.getElementById("buscaManejo").addEventListener("input", renderManejos);
+
+  const buscaOrdemManejo = document.getElementById("buscaOrdemManejo");
+  if (buscaOrdemManejo) {
+    buscaOrdemManejo.addEventListener("input", renderOrdensManejo);
+  }
 }
 
 function encontrarOrdemParaManejo(numeroOP) {
@@ -1012,6 +1017,92 @@ async function excluirManejo(id) {
   } catch (error) {
     console.error(error);
     toast("Erro ao excluir manejo.");
+  }
+}
+
+
+function renderOrdensManejo() {
+  const tbody = document.getElementById("listaOrdensManejo");
+  if (!tbody) return;
+
+  const busca = normalizarTexto(document.getElementById("buscaOrdemManejo")?.value || "");
+  let ordens = [...state.ordens];
+
+  if (busca) {
+    ordens = ordens.filter(op => {
+      const texto = normalizarTexto([
+        op.numeroOP,
+        op.numeroOPExterno,
+        op.referencia,
+        op.cor,
+        op.produtoNome
+      ].join(" "));
+
+      return texto.includes(busca);
+    });
+  }
+
+  if (!ordens.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">Nenhuma ordem de produção encontrada.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = ordens.map(op => {
+    const manejosDaOP = state.manejos.filter(item => {
+      return String(item.numeroOP) === String(op.numeroOP)
+        || String(item.ordemId) === String(op.id);
+    });
+
+    const fases = [...new Set(manejosDaOP.map(item => item.fase).filter(Boolean))];
+    const status = manejosDaOP.length ? "Organizada" : "Pendente";
+    const statusClass = manejosDaOP.length ? "manejo-status-ok" : "manejo-status-pendente";
+
+    return `
+      <tr>
+        <td><strong>${escapeHtml(op.numeroOP || "-")}</strong></td>
+        <td>${escapeHtml(op.referencia || "-")}</td>
+        <td>${escapeHtml(op.cor || "-")}</td>
+        <td>${escapeHtml(op.quantidade ?? "0")}</td>
+        <td><span class="badge ${statusClass}">${status}</span></td>
+        <td class="fases-lista">${fases.length ? escapeHtml(fases.join(", ")) : "-"}</td>
+        <td>
+          <button class="btn btn-sm btn-primary" onclick="iniciarManejoParaOrdem('${op.id}')">Organizar</button>
+          ${manejosDaOP.length ? `<button class="btn btn-sm" onclick="filtrarManejosPorOP('${escapeHtml(op.numeroOP)}')">Ver fases</button>` : ""}
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function iniciarManejoParaOrdem(ordemId) {
+  const ordem = state.ordens.find(op => op.id === ordemId);
+  if (!ordem) {
+    toast("OP não encontrada.");
+    return;
+  }
+
+  abrirPagina("manejo");
+  limparFormManejo();
+
+  document.getElementById("manejoNumeroOP").value = ordem.numeroOP || "";
+  preencherManejoPorOP();
+
+  const fase = document.getElementById("manejoFase");
+  if (fase) fase.focus();
+
+  toast("OP carregada. Agora preencha a fase e os demais campos do manejo.");
+}
+
+function filtrarManejosPorOP(numeroOP) {
+  const busca = document.getElementById("buscaManejo");
+  if (busca) {
+    busca.value = numeroOP;
+    renderManejos();
+  }
+
+  const lista = document.getElementById("listaManejos");
+  if (lista) {
+    lista.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
 
@@ -2073,6 +2164,7 @@ function renderTudo() {
   renderProdutos();
   renderProdutosPendentes();
   renderOrdens();
+  renderOrdensManejo();
   renderManejos();
   renderDatalistManejo();
   renderDatalistReferencias();
@@ -2461,3 +2553,5 @@ window.conferirReferenciaPendente = conferirReferenciaPendente;
 window.verOrdensDaReferencia = verOrdensDaReferencia;
 window.editarManejo = editarManejo;
 window.excluirManejo = excluirManejo;
+window.iniciarManejoParaOrdem = iniciarManejoParaOrdem;
+window.filtrarManejosPorOP = filtrarManejosPorOP;

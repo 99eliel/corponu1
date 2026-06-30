@@ -843,3 +843,26 @@ small {
 .manejo-phase {
   font-weight: 900;
 }
+
+
+.manejo-op-panel {
+  margin-bottom: 18px;
+  border-color: rgba(124, 58, 237, 0.18);
+  background: linear-gradient(135deg, #ffffff, rgba(124, 58, 237, 0.05));
+}
+
+.manejo-status-pendente {
+  background: rgba(245, 158, 11, 0.14);
+  color: #92400e;
+}
+
+.manejo-status-ok {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+}
+
+.fases-lista {
+  max-width: 320px;
+  white-space: normal;
+  line-height: 1.45;
+}
