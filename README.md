@@ -542,63 +542,21 @@ Removido temporariamente:
 Use esta versão para restaurar o sistema caso a versão mais recente tenha quebrado o carregamento.
 
 
-## Atualização segura: filtros do Manejo e Status Manejo
+## Versão de diagnóstico do login
 
-Esta versão foi criada em cima da versão estável de recuperação.
+Esta versão volta para a base estável e adiciona um painel de diagnóstico na tela.
 
-### Aba Manejo
+Use esta versão se o sistema não passar do login.
 
-A aba **Manejo** continua funcionando em linha, como planilha.
+Se aparecer uma caixa laranja com erro:
 
-Foram adicionados filtros sem remover a busca antiga:
+1. Clique em **Copiar erro**.
+2. Envie o texto do erro para análise.
 
-```txt
-Status
-Referência
-Cor
-Fase
-Facção
-Necessidade
-```
-
-A busca geral continua no canto superior e os filtros ficam logo abaixo do aviso de funcionamento.
-
-### Aba Status Manejo
-
-Foi adicionada uma aba exclusiva para admin:
+Também é recomendado limpar cache do PWA:
 
 ```txt
-Status Manejo
+Chrome > Configurações do site > Limpar dados
 ```
 
-Nela o admin visualiza:
-
-```txt
-Total de OPs
-Pendentes
-Organizadas
-Com fase
-Sem fase
-Resumo por fase
-Resumo por facção
-Status por referência
-Lista completa das OPs com status
-```
-
-Também há filtros por:
-
-```txt
-Buscar geral
-Status
-Referência
-Cor
-Fase
-Facção
-Necessidade
-```
-
-O botão **Abrir** leva direto para a OP filtrada na aba Manejo.
-
-### Observação técnica
-
-Esta atualização não cria novas coleções no Firebase. O status é lido diretamente das ordens de produção e do campo `manejo` salvo dentro de cada OP.
+Ou acessar em aba anônima para testar se o problema é cache/service worker.

@@ -1,3 +1,43 @@
+
+window.__ultimoErroSistema = "";
+
+function mostrarErroDiagnostico(mensagem) {
+  window.__ultimoErroSistema = String(mensagem || "Erro desconhecido");
+  const box = document.getElementById("diagnosticBox");
+  const msg = document.getElementById("diagnosticMessage");
+
+  if (box && msg) {
+    msg.textContent = window.__ultimoErroSistema;
+    box.classList.remove("hidden");
+  }
+
+  console.error("[Diagnóstico do sistema]", window.__ultimoErroSistema);
+}
+
+window.addEventListener("error", event => {
+  mostrarErroDiagnostico(`${event.message || "Erro de JavaScript"}\nArquivo: ${event.filename || "-"}\nLinha: ${event.lineno || "-"}:${event.colno || "-"}`);
+});
+
+window.addEventListener("unhandledrejection", event => {
+  const reason = event.reason;
+  mostrarErroDiagnostico(reason?.message || reason || "Promessa rejeitada sem mensagem");
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const copyBtn = document.getElementById("btnCopyDiagnostic");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(window.__ultimoErroSistema || "");
+        copyBtn.textContent = "Copiado";
+      } catch (error) {
+        copyBtn.textContent = "Não conseguiu copiar";
+      }
+    });
+  }
+});
+
+
 import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
@@ -76,10 +116,6 @@ const pageInfo = {
     title: "Manejo",
     subtitle: "Controle fases, facção, produção e necessidade usando as OPs cadastradas."
   },
-  statusManejo: {
-    title: "Status Manejo",
-    subtitle: "Painel administrativo para acompanhar o andamento das OPs no manejo."
-  },
   relatorios: {
     title: "Relatórios",
     subtitle: "Relatórios gerais, silk obrigatório e específicos por setor."
@@ -149,7 +185,6 @@ document.addEventListener("DOMContentLoaded", () => {
   configurarProduto();
   configurarOrdem();
   configurarManejo();
-  configurarStatusManejo();
   configurarRelatorios();
   configurarUsuarios();
   configurarLogs();
@@ -176,6 +211,7 @@ function configurarVisibilidadeSenhas() {
 
 function configurarAuth() {
   document.getElementById("loginForm").addEventListener("submit", async event => {
+    console.log("[Diagnóstico] Tentativa de login iniciada.");
     event.preventDefault();
 
     const email = document.getElementById("loginEmail").value.trim();
@@ -183,6 +219,7 @@ function configurarAuth() {
 
     try {
       await signInWithEmailAndPassword(auth, email, senha);
+      console.log("[Diagnóstico] Login aceito pelo Firebase Auth.");
     } catch (error) {
       console.error(error);
       toast("Erro ao entrar. Confira e-mail e senha.");
@@ -336,7 +373,7 @@ function aplicarPermissoesTela() {
 
   if (!admin) {
     const paginaAtiva = document.querySelector(".page.active")?.id;
-    if (paginaAtiva === "usuarios" || paginaAtiva === "backup" || paginaAtiva === "logs" || paginaAtiva === "statusManejo") {
+    if (paginaAtiva === "usuarios" || paginaAtiva === "backup" || paginaAtiva === "logs") {
       abrirPagina("dashboard");
     }
   }
@@ -349,7 +386,7 @@ function ehAdmin() {
 function configurarNavegacao() {
   document.querySelectorAll(".nav-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      if ((btn.dataset.page === "usuarios" || btn.dataset.page === "backup" || btn.dataset.page === "logs" || btn.dataset.page === "statusManejo") && !ehAdmin()) {
+      if ((btn.dataset.page === "usuarios" || btn.dataset.page === "backup" || btn.dataset.page === "logs") && !ehAdmin()) {
         toast("Apenas admin acessa esta área.");
         return;
       }
@@ -808,60 +845,32 @@ function configurarManejo() {
   if (busca) {
     busca.addEventListener("input", renderManejoInline);
   }
-
-  [
-    "filtroManejoStatus",
-    "filtroManejoReferencia",
-    "filtroManejoCor",
-    "filtroManejoFase",
-    "filtroManejoFaccao",
-    "filtroManejoNecessidade"
-  ].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener("input", renderManejoInline);
-    el.addEventListener("change", renderManejoInline);
-  });
-
-  const limpar = document.getElementById("btnLimparFiltrosManejo");
-  if (limpar) {
-    limpar.addEventListener("click", () => {
-      limparFiltrosManejoUsuario();
-      renderManejoInline();
-    });
-  }
-}
-
-function configurarStatusManejo() {
-  [
-    "filtroStatusManejoBusca",
-    "filtroStatusManejoStatus",
-    "filtroStatusManejoReferencia",
-    "filtroStatusManejoCor",
-    "filtroStatusManejoFase",
-    "filtroStatusManejoFaccao",
-    "filtroStatusManejoNecessidade"
-  ].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener("input", renderStatusManejo);
-    el.addEventListener("change", renderStatusManejo);
-  });
-
-  const limpar = document.getElementById("btnLimparFiltrosStatusManejo");
-  if (limpar) {
-    limpar.addEventListener("click", () => {
-      limparFiltrosStatusManejo();
-      renderStatusManejo();
-    });
-  }
 }
 
 function renderManejoInline() {
   const tbody = document.getElementById("listaManejoInline");
   if (!tbody) return;
 
-  const ordens = filtrarOrdensManejoUsuario();
+  const busca = normalizarTexto(document.getElementById("buscaManejoLinha")?.value || "");
+  let ordens = [...state.ordens];
+
+  if (busca) {
+    ordens = ordens.filter(op => {
+      const manejo = getManejoDaOrdem(op);
+      const texto = normalizarTexto([
+        op.numeroOP,
+        op.numeroOPExterno,
+        op.referencia,
+        op.cor,
+        op.produtoNome,
+        manejo?.fase,
+        manejo?.faccao,
+        getNecessidadeDaOrdem(op)
+      ].join(" "));
+
+      return texto.includes(busca);
+    });
+  }
 
   if (!ordens.length) {
     tbody.innerHTML = `<tr><td colspan="17" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
@@ -871,6 +880,7 @@ function renderManejoInline() {
   tbody.innerHTML = ordens.map(op => {
     const manejo = getManejoDaOrdem(op);
     const rowId = idLinhaManejo(op);
+    const status = manejo ? "Organizada" : "Pendente";
     const rowClass = manejo ? "manejo-row-saved" : "manejo-row-pending";
 
     return `
@@ -902,237 +912,6 @@ function renderManejoInline() {
   }).join("");
 }
 
-function getStatusManejo(op) {
-  return getManejoDaOrdem(op) ? "organizada" : "pendente";
-}
-
-function textoBuscaManejo(op) {
-  const manejo = getManejoDaOrdem(op);
-
-  return normalizarTexto([
-    op.numeroOP,
-    op.numeroOPExterno,
-    op.referencia,
-    op.cor,
-    op.produtoNome,
-    getNecessidadeDaOrdem(op),
-    manejo?.silk,
-    manejo?.fase,
-    manejo?.faccao,
-    manejo?.necessidade,
-    manejo?.coluna
-  ].join(" "));
-}
-
-function filtrarOrdensManejoBase(filtros = {}) {
-  const busca = normalizarTexto(filtros.busca || "");
-  const status = filtros.status || "";
-  const referencia = normalizarReferencia(filtros.referencia || "");
-  const cor = normalizarCor(filtros.cor || "");
-  const fase = normalizarTexto(filtros.fase || "");
-  const faccao = normalizarTexto(filtros.faccao || "");
-  const necessidade = normalizarTexto(filtros.necessidade || "");
-
-  return [...state.ordens].filter(op => {
-    const manejo = getManejoDaOrdem(op);
-    const necessidadeOP = getNecessidadeDaOrdem(op);
-
-    if (status && getStatusManejo(op) !== status) return false;
-    if (referencia && !String(op.referencia || "").includes(referencia)) return false;
-    if (cor && !normalizarCor(op.cor).includes(cor)) return false;
-    if (fase && !normalizarTexto(manejo?.fase || "").includes(fase)) return false;
-    if (faccao && !normalizarTexto(manejo?.faccao || "").includes(faccao)) return false;
-    if (necessidade && !normalizarTexto(necessidadeOP).includes(necessidade)) return false;
-    if (busca && !textoBuscaManejo(op).includes(busca)) return false;
-
-    return true;
-  });
-}
-
-function filtrarOrdensManejoUsuario() {
-  return filtrarOrdensManejoBase({
-    busca: document.getElementById("buscaManejoLinha")?.value || "",
-    status: document.getElementById("filtroManejoStatus")?.value || "",
-    referencia: document.getElementById("filtroManejoReferencia")?.value || "",
-    cor: document.getElementById("filtroManejoCor")?.value || "",
-    fase: document.getElementById("filtroManejoFase")?.value || "",
-    faccao: document.getElementById("filtroManejoFaccao")?.value || "",
-    necessidade: document.getElementById("filtroManejoNecessidade")?.value || ""
-  });
-}
-
-function limparFiltrosManejoUsuario() {
-  [
-    "buscaManejoLinha",
-    "filtroManejoStatus",
-    "filtroManejoReferencia",
-    "filtroManejoCor",
-    "filtroManejoFase",
-    "filtroManejoFaccao",
-    "filtroManejoNecessidade"
-  ].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = "";
-  });
-}
-
-function getFiltrosStatusManejo() {
-  return {
-    busca: document.getElementById("filtroStatusManejoBusca")?.value || "",
-    status: document.getElementById("filtroStatusManejoStatus")?.value || "",
-    referencia: document.getElementById("filtroStatusManejoReferencia")?.value || "",
-    cor: document.getElementById("filtroStatusManejoCor")?.value || "",
-    fase: document.getElementById("filtroStatusManejoFase")?.value || "",
-    faccao: document.getElementById("filtroStatusManejoFaccao")?.value || "",
-    necessidade: document.getElementById("filtroStatusManejoNecessidade")?.value || ""
-  };
-}
-
-function limparFiltrosStatusManejo() {
-  [
-    "filtroStatusManejoBusca",
-    "filtroStatusManejoStatus",
-    "filtroStatusManejoReferencia",
-    "filtroStatusManejoCor",
-    "filtroStatusManejoFase",
-    "filtroStatusManejoFaccao",
-    "filtroStatusManejoNecessidade"
-  ].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = "";
-  });
-}
-
-function renderTabelaResumoSimples(tbodyId, dados, labelVazio = "Sem dados.") {
-  const tbody = document.getElementById(tbodyId);
-  if (!tbody) return;
-
-  if (!dados.length) {
-    tbody.innerHTML = `<tr><td colspan="2" class="empty">${labelVazio}</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = dados.map(([nome, total]) => `
-    <tr>
-      <td>${escapeHtml(nome)}</td>
-      <td><strong>${total}</strong></td>
-    </tr>
-  `).join("");
-}
-
-function contarPorCampoManejo(ordens, campo) {
-  const mapa = new Map();
-
-  ordens.forEach(op => {
-    const manejo = getManejoDaOrdem(op);
-    const valor = String(manejo?.[campo] || "Sem informação").trim() || "Sem informação";
-    mapa.set(valor, (mapa.get(valor) || 0) + 1);
-  });
-
-  return [...mapa.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-}
-
-function renderResumoReferenciasManejo(ordens) {
-  const tbody = document.getElementById("resumoStatusReferencias");
-  if (!tbody) return;
-
-  const mapa = new Map();
-
-  ordens.forEach(op => {
-    const ref = String(op.referencia || "Sem referência");
-    const dados = mapa.get(ref) || { pendente: 0, organizada: 0, total: 0 };
-
-    dados.total += 1;
-    if (getStatusManejo(op) === "organizada") dados.organizada += 1;
-    else dados.pendente += 1;
-
-    mapa.set(ref, dados);
-  });
-
-  const linhas = [...mapa.entries()].sort((a, b) => b[1].pendente - a[1].pendente || b[1].total - a[1].total || a[0].localeCompare(b[0]));
-
-  if (!linhas.length) {
-    tbody.innerHTML = `<tr><td colspan="4" class="empty">Sem dados.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = linhas.map(([ref, dados]) => `
-    <tr>
-      <td><strong>${escapeHtml(ref)}</strong></td>
-      <td>${dados.pendente}</td>
-      <td>${dados.organizada}</td>
-      <td>${dados.total}</td>
-    </tr>
-  `).join("");
-}
-
-function renderStatusManejo() {
-  const tbody = document.getElementById("listaStatusManejo");
-  if (!tbody) return;
-  if (!ehAdmin()) return;
-
-  const ordens = filtrarOrdensManejoBase(getFiltrosStatusManejo());
-  const total = ordens.length;
-  const organizadas = ordens.filter(op => getStatusManejo(op) === "organizada").length;
-  const pendentes = total - organizadas;
-  const comFase = ordens.filter(op => Boolean(getManejoDaOrdem(op)?.fase)).length;
-  const semFase = total - comFase;
-
-  const setText = (id, valor) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = valor;
-  };
-
-  setText("statusManejoTotal", total);
-  setText("statusManejoPendentes", pendentes);
-  setText("statusManejoOrganizadas", organizadas);
-  setText("statusManejoComFase", comFase);
-  setText("statusManejoSemFase", semFase);
-
-  renderTabelaResumoSimples("resumoStatusFases", contarPorCampoManejo(ordens, "fase"));
-  renderTabelaResumoSimples("resumoStatusFaccoes", contarPorCampoManejo(ordens, "faccao"));
-  renderResumoReferenciasManejo(ordens);
-
-  if (!ordens.length) {
-    tbody.innerHTML = `<tr><td colspan="13" class="empty">Nenhuma OP encontrada com esses filtros.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = ordens.map(op => {
-    const manejo = getManejoDaOrdem(op);
-    const atualizado = manejo?.atualizadoEm ? formatarDataHora(manejo.atualizadoEm) : "-";
-
-    return `
-      <tr>
-        <td>${manejoStatusBadge(manejo)}</td>
-        <td><strong>${escapeHtml(op.numeroOP || "-")}</strong></td>
-        <td>${escapeHtml(op.referencia || "-")}</td>
-        <td>${escapeHtml(op.cor || "-")}</td>
-        <td>${escapeHtml(op.quantidade ?? "0")}</td>
-        <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
-        <td>${escapeHtml(manejo?.fase || "-")}</td>
-        <td>${escapeHtml(manejo?.faccao || "-")}</td>
-        <td>${escapeHtml(manejo?.producao ?? "-")}</td>
-        <td>${escapeHtml(manejo?.falta ?? "-")}</td>
-        <td>${formatarDataSimples(manejo?.chegada)}</td>
-        <td>${atualizado}</td>
-        <td><button class="btn btn-sm" onclick="abrirManejoPelaOP('${escapeHtml(op.numeroOP || "")}')">Abrir</button></td>
-      </tr>
-    `;
-  }).join("");
-}
-
-function abrirManejoPelaOP(numeroOP) {
-  abrirPagina("manejo");
-  limparFiltrosManejoUsuario();
-
-  const busca = document.getElementById("buscaManejoLinha");
-  if (busca) busca.value = numeroOP;
-
-  renderManejoInline();
-}
-
-function renderManejoInline
 function getNecessidadeDaOrdem(op) {
   if (!op) return "";
 
@@ -1307,10 +1086,12 @@ function renderManejos() {
 
 function editarManejo(id) {
   abrirPagina("manejo");
+  const busca = document.getElementById("buscaManejoLinha");
   const op = state.ordens.find(ordem => String(ordem.id) === String(id) || String(ordem.numeroOP) === String(id));
 
-  if (op) {
-    abrirManejoPelaOP(op.numeroOP || "");
+  if (busca && op) {
+    busca.value = op.numeroOP || "";
+    renderManejoInline();
   }
 }
 
@@ -1319,14 +1100,24 @@ async function excluirManejo(id) {
 }
 
 function iniciarManejoParaOrdem(ordemId) {
+  abrirPagina("manejo");
   const ordem = state.ordens.find(op => op.id === ordemId);
   if (!ordem) return;
 
-  abrirManejoPelaOP(ordem.numeroOP || "");
+  const busca = document.getElementById("buscaManejoLinha");
+  if (busca) {
+    busca.value = ordem.numeroOP || "";
+    renderManejoInline();
+  }
 }
 
 function filtrarManejosPorOP(numeroOP) {
-  abrirManejoPelaOP(numeroOP);
+  abrirPagina("manejo");
+  const busca = document.getElementById("buscaManejoLinha");
+  if (busca) {
+    busca.value = numeroOP;
+    renderManejoInline();
+  }
 }
 
 function formatarDataSimples(valor) {
@@ -2326,7 +2117,6 @@ function renderTudo() {
   renderProdutosPendentes();
   renderOrdens();
   renderManejoInline();
-  renderStatusManejo();
   renderDatalistManejo();
   renderDatalistReferencias();
   renderDatalistCores();
@@ -2719,4 +2509,3 @@ window.iniciarManejoParaOrdem = iniciarManejoParaOrdem;
 window.filtrarManejosPorOP = filtrarManejosPorOP;
 window.salvarManejoLinha = salvarManejoLinha;
 window.limparManejoLinha = limparManejoLinha;
-window.abrirManejoPelaOP = abrirManejoPelaOP;
