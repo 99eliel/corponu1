@@ -1614,3 +1614,87 @@ precosReferencia
 Depois de subir essa versão, publique também o `firebase-rules.txt` atualizado no Firebase.
 
 Futuramente podemos adicionar importação de preços por planilha/PDF, igual foi feito com ordens de produção.
+
+
+## Atualização automática e cache
+
+Foi adicionada uma camada para evitar ter que limpar cache/dados do navegador a cada atualização.
+
+Arquivos novos:
+
+```txt
+update.js
+sw.js
+version.json
+```
+
+Versão atual:
+
+```txt
+2026-07-01-auto-update-1
+```
+
+O que foi aplicado:
+
+```txt
+- app.js e style.css com versão nova no link
+- verificação de versão ao abrir o sistema
+- verificação quando o usuário volta para a aba
+- service worker com atualização automática
+- limpeza de caches antigos
+- recarregamento automático quando existir versão nova
+```
+
+Importante:
+
+```txt
+Daqui pra frente, em cada pacote novo, basta mudar a versão do sistema.
+O navegador passa a buscar os arquivos novos sem precisar limpar cache manualmente.
+```
+
+Na primeira atualização depois de instalar esta versão, pode ser necessário atualizar a página uma vez. Depois disso, as próximas versões tendem a atualizar automaticamente.
+
+
+## Atualização: Manejo sem preço e pagamento automático
+
+O Manejo não mostra mais campos de preço, processo, quantidade entregue ou botão de registrar entrega.
+
+Agora o fluxo ficou assim:
+
+```txt
+Manejo:
+- Preencher Facção
+- Preencher Chegada
+- Preencher Falta, se houver
+- Salvar
+```
+
+A aba Pagamentos passa a ser alimentada automaticamente com base no Manejo:
+
+```txt
+Referência da OP
+Setor do Manejo
+Tabela de preços por referência
+Data de chegada
+Quantidade da OP
+Falta preenchida
+```
+
+Cálculo usado:
+
+```txt
+Quantidade para pagar = QTI da OP - Falta
+Total = Quantidade para pagar × Valor da referência/processo
+```
+
+Exemplo:
+
+```txt
+QTI da OP: 100
+Falta: 5
+Quantidade para pagar: 95
+```
+
+Se existir preço cadastrado para aquela referência e setor, o pagamento é criado/atualizado automaticamente quando salvar o Manejo.
+
+O Manejo fica operacional e simples para o usuário; a parte de valores fica somente na Tabela de Preços e na aba Pagamentos.

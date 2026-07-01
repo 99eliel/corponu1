@@ -1503,6 +1503,7 @@ async function registrarEntregaManejo(ordemId) {
     });
 
     await setDoc(doc(db, "ordensProducao", ordem.id), patch, { merge: true });
+    await sincronizarPagamentoPeloManejo(ordem, setor, manejo);
 
     await registrarLog(
       "entrega_manejo_pagamento",
@@ -1590,15 +1591,9 @@ function renderManejoInline() {
         </td>
         <td>${manejoStatusBadge(manejo, op, setor)}</td>
         <td>
-          <div class="manejo-actions manejo-actions-com-entrega">
+          <div class="manejo-actions">
             <button class="btn btn-sm btn-primary" onclick="salvarManejoLinha('${op.id}')">Salvar</button>
             ${manejo && ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="limparManejoLinha('${op.id}')">Limpar</button>` : ""}
-            <div class="manejo-entrega-box">
-              <select id="${rowId}-precoReferencia">${optionsPrecosReferenciaManejo(op, setor, manejo?.ultimoPrecoReferenciaId || manejo?.ultimoServicoPagamentoId || "")}</select>
-              <input id="${rowId}-dataEntregaPagamento" type="date" value="${escapeHtml(getDataHojeISO())}" />
-              <input id="${rowId}-qtdEntregaPagamento" type="number" min="1" step="1" placeholder="Qtd entregue" />
-              <button class="btn btn-sm btn-success" onclick="registrarEntregaManejo('${op.id}')">Registrar entrega</button>
-            </div>
           </div>
         </td>
       </tr>
@@ -2024,6 +2019,76 @@ function valorLinhaManejo(op, campo) {
   return el ? el.value : "";
 }
 
+
+function getPrecosReferenciaDoManejo(op, setor) {
+  const referencia = normalizarReferencia(op?.referencia || "");
+
+  return getPrecosReferenciaAtivos().filter(preco => {
+    return normalizarReferencia(preco.referencia || "") === referencia && preco.setor === setor;
+  });
+}
+
+function idPagamentoManejo(op, setor, preco) {
+  return docIdSeguro(`manejo-${op.id}-${setor}-${preco.id}`);
+}
+
+async function sincronizarPagamentoPeloManejo(op, setor, manejo) {
+  if (!op || !manejo) return;
+
+  const faccao = limparTexto(manejo.faccao || "").toUpperCase();
+  const dataEntrega = manejo.chegada || "";
+
+  if (!faccao || !dataEntrega) {
+    return;
+  }
+
+  const precos = getPrecosReferenciaDoManejo(op, setor);
+  if (!precos.length) {
+    return;
+  }
+
+  const falta = Math.max(0, Number(manejo.falta || 0));
+  const quantidadePagar = Math.max(numeroQuantidadeOP(op) - falta, 0);
+
+  for (const preco of precos) {
+    const pagamentoId = idPagamentoManejo(op, setor, preco);
+    const pagamentoRef = doc(db, "entregasPagamento", pagamentoId);
+    const atualSnap = await getDoc(pagamentoRef);
+    const statusAtual = atualSnap.exists() ? (atualSnap.data().statusPagamento || "pendente") : "pendente";
+
+    const valorUnitario = Number(preco.valor || 0);
+    const total = quantidadePagar * valorUnitario;
+
+    await setDoc(pagamentoRef, {
+      origem: "manejo",
+      opId: op.id,
+      numeroOP: op.numeroOP || "",
+      referencia: op.referencia || "",
+      cor: op.cor || "",
+      produtoNome: op.produtoNome || "",
+      faccao,
+      precoReferenciaId: preco.id,
+      processo: preco.processo,
+      servicoId: preco.id,
+      servicoNome: preco.processo,
+      setor: preco.setor,
+      setorLabel: getLabelSetorPagamento(preco.setor),
+      dataEntrega,
+      quantidade: quantidadePagar,
+      falta,
+      valorUnitario,
+      total,
+      statusPagamento: statusAtual,
+      observacoes: `Gerado automaticamente pelo Manejo ${getInfoManejoSetor(setor).label}`,
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp(),
+      criadoPor: atualSnap.exists() ? (atualSnap.data().criadoPor || state.currentUser.uid) : state.currentUser.uid,
+      criadoEm: atualSnap.exists() ? (atualSnap.data().criadoEm || serverTimestamp()) : serverTimestamp()
+    }, { merge: true });
+  }
+}
+
+
 async function salvarManejoLinha(ordemId) {
   const ordem = state.ordens.find(op => op.id === ordemId);
   if (!ordem) {
@@ -2085,7 +2150,7 @@ async function salvarManejoLinha(ordemId) {
       `OP ${ordem.numeroOP} | Setor ${infoSetor.label} | Ref. ${ordem.referencia} | Fase ${fase}`
     );
 
-    toast(`Manejo ${infoSetor.label} salvo.`);
+    toast(`Manejo ${infoSetor.label} salvo. Pagamento atualizado automaticamente, se houver preço cadastrado.`);
   } catch (error) {
     console.error(error);
 
@@ -5349,7 +5414,7 @@ window.editarFaccao = editarFaccao;
 window.alternarFaccao = alternarFaccao;
 window.excluirFaccao = excluirFaccao;
 window.imprimirRelatorioPagamento = imprimirRelatorioPagamento;
-window.registrarEntregaManejo = registrarEntregaManejo;
+
 window.excluirEntregaPagamento = excluirEntregaPagamento;
 window.alternarStatusEntregaPagamento = alternarStatusEntregaPagamento;
 window.editarEntregaPagamento = editarEntregaPagamento;

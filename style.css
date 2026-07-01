@@ -2851,3 +2851,13 @@ table td {
 .entregas-pagamento-table td:nth-child(7) {
   text-align: right;
 }
+
+
+/* Manejo sem campos de preço/pagamento */
+.manejo-entrega-box {
+  display: none !important;
+}
+
+.manejo-actions {
+  min-width: 82px;
+}

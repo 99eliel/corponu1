@@ -4,7 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema OP Confecção</title>
-  <link rel="stylesheet" href="style.css?v=tabela-precos-referencia-1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="app-version" content="2026-07-01-manejo-sem-preco-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-01-manejo-sem-preco-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -808,64 +812,13 @@
               </table>
             </div>
 
-            <hr class="soft-divider" />
-
-            <div class="panel-header compact-header">
-              <div>
-                <h3>Registrar entrega da facção</h3>
-                <p>Normalmente a entrega nasce no Manejo. Esta área fica como lançamento manual/ajuste.</p>
-              </div>
-            </div>
-
-            <form id="formEntregaPagamento" class="form compact-form">
-              <input type="hidden" id="entregaPagamentoId" />
-
-              <label>
-                OP
-                <input id="entregaOP" type="text" list="entregaOPList" placeholder="Digite ou selecione a OP" required />
-                <datalist id="entregaOPList"></datalist>
-              </label>
-
-              <label>
-                Processo/preço
-                <select id="entregaPreco" required>
-                  <option value="">Selecione</option>
-                </select>
-              </label>
-
-              <label>
-                Facção
-                <input id="entregaFaccao" type="text" list="entregaFaccaoList" placeholder="Facção que entregou" required />
-                <datalist id="entregaFaccaoList"></datalist>
-              </label>
-
-              <label>
-                Data da entrega
-                <input id="entregaData" type="date" required />
-              </label>
-
-              <label>
-                Quantidade entregue
-                <input id="entregaQuantidade" type="number" min="1" step="1" placeholder="Ex: 50" required />
-              </label>
-
-              <label>
-                Observação
-                <textarea id="entregaObs" rows="2" placeholder="Opcional"></textarea>
-              </label>
-
-              <div class="actions">
-                <button class="btn btn-success" type="submit">Registrar entrega</button>
-                <button class="btn" id="btnCancelarEntregaPagamento" type="button">Cancelar</button>
-              </div>
-            </form>
           </div>
 
           <div class="panel">
             <div class="panel-header">
               <div>
                 <h3>Relatório de pagamento por período</h3>
-                <p>Feche o pagamento por calendário usando as entregas registradas no Manejo.</p>
+                <p>Feche o pagamento por calendário usando a data de chegada e a falta preenchidas no Manejo.</p>
               </div>
             </div>
 
@@ -964,8 +917,8 @@
 
             <div class="panel-header compact-header entregas-header">
               <div>
-                <h3>Entregas registradas</h3>
-                <p>Controle individual para editar, excluir ou marcar como pago/pendente.</p>
+                <h3>Pagamentos gerados pelo Manejo</h3>
+                <p>Os valores abaixo são criados/atualizados quando a linha do Manejo é salva.</p>
               </div>
             </div>
 
@@ -1328,6 +1281,7 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="app.js?v=tabela-precos-referencia-1"></script>
+  <script src="update.js?v=2026-07-01-manejo-sem-preco-1"></script>
+  <script type="module" src="app.js?v=2026-07-01-manejo-sem-preco-1"></script>
 </body>
 </html>
