@@ -51,6 +51,7 @@ const state = {
   perfil: null,
   produtos: [],
   ordens: [],
+  faccoes: [],
   manejos: [],
   fasesManejoExtras: [],
   faccoesManejoExtras: [],
@@ -82,6 +83,10 @@ const pageInfo = {
   processos: {
     title: "Processos",
     subtitle: "Visualização em tempo real das informações do manejo."
+  },
+  faccoes: {
+    title: "Gerenciar Facção",
+    subtitle: "Cadastre facções, cidade, chave PIX e contato."
   },
   relatorios: {
     title: "Relatórios",
@@ -229,6 +234,7 @@ document.addEventListener("DOMContentLoaded", () => {
   configurarOrdem();
   configurarManejo();
   configurarProcessos();
+  configurarFaccoes();
   configurarRelatorios();
   configurarUsuarios();
   configurarLogs();
@@ -384,6 +390,17 @@ function iniciarListenersFirestore() {
   }));
 
 
+  const faccoesQuery = query(collection(db, "faccoes"), orderBy("nome", "asc"));
+
+  state.unsubscribers.push(onSnapshot(faccoesQuery, snapshot => {
+    state.faccoes = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    renderFaccoes();
+    renderDatalistManejo();
+  }, error => {
+    console.error(error);
+    toast("Erro ao carregar facções. Verifique as permissões.");
+  }));
+
 
   if (ehAdmin()) {
     const usuariosQuery = query(collection(db, "usuarios"), orderBy("nome", "asc"));
@@ -400,6 +417,7 @@ function iniciarListenersFirestore() {
     state.unsubscribers.push(onSnapshot(logsQuery, snapshot => {
       state.logs = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
       renderLogs();
+  renderFaccoes();
     }, error => {
       console.error(error);
       toast("Erro ao carregar logs.");
@@ -416,7 +434,7 @@ function aplicarPermissoesTela() {
 
   if (!admin) {
     const paginaAtiva = document.querySelector(".page.active")?.id;
-    if (paginaAtiva === "usuarios" || paginaAtiva === "backup" || paginaAtiva === "logs") {
+    if (paginaAtiva === "usuarios" || paginaAtiva === "backup" || paginaAtiva === "logs" || paginaAtiva === "faccoes") {
       abrirPagina("dashboard");
     }
   }
@@ -429,7 +447,7 @@ function ehAdmin() {
 function configurarNavegacao() {
   document.querySelectorAll(".nav-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      if ((btn.dataset.page === "usuarios" || btn.dataset.page === "backup" || btn.dataset.page === "logs") && !ehAdmin()) {
+      if ((btn.dataset.page === "usuarios" || btn.dataset.page === "backup" || btn.dataset.page === "logs" || btn.dataset.page === "faccoes") && !ehAdmin()) {
         toast("Apenas admin acessa esta área.");
         return;
       }
@@ -1926,6 +1944,11 @@ function renderDatalistManejo() {
   if (faccaoList) {
     const faccoes = new Set();
 
+    state.faccoes.forEach(faccao => {
+      if (faccao?.ativo === false) return;
+      if (faccao?.nome) faccoes.add(String(faccao.nome).toUpperCase());
+    });
+
     state.faccoesManejoExtras.forEach(faccao => {
       if (faccao) faccoes.add(String(faccao).toUpperCase());
     });
@@ -2351,6 +2374,194 @@ function renderProcessos() {
       </tr>
     `;
   }).join("");
+}
+
+
+
+function configurarFaccoes() {
+  const form = document.getElementById("formFaccao");
+  if (form) {
+    form.addEventListener("submit", salvarFaccao);
+  }
+
+  const busca = document.getElementById("buscaFaccao");
+  if (busca) {
+    busca.addEventListener("input", renderFaccoes);
+  }
+
+  const cancelar = document.getElementById("btnCancelarFaccao");
+  if (cancelar) {
+    cancelar.addEventListener("click", limparFormFaccao);
+  }
+}
+
+function limparFormFaccao() {
+  const form = document.getElementById("formFaccao");
+  if (form) form.reset();
+
+  const id = document.getElementById("faccaoId");
+  if (id) id.value = "";
+}
+
+async function salvarFaccao(event) {
+  event.preventDefault();
+
+  if (!ehAdmin()) {
+    toast("Apenas admin pode salvar facções.");
+    return;
+  }
+
+  const idAtual = document.getElementById("faccaoId").value;
+  const nome = limparTexto(document.getElementById("faccaoNome").value).toUpperCase();
+  const cidade = limparTexto(document.getElementById("faccaoCidade").value).toUpperCase();
+  const chavePix = document.getElementById("faccaoPix").value.trim();
+  const celular = document.getElementById("faccaoCelular").value.trim();
+  const observacoes = document.getElementById("faccaoObs").value.trim();
+
+  if (!nome || !cidade) {
+    toast("Informe nome da facção e cidade.");
+    return;
+  }
+
+  const dados = {
+    nome,
+    cidade,
+    chavePix,
+    celular,
+    observacoes,
+    ativo: true,
+    atualizadoPor: state.currentUser.uid,
+    atualizadoEm: serverTimestamp()
+  };
+
+  if (!idAtual) {
+    dados.criadoPor = state.currentUser.uid;
+    dados.criadoEm = serverTimestamp();
+  }
+
+  try {
+    const docId = idAtual || docIdSeguro(nome);
+    await setDoc(doc(db, "faccoes", docId), dados, { merge: true });
+
+    await registrarLog(
+      idAtual ? "faccao_atualizada" : "faccao_criada",
+      "faccao",
+      docId,
+      `${nome} | ${cidade} | ${celular || "sem celular"}`
+    );
+
+    limparFormFaccao();
+    toast("Facção salva com sucesso.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao salvar facção.");
+  }
+}
+
+function renderFaccoes() {
+  const tbody = document.getElementById("listaFaccoes");
+  if (!tbody) return;
+
+  const busca = normalizarTexto(document.getElementById("buscaFaccao")?.value || "");
+  let faccoes = [...state.faccoes];
+
+  if (busca) {
+    faccoes = faccoes.filter(faccao => {
+      const texto = normalizarTexto([
+        faccao.nome,
+        faccao.cidade,
+        faccao.chavePix,
+        faccao.celular,
+        faccao.observacoes
+      ].join(" "));
+      return texto.includes(busca);
+    });
+  }
+
+  if (!faccoes.length) {
+    tbody.innerHTML = `<tr><td colspan="${ehAdmin() ? 6 : 5}" class="empty">Nenhuma facção cadastrada.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = faccoes.map(faccao => `
+    <tr>
+      <td><strong>${escapeHtml(faccao.nome || "-")}</strong></td>
+      <td>${escapeHtml(faccao.cidade || "-")}</td>
+      <td>${escapeHtml(faccao.chavePix || "-")}</td>
+      <td>${escapeHtml(faccao.celular || "-")}</td>
+      <td>
+        <span class="status-dot ${faccao.ativo !== false ? "active" : "inactive"}">
+          ${faccao.ativo !== false ? "Ativa" : "Inativa"}
+        </span>
+      </td>
+      ${ehAdmin() ? `<td class="admin-only-cell">
+        <button class="btn btn-sm" onclick="editarFaccao('${faccao.id}')">Editar</button>
+        <button class="btn btn-sm ${faccao.ativo !== false ? "btn-warning" : "btn-success"}" onclick="alternarFaccao('${faccao.id}')">
+          ${faccao.ativo !== false ? "Inativar" : "Ativar"}
+        </button>
+        <button class="btn btn-sm btn-danger" onclick="excluirFaccao('${faccao.id}')">Excluir</button>
+      </td>` : ""}
+    </tr>
+  `).join("");
+}
+
+function editarFaccao(id) {
+  const faccao = state.faccoes.find(item => item.id === id);
+  if (!faccao) return;
+
+  abrirPagina("faccoes");
+
+  document.getElementById("faccaoId").value = faccao.id;
+  document.getElementById("faccaoNome").value = faccao.nome || "";
+  document.getElementById("faccaoCidade").value = faccao.cidade || "";
+  document.getElementById("faccaoPix").value = faccao.chavePix || "";
+  document.getElementById("faccaoCelular").value = faccao.celular || "";
+  document.getElementById("faccaoObs").value = faccao.observacoes || "";
+}
+
+async function alternarFaccao(id) {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode alterar facções.");
+    return;
+  }
+
+  const faccao = state.faccoes.find(item => item.id === id);
+  if (!faccao) return;
+
+  const ativo = faccao.ativo === false;
+
+  try {
+    await setDoc(doc(db, "faccoes", id), {
+      ativo,
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+
+    await registrarLog(ativo ? "faccao_ativada" : "faccao_inativada", "faccao", id, `${faccao.nome || id}`);
+    toast(ativo ? "Facção ativada." : "Facção inativada.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao alterar status da facção.");
+  }
+}
+
+async function excluirFaccao(id) {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode excluir facções.");
+    return;
+  }
+
+  const faccao = state.faccoes.find(item => item.id === id);
+  if (!confirm(`Excluir a facção ${faccao?.nome || id}?`)) return;
+
+  try {
+    await deleteDoc(doc(db, "faccoes", id));
+    await registrarLog("faccao_excluida", "faccao", id, `${faccao?.nome || id}`);
+    toast("Facção excluída.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao excluir facção.");
+  }
 }
 
 
@@ -3870,3 +4081,6 @@ window.adicionarFaccaoSugestao = adicionarFaccaoSugestao;
 window.adicionarCeluSugestao = adicionarCeluSugestao;
 window.imprimirManejoFiltrado = imprimirManejoFiltrado;
 window.imprimirProcessosFiltrados = imprimirProcessosFiltrados;
+window.editarFaccao = editarFaccao;
+window.alternarFaccao = alternarFaccao;
+window.excluirFaccao = excluirFaccao;

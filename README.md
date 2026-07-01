@@ -1242,3 +1242,34 @@ Campo editável
 Status
 Botões
 ```
+
+
+## Nova aba: Gerenciar Facção
+
+Foi criada a aba **Gerenciar Facção** para cadastro inicial das facções.
+
+Campos cadastrados:
+
+```txt
+Nome da facção
+Cidade
+Chave PIX
+Número de celular
+Observações
+Status ativo/inativo
+```
+
+A coleção usada no Firebase é:
+
+```txt
+faccoes
+```
+
+Permissões:
+
+```txt
+Usuário comum: pode ler facções
+Admin: pode criar, editar, ativar/inativar e excluir
+```
+
+Os nomes das facções cadastradas também aparecem como sugestão no campo **Facção** dentro do Manejo.

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema OP Confecção</title>
-  <link rel="stylesheet" href="style.css?v=visual-contraste-1" />
+  <link rel="stylesheet" href="style.css?v=gerenciar-faccao-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -71,6 +71,7 @@
         <button class="nav-btn" data-page="ordens">Ordens de Produção</button>
         <button class="nav-btn" data-page="manejo">Manejo</button>
         <button class="nav-btn" data-page="processos">Processos</button>
+        <button class="nav-btn admin-only" data-page="faccoes">Gerenciar Facção</button>
         <button class="nav-btn" data-page="relatorios">Relatórios</button>
         <button class="nav-btn admin-only" data-page="usuarios">Usuários</button>
         <button class="nav-btn admin-only" data-page="logs">Logs / Auditoria</button>
@@ -648,6 +649,78 @@
         </div>
       </section>
 
+
+      <section id="faccoes" class="page">
+        <div class="grid-2">
+          <form class="panel form admin-only-block" id="formFaccao">
+            <div class="panel-header">
+              <div>
+                <h3>Gerenciar facção</h3>
+                <p>Cadastre os dados básicos da facção para usar nas próximas etapas do sistema.</p>
+              </div>
+            </div>
+
+            <input type="hidden" id="faccaoId" />
+
+            <label>
+              Nome da facção
+              <input id="faccaoNome" type="text" placeholder="Ex: FACÇÃO KELLY" required />
+            </label>
+
+            <label>
+              Cidade
+              <input id="faccaoCidade" type="text" placeholder="Ex: Pontalina" required />
+            </label>
+
+            <label>
+              Chave PIX
+              <input id="faccaoPix" type="text" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" />
+            </label>
+
+            <label>
+              Número de celular
+              <input id="faccaoCelular" type="tel" placeholder="Ex: (64) 99999-9999" />
+            </label>
+
+            <label>
+              Observações
+              <textarea id="faccaoObs" rows="3" placeholder="Opcional"></textarea>
+            </label>
+
+            <div class="actions">
+              <button class="btn btn-primary" type="submit">Salvar facção</button>
+              <button class="btn" type="button" id="btnCancelarFaccao">Cancelar</button>
+            </div>
+          </form>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <h3>Facções cadastradas</h3>
+                <p>Esses nomes também aparecem como sugestão no campo Facção do Manejo.</p>
+              </div>
+              <input id="buscaFaccao" class="search" type="text" placeholder="Buscar facção, cidade, PIX ou celular..." />
+            </div>
+
+            <div class="table-wrap">
+              <table class="faccoes-table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Cidade</th>
+                    <th>Chave PIX</th>
+                    <th>Celular</th>
+                    <th>Status</th>
+                    <th class="admin-only-cell">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="listaFaccoes"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="relatorios" class="page">
         <div class="panel">
           <div class="panel-header">
@@ -985,6 +1058,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="app.js?v=visual-contraste-1"></script>
+  <script type="module" src="app.js?v=gerenciar-faccao-1"></script>
 </body>
 </html>
