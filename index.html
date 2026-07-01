@@ -741,33 +741,35 @@
             O tipo da peça e o intervalo informado aqui serão aplicados em todas as OPs importadas.
           </div>
 
-          <div class="pdf-import-grid">
-<label>
-              Tipo da peça
-              <select id="pdfTipoPeca" required>
-                <option value="">Selecione</option>
-                <option value="calcinha">Calcinha</option>
-                <option value="sutia">Sutiã</option>
-              </select>
-            </label>
+          <div class="pdf-import-box">
+            <div class="pdf-import-grid pdf-import-grid-clean">
+              <label>
+                Tipo da peça
+                <select id="pdfTipoPeca" required>
+                  <option value="">Selecione</option>
+                  <option value="calcinha">Calcinha</option>
+                  <option value="sutia">Sutiã</option>
+                </select>
+              </label>
 
-            <label>
-              Início da necessidade
-              <input id="pdfNecessidadeInicio" type="date" required />
-            </label>
+              <label>
+                Início da necessidade
+                <input id="pdfNecessidadeInicio" type="date" required />
+              </label>
 
-            <label>
-              Final da necessidade
-              <input id="pdfNecessidadeFim" type="date" required />
-            </label>
+              <label>
+                Final da necessidade
+                <input id="pdfNecessidadeFim" type="date" required />
+              </label>
+            </div>
 
-            <label class="check pdf-check">
+            <label class="pdf-check-clean">
               <input id="pdfCriarProdutos" type="checkbox" checked />
               <span>Cadastrar referências novas automaticamente</span>
             </label>
           </div>
 
-          <div class="actions">
+          <div class="actions pdf-actions">
             <label class="btn btn-primary file-btn">
               Ler relatório PDF
               <input type="file" id="inputImportarPDF" accept=".pdf,application/pdf" hidden />
@@ -812,7 +814,7 @@
             </div>
           </div>
 
-          <div class="actions">
+          <div class="actions backup-actions">
             <label class="btn btn-success file-btn">
               Importar backup JSON para Firestore
               <input type="file" id="inputImportarFirestore" accept=".json" hidden />

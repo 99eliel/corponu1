@@ -918,3 +918,26 @@ DD/MM/AAAA a DD/MM/AAAA
 Na tabela de ordens, as colunas **Semana** e **Mês/Ano** foram removidas e substituídas por **Necessidade**.
 
 Para compatibilidade interna, o sistema ainda salva mês e ano com base na data inicial, mas isso não aparece mais para o usuário.
+
+
+## Ajuste visual: importação PDF organizada
+
+A área **Importar relatório externo PDF** foi reorganizada visualmente.
+
+Agora os campos ficam separados em um bloco limpo:
+
+```txt
+Tipo da peça
+Início da necessidade
+Final da necessidade
+```
+
+O checkbox **Cadastrar referências novas automaticamente** foi colocado em uma linha própria para não ficar espremido junto dos calendários.
+
+Os botões também foram alinhados abaixo dos campos:
+
+```txt
+Ler relatório PDF
+Confirmar importação do PDF
+Zerar ordens de produção
+```

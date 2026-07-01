@@ -1233,3 +1233,79 @@ small {
 .pdf-import-grid label {
   min-width: 160px;
 }
+
+
+.pdf-import-box {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.pdf-import-grid-clean {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(190px, 1fr));
+  gap: 16px;
+  align-items: end;
+}
+
+.pdf-import-grid-clean label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 800;
+}
+
+.pdf-import-grid-clean select,
+.pdf-import-grid-clean input[type="date"] {
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 13px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: white;
+}
+
+.pdf-check-clean {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: white;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.pdf-check-clean input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.pdf-actions,
+.backup-actions {
+  margin-top: 18px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pdf-actions .btn,
+.backup-actions .btn {
+  min-height: 44px;
+}
+
+@media (max-width: 900px) {
+  .pdf-import-grid-clean {
+    grid-template-columns: 1fr;
+  }
+
+  .pdf-actions .btn,
+  .backup-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
