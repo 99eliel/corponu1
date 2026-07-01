@@ -1062,3 +1062,27 @@ Pendentes
 ```
 
 Como o sistema usa os listeners do Firebase, quando um usuário salva algo no Manejo, a aba Processos atualiza junto com os dados carregados no sistema.
+
+
+## Atualização: modo compacto automático
+
+Foi adicionado um modo compacto automático para telas menores, principalmente monitores com largura próxima de:
+
+```txt
+1900px
+1700px
+```
+
+Ajustes aplicados:
+
+```txt
+- Menu lateral menor
+- Espaçamentos reduzidos
+- Tabelas mais compactas
+- Campos menores no Manejo
+- Silk, Fase, Facção e CELU ocupando menos largura
+- Aba Processos mais compacta
+- Menor chance de precisar arrastar horizontalmente
+```
+
+Esse modo entra automaticamente conforme a largura da tela. Não precisa clicar em nada.
