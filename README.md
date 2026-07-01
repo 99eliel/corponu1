@@ -776,3 +776,26 @@ Fase = BOJO
 a tabela é filtrada e a soma é recalculada imediatamente com base nas linhas visíveis.
 
 A soma agora usa as próprias linhas exibidas na tabela como conferência, evitando ficar presa no valor antigo.
+
+
+## Atualização: botão + em Facção e CELU
+
+Na aba **Manejo**, os campos **Facção** e **CELU** agora funcionam como a Fase:
+
+```txt
+Digite a Facção ou CELU
+Clique no +
+O valor vira sugestão para as próximas linhas
+```
+
+As sugestões aparecem automaticamente no campo e também nos filtros do cabeçalho.
+
+Foram adicionadas sugestões locais para:
+
+```txt
+Fase
+Facção
+CELU
+```
+
+Os valores continuam sendo salvos normalmente dentro da OP quando o usuário clica em **Salvar**.

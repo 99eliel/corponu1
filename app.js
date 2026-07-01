@@ -53,6 +53,8 @@ const state = {
   ordens: [],
   manejos: [],
   fasesManejoExtras: [],
+  faccoesManejoExtras: [],
+  celusManejoExtras: [],
   usuarios: [],
   logs: [],
   pdfImportacaoPendente: [],
@@ -140,7 +142,7 @@ const reportInfo = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-  carregarFasesExtrasManejo();
+  carregarSugestoesExtrasManejo();
   configurarVisibilidadeSenhas();
   configurarAuth();
   configurarNavegacao();
@@ -895,11 +897,21 @@ function renderManejoInline() {
         <td><input class="manejo-readonly" type="number" value="${escapeHtml(op.quantidade ?? 0)}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(op.cor || "")}" readonly /></td>
         <td><input id="${rowId}-data" type="date" value="${escapeHtml(manejo?.data || "")}" /></td>
-        <td><input id="${rowId}-faccao" value="${escapeHtml(manejo?.faccao || "")}" list="manejoFaccaoList" placeholder="Facção" /></td>
+        <td>
+          <div class="sugestao-plus">
+            <input id="${rowId}-faccao" value="${escapeHtml(manejo?.faccao || "")}" list="manejoFaccaoList" placeholder="Facção" />
+            <button class="btn-plus" type="button" onclick="adicionarFaccaoSugestao('${op.id}')" title="Adicionar facção às sugestões">+</button>
+          </div>
+        </td>
         <td><input id="${rowId}-chegada" type="date" value="${escapeHtml(manejo?.chegada || "")}" /></td>
         <td><input id="${rowId}-falta" type="number" min="0" step="1" value="${escapeHtml(manejo?.falta ?? "")}" /></td>
         <td><input id="${rowId}-producao" type="date" value="${escapeHtml(manejo?.producao || "")}" /></td>
-        <td><input id="${rowId}-celu" value="${escapeHtml(manejo?.celu || "")}" /></td>
+        <td>
+          <div class="sugestao-plus">
+            <input id="${rowId}-celu" value="${escapeHtml(manejo?.celu || "")}" list="manejoCeluList" placeholder="CELU" />
+            <button class="btn-plus" type="button" onclick="adicionarCeluSugestao('${op.id}')" title="Adicionar CELU às sugestões">+</button>
+          </div>
+        </td>
         <td><input class="manejo-readonly" value="${escapeHtml(getNecessidadeDaOrdem(op))}" readonly /></td>
         <td>${manejoStatusBadge(manejo)}</td>
         <td>
@@ -1069,11 +1081,17 @@ function renderFiltrosColunasManejo() {
   preencherSelectFiltroManejo("filtroManejoQuantidade", ordens.map(op => getValorManejoParaFiltro(op, "quantidade")), "Todas");
   preencherSelectFiltroManejo("filtroManejoCor", ordens.map(op => getValorManejoParaFiltro(op, "cor")), "Todas");
   preencherSelectFiltroManejo("filtroManejoData", ordens.map(op => getValorManejoParaFiltro(op, "data")), "Todas");
-  preencherSelectFiltroManejo("filtroManejoFaccao", ordens.map(op => getValorManejoParaFiltro(op, "faccao")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoFaccao", [
+    ...ordens.map(op => getValorManejoParaFiltro(op, "faccao")),
+    ...state.faccoesManejoExtras
+  ], "Todas");
   preencherSelectFiltroManejo("filtroManejoChegada", ordens.map(op => getValorManejoParaFiltro(op, "chegada")), "Todas");
   preencherSelectFiltroManejo("filtroManejoFalta", ordens.map(op => getValorManejoParaFiltro(op, "falta")), "Todas");
   preencherSelectFiltroManejo("filtroManejoProducao", ordens.map(op => getValorManejoParaFiltro(op, "producao")), "Todas");
-  preencherSelectFiltroManejo("filtroManejoCelu", ordens.map(op => getValorManejoParaFiltro(op, "celu")), "Todos");
+  preencherSelectFiltroManejo("filtroManejoCelu", [
+    ...ordens.map(op => getValorManejoParaFiltro(op, "celu")),
+    ...state.celusManejoExtras
+  ], "Todos");
   preencherSelectFiltroManejo("filtroManejoNecessidade", ordens.map(op => getValorManejoParaFiltro(op, "necessidade")), "Todas");
 }
 
@@ -1379,53 +1397,73 @@ function manejoStatusBadge(manejo) {
 }
 
 
-function carregarFasesExtrasManejo() {
+
+function carregarListaLocalManejo(chave) {
   try {
-    const salvo = JSON.parse(localStorage.getItem("fasesManejoExtras") || "[]");
-    state.fasesManejoExtras = Array.isArray(salvo)
-      ? salvo.map(fase => String(fase || "").trim().toUpperCase()).filter(Boolean)
+    const salvo = JSON.parse(localStorage.getItem(chave) || "[]");
+    return Array.isArray(salvo)
+      ? salvo.map(item => String(item || "").trim().toUpperCase()).filter(Boolean)
       : [];
   } catch (error) {
-    state.fasesManejoExtras = [];
+    return [];
   }
 }
 
-function salvarFasesExtrasManejo() {
+function salvarListaLocalManejo(chave, lista) {
   try {
-    localStorage.setItem("fasesManejoExtras", JSON.stringify(state.fasesManejoExtras));
+    localStorage.setItem(chave, JSON.stringify(lista));
   } catch (error) {
-    console.warn("Não foi possível salvar sugestões de fase localmente.", error);
+    console.warn("Não foi possível salvar sugestões localmente.", error);
   }
 }
 
-function adicionarFaseSugestao(ordemId) {
+function carregarSugestoesExtrasManejo() {
+  state.fasesManejoExtras = carregarListaLocalManejo("fasesManejoExtras");
+  state.faccoesManejoExtras = carregarListaLocalManejo("faccoesManejoExtras");
+  state.celusManejoExtras = carregarListaLocalManejo("celusManejoExtras");
+}
+
+function adicionarSugestaoManejo(ordemId, campo, listaState, chaveStorage, nomeCampo) {
   const ordem = state.ordens.find(op => op.id === ordemId);
   if (!ordem) {
     toast("OP não encontrada.");
     return;
   }
 
-  const fase = limparTexto(valorLinhaManejo(ordem, "fase")).toUpperCase();
+  const valor = limparTexto(valorLinhaManejo(ordem, campo)).toUpperCase();
 
-  if (!fase) {
-    toast("Digite uma fase antes de adicionar.");
+  if (!valor) {
+    toast(`Digite ${nomeCampo} antes de adicionar.`);
     return;
   }
 
-  if (!state.fasesManejoExtras.includes(fase)) {
-    state.fasesManejoExtras.push(fase);
-    state.fasesManejoExtras.sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
-    salvarFasesExtrasManejo();
+  if (!state[listaState].includes(valor)) {
+    state[listaState].push(valor);
+    state[listaState].sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+    salvarListaLocalManejo(chaveStorage, state[listaState]);
   }
 
   renderDatalistManejo();
   renderFiltrosColunasManejo();
-  toast(`Fase "${fase}" adicionada às sugestões.`);
+  toast(`${nomeCampo} "${valor}" adicionada às sugestões.`);
+}
+
+function adicionarFaseSugestao(ordemId) {
+  adicionarSugestaoManejo(ordemId, "fase", "fasesManejoExtras", "fasesManejoExtras", "Fase");
+}
+
+function adicionarFaccaoSugestao(ordemId) {
+  adicionarSugestaoManejo(ordemId, "faccao", "faccoesManejoExtras", "faccoesManejoExtras", "Facção");
+}
+
+function adicionarCeluSugestao(ordemId) {
+  adicionarSugestaoManejo(ordemId, "celu", "celusManejoExtras", "celusManejoExtras", "CELU");
 }
 
 function renderDatalistManejo() {
   const fasesList = document.getElementById("manejoFasesList");
   const faccaoList = document.getElementById("manejoFaccaoList");
+  const celuList = document.getElementById("manejoCeluList");
   const silkNomesList = document.getElementById("manejoSilkNomesList");
 
   if (fasesList) {
@@ -1445,11 +1483,29 @@ function renderDatalistManejo() {
   if (faccaoList) {
     const faccoes = new Set();
 
+    state.faccoesManejoExtras.forEach(faccao => {
+      if (faccao) faccoes.add(String(faccao).toUpperCase());
+    });
+
     state.ordens.forEach(op => {
       if (op.manejo?.faccao) faccoes.add(String(op.manejo.faccao).toUpperCase());
     });
 
     faccaoList.innerHTML = [...faccoes].sort().map(faccao => `<option value="${escapeHtml(faccao)}"></option>`).join("");
+  }
+
+  if (celuList) {
+    const celus = new Set();
+
+    state.celusManejoExtras.forEach(celu => {
+      if (celu) celus.add(String(celu).toUpperCase());
+    });
+
+    state.ordens.forEach(op => {
+      if (op.manejo?.celu) celus.add(String(op.manejo.celu).toUpperCase());
+    });
+
+    celuList.innerHTML = [...celus].sort().map(celu => `<option value="${escapeHtml(celu)}"></option>`).join("");
   }
 
   if (silkNomesList) {
@@ -2895,3 +2951,5 @@ window.filtrarManejosPorOP = filtrarManejosPorOP;
 window.salvarManejoLinha = salvarManejoLinha;
 window.limparManejoLinha = limparManejoLinha;
 window.adicionarFaseSugestao = adicionarFaseSugestao;
+window.adicionarFaccaoSugestao = adicionarFaccaoSugestao;
+window.adicionarCeluSugestao = adicionarCeluSugestao;

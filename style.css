@@ -1214,3 +1214,12 @@ small {
     width: 100%;
   }
 }
+
+
+.sugestao-plus {
+  display: grid;
+  grid-template-columns: minmax(125px, 1fr) 34px;
+  gap: 6px;
+  align-items: center;
+  min-width: 180px;
+}
