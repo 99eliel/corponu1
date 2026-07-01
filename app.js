@@ -141,7 +141,26 @@ const reportInfo = {
   }
 };
 
+
+function carregarSugestoesFaccoesCelus() {
+  try {
+    const faccoes = JSON.parse(localStorage.getItem("faccoesManejoExtras") || "[]");
+    state.faccoesManejoExtras = Array.isArray(faccoes) ? faccoes : [];
+  } catch (error) {
+    state.faccoesManejoExtras = [];
+  }
+
+  try {
+    const celus = JSON.parse(localStorage.getItem("celusManejoExtras") || "[]");
+    state.celusManejoExtras = Array.isArray(celus) ? celus : [];
+  } catch (error) {
+    state.celusManejoExtras = [];
+  }
+}
+
+
 document.addEventListener("DOMContentLoaded", () => {
+  carregarSugestoesFaccoesCelus();
   carregarSugestoesExtrasManejo();
   configurarVisibilidadeSenhas();
   configurarAuth();

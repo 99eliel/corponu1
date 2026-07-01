@@ -799,3 +799,23 @@ CELU
 ```
 
 Os valores continuam sendo salvos normalmente dentro da OP quando o usuário clica em **Salvar**.
+
+
+## Correção: botão + em Facção e CELU
+
+Foi corrigido o visual do Manejo para o botão **+** aparecer também nas colunas:
+
+```txt
+Facção
+CELU
+```
+
+Agora os três campos têm a mesma lógica:
+
+```txt
+Fase + 
+Facção +
+CELU +
+```
+
+Digite o valor, clique em **+**, e ele vira sugestão para as próximas linhas.
