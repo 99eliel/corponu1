@@ -2033,31 +2033,50 @@ function idPagamentoManejo(op, setor, preco) {
 }
 
 async function sincronizarPagamentoPeloManejo(op, setor, manejo) {
-  if (!op || !manejo) return;
+  if (!op || !manejo) {
+    return {
+      ok: false,
+      total: 0,
+      motivo: "OP ou manejo não encontrado."
+    };
+  }
 
   const faccao = limparTexto(manejo.faccao || "").toUpperCase();
   const dataEntrega = manejo.chegada || "";
 
   if (!faccao || !dataEntrega) {
-    return;
+    return {
+      ok: false,
+      total: 0,
+      motivo: "Para gerar pagamento, preencha Facção e Chegada no Manejo."
+    };
   }
 
   const precos = getPrecosReferenciaDoManejo(op, setor);
   if (!precos.length) {
-    return;
+    return {
+      ok: false,
+      total: 0,
+      motivo: `Não há preço cadastrado para a referência ${op.referencia || "-"} no setor ${getInfoManejoSetor(setor).label}.`
+    };
   }
 
   const falta = Math.max(0, Number(manejo.falta || 0));
   const quantidadePagar = Math.max(numeroQuantidadeOP(op) - falta, 0);
+  let totalGeral = 0;
+  let gerados = 0;
 
   for (const preco of precos) {
     const pagamentoId = idPagamentoManejo(op, setor, preco);
     const pagamentoRef = doc(db, "entregasPagamento", pagamentoId);
     const atualSnap = await getDoc(pagamentoRef);
-    const statusAtual = atualSnap.exists() ? (atualSnap.data().statusPagamento || "pendente") : "pendente";
+    const dadosAtuais = atualSnap.exists() ? atualSnap.data() : {};
+    const statusAtual = dadosAtuais.statusPagamento || "pendente";
 
     const valorUnitario = Number(preco.valor || 0);
     const total = quantidadePagar * valorUnitario;
+    totalGeral += total;
+    gerados += 1;
 
     await setDoc(pagamentoRef, {
       origem: "manejo",
@@ -2082,12 +2101,20 @@ async function sincronizarPagamentoPeloManejo(op, setor, manejo) {
       observacoes: `Gerado automaticamente pelo Manejo ${getInfoManejoSetor(setor).label}`,
       atualizadoPor: state.currentUser.uid,
       atualizadoEm: serverTimestamp(),
-      criadoPor: atualSnap.exists() ? (atualSnap.data().criadoPor || state.currentUser.uid) : state.currentUser.uid,
-      criadoEm: atualSnap.exists() ? (atualSnap.data().criadoEm || serverTimestamp()) : serverTimestamp()
+      criadoPor: dadosAtuais.criadoPor || state.currentUser.uid,
+      criadoEm: dadosAtuais.criadoEm || serverTimestamp()
     }, { merge: true });
   }
-}
 
+  return {
+    ok: true,
+    total: gerados,
+    valor: totalGeral,
+    quantidade: quantidadePagar,
+    falta,
+    motivo: `${gerados} pagamento(s) gerado(s)/atualizado(s).`
+  };
+}
 
 async function salvarManejoLinha(ordemId) {
   const ordem = state.ordens.find(op => op.id === ordemId);
@@ -2142,6 +2169,7 @@ async function salvarManejoLinha(ordemId) {
     });
 
     await setDoc(doc(db, "ordensProducao", ordem.id), patch, { merge: true });
+    const resultadoPagamento = await sincronizarPagamentoPeloManejo(ordem, setor, manejo);
 
     await registrarLog(
       manejoExistente ? "manejo_atualizado" : "manejo_criado",
@@ -2150,7 +2178,11 @@ async function salvarManejoLinha(ordemId) {
       `OP ${ordem.numeroOP} | Setor ${infoSetor.label} | Ref. ${ordem.referencia} | Fase ${fase}`
     );
 
-    toast(`Manejo ${infoSetor.label} salvo. Pagamento atualizado automaticamente, se houver preço cadastrado.`);
+    if (resultadoPagamento.ok) {
+      toast(`Manejo ${infoSetor.label} salvo. Pagamento atualizado: ${resultadoPagamento.quantidade} peça(s), ${formatarMoedaBR(resultadoPagamento.valor)}.`);
+    } else {
+      toast(`Manejo ${infoSetor.label} salvo. ${resultadoPagamento.motivo}`);
+    }
   } catch (error) {
     console.error(error);
 

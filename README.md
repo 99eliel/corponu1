@@ -1698,3 +1698,32 @@ Quantidade para pagar: 95
 Se existir preço cadastrado para aquela referência e setor, o pagamento é criado/atualizado automaticamente quando salvar o Manejo.
 
 O Manejo fica operacional e simples para o usuário; a parte de valores fica somente na Tabela de Preços e na aba Pagamentos.
+
+
+## Correção: pagamento não caía ao salvar Manejo
+
+Foi corrigido o ponto que salva o Manejo para também chamar a geração automática do pagamento.
+
+Agora, ao clicar em **Salvar** no Manejo, o sistema:
+
+```txt
+1. Salva a linha do Manejo
+2. Procura preço cadastrado para a referência + setor
+3. Usa a data de Chegada como data do pagamento
+4. Calcula QTI - Falta
+5. Cria/atualiza o item em Pagamentos como Pendente
+```
+
+Também foi adicionado aviso quando faltar algo:
+
+```txt
+- Falta Facção
+- Falta Chegada
+- Falta preço cadastrado para aquela referência/setor
+```
+
+Se aparecer aviso de permissão, publique novamente o `firebase-rules.txt` no Firebase, porque o sistema precisa gravar na coleção:
+
+```txt
+entregasPagamento
+```
