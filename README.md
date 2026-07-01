@@ -1436,3 +1436,84 @@ Serviço
 Setor
 Status
 ```
+
+
+## Atualização: pagamento por entregas e calendário
+
+A aba **Pagamentos** agora possui controle por entrega, com calendário.
+
+### Como funciona
+
+Em vez de pagar direto pelo total da OP, o sistema agora registra cada entrega da facção:
+
+```txt
+OP
+Serviço
+Facção
+Data da entrega
+Quantidade entregue
+Observação
+```
+
+Cada entrega vira um registro na coleção:
+
+```txt
+entregasPagamento
+```
+
+### Fechamento por período
+
+No relatório de pagamento, agora existem dois calendários:
+
+```txt
+Data inicial
+Data final
+```
+
+Exemplo:
+
+```txt
+Fechamento de julho:
+01/07/2026 até 31/07/2026
+```
+
+O relatório mostra somente as peças entregues dentro desse intervalo.
+
+### Entrega parcial
+
+Exemplo:
+
+```txt
+Dia 30/07: facção entregou 30 peças
+Dia 02/08: facção entregou 20 peças
+```
+
+Resultado:
+
+```txt
+Fechamento de julho: paga 30 peças
+Fechamento de agosto: paga 20 peças
+```
+
+Assim o sistema evita pagar duas vezes a mesma produção.
+
+### Status de pagamento
+
+Cada entrega tem status:
+
+```txt
+Pendente
+Pago
+```
+
+O botão **Marcar filtrados como pagos** fecha todos os itens filtrados no relatório atual.
+
+### Regras do Firebase
+
+Foi adicionada a coleção:
+
+```txt
+entregasPagamento
+```
+
+Depois de subir essa versão, publique também o `firebase-rules.txt` atualizado no Firebase.

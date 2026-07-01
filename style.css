@@ -2693,3 +2693,78 @@ table td {
     grid-template-columns: repeat(2, minmax(150px, 1fr));
   }
 }
+
+
+/* Pagamentos com entregas e calendário */
+.pagamentos-grid-entregas {
+  grid-template-columns: 430px 1fr;
+}
+
+.soft-divider {
+  border: 0;
+  border-top: 1px solid #cbd5e1;
+  margin: 18px 0;
+}
+
+.compact-header {
+  margin-top: 8px;
+}
+
+.entregas-header {
+  margin-top: 22px;
+}
+
+.pagamento-filtros-entregas {
+  grid-template-columns: repeat(4, minmax(130px, 1fr)) auto auto auto;
+}
+
+.pagamento-filtros input[type="date"] {
+  min-height: 40px;
+  border: 1px solid #bcc8da;
+  border-radius: 12px;
+  padding: 8px 10px;
+  color: #0f172a;
+  font-weight: 800;
+  background: #ffffff;
+}
+
+.entregas-pagamento-table {
+  min-width: 980px;
+}
+
+.entregas-pagamento-table th,
+.entregas-pagamento-table td {
+  white-space: nowrap;
+}
+
+.entregas-pagamento-table td:nth-child(5),
+.entregas-pagamento-table td:nth-child(6) {
+  text-align: right;
+}
+
+.pagamento-table {
+  min-width: 980px;
+}
+
+.pagamento-table td:nth-child(4),
+.pagamento-table td:nth-child(5),
+.pagamento-table td:nth-child(6),
+.pagamento-table td:nth-child(7) {
+  text-align: right;
+}
+
+@media (max-width: 1280px) {
+  .pagamentos-grid-entregas {
+    grid-template-columns: 1fr;
+  }
+
+  .pagamento-filtros-entregas {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .pagamento-filtros-entregas {
+    grid-template-columns: 1fr;
+  }
+}

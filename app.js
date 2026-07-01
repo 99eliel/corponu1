@@ -57,6 +57,7 @@ const state = {
   faccoesManejoExtras: [],
   celusManejoExtras: [],
   servicosPagamento: [],
+  entregasPagamento: [],
   usuarios: [],
   logs: [],
   pdfImportacaoPendente: [],
@@ -418,6 +419,16 @@ function iniciarListenersFirestore() {
   }, error => {
     console.error(error);
     toast("Erro ao carregar serviços de pagamento.");
+  }));
+
+  const entregasPagamentoQuery = query(collection(db, "entregasPagamento"), orderBy("dataEntrega", "desc"));
+
+  state.unsubscribers.push(onSnapshot(entregasPagamentoQuery, snapshot => {
+    state.entregasPagamento = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    renderPagamentos();
+  }, error => {
+    console.error(error);
+    toast("Erro ao carregar entregas de pagamento. Verifique as permissões.");
   }));
 
 
@@ -2763,18 +2774,31 @@ async function excluirFaccao(id) {
 
 
 
+
 function configurarPagamentos() {
-  const form = document.getElementById("formServicoPagamento");
-  if (form) {
-    form.addEventListener("submit", salvarServicoPagamento);
+  const formServico = document.getElementById("formServicoPagamento");
+  if (formServico) {
+    formServico.addEventListener("submit", salvarServicoPagamento);
   }
 
-  const cancelar = document.getElementById("btnCancelarServicoPagamento");
-  if (cancelar) {
-    cancelar.addEventListener("click", limparFormServicoPagamento);
+  const cancelarServico = document.getElementById("btnCancelarServicoPagamento");
+  if (cancelarServico) {
+    cancelarServico.addEventListener("click", limparFormServicoPagamento);
+  }
+
+  const formEntrega = document.getElementById("formEntregaPagamento");
+  if (formEntrega) {
+    formEntrega.addEventListener("submit", salvarEntregaPagamento);
+  }
+
+  const cancelarEntrega = document.getElementById("btnCancelarEntregaPagamento");
+  if (cancelarEntrega) {
+    cancelarEntrega.addEventListener("click", limparFormEntregaPagamento);
   }
 
   [
+    "pagamentoDataInicio",
+    "pagamentoDataFim",
     "pagamentoFiltroFaccao",
     "pagamentoFiltroServico",
     "pagamentoFiltroSetor",
@@ -2784,15 +2808,32 @@ function configurarPagamentos() {
     if (el) el.addEventListener("change", renderPagamentos);
   });
 
+  const entregaServico = document.getElementById("entregaServico");
+  if (entregaServico) {
+    entregaServico.addEventListener("change", preencherFaccaoDaEntregaPeloManejo);
+  }
+
+  const entregaOP = document.getElementById("entregaOP");
+  if (entregaOP) {
+    entregaOP.addEventListener("change", preencherFaccaoDaEntregaPeloManejo);
+  }
+
   const limpar = document.getElementById("btnLimparFiltrosPagamento");
   if (limpar) {
     limpar.addEventListener("click", () => {
-      ["pagamentoFiltroFaccao", "pagamentoFiltroServico", "pagamentoFiltroSetor", "pagamentoFiltroStatus"].forEach(id => {
+      ["pagamentoDataInicio", "pagamentoDataFim", "pagamentoFiltroFaccao", "pagamentoFiltroServico", "pagamentoFiltroSetor"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = "";
       });
+      const status = document.getElementById("pagamentoFiltroStatus");
+      if (status) status.value = "pendente";
       renderPagamentos();
     });
+  }
+
+  const marcarPagos = document.getElementById("btnMarcarPagamentosFiltrados");
+  if (marcarPagos) {
+    marcarPagos.addEventListener("click", marcarPagamentosFiltradosComoPagos);
   }
 
   const imprimir = document.getElementById("btnImprimirPagamento");
@@ -3009,57 +3050,216 @@ async function excluirServicoPagamento(id) {
   }
 }
 
-function getItensPagamento() {
-  const itens = [];
+function getOrdemPorEntradaPagamento(valor) {
+  const texto = limparTexto(valor);
+  if (!texto) return null;
 
-  getServicosPagamentoAtivos().forEach(servico => {
-    const campoSetor = getCampoSetorPagamento(servico.setor);
-    if (!campoSetor) return;
-
-    state.ordens.forEach(op => {
-      if (!op?.[campoSetor]) return;
-
-      const manejo = getManejoDaOrdem(op, servico.setor);
-      const faccao = limparTexto(manejo?.faccao || "SEM FACÇÃO").toUpperCase();
-      const quantidadeRecebida = numeroQuantidadeOP(op);
-      const falta = Math.max(0, Number(manejo?.falta || 0));
-      const quantidadePagar = Math.max(quantidadeRecebida - falta, 0);
-      const valorUnitario = Number(servico.valor || 0);
-      const total = quantidadePagar * valorUnitario;
-      const status = getStatusManejo(op, servico.setor);
-
-      itens.push({
-        op,
-        manejo,
-        servicoId: servico.id,
-        servicoNome: servico.nome,
-        setor: servico.setor,
-        setorLabel: getLabelSetorPagamento(servico.setor),
-        faccao,
-        quantidadeRecebida,
-        falta,
-        quantidadePagar,
-        valorUnitario,
-        total,
-        status
-      });
-    });
-  });
-
-  return itens;
+  return state.ordens.find(op => {
+    return String(op.numeroOP || "") === texto ||
+      String(op.numeroOPExterno || "") === texto ||
+      String(op.id || "") === texto ||
+      `${op.numeroOP || ""} - ${op.referencia || ""} - ${op.cor || ""}` === texto;
+  }) || null;
 }
 
-function getItensPagamentoFiltrados() {
+function getServicoPagamento(id) {
+  return state.servicosPagamento.find(servico => servico.id === id) || null;
+}
+
+function getFaccaoSugeridaEntrega(op, servico) {
+  if (!op || !servico) return "";
+
+  const manejo = getManejoDaOrdem(op, servico.setor);
+  return limparTexto(manejo?.faccao || "").toUpperCase();
+}
+
+function preencherFaccaoDaEntregaPeloManejo() {
+  const op = getOrdemPorEntradaPagamento(document.getElementById("entregaOP")?.value || "");
+  const servico = getServicoPagamento(document.getElementById("entregaServico")?.value || "");
+  const faccao = getFaccaoSugeridaEntrega(op, servico);
+  const inputFaccao = document.getElementById("entregaFaccao");
+
+  if (inputFaccao && faccao && !inputFaccao.value) {
+    inputFaccao.value = faccao;
+  }
+}
+
+function limparFormEntregaPagamento() {
+  const form = document.getElementById("formEntregaPagamento");
+  if (form) form.reset();
+
+  const id = document.getElementById("entregaPagamentoId");
+  if (id) id.value = "";
+}
+
+async function salvarEntregaPagamento(event) {
+  event.preventDefault();
+
+  if (!ehAdmin()) {
+    toast("Apenas admin pode registrar entregas.");
+    return;
+  }
+
+  const idAtual = document.getElementById("entregaPagamentoId").value;
+  const op = getOrdemPorEntradaPagamento(document.getElementById("entregaOP").value);
+  const servico = getServicoPagamento(document.getElementById("entregaServico").value);
+  const faccao = limparTexto(document.getElementById("entregaFaccao").value).toUpperCase();
+  const dataEntrega = document.getElementById("entregaData").value;
+  const quantidade = Number(document.getElementById("entregaQuantidade").value || 0);
+  const observacoes = document.getElementById("entregaObs").value.trim();
+
+  if (!op) {
+    toast("Selecione uma OP válida.");
+    return;
+  }
+
+  if (!servico) {
+    toast("Selecione um serviço cadastrado.");
+    return;
+  }
+
+  if (!faccao || !dataEntrega || quantidade <= 0) {
+    toast("Informe facção, data e quantidade entregue.");
+    return;
+  }
+
+  if (!op[getCampoSetorPagamento(servico.setor)]) {
+    toast(`Essa OP não pertence ao setor ${getLabelSetorPagamento(servico.setor)}.`);
+    return;
+  }
+
+  const valorUnitario = Number(servico.valor || 0);
+  const total = quantidade * valorUnitario;
+
+  const dados = {
+    opId: op.id,
+    numeroOP: op.numeroOP || "",
+    referencia: op.referencia || "",
+    cor: op.cor || "",
+    produtoNome: op.produtoNome || "",
+    faccao,
+    servicoId: servico.id,
+    servicoNome: servico.nome,
+    setor: servico.setor,
+    setorLabel: getLabelSetorPagamento(servico.setor),
+    dataEntrega,
+    quantidade,
+    valorUnitario,
+    total,
+    statusPagamento: idAtual ? (state.entregasPagamento.find(e => e.id === idAtual)?.statusPagamento || "pendente") : "pendente",
+    observacoes,
+    atualizadoPor: state.currentUser.uid,
+    atualizadoEm: serverTimestamp()
+  };
+
+  if (!idAtual) {
+    dados.criadoPor = state.currentUser.uid;
+    dados.criadoEm = serverTimestamp();
+  }
+
+  try {
+    if (idAtual) {
+      await setDoc(doc(db, "entregasPagamento", idAtual), dados, { merge: true });
+    } else {
+      await addDoc(collection(db, "entregasPagamento"), dados);
+    }
+
+    await registrarLog(
+      idAtual ? "entrega_pagamento_atualizada" : "entrega_pagamento_criada",
+      "entregaPagamento",
+      idAtual || dados.numeroOP,
+      `${dados.dataEntrega} | OP ${dados.numeroOP} | ${dados.faccao} | ${dados.servicoNome} | ${dados.quantidade} peças | ${formatarMoedaBR(dados.total)}`
+    );
+
+    limparFormEntregaPagamento();
+    toast("Entrega registrada para pagamento.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao registrar entrega.");
+  }
+}
+
+function editarEntregaPagamento(id) {
+  const entrega = state.entregasPagamento.find(item => item.id === id);
+  if (!entrega) return;
+
+  document.getElementById("entregaPagamentoId").value = entrega.id;
+  document.getElementById("entregaOP").value = entrega.numeroOP || entrega.opId || "";
+  document.getElementById("entregaServico").value = entrega.servicoId || "";
+  document.getElementById("entregaFaccao").value = entrega.faccao || "";
+  document.getElementById("entregaData").value = entrega.dataEntrega || "";
+  document.getElementById("entregaQuantidade").value = entrega.quantidade || "";
+  document.getElementById("entregaObs").value = entrega.observacoes || "";
+}
+
+async function alternarStatusEntregaPagamento(id) {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode alterar pagamento.");
+    return;
+  }
+
+  const entrega = state.entregasPagamento.find(item => item.id === id);
+  if (!entrega) return;
+
+  const novoStatus = entrega.statusPagamento === "pago" ? "pendente" : "pago";
+
+  try {
+    await setDoc(doc(db, "entregasPagamento", id), {
+      statusPagamento: novoStatus,
+      pagoEm: novoStatus === "pago" ? serverTimestamp() : null,
+      pagoPor: novoStatus === "pago" ? state.currentUser.uid : "",
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+
+    await registrarLog(
+      novoStatus === "pago" ? "entrega_pagamento_paga" : "entrega_pagamento_reaberta",
+      "entregaPagamento",
+      id,
+      `OP ${entrega.numeroOP} | ${entrega.faccao} | ${entrega.servicoNome} | ${entrega.quantidade} peças`
+    );
+
+    toast(novoStatus === "pago" ? "Entrega marcada como paga." : "Entrega reaberta como pendente.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao alterar status do pagamento.");
+  }
+}
+
+async function excluirEntregaPagamento(id) {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode excluir entrega.");
+    return;
+  }
+
+  const entrega = state.entregasPagamento.find(item => item.id === id);
+  if (!confirm(`Excluir a entrega da OP ${entrega?.numeroOP || id}?`)) return;
+
+  try {
+    await deleteDoc(doc(db, "entregasPagamento", id));
+    await registrarLog("entrega_pagamento_excluida", "entregaPagamento", id, `OP ${entrega?.numeroOP || id}`);
+    toast("Entrega excluída.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao excluir entrega.");
+  }
+}
+
+function getEntregasPagamentoFiltradas() {
+  const inicio = document.getElementById("pagamentoDataInicio")?.value || "";
+  const fim = document.getElementById("pagamentoDataFim")?.value || "";
   const filtroFaccao = document.getElementById("pagamentoFiltroFaccao")?.value || "";
   const filtroServico = document.getElementById("pagamentoFiltroServico")?.value || "";
   const filtroSetor = document.getElementById("pagamentoFiltroSetor")?.value || "";
-  const filtroStatus = document.getElementById("pagamentoFiltroStatus")?.value || "";
+  const filtroStatus = document.getElementById("pagamentoFiltroStatus")?.value || "pendente";
 
-  return getItensPagamento().filter(item => {
+  return [...state.entregasPagamento].filter(item => {
+    if (inicio && String(item.dataEntrega || "") < inicio) return false;
+    if (fim && String(item.dataEntrega || "") > fim) return false;
     if (filtroFaccao && item.faccao !== filtroFaccao) return false;
     if (filtroServico && item.servicoId !== filtroServico) return false;
     if (filtroSetor && item.setor !== filtroSetor) return false;
-    if (filtroStatus && item.status !== filtroStatus) return false;
+    if (filtroStatus && (item.statusPagamento || "pendente") !== filtroStatus) return false;
     return true;
   });
 }
@@ -3067,10 +3267,20 @@ function getItensPagamentoFiltrados() {
 function preencherFiltrosPagamento() {
   const selectFaccao = document.getElementById("pagamentoFiltroFaccao");
   const selectServico = document.getElementById("pagamentoFiltroServico");
+  const entregaServico = document.getElementById("entregaServico");
+  const entregaOPList = document.getElementById("entregaOPList");
+  const entregaFaccaoList = document.getElementById("entregaFaccaoList");
+
+  const servicos = getServicosPagamentoAtivos();
 
   if (selectFaccao) {
     const atual = selectFaccao.value;
-    const faccoes = [...new Set(getItensPagamento().map(item => item.faccao).filter(Boolean))]
+    const faccoes = [...new Set([
+      ...state.entregasPagamento.map(item => item.faccao),
+      ...state.faccoes.map(item => item.nome),
+      ...state.ordens.map(op => op.manejo?.faccao),
+      ...state.ordens.flatMap(op => Object.values(op.manejosSetores || {}).map(m => m?.faccao))
+    ].map(item => limparTexto(item).toUpperCase()).filter(Boolean))]
       .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
 
     selectFaccao.innerHTML = `<option value="">Todas</option>` + faccoes.map(faccao => {
@@ -3082,7 +3292,6 @@ function preencherFiltrosPagamento() {
 
   if (selectServico) {
     const atual = selectServico.value;
-    const servicos = getServicosPagamentoAtivos();
 
     selectServico.innerHTML = `<option value="">Todos</option>` + servicos.map(servico => {
       return `<option value="${escapeHtml(servico.id)}">${escapeHtml(servico.nome)} - ${escapeHtml(getLabelSetorPagamento(servico.setor))} - ${escapeHtml(formatarMoedaBR(servico.valor))}</option>`;
@@ -3090,12 +3299,41 @@ function preencherFiltrosPagamento() {
 
     if (servicos.some(servico => servico.id === atual)) selectServico.value = atual;
   }
+
+  if (entregaServico) {
+    const atual = entregaServico.value;
+
+    entregaServico.innerHTML = `<option value="">Selecione</option>` + servicos.map(servico => {
+      return `<option value="${escapeHtml(servico.id)}">${escapeHtml(servico.nome)} - ${escapeHtml(getLabelSetorPagamento(servico.setor))} - ${escapeHtml(formatarMoedaBR(servico.valor))}</option>`;
+    }).join("");
+
+    if (servicos.some(servico => servico.id === atual)) entregaServico.value = atual;
+  }
+
+  if (entregaOPList) {
+    entregaOPList.innerHTML = state.ordens.map(op => {
+      const label = `${op.numeroOP || ""} - ${op.referencia || ""} - ${op.cor || ""}`;
+      return `<option value="${escapeHtml(label)}"></option>`;
+    }).join("");
+  }
+
+  if (entregaFaccaoList) {
+    const faccoes = [...new Set([
+      ...state.faccoes.map(item => item.nome),
+      ...state.entregasPagamento.map(item => item.faccao),
+      ...state.ordens.map(op => op.manejo?.faccao),
+      ...state.ordens.flatMap(op => Object.values(op.manejosSetores || {}).map(m => m?.faccao))
+    ].map(item => limparTexto(item).toUpperCase()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+
+    entregaFaccaoList.innerHTML = faccoes.map(faccao => `<option value="${escapeHtml(faccao)}"></option>`).join("");
+  }
 }
 
-function agruparPagamento(itens) {
+function agruparPagamento(entregas) {
   const mapa = new Map();
 
-  itens.forEach(item => {
+  entregas.forEach(item => {
     const chave = `${item.faccao}||${item.servicoId}`;
 
     if (!mapa.has(chave)) {
@@ -3104,23 +3342,19 @@ function agruparPagamento(itens) {
         servicoId: item.servicoId,
         servicoNome: item.servicoNome,
         setor: item.setor,
-        setorLabel: item.setorLabel,
-        ops: new Set(),
-        recebidas: 0,
-        falta: 0,
-        pagar: 0,
-        valorUnitario: item.valorUnitario,
+        setorLabel: item.setorLabel || getLabelSetorPagamento(item.setor),
+        entregas: 0,
+        quantidade: 0,
+        valorUnitario: Number(item.valorUnitario || 0),
         total: 0
       });
     }
 
     const grupo = mapa.get(chave);
-    grupo.ops.add(item.op.numeroOP || item.op.id);
-    grupo.recebidas += item.quantidadeRecebida;
-    grupo.falta += item.falta;
-    grupo.pagar += item.quantidadePagar;
-    grupo.valorUnitario = item.valorUnitario;
-    grupo.total += item.total;
+    grupo.entregas += 1;
+    grupo.quantidade += Number(item.quantidade || 0);
+    grupo.valorUnitario = Number(item.valorUnitario || 0);
+    grupo.total += Number(item.total || 0);
   });
 
   return [...mapa.values()].sort((a, b) => {
@@ -3139,12 +3373,12 @@ function renderPagamentos() {
   renderServicosPagamento();
   preencherFiltrosPagamento();
 
-  const itens = getItensPagamentoFiltrados();
-  const grupos = agruparPagamento(itens);
+  const entregas = getEntregasPagamentoFiltradas();
+  const grupos = agruparPagamento(entregas);
 
   const totalFaccoes = new Set(grupos.map(g => g.faccao)).size;
-  const totalRecebidas = grupos.reduce((soma, g) => soma + g.recebidas, 0);
-  const totalFalta = grupos.reduce((soma, g) => soma + g.falta, 0);
+  const totalEntregas = entregas.length;
+  const totalRecebidas = grupos.reduce((soma, g) => soma + g.quantidade, 0);
   const totalValor = grupos.reduce((soma, g) => soma + g.total, 0);
 
   const setText = (id, valor) => {
@@ -3153,60 +3387,133 @@ function renderPagamentos() {
   };
 
   setText("pagamentoTotalFaccoes", totalFaccoes.toLocaleString("pt-BR"));
+  setText("pagamentoTotalEntregas", totalEntregas.toLocaleString("pt-BR"));
   setText("pagamentoTotalRecebidas", totalRecebidas.toLocaleString("pt-BR"));
-  setText("pagamentoTotalFalta", totalFalta.toLocaleString("pt-BR"));
   setText("pagamentoTotalValor", formatarMoedaBR(totalValor));
 
   if (!getServicosPagamentoAtivos().length) {
-    tbody.innerHTML = `<tr><td colspan="9" class="empty">Cadastre pelo menos um serviço para gerar pagamentos.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">Cadastre pelo menos um serviço para gerar pagamentos.</td></tr>`;
+  } else if (!grupos.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">Nenhuma entrega encontrada para o período/filtro selecionado.</td></tr>`;
+  } else {
+    tbody.innerHTML = grupos.map(grupo => `
+      <tr class="${grupo.faccao === "SEM FACÇÃO" ? "pagamento-sem-faccao" : ""}">
+        <td><strong>${escapeHtml(grupo.faccao)}</strong></td>
+        <td><strong>${escapeHtml(grupo.servicoNome)}</strong></td>
+        <td>${escapeHtml(grupo.setorLabel)}</td>
+        <td>${escapeHtml(grupo.entregas.toLocaleString("pt-BR"))}</td>
+        <td><strong>${escapeHtml(grupo.quantidade.toLocaleString("pt-BR"))}</strong></td>
+        <td>${escapeHtml(formatarMoedaBR(grupo.valorUnitario))}</td>
+        <td><strong>${escapeHtml(formatarMoedaBR(grupo.total))}</strong></td>
+      </tr>
+    `).join("");
+  }
+
+  renderEntregasPagamento(entregas);
+}
+
+function renderEntregasPagamento(entregas = getEntregasPagamentoFiltradas()) {
+  const tbody = document.getElementById("listaEntregasPagamento");
+  if (!tbody) return;
+
+  if (!entregas.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">Nenhuma entrega registrada para os filtros selecionados.</td></tr>`;
     return;
   }
 
-  if (!grupos.length) {
-    tbody.innerHTML = `<tr><td colspan="9" class="empty">Nenhum item encontrado para pagamento.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = grupos.map(grupo => `
-    <tr class="${grupo.faccao === "SEM FACÇÃO" ? "pagamento-sem-faccao" : ""}">
-      <td><strong>${escapeHtml(grupo.faccao)}</strong></td>
-      <td><strong>${escapeHtml(grupo.servicoNome)}</strong></td>
-      <td>${escapeHtml(grupo.setorLabel)}</td>
-      <td>${escapeHtml(grupo.ops.size)}</td>
-      <td>${escapeHtml(grupo.recebidas.toLocaleString("pt-BR"))}</td>
-      <td>${escapeHtml(grupo.falta.toLocaleString("pt-BR"))}</td>
-      <td><strong>${escapeHtml(grupo.pagar.toLocaleString("pt-BR"))}</strong></td>
-      <td>${escapeHtml(formatarMoedaBR(grupo.valorUnitario))}</td>
-      <td><strong>${escapeHtml(formatarMoedaBR(grupo.total))}</strong></td>
+  tbody.innerHTML = entregas.map(entrega => `
+    <tr>
+      <td>${escapeHtml(dataISOParaBR(entrega.dataEntrega) || entrega.dataEntrega || "-")}</td>
+      <td><strong>${escapeHtml(entrega.numeroOP || "-")}</strong></td>
+      <td>${escapeHtml(entrega.faccao || "-")}</td>
+      <td>${escapeHtml(entrega.servicoNome || "-")}</td>
+      <td><strong>${escapeHtml(Number(entrega.quantidade || 0).toLocaleString("pt-BR"))}</strong></td>
+      <td><strong>${escapeHtml(formatarMoedaBR(entrega.total))}</strong></td>
+      <td>
+        <span class="badge ${entrega.statusPagamento === "pago" ? "ok" : "pending"}">
+          ${entrega.statusPagamento === "pago" ? "Pago" : "Pendente"}
+        </span>
+      </td>
+      <td>
+        <button class="btn btn-sm" onclick="editarEntregaPagamento('${entrega.id}')">Editar</button>
+        <button class="btn btn-sm ${entrega.statusPagamento === "pago" ? "btn-warning" : "btn-success"}" onclick="alternarStatusEntregaPagamento('${entrega.id}')">
+          ${entrega.statusPagamento === "pago" ? "Reabrir" : "Pagar"}
+        </button>
+        <button class="btn btn-sm btn-danger" onclick="excluirEntregaPagamento('${entrega.id}')">Excluir</button>
+      </td>
     </tr>
   `).join("");
 }
 
+async function marcarPagamentosFiltradosComoPagos() {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode fechar pagamentos.");
+    return;
+  }
+
+  const entregas = getEntregasPagamentoFiltradas().filter(item => item.statusPagamento !== "pago");
+
+  if (!entregas.length) {
+    toast("Nenhuma entrega pendente encontrada no filtro atual.");
+    return;
+  }
+
+  const total = entregas.reduce((soma, item) => soma + Number(item.total || 0), 0);
+
+  if (!confirm(`Marcar ${entregas.length} entregas filtradas como pagas? Total: ${formatarMoedaBR(total)}`)) {
+    return;
+  }
+
+  try {
+    const batch = writeBatch(db);
+
+    entregas.forEach(entrega => {
+      batch.set(doc(db, "entregasPagamento", entrega.id), {
+        statusPagamento: "pago",
+        pagoEm: serverTimestamp(),
+        pagoPor: state.currentUser.uid,
+        atualizadoPor: state.currentUser.uid,
+        atualizadoEm: serverTimestamp()
+      }, { merge: true });
+    });
+
+    await batch.commit();
+    await registrarLog("pagamentos_filtrados_fechados", "entregaPagamento", "lote", `${entregas.length} entregas | ${formatarMoedaBR(total)}`);
+    toast("Entregas filtradas marcadas como pagas.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao fechar pagamentos filtrados.");
+  }
+}
+
 function getTextoFiltrosPagamento() {
+  const inicio = document.getElementById("pagamentoDataInicio")?.value || "";
+  const fim = document.getElementById("pagamentoDataFim")?.value || "";
   const faccao = document.getElementById("pagamentoFiltroFaccao")?.value || "";
   const servico = document.getElementById("pagamentoFiltroServico")?.selectedOptions?.[0]?.textContent || "Todos";
   const setor = document.getElementById("pagamentoFiltroSetor")?.selectedOptions?.[0]?.textContent || "Todos";
-  const status = document.getElementById("pagamentoFiltroStatus")?.selectedOptions?.[0]?.textContent || "Todos";
+  const status = document.getElementById("pagamentoFiltroStatus")?.selectedOptions?.[0]?.textContent || "Pendentes";
 
   const partes = [];
+  if (inicio || fim) partes.push(`Período: ${inicio ? dataISOParaBR(inicio) : "início"} até ${fim ? dataISOParaBR(fim) : "hoje"}`);
   if (faccao) partes.push(`Facção: ${faccao}`);
   if (servico && servico !== "Todos") partes.push(`Serviço: ${servico}`);
   if (setor && setor !== "Todos") partes.push(`Setor: ${setor}`);
-  if (status && status !== "Todos") partes.push(`Status: ${status}`);
+  if (status) partes.push(`Pagamento: ${status}`);
 
   return partes.length ? `Filtro: ${partes.join(" + ")}` : "Filtro: todos os pagamentos";
 }
 
 function imprimirRelatorioPagamento() {
-  const grupos = agruparPagamento(getItensPagamentoFiltrados());
+  const grupos = agruparPagamento(getEntregasPagamentoFiltradas());
 
   if (!grupos.length) {
     toast("Não há dados para imprimir.");
     return;
   }
 
-  const totalRecebidas = grupos.reduce((soma, g) => soma + g.recebidas, 0);
-  const totalFalta = grupos.reduce((soma, g) => soma + g.falta, 0);
+  const totalEntregas = grupos.reduce((soma, g) => soma + g.entregas, 0);
+  const totalRecebidas = grupos.reduce((soma, g) => soma + g.quantidade, 0);
   const totalValor = grupos.reduce((soma, g) => soma + g.total, 0);
   const dataImpressao = new Date().toLocaleString("pt-BR");
   const filtro = getTextoFiltrosPagamento();
@@ -3216,10 +3523,8 @@ function imprimirRelatorioPagamento() {
       <td>${escapeHtml(grupo.faccao)}</td>
       <td>${escapeHtml(grupo.servicoNome)}</td>
       <td>${escapeHtml(grupo.setorLabel)}</td>
-      <td>${escapeHtml(grupo.ops.size)}</td>
-      <td class="num">${escapeHtml(grupo.recebidas.toLocaleString("pt-BR"))}</td>
-      <td class="num">${escapeHtml(grupo.falta.toLocaleString("pt-BR"))}</td>
-      <td class="num">${escapeHtml(grupo.pagar.toLocaleString("pt-BR"))}</td>
+      <td class="num">${escapeHtml(grupo.entregas.toLocaleString("pt-BR"))}</td>
+      <td class="num">${escapeHtml(grupo.quantidade.toLocaleString("pt-BR"))}</td>
       <td class="num">${escapeHtml(formatarMoedaBR(grupo.valorUnitario))}</td>
       <td class="num">${escapeHtml(formatarMoedaBR(grupo.total))}</td>
     </tr>
@@ -3262,8 +3567,8 @@ function imprimirRelatorioPagamento() {
         <div class="filter"><strong>${escapeHtml(filtro)}</strong></div>
 
         <div class="summary">
-          <div><span>Peças recebidas</span><strong>${totalRecebidas.toLocaleString("pt-BR")}</strong></div>
-          <div><span>Peças em falta</span><strong>${totalFalta.toLocaleString("pt-BR")}</strong></div>
+          <div><span>Entregas</span><strong>${totalEntregas.toLocaleString("pt-BR")}</strong></div>
+          <div><span>Peças entregues</span><strong>${totalRecebidas.toLocaleString("pt-BR")}</strong></div>
           <div><span>Total a pagar</span><strong>${formatarMoedaBR(totalValor)}</strong></div>
         </div>
 
@@ -3273,10 +3578,8 @@ function imprimirRelatorioPagamento() {
               <th>Facção</th>
               <th>Serviço</th>
               <th>Setor</th>
-              <th>OPs</th>
-              <th>Recebidas</th>
-              <th>Falta</th>
-              <th>Peças a pagar</th>
+              <th>Entregas</th>
+              <th>Peças</th>
               <th>Valor unit.</th>
               <th>Total</th>
             </tr>
@@ -4829,6 +5132,9 @@ window.editarFaccao = editarFaccao;
 window.alternarFaccao = alternarFaccao;
 window.excluirFaccao = excluirFaccao;
 window.imprimirRelatorioPagamento = imprimirRelatorioPagamento;
+window.excluirEntregaPagamento = excluirEntregaPagamento;
+window.alternarStatusEntregaPagamento = alternarStatusEntregaPagamento;
+window.editarEntregaPagamento = editarEntregaPagamento;
 window.editarServicoPagamento = editarServicoPagamento;
 window.alternarServicoPagamento = alternarServicoPagamento;
 window.excluirServicoPagamento = excluirServicoPagamento;

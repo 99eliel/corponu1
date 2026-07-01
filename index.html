@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema OP Confecção</title>
-  <link rel="stylesheet" href="style.css?v=pagamentos-catalogo-servicos-1" />
+  <link rel="stylesheet" href="style.css?v=pagamentos-entregas-calendario-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -741,13 +741,14 @@
 
 
       
+      
       <section id="pagamentos" class="page">
-        <div class="grid-2 pagamentos-grid">
+        <div class="grid-2 pagamentos-grid pagamentos-grid-entregas">
           <div class="panel form admin-only-block">
             <div class="panel-header">
               <div>
                 <h3>Cadastro de serviços</h3>
-                <p>Cadastre cada processo com seu setor e valor por peça. Depois o relatório usa esses valores automaticamente.</p>
+                <p>Cadastre cada processo com seu setor e valor por peça.</p>
               </div>
             </div>
 
@@ -780,11 +781,6 @@
               </div>
             </form>
 
-            <div class="notice small">
-              <strong>Exemplo:</strong> salve o processo <strong>ENCAPAR BOJO</strong> no setor <strong>Bojo</strong> com valor de <strong>R$ 5,00</strong>.
-              Depois o relatório calcula automaticamente por facção.
-            </div>
-
             <div class="table-wrap servicos-pagamento-wrap">
               <table class="servicos-pagamento-table">
                 <thead>
@@ -799,17 +795,84 @@
                 <tbody id="listaServicosPagamento"></tbody>
               </table>
             </div>
+
+            <hr class="soft-divider" />
+
+            <div class="panel-header compact-header">
+              <div>
+                <h3>Registrar entrega da facção</h3>
+                <p>Use uma linha por entrega. Assim o pagamento pode ser fechado por período sem pagar duplicado.</p>
+              </div>
+            </div>
+
+            <form id="formEntregaPagamento" class="form compact-form">
+              <input type="hidden" id="entregaPagamentoId" />
+
+              <label>
+                OP
+                <input id="entregaOP" type="text" list="entregaOPList" placeholder="Digite ou selecione a OP" required />
+                <datalist id="entregaOPList"></datalist>
+              </label>
+
+              <label>
+                Serviço
+                <select id="entregaServico" required>
+                  <option value="">Selecione</option>
+                </select>
+              </label>
+
+              <label>
+                Facção
+                <input id="entregaFaccao" type="text" list="entregaFaccaoList" placeholder="Facção que entregou" required />
+                <datalist id="entregaFaccaoList"></datalist>
+              </label>
+
+              <label>
+                Data da entrega
+                <input id="entregaData" type="date" required />
+              </label>
+
+              <label>
+                Quantidade entregue
+                <input id="entregaQuantidade" type="number" min="1" step="1" placeholder="Ex: 50" required />
+              </label>
+
+              <label>
+                Observação
+                <textarea id="entregaObs" rows="2" placeholder="Opcional"></textarea>
+              </label>
+
+              <div class="actions">
+                <button class="btn btn-success" type="submit">Registrar entrega</button>
+                <button class="btn" id="btnCancelarEntregaPagamento" type="button">Cancelar</button>
+              </div>
+            </form>
+
+            <div class="notice small">
+              <strong>Exemplo:</strong> se a facção entregou 30 peças dia 30 e mais 20 dia 02,
+              registre duas entregas separadas. O calendário decide em qual fechamento cada entrega entra.
+            </div>
           </div>
 
           <div class="panel">
             <div class="panel-header">
               <div>
-                <h3>Relatório de pagamento</h3>
-                <p>O sistema calcula por facção, serviço, quantidade recebida, falta e valor cadastrado.</p>
+                <h3>Relatório de pagamento por período</h3>
+                <p>Filtre por calendário para fechar mês, quinzena ou qualquer intervalo.</p>
               </div>
             </div>
 
-            <div class="pagamento-filtros">
+            <div class="pagamento-filtros pagamento-filtros-entregas">
+              <label>
+                Início
+                <input id="pagamentoDataInicio" type="date" />
+              </label>
+
+              <label>
+                Final
+                <input id="pagamentoDataFim" type="date" />
+              </label>
+
               <label>
                 Facção
                 <select id="pagamentoFiltroFaccao">
@@ -835,16 +898,16 @@
               </label>
 
               <label>
-                Status
+                Pagamento
                 <select id="pagamentoFiltroStatus">
-                  <option value="">Todos</option>
-                  <option value="organizada">Organizadas</option>
-                  <option value="bipado">Bipadas</option>
-                  <option value="pendente">Pendentes</option>
+                  <option value="pendente" selected>Pendentes</option>
+                  <option value="pago">Pagas</option>
+                  <option value="">Todas</option>
                 </select>
               </label>
 
               <button class="btn" id="btnLimparFiltrosPagamento" type="button">Limpar</button>
+              <button class="btn btn-success" id="btnMarcarPagamentosFiltrados" type="button">Marcar filtrados como pagos</button>
               <button class="btn btn-print" id="btnImprimirPagamento" type="button">Imprimir pagamento</button>
             </div>
 
@@ -854,12 +917,12 @@
                 <strong id="pagamentoTotalFaccoes">0</strong>
               </div>
               <div class="pagamento-card">
-                <span>Peças recebidas</span>
-                <strong id="pagamentoTotalRecebidas">0</strong>
+                <span>Entregas</span>
+                <strong id="pagamentoTotalEntregas">0</strong>
               </div>
               <div class="pagamento-card">
-                <span>Peças em falta</span>
-                <strong id="pagamentoTotalFalta">0</strong>
+                <span>Peças entregues</span>
+                <strong id="pagamentoTotalRecebidas">0</strong>
               </div>
               <div class="pagamento-card destaque">
                 <span>Total a pagar</span>
@@ -874,15 +937,38 @@
                     <th>Facção</th>
                     <th>Serviço</th>
                     <th>Setor</th>
-                    <th>OPs</th>
-                    <th>Recebidas</th>
-                    <th>Falta</th>
-                    <th>Peças a pagar</th>
+                    <th>Entregas</th>
+                    <th>Peças</th>
                     <th>Valor unit.</th>
                     <th>Total</th>
                   </tr>
                 </thead>
                 <tbody id="listaPagamento"></tbody>
+              </table>
+            </div>
+
+            <div class="panel-header compact-header entregas-header">
+              <div>
+                <h3>Entregas registradas</h3>
+                <p>Controle individual para editar, excluir ou marcar como pago/pendente.</p>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table class="entregas-pagamento-table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>OP</th>
+                    <th>Facção</th>
+                    <th>Serviço</th>
+                    <th>Qtd.</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="listaEntregasPagamento"></tbody>
               </table>
             </div>
           </div>
@@ -1226,6 +1312,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="app.js?v=pagamentos-catalogo-servicos-1"></script>
+  <script type="module" src="app.js?v=pagamentos-entregas-calendario-1"></script>
 </body>
 </html>
