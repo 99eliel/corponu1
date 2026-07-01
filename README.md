@@ -1111,3 +1111,55 @@ Também foi adicionado:
 ```
 
 Isso ajuda bastante em telas menores e aproveita melhor o espaço nas abas **Manejo** e **Processos**.
+
+
+## Atualização: Bipado, relatório de bipadas e impressão em Processos
+
+### Manejo
+
+Foi adicionado o botão:
+
+```txt
+Bipado
+```
+
+Quando o usuário clica, a OP é marcada como finalizada/bipada.
+
+O sistema salva na própria OP:
+
+```txt
+bipado: true
+manejoStatus: "bipado"
+manejo.bipado: true
+manejo.status: "bipado"
+bipadoPor
+bipadoEm
+```
+
+### Relatórios
+
+Foi criada uma nova opção em Relatórios:
+
+```txt
+Bipadas
+```
+
+Ela mostra somente as OPs marcadas como bipadas/finalizadas.
+
+### Processos
+
+A aba **Processos** recebeu o botão:
+
+```txt
+Imprimir processos
+```
+
+Ela respeita os filtros ativos. Exemplo:
+
+```txt
+Filtro Cor = BRANCO
+Filtro Facção = X
+Clique em Imprimir processos
+```
+
+A impressão abre somente com os processos filtrados na tela.

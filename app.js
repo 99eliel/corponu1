@@ -142,6 +142,12 @@ const reportInfo = {
     tipo: "especifico",
     campo: "possuiBojo",
     coluna: "Bojo"
+  },
+  bipadas: {
+    title: "Relatório de Peças Bipadas",
+    subtitle: "Mostra somente OPs cujo processo de produção foi finalizado/bipado no Manejo.",
+    tipo: "bipado",
+    coluna: "Bipado"
   }
 };
 
@@ -980,7 +986,7 @@ function getLinhasManejoParaImpressao() {
       producao: valorManejoParaImpressao(op, "producao"),
       celu: valorManejoParaImpressao(op, "celu"),
       necessidade: getNecessidadeDaOrdem(op),
-      status: getStatusManejo(op) === "organizada" ? "Organizada" : "Pendente"
+      status: getStatusManejo(op) === "bipado" ? "Bipado" : getStatusManejo(op) === "organizada" ? "Organizada" : "Pendente"
     };
   });
 }
@@ -1235,10 +1241,11 @@ function renderManejoInline() {
           </div>
         </td>
         <td><input class="manejo-readonly" value="${escapeHtml(getNecessidadeDaOrdem(op))}" readonly /></td>
-        <td>${manejoStatusBadge(manejo)}</td>
+        <td>${manejoStatusBadge(manejo, op)}</td>
         <td>
           <div class="manejo-actions">
             <button class="btn btn-sm btn-primary" onclick="salvarManejoLinha('${op.id}')">Salvar</button>
+            <button class="btn btn-sm btn-bipado" onclick="biparManejoLinha('${op.id}')">${getStatusManejo(op) === "bipado" ? "Bipado ✓" : "Bipado"}</button>
             ${manejo && ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="limparManejoLinha('${op.id}')">Limpar</button>` : ""}
           </div>
         </td>
@@ -1267,8 +1274,10 @@ function getSilkNomeManejo(manejo) {
 }
 
 function getStatusManejo(op) {
+  const manejo = getManejoDaOrdem(op);
+  if (op?.bipado || op?.manejoStatus === "bipado" || manejo?.bipado || manejo?.status === "bipado") return "bipado";
   if (op?.manejoStatus) return op.manejoStatus;
-  return getManejoDaOrdem(op) ? "organizada" : "pendente";
+  return manejo ? "organizada" : "pendente";
 }
 
 function getValorManejoParaFiltro(op, campo) {
@@ -1515,8 +1524,9 @@ function renderResumoSomasManejo(ordens) {
   const totalOps = ordens.length;
   const totalPecas = ordens.reduce((soma, op) => soma + numeroQuantidadeOP(op), 0);
   const totalFalta = ordens.reduce((soma, op) => soma + numeroFaltaManejo(op), 0);
+  const bipadas = ordens.filter(op => getStatusManejo(op) === "bipado").length;
   const organizadas = ordens.filter(op => getStatusManejo(op) === "organizada").length;
-  const pendentes = totalOps - organizadas;
+  const pendentes = ordens.filter(op => getStatusManejo(op) === "pendente").length;
 
   const setText = (id, valor) => {
     const el = document.getElementById(id);
@@ -1526,12 +1536,12 @@ function renderResumoSomasManejo(ordens) {
   setText("somaManejoOps", formatarNumeroInteiro(totalOps));
   setText("somaManejoPecas", formatarNumeroInteiro(totalPecas));
   setText("somaManejoFalta", formatarNumeroInteiro(totalFalta));
-  setText("somaManejoStatus", `${formatarNumeroInteiro(organizadas)} / ${formatarNumeroInteiro(pendentes)}`);
+  setText("somaManejoStatus", `${formatarNumeroInteiro(bipadas)} bipadas | ${formatarNumeroInteiro(organizadas)} org. | ${formatarNumeroInteiro(pendentes)} pend.`);
   setText("somaManejoPecasCompacto", `${formatarNumeroInteiro(totalPecas)} peças`);
   setText("somaManejoFiltroAtivo", getFiltrosManejoAtivosTexto());
   setText(
     "somaManejoResumoCompacto",
-    `${formatarNumeroInteiro(totalOps)} OPs encontradas | ${formatarNumeroInteiro(totalFalta)} falta | ${formatarNumeroInteiro(organizadas)} organizadas / ${formatarNumeroInteiro(pendentes)} pendentes`
+    `${formatarNumeroInteiro(totalOps)} OPs | ${formatarNumeroInteiro(totalFalta)} falta | ${formatarNumeroInteiro(bipadas)} bipadas | ${formatarNumeroInteiro(organizadas)} org. | ${formatarNumeroInteiro(pendentes)} pend.`
   );
 
   renderTabelaSomaManejo("somaManejoFases", agruparSomaManejo(ordens, op => op.manejo?.fase || getManejoDaOrdem(op)?.fase || "Sem fase"));
@@ -1680,6 +1690,76 @@ async function salvarManejoLinha(ordemId) {
   }
 }
 
+
+async function biparManejoLinha(ordemId) {
+  const ordem = state.ordens.find(op => op.id === ordemId);
+  if (!ordem) {
+    toast("OP não encontrada.");
+    return;
+  }
+
+  const manejoExistente = getManejoDaOrdem(ordem) || {};
+  const faseAtual = limparTexto(valorLinhaManejo(ordem, "fase")).toUpperCase() || manejoExistente.fase || "";
+
+  if (!faseAtual) {
+    const continuar = confirm("Essa OP ainda está sem fase preenchida. Deseja marcar como bipada mesmo assim?");
+    if (!continuar) return;
+  }
+
+  const confirmar = confirm(`Marcar a OP ${ordem.numeroOP} como BIPADA/finalizada?`);
+  if (!confirmar) return;
+
+  const silkNome = limparTexto(valorLinhaManejo(ordem, "silkNome")).toUpperCase() || manejoExistente.silkNome || manejoExistente.silk || "";
+  const silkData = valorLinhaManejo(ordem, "silkData") || manejoExistente.silkData || "";
+
+  const manejo = {
+    ...manejoExistente,
+    silk: silkNome,
+    silkNome,
+    silkData,
+    dataTecido: valorLinhaManejo(ordem, "dataTecido") || manejoExistente.dataTecido || "",
+    fase: faseAtual,
+    data: valorLinhaManejo(ordem, "data") || manejoExistente.data || "",
+    faccao: limparTexto(valorLinhaManejo(ordem, "faccao")).toUpperCase() || manejoExistente.faccao || "",
+    chegada: valorLinhaManejo(ordem, "chegada") || manejoExistente.chegada || "",
+    falta: Number(valorLinhaManejo(ordem, "falta") || manejoExistente.falta || 0),
+    producao: valorLinhaManejo(ordem, "producao") || manejoExistente.producao || "",
+    celu: limparTexto(valorLinhaManejo(ordem, "celu")) || manejoExistente.celu || "",
+    necessidade: getNecessidadeDaOrdem(ordem),
+    coluna: "",
+    status: "bipado",
+    bipado: true,
+    bipadoPor: state.currentUser.uid,
+    bipadoEm: serverTimestamp(),
+    atualizadoPor: state.currentUser.uid,
+    atualizadoEm: serverTimestamp()
+  };
+
+  if (!manejoExistente?.criadoEm) {
+    manejo.criadoPor = state.currentUser.uid;
+    manejo.criadoEm = serverTimestamp();
+  }
+
+  try {
+    await setDoc(doc(db, "ordensProducao", ordem.id), {
+      manejo,
+      manejoStatus: "bipado",
+      bipado: true,
+      bipadoPor: state.currentUser.uid,
+      bipadoEm: serverTimestamp(),
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+
+    await registrarLog("op_bipada", "ordemProducao", ordem.id, `OP ${ordem.numeroOP} | Ref. ${ordem.referencia} | Cor ${ordem.cor || "-"} | Fase ${faseAtual || "-"}`);
+    toast("OP marcada como bipada/finalizada.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao marcar OP como bipada.");
+  }
+}
+
+
 async function limparManejoLinha(ordemId) {
   if (!ehAdmin()) {
     toast("Apenas admin pode limpar manejo.");
@@ -1698,6 +1778,7 @@ async function limparManejoLinha(ordemId) {
     await setDoc(doc(db, "ordensProducao", ordem.id), {
       manejo: null,
       manejoStatus: "pendente",
+      bipado: false,
       atualizadoPor: state.currentUser.uid,
       atualizadoEm: serverTimestamp()
     }, { merge: true });
@@ -1710,8 +1791,14 @@ async function limparManejoLinha(ordemId) {
   }
 }
 
-function manejoStatusBadge(manejo) {
-  if (manejo) {
+function manejoStatusBadge(manejo, op = null) {
+  const status = op ? getStatusManejo(op) : (manejo?.bipado || manejo?.status === "bipado" ? "bipado" : manejo ? "organizada" : "pendente");
+
+  if (status === "bipado") {
+    return `<span class="badge bipado">Bipado</span>`;
+  }
+
+  if (status === "organizada") {
     return `<span class="badge ok">Organizada</span>`;
   }
 
@@ -1920,6 +2007,11 @@ function configurarProcessos() {
       renderProcessos();
     });
   }
+
+  const imprimir = document.getElementById("btnImprimirProcessosFiltrados");
+  if (imprimir) {
+    imprimir.addEventListener("click", imprimirProcessosFiltrados);
+  }
 }
 
 function preencherSelectProcessos(id, valores, labelTodos = "Todos") {
@@ -2027,8 +2119,9 @@ function renderResumoProcessos(ordens) {
   const totalOps = ordens.length;
   const totalPecas = ordens.reduce((soma, op) => soma + numeroQuantidadeOP(op), 0);
   const totalFalta = ordens.reduce((soma, op) => soma + numeroFaltaManejo(op), 0);
+  const bipadas = ordens.filter(op => getStatusManejo(op) === "bipado").length;
   const organizadas = ordens.filter(op => getStatusManejo(op) === "organizada").length;
-  const pendentes = totalOps - organizadas;
+  const pendentes = ordens.filter(op => getStatusManejo(op) === "pendente").length;
 
   const setText = (id, valor) => {
     const el = document.getElementById(id);
@@ -2039,8 +2132,152 @@ function renderResumoProcessos(ordens) {
   setText("processosTotalPecas", totalPecas.toLocaleString("pt-BR"));
   setText("processosTotalFalta", totalFalta.toLocaleString("pt-BR"));
   setText("processosOrganizadas", organizadas.toLocaleString("pt-BR"));
+  setText("processosBipadas", bipadas.toLocaleString("pt-BR"));
   setText("processosPendentes", pendentes.toLocaleString("pt-BR"));
 }
+
+
+function getTextoFiltrosProcessosAtivos() {
+  const filtros = [
+    ["Status", "processoFiltroStatus"],
+    ["Referência", "processoFiltroReferencia"],
+    ["Cor", "processoFiltroCor"],
+    ["Fase", "processoFiltroFase"],
+    ["Facção", "processoFiltroFaccao"],
+    ["CELU", "processoFiltroCelu"],
+    ["Necessidade", "processoFiltroNecessidade"]
+  ];
+
+  const busca = document.getElementById("buscaProcessos")?.value?.trim();
+  const ativos = filtros.map(([nome, id]) => {
+    const el = document.getElementById(id);
+    if (!el || !el.value) return "";
+    const texto = el.options?.[el.selectedIndex]?.textContent || el.value;
+    return `${nome}: ${texto}`;
+  }).filter(Boolean);
+
+  if (busca) ativos.unshift(`Busca: ${busca}`);
+
+  return ativos.length ? `Filtro: ${ativos.join(" + ")}` : "Filtro: todos os processos";
+}
+
+function imprimirProcessosFiltrados() {
+  const ordens = filtrarOrdensProcessos();
+
+  if (!ordens.length) {
+    toast("Nenhum processo filtrado para imprimir.");
+    return;
+  }
+
+  const totalPecas = ordens.reduce((soma, op) => soma + numeroQuantidadeOP(op), 0);
+  const totalFalta = ordens.reduce((soma, op) => soma + numeroFaltaManejo(op), 0);
+  const filtroAtivo = getTextoFiltrosProcessosAtivos();
+  const dataImpressao = new Date().toLocaleString("pt-BR");
+
+  const linhasTabela = ordens.map(op => {
+    const manejo = getManejoDaOrdem(op);
+    return `
+      <tr>
+        <td>${escapeHtml(op.numeroOP || "-")}</td>
+        <td>${escapeHtml(op.referencia || "-")}</td>
+        <td>${escapeHtml(op.cor || "-")}</td>
+        <td class="num">${escapeHtml(op.quantidade ?? 0)}</td>
+        <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
+        <td>${escapeHtml(manejo?.fase || "-")}</td>
+        <td>${escapeHtml(manejo?.faccao || "-")}</td>
+        <td>${escapeHtml(formatarDataSimples(manejo?.chegada || ""))}</td>
+        <td class="num">${escapeHtml(manejo?.falta ?? 0)}</td>
+        <td>${escapeHtml(formatarDataSimples(manejo?.producao || ""))}</td>
+        <td>${escapeHtml(manejo?.celu || "-")}</td>
+        <td>${escapeHtml(getStatusManejo(op) === "bipado" ? "Bipado" : getStatusManejo(op) === "organizada" ? "Organizada" : "Pendente")}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const htmlImpressao = `
+    <!doctype html>
+    <html lang="pt-BR">
+      <head>
+        <meta charset="utf-8" />
+        <title>Impressão Processos</title>
+        <style>
+          * { box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; color: #0f172a; margin: 18px; font-size: 11px; }
+          .print-header { display: flex; justify-content: space-between; gap: 16px; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; }
+          h1 { margin: 0 0 4px; font-size: 20px; }
+          .muted { color: #475569; font-size: 11px; }
+          .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+          .summary div { border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; }
+          .summary span { display: block; color: #475569; font-size: 10px; }
+          .summary strong { display: block; font-size: 15px; margin-top: 3px; }
+          .filter-box { border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; margin-bottom: 12px; background: #f8fafc; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #cbd5e1; padding: 5px 4px; vertical-align: top; }
+          th { background: #eef2ff; font-size: 10px; text-align: left; }
+          td.num { text-align: right; font-weight: bold; }
+          tr:nth-child(even) td { background: #f8fafc; }
+          @page { size: landscape; margin: 10mm; }
+          @media print { body { margin: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="print-header">
+          <div>
+            <h1>Processos - Itens filtrados</h1>
+            <div class="muted">Sistema OP Confecção</div>
+          </div>
+          <div class="muted">Impresso em:<br><strong>${escapeHtml(dataImpressao)}</strong></div>
+        </div>
+
+        <div class="filter-box"><strong>${escapeHtml(filtroAtivo)}</strong></div>
+
+        <div class="summary">
+          <div><span>OPs</span><strong>${ordens.length.toLocaleString("pt-BR")}</strong></div>
+          <div><span>Total de peças</span><strong>${totalPecas.toLocaleString("pt-BR")}</strong></div>
+          <div><span>Total em falta</span><strong>${totalFalta.toLocaleString("pt-BR")}</strong></div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>OP</th>
+              <th>REF</th>
+              <th>Cor</th>
+              <th>QTI</th>
+              <th>Necessidade</th>
+              <th>Fase</th>
+              <th>Facção</th>
+              <th>Chegada</th>
+              <th>Falta</th>
+              <th>Produção</th>
+              <th>CELU</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>${linhasTabela}</tbody>
+        </table>
+
+        <script>
+          window.addEventListener("load", () => {
+            window.focus();
+            window.print();
+          });
+        </script>
+      </body>
+    </html>
+  `;
+
+  const janela = window.open("", "_blank");
+  if (!janela) {
+    toast("O navegador bloqueou a impressão. Permita pop-ups para este site.");
+    return;
+  }
+
+  janela.document.open();
+  janela.document.write(htmlImpressao);
+  janela.document.close();
+}
+
 
 function renderProcessos() {
   const tbody = document.getElementById("listaProcessos");
@@ -2064,7 +2301,7 @@ function renderProcessos() {
       : "-";
 
     return `
-      <tr class="${manejo ? "processo-organizado" : "processo-pendente"}">
+      <tr class="${getStatusManejo(op) === "bipado" ? "processo-bipado" : manejo ? "processo-organizado" : "processo-pendente"}">
         <td><strong>${escapeHtml(op.numeroOP || "-")}</strong></td>
         <td>${escapeHtml(op.referencia || "-")}</td>
         <td><strong>${escapeHtml(op.cor || "-")}</strong></td>
@@ -2077,7 +2314,7 @@ function renderProcessos() {
         <td>${escapeHtml(formatarDataSimples(manejo?.producao || ""))}</td>
         <td>${escapeHtml(manejo?.celu || "-")}</td>
         <td>${escapeHtml(silkTexto)}</td>
-        <td>${manejoStatusBadge(manejo)}</td>
+        <td>${manejoStatusBadge(manejo, op)}</td>
       </tr>
     `;
   }).join("");
@@ -2115,6 +2352,10 @@ function getOrdensRelatorio() {
 
   if (info.tipo === "especifico") {
     ordens = ordens.filter(op => Boolean(op[info.campo]));
+  }
+
+  if (info.tipo === "bipado") {
+    ordens = ordens.filter(op => getStatusManejo(op) === "bipado");
   }
 
   const semana = document.getElementById("filtroSemana").value;
@@ -2155,12 +2396,82 @@ function renderRelatorio() {
   const tbody = document.getElementById("corpoRelatorio");
   const ordens = getOrdensRelatorio();
 
+
+  if (info.tipo === "bipado") {
+    thead.innerHTML = `
+      <tr>
+        <th>OP</th>
+        <th>Necessidade</th>
+        <th>Referência</th>
+        <th>Cor</th>
+        <th>Produto</th>
+        <th>Qtd.</th>
+        <th>Fase</th>
+        <th>Facção</th>
+        <th>Produção</th>
+        <th>CELU</th>
+        <th>Status</th>
+      </tr>
+    `;
+
+    if (!ordens.length) {
+      tbody.innerHTML = `<tr><td colspan="11" class="empty">Nenhuma OP bipada encontrada.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = ordens.map(op => {
+      const manejo = getManejoDaOrdem(op);
+      return `
+        <tr>
+          <td><strong>${escapeHtml(op.numeroOP)}</strong></td>
+          <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
+          <td>${escapeHtml(op.referencia)}</td>
+          <td><strong>${escapeHtml(op.cor || "-")}</strong></td>
+          <td>${escapeHtml(op.produtoNome || "-")}</td>
+          <td>${escapeHtml(op.quantidade ?? 0)}</td>
+          <td>${escapeHtml(manejo?.fase || "-")}</td>
+          <td>${escapeHtml(manejo?.faccao || "-")}</td>
+          <td>${escapeHtml(formatarDataSimples(manejo?.producao || ""))}</td>
+          <td>${escapeHtml(manejo?.celu || "-")}</td>
+          <td>${manejoStatusBadge(manejo, op)}</td>
+        </tr>
+      `;
+    }).join("");
+
+    return;
+  }
+
+
+  if (info.tipo === "bipado") {
+    const linhas = [
+      ["OP", "Necessidade", "Referência", "Cor", "Produto", "Quantidade", "Fase", "Facção", "Produção", "CELU", "Status"]
+    ];
+
+    ordens.forEach(op => {
+      const manejo = getManejoDaOrdem(op);
+      linhas.push([
+        op.numeroOP,
+        getNecessidadeDaOrdem(op) || "",
+        op.referencia,
+        op.cor || "",
+        op.produtoNome || "",
+        op.quantidade,
+        manejo?.fase || "",
+        manejo?.faccao || "",
+        formatarDataSimples(manejo?.producao || ""),
+        manejo?.celu || "",
+        "Bipado"
+      ]);
+    });
+
+    return linhas;
+  }
+
   if (info.tipo === "geral") {
     thead.innerHTML = `
       <tr>
         <th>OP</th>
-        <th>Semana</th>
-        <th>Mês/Ano</th>
+        <th>Necessidade</th>
         <th>Referência</th>
         <th>Cor</th>
         <th>Produto</th>
@@ -2173,15 +2484,14 @@ function renderRelatorio() {
     `;
 
     if (!ordens.length) {
-      tbody.innerHTML = `<tr><td colspan="11" class="empty">Nenhuma ordem encontrada para este relatório.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma ordem encontrada para este relatório.</td></tr>`;
       return;
     }
 
     tbody.innerHTML = ordens.map(op => `
       <tr>
         <td><strong>${escapeHtml(op.numeroOP)}</strong></td>
-        <td>Semana ${op.semana}</td>
-        <td>${escapeHtml(op.mes)}/${op.ano}</td>
+        <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
         <td>${escapeHtml(op.referencia)}</td>
         <td><strong>${escapeHtml(op.cor || "-")}</strong></td>
         <td>${escapeHtml(op.produtoNome)}</td>
@@ -2199,8 +2509,7 @@ function renderRelatorio() {
   thead.innerHTML = `
     <tr>
       <th>OP</th>
-      <th>Semana</th>
-      <th>Mês/Ano</th>
+      <th>Necessidade</th>
       <th>Referência</th>
       <th>Cor</th>
       <th>Quantidade</th>
@@ -2209,7 +2518,7 @@ function renderRelatorio() {
   `;
 
   if (!ordens.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty">Nenhuma ordem encontrada para este relatório.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhuma ordem encontrada para este relatório.</td></tr>`;
     return;
   }
 
@@ -3522,7 +3831,9 @@ window.iniciarManejoParaOrdem = iniciarManejoParaOrdem;
 window.filtrarManejosPorOP = filtrarManejosPorOP;
 window.salvarManejoLinha = salvarManejoLinha;
 window.limparManejoLinha = limparManejoLinha;
+window.biparManejoLinha = biparManejoLinha;
 window.adicionarFaseSugestao = adicionarFaseSugestao;
 window.adicionarFaccaoSugestao = adicionarFaccaoSugestao;
 window.adicionarCeluSugestao = adicionarCeluSugestao;
 window.imprimirManejoFiltrado = imprimirManejoFiltrado;
+window.imprimirProcessosFiltrados = imprimirProcessosFiltrados;

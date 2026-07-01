@@ -2079,3 +2079,27 @@ small {
     height: 30px;
   }
 }
+
+
+.badge.bipado {
+  background: #111827;
+  color: #fff;
+}
+
+.btn-bipado {
+  background: #111827;
+  color: #fff;
+  border: 1px solid #111827;
+}
+
+.btn-bipado:hover {
+  background: #020617;
+}
+
+.bipado-card strong {
+  color: #111827;
+}
+
+.processo-bipado td {
+  background: rgba(17, 24, 39, 0.045);
+}

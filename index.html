@@ -565,6 +565,10 @@
               <span>Organizadas</span>
               <strong id="processosOrganizadas">0</strong>
             </div>
+            <div class="processo-card bipado-card">
+              <span>Bipadas</span>
+              <strong id="processosBipadas">0</strong>
+            </div>
             <div class="processo-card pending-card">
               <span>Pendentes</span>
               <strong id="processosPendentes">0</strong>
@@ -578,6 +582,7 @@
                 <option value="">Todos</option>
                 <option value="organizada">Organizadas</option>
                 <option value="pendente">Pendentes</option>
+                <option value="bipado">Bipadas</option>
               </select>
             </label>
 
@@ -624,6 +629,7 @@
             </label>
 
             <button class="btn" id="btnLimparFiltrosProcessos" type="button">Limpar filtros</button>
+            <button class="btn btn-print" id="btnImprimirProcessosFiltrados" type="button">Imprimir processos</button>
           </div>
 
           <div class="table-wrap processos-table-wrap">
@@ -668,6 +674,7 @@
             <button class="report-btn" data-relatorio="alca">Alça</button>
             <button class="report-btn" data-relatorio="bojo">Bojo</button>
             <button class="report-btn" data-relatorio="silk">Silk</button>
+            <button class="report-btn" data-relatorio="bipadas">Bipadas</button>
           </div>
 
           <div class="filters">
