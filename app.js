@@ -835,6 +835,14 @@ function configurarManejo() {
       renderManejoInline();
     });
   }
+
+  const toggleSoma = document.getElementById("btnToggleSomaManejo");
+  if (toggleSoma) {
+    toggleSoma.addEventListener("click", () => {
+      const painel = document.getElementById("painelSomaManejo");
+      if (painel) painel.classList.toggle("hidden");
+    });
+  }
 }
 
 function renderManejoInline() {
@@ -1128,6 +1136,11 @@ function renderResumoSomasManejo(ordens) {
   setText("somaManejoPecas", formatarNumeroInteiro(totalPecas));
   setText("somaManejoFalta", formatarNumeroInteiro(totalFalta));
   setText("somaManejoStatus", `${formatarNumeroInteiro(organizadas)} / ${formatarNumeroInteiro(pendentes)}`);
+  setText("somaManejoPecasCompacto", `${formatarNumeroInteiro(totalPecas)} peças`);
+  setText(
+    "somaManejoResumoCompacto",
+    `${formatarNumeroInteiro(totalOps)} OPs | ${formatarNumeroInteiro(totalFalta)} falta | ${formatarNumeroInteiro(organizadas)} organizadas / ${formatarNumeroInteiro(pendentes)} pendentes`
+  );
 
   renderTabelaSomaManejo("somaManejoFases", agruparSomaManejo(ordens, op => getManejoDaOrdem(op)?.fase || "Sem fase"));
   renderTabelaSomaManejo("somaManejoCores", agruparSomaManejo(ordens, op => op.cor || "Sem cor"));

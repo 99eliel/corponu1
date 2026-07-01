@@ -1156,3 +1156,40 @@ small {
     grid-template-columns: 1fr;
   }
 }
+
+
+.manejo-soma-compacta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.manejo-soma-compacta .btn {
+  padding: 9px 12px;
+}
+
+.manejo-soma-compacta span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+#painelSomaManejo {
+  margin-top: 8px;
+}
+
+@media (max-width: 680px) {
+  .manejo-soma-compacta {
+    align-items: stretch;
+  }
+
+  .manejo-soma-compacta .btn {
+    width: 100%;
+  }
+}

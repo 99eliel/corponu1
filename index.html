@@ -378,7 +378,14 @@
             Fases já usadas aparecem como sugestão, mas sempre é possível digitar uma fase nova.
           </div>
 
-          <div class="manejo-soma-panel">
+          <div class="manejo-soma-compacta">
+            <button class="btn btn-primary" id="btnToggleSomaManejo" type="button">
+              Soma dos filtros: <strong id="somaManejoPecasCompacto">0 peças</strong>
+            </button>
+            <span id="somaManejoResumoCompacto">0 OPs | 0 falta | 0 organizadas / 0 pendentes</span>
+          </div>
+
+          <div class="manejo-soma-panel hidden" id="painelSomaManejo">
             <div class="soma-cards">
               <div class="soma-card">
                 <span>OPs filtradas</span>

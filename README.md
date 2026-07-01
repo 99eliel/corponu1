@@ -708,3 +708,31 @@ Filtro Fase = BOJO
 ```
 
 O sistema mostra quantas peças estão na fase BOJO.
+
+
+## Ajuste: soma compacta no Manejo
+
+O painel de soma do Manejo agora fica escondido por padrão.
+
+No topo aparece apenas um botão compacto:
+
+```txt
+Soma dos filtros: X peças
+```
+
+Ao lado aparece um resumo curto:
+
+```txt
+OPs | falta | organizadas / pendentes
+```
+
+Quando clicar no botão, o painel detalhado abre com:
+
+```txt
+Total de peças
+Total de falta
+Soma por fase
+Soma por cor
+```
+
+Isso mantém a tela do Manejo mais limpa e evita ocupar muito espaço.
