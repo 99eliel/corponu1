@@ -888,7 +888,236 @@ function configurarManejo() {
       if (painel) painel.classList.toggle("hidden");
     });
   }
+
+  const imprimir = document.getElementById("btnImprimirManejoFiltrado");
+  if (imprimir) {
+    imprimir.addEventListener("click", imprimirManejoFiltrado);
+  }
 }
+
+
+function valorManejoParaImpressao(op, campo) {
+  const valorTela = valorLinhaManejo(op, campo);
+  if (valorTela !== "") return valorTela;
+
+  const manejo = getManejoDaOrdem(op);
+  return manejo?.[campo] ?? "";
+}
+
+function getLinhasManejoParaImpressao() {
+  return filtrarOrdensManejoPorColunas().map(op => {
+    const manejo = getManejoDaOrdem(op);
+
+    return {
+      numeroOP: op.numeroOP || "",
+      referencia: op.referencia || "",
+      silkNome: valorManejoParaImpressao(op, "silkNome") || getSilkNomeManejo(manejo),
+      silkData: valorManejoParaImpressao(op, "silkData"),
+      dataTecido: valorManejoParaImpressao(op, "dataTecido"),
+      fase: valorManejoParaImpressao(op, "fase"),
+      quantidade: numeroQuantidadeOP(op),
+      cor: op.cor || "",
+      data: valorManejoParaImpressao(op, "data"),
+      faccao: valorManejoParaImpressao(op, "faccao"),
+      chegada: valorManejoParaImpressao(op, "chegada"),
+      falta: Number(valorManejoParaImpressao(op, "falta") || 0),
+      producao: valorManejoParaImpressao(op, "producao"),
+      celu: valorManejoParaImpressao(op, "celu"),
+      necessidade: getNecessidadeDaOrdem(op),
+      status: getStatusManejo(op) === "organizada" ? "Organizada" : "Pendente"
+    };
+  });
+}
+
+function imprimirManejoFiltrado() {
+  const linhas = getLinhasManejoParaImpressao();
+
+  if (!linhas.length) {
+    toast("Nenhum item filtrado para imprimir.");
+    return;
+  }
+
+  const totalPecas = linhas.reduce((soma, item) => soma + Number(item.quantidade || 0), 0);
+  const totalFalta = linhas.reduce((soma, item) => soma + Number(item.falta || 0), 0);
+  const filtroAtivo = getFiltrosManejoAtivosTexto();
+  const dataImpressao = new Date().toLocaleString("pt-BR");
+
+  const linhasTabela = linhas.map(item => `
+    <tr>
+      <td>${escapeHtml(item.numeroOP)}</td>
+      <td>${escapeHtml(item.referencia)}</td>
+      <td>${escapeHtml(item.silkNome || "-")}</td>
+      <td>${escapeHtml(formatarDataSimples(item.silkData))}</td>
+      <td>${escapeHtml(formatarDataSimples(item.dataTecido))}</td>
+      <td>${escapeHtml(item.fase || "-")}</td>
+      <td class="num">${escapeHtml(item.quantidade)}</td>
+      <td>${escapeHtml(item.cor || "-")}</td>
+      <td>${escapeHtml(formatarDataSimples(item.data))}</td>
+      <td>${escapeHtml(item.faccao || "-")}</td>
+      <td>${escapeHtml(formatarDataSimples(item.chegada))}</td>
+      <td class="num">${escapeHtml(item.falta || 0)}</td>
+      <td>${escapeHtml(formatarDataSimples(item.producao))}</td>
+      <td>${escapeHtml(item.celu || "-")}</td>
+      <td>${escapeHtml(item.necessidade || "-")}</td>
+      <td>${escapeHtml(item.status)}</td>
+    </tr>
+  `).join("");
+
+  const htmlImpressao = `
+    <!doctype html>
+    <html lang="pt-BR">
+      <head>
+        <meta charset="utf-8" />
+        <title>Impressão Manejo</title>
+        <style>
+          * { box-sizing: border-box; }
+          body {
+            font-family: Arial, sans-serif;
+            color: #0f172a;
+            margin: 18px;
+            font-size: 11px;
+          }
+          .print-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
+          }
+          h1 {
+            margin: 0 0 4px;
+            font-size: 20px;
+          }
+          .muted {
+            color: #475569;
+            font-size: 11px;
+          }
+          .summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin: 12px 0;
+          }
+          .summary div {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 8px;
+          }
+          .summary span {
+            display: block;
+            color: #475569;
+            font-size: 10px;
+          }
+          .summary strong {
+            display: block;
+            font-size: 15px;
+            margin-top: 3px;
+          }
+          .filter-box {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 12px;
+            background: #f8fafc;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          th, td {
+            border: 1px solid #cbd5e1;
+            padding: 5px 4px;
+            vertical-align: top;
+          }
+          th {
+            background: #eef2ff;
+            font-size: 10px;
+            text-align: left;
+          }
+          td.num {
+            text-align: right;
+            font-weight: bold;
+          }
+          tr:nth-child(even) td {
+            background: #f8fafc;
+          }
+          @page {
+            size: landscape;
+            margin: 10mm;
+          }
+          @media print {
+            body { margin: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="print-header">
+          <div>
+            <h1>Manejo - Itens filtrados</h1>
+            <div class="muted">Sistema OP Confecção</div>
+          </div>
+          <div class="muted">
+            Impresso em:<br><strong>${escapeHtml(dataImpressao)}</strong>
+          </div>
+        </div>
+
+        <div class="filter-box">
+          <strong>${escapeHtml(filtroAtivo)}</strong>
+        </div>
+
+        <div class="summary">
+          <div><span>OPs</span><strong>${linhas.length.toLocaleString("pt-BR")}</strong></div>
+          <div><span>Total de peças</span><strong>${totalPecas.toLocaleString("pt-BR")}</strong></div>
+          <div><span>Total em falta</span><strong>${totalFalta.toLocaleString("pt-BR")}</strong></div>
+          <div><span>Status</span><strong>${escapeHtml(document.getElementById("somaManejoStatus")?.textContent || "-")}</strong></div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>OP</th>
+              <th>REF</th>
+              <th>Silk nome</th>
+              <th>Silk data</th>
+              <th>Data tecido</th>
+              <th>Fase</th>
+              <th>QTI</th>
+              <th>Cor</th>
+              <th>Data</th>
+              <th>Facção</th>
+              <th>Chegada</th>
+              <th>Falta</th>
+              <th>Produção</th>
+              <th>CELU</th>
+              <th>Necessidade</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>${linhasTabela}</tbody>
+        </table>
+
+        <script>
+          window.addEventListener("load", () => {
+            window.focus();
+            window.print();
+          });
+        </script>
+      </body>
+    </html>
+  `;
+
+  const janela = window.open("", "_blank");
+  if (!janela) {
+    toast("O navegador bloqueou a impressão. Permita pop-ups para este site.");
+    return;
+  }
+
+  janela.document.open();
+  janela.document.write(htmlImpressao);
+  janela.document.close();
+}
+
 
 function renderManejoInline() {
   const tbody = document.getElementById("listaManejoInline");
@@ -3048,3 +3277,4 @@ window.limparManejoLinha = limparManejoLinha;
 window.adicionarFaseSugestao = adicionarFaseSugestao;
 window.adicionarFaccaoSugestao = adicionarFaccaoSugestao;
 window.adicionarCeluSugestao = adicionarCeluSugestao;
+window.imprimirManejoFiltrado = imprimirManejoFiltrado;

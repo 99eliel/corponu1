@@ -962,3 +962,48 @@ Melhorias visuais:
 - Backup JSON separado em painel limpo
 - Layout responsivo para celular
 ```
+
+
+## Atualização: impressão dos itens filtrados no Manejo
+
+A aba **Manejo** agora possui o botão:
+
+```txt
+Imprimir itens filtrados
+```
+
+Funcionamento:
+
+```txt
+1. Use qualquer filtro do Manejo
+2. Exemplo: Cor = BRANCO
+3. A tabela mostra somente os itens filtrados
+4. Clique em Imprimir itens filtrados
+5. A impressão abre somente com os itens que estão ativos na tela
+```
+
+A impressão inclui:
+
+```txt
+Filtro ativo
+Quantidade de OPs
+Total de peças
+Total em falta
+OP
+Referência
+Silk nome/data
+Data tecido
+Fase
+Quantidade
+Cor
+Data
+Facção
+Chegada
+Falta
+Produção
+CELU
+Necessidade
+Status
+```
+
+A página de impressão usa layout horizontal para caber melhor na folha.
