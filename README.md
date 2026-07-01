@@ -1086,3 +1086,28 @@ Ajustes aplicados:
 ```
 
 Esse modo entra automaticamente conforme a largura da tela. Não precisa clicar em nada.
+
+
+## Atualização: menu lateral retrátil
+
+Foi adicionado um botão para recolher/expandir o menu lateral.
+
+Funcionamento:
+
+```txt
+- Clique no botão do lado do menu
+- O menu recolhe
+- A área principal ganha mais espaço
+- Clique novamente
+- O menu expande
+```
+
+Também foi adicionado:
+
+```txt
+- Animação suave
+- Ganho automático de largura na área principal
+- Memória do estado do menu (o sistema lembra se estava recolhido)
+```
+
+Isso ajuda bastante em telas menores e aproveita melhor o espaço nas abas **Manejo** e **Processos**.

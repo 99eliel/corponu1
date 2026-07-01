@@ -163,10 +163,60 @@ function carregarSugestoesFaccoesCelus() {
 }
 
 
+
+const SIDEBAR_STORAGE_KEY = "op_confeccao_sidebar_collapsed";
+
+function sidebarEstaRecolhida() {
+  try {
+    return localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1";
+  } catch (error) {
+    return false;
+  }
+}
+
+function salvarEstadoSidebar(recolhida) {
+  try {
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, recolhida ? "1" : "0");
+  } catch (error) {
+    console.warn("Não foi possível salvar o estado da sidebar.", error);
+  }
+}
+
+function aplicarEstadoSidebar(recolhida) {
+  const shell = document.getElementById("appShell");
+  const btn = document.getElementById("btnToggleSidebar");
+  if (!shell) return;
+
+  shell.classList.toggle("sidebar-collapsed", !!recolhida);
+
+  if (btn) {
+    btn.textContent = recolhida ? "▶" : "◀";
+    btn.setAttribute("aria-label", recolhida ? "Expandir menu" : "Recolher menu");
+    btn.setAttribute("title", recolhida ? "Expandir menu" : "Recolher menu");
+  }
+}
+
+function alternarSidebar() {
+  const proximoEstado = !sidebarEstaRecolhida();
+  salvarEstadoSidebar(proximoEstado);
+  aplicarEstadoSidebar(proximoEstado);
+}
+
+function configurarSidebarRetratil() {
+  const btn = document.getElementById("btnToggleSidebar");
+  if (btn) {
+    btn.addEventListener("click", alternarSidebar);
+  }
+
+  aplicarEstadoSidebar(sidebarEstaRecolhida());
+}
+
+
 document.addEventListener("DOMContentLoaded", () => {
   carregarSugestoesFaccoesCelus();
   carregarSugestoesExtrasManejo();
   configurarVisibilidadeSenhas();
+  configurarSidebarRetratil();
   configurarAuth();
   configurarNavegacao();
   configurarProduto();
@@ -289,6 +339,7 @@ function mostrarSistema() {
   document.getElementById("userName").textContent = state.perfil.nome || state.currentUser.email;
   document.getElementById("userRole").textContent = ehAdmin() ? "Admin" : "Usuário comum";
 
+  aplicarEstadoSidebar(sidebarEstaRecolhida());
   aplicarPermissoesTela();
   abrirPagina("dashboard");
 }
