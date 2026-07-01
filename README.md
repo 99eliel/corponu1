@@ -1213,3 +1213,32 @@ Filtro Facção: digitar parte do nome
 ```
 
 A busca por coluna aceita texto parcial. Isso facilita encontrar números ou valores específicos sem precisar rolar a lista inteira.
+
+
+## Atualização: melhoria visual e contraste
+
+Foi adicionado um ajuste visual para melhorar a leitura em telas menores.
+
+Melhorias:
+
+```txt
+- Letras mais escuras
+- Títulos mais fortes
+- Cabeçalho da tabela mais destacado
+- Filtros mais legíveis
+- Campos preenchidos com mais contraste
+- Linhas alternadas mais visíveis
+- Destaque maior para OP, REF, QTI, COR e NECESSIDADE
+- Status mais fácil de identificar
+```
+
+O objetivo é o usuário diferenciar melhor:
+
+```txt
+Título
+Filtro
+Informação automática
+Campo editável
+Status
+Botões
+```
