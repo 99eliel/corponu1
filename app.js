@@ -800,10 +800,16 @@ async function excluirOrdem(id) {
 
 
 
+
+function atualizarManejoComSoma() {
+  renderManejoInline();
+  setTimeout(renderResumoSomasManejoPeloDOM, 0);
+}
+
 function configurarManejo() {
   const busca = document.getElementById("buscaManejoLinha");
   if (busca) {
-    busca.addEventListener("input", renderManejoInline);
+    busca.addEventListener("input", atualizarManejoComSoma);
   }
 
   [
@@ -825,14 +831,14 @@ function configurarManejo() {
   ].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.addEventListener("change", renderManejoInline);
+    el.addEventListener("change", atualizarManejoComSoma);
   });
 
   const limpar = document.getElementById("btnLimparFiltrosManejo");
   if (limpar) {
     limpar.addEventListener("click", () => {
       limparFiltrosColunasManejo();
-      renderManejoInline();
+      atualizarManejoComSoma();
     });
   }
 
@@ -864,7 +870,7 @@ function renderManejoInline() {
     const rowClass = manejo ? "manejo-row-saved" : "manejo-row-pending";
 
     return `
-      <tr class="${rowClass}">
+      <tr class="${rowClass}" data-manejo-row="1" data-qti="${escapeHtml(numeroQuantidadeOP(op))}" data-falta="${escapeHtml(numeroFaltaManejo(op))}" data-status="${escapeHtml(getStatusManejo(op))}" data-fase="${escapeHtml(manejo?.fase || "Sem fase")}" data-cor="${escapeHtml(op.cor || "Sem cor")}">
         <td><input class="manejo-readonly" value="${escapeHtml(op.numeroOP || "")}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(op.referencia || "")}" readonly /></td>
         <td>
@@ -905,6 +911,8 @@ function renderManejoInline() {
       </tr>
     `;
   }).join("");
+
+  renderResumoSomasManejoPeloDOM();
 }
 
 
@@ -925,6 +933,7 @@ function getSilkNomeManejo(manejo) {
 }
 
 function getStatusManejo(op) {
+  if (op?.manejoStatus) return op.manejoStatus;
   return getManejoDaOrdem(op) ? "organizada" : "pendente";
 }
 
@@ -1185,8 +1194,39 @@ function renderResumoSomasManejo(ordens) {
     `${formatarNumeroInteiro(totalOps)} OPs encontradas | ${formatarNumeroInteiro(totalFalta)} falta | ${formatarNumeroInteiro(organizadas)} organizadas / ${formatarNumeroInteiro(pendentes)} pendentes`
   );
 
-  renderTabelaSomaManejo("somaManejoFases", agruparSomaManejo(ordens, op => getManejoDaOrdem(op)?.fase || "Sem fase"));
+  renderTabelaSomaManejo("somaManejoFases", agruparSomaManejo(ordens, op => op.manejo?.fase || getManejoDaOrdem(op)?.fase || "Sem fase"));
   renderTabelaSomaManejo("somaManejoCores", agruparSomaManejo(ordens, op => op.cor || "Sem cor"));
+}
+
+
+
+function renderResumoSomasManejoPeloDOM() {
+  const linhas = [...document.querySelectorAll("#listaManejoInline tr[data-manejo-row='1']")];
+
+  if (!linhas.length) {
+    renderResumoSomasManejo([]);
+    return;
+  }
+
+  const ordensVisiveis = linhas.map(linha => {
+    const qti = Number(linha.dataset.qti || 0);
+    const falta = Number(linha.dataset.falta || 0);
+    const status = linha.dataset.status || "pendente";
+    const fase = linha.dataset.fase || "Sem fase";
+    const cor = linha.dataset.cor || "Sem cor";
+
+    return {
+      quantidade: Number.isFinite(qti) ? qti : 0,
+      cor,
+      manejo: {
+        falta: Number.isFinite(falta) ? falta : 0,
+        fase
+      },
+      manejoStatus: status
+    };
+  });
+
+  renderResumoSomasManejo(ordensVisiveis);
 }
 
 

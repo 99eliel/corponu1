@@ -759,3 +759,20 @@ Total do filtro: 620 peças
 ```
 
 A soma muda automaticamente assim que o usuário seleciona qualquer filtro no cabeçalho.
+
+
+## Correção: soma atualizando junto com os filtros
+
+Foi corrigido o resumo compacto do Manejo.
+
+Agora, quando o usuário seleciona qualquer filtro no cabeçalho, como:
+
+```txt
+Cor = BRANCO
+Facção = X
+Fase = BOJO
+```
+
+a tabela é filtrada e a soma é recalculada imediatamente com base nas linhas visíveis.
+
+A soma agora usa as próprias linhas exibidas na tabela como conferência, evitando ficar presa no valor antigo.
