@@ -56,7 +56,7 @@ const state = {
   fasesManejoExtras: [],
   faccoesManejoExtras: [],
   celusManejoExtras: [],
-  servicosPagamento: [],
+  precosReferencia: [],
   entregasPagamento: [],
   usuarios: [],
   logs: [],
@@ -411,15 +411,16 @@ function iniciarListenersFirestore() {
   }));
 
 
-  state.unsubscribers.push(onSnapshot(doc(db, "configuracoes", "servicosPagamento"), snapshot => {
-    const dados = snapshot.exists() ? snapshot.data() : {};
-    state.servicosPagamento = Array.isArray(dados.servicos) ? dados.servicos : [];
-    renderServicosPagamento();
+  const precosReferenciaQuery = query(collection(db, "precosReferencia"), orderBy("referencia", "asc"));
+
+  state.unsubscribers.push(onSnapshot(precosReferenciaQuery, snapshot => {
+    state.precosReferencia = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    renderPrecosReferencia();
     renderManejoInline();
     renderPagamentos();
   }, error => {
     console.error(error);
-    toast("Erro ao carregar serviços de pagamento.");
+    toast("Erro ao carregar tabela de preços. Verifique as permissões.");
   }));
 
   const entregasPagamentoQuery = query(collection(db, "entregasPagamento"), orderBy("dataEntrega", "desc"));
@@ -1329,20 +1330,34 @@ function imprimirManejoFiltrado() {
 
 
 
-function getServicosPagamentoPorSetor(setor) {
-  return getServicosPagamentoAtivos().filter(servico => servico.setor === setor);
+function getPrecosReferenciaAtivos() {
+  return [...state.precosReferencia]
+    .filter(preco => preco && preco.ativo !== false)
+    .sort((a, b) => {
+      const refCompare = String(a.referencia || "").localeCompare(String(b.referencia || ""), "pt-BR", { numeric: true });
+      if (refCompare !== 0) return refCompare;
+      return String(a.processo || "").localeCompare(String(b.processo || ""), "pt-BR", { numeric: true });
+    });
 }
 
-function optionsServicosPagamentoManejo(setor, selecionado = "") {
-  const servicos = getServicosPagamentoPorSetor(setor);
+function getPrecosReferenciaPorOPSetor(op, setor) {
+  const referencia = normalizarReferencia(op?.referencia || "");
 
-  if (!servicos.length) {
-    return `<option value="">Cadastre serviço</option>`;
+  return getPrecosReferenciaAtivos().filter(preco => {
+    return normalizarReferencia(preco.referencia || "") === referencia && preco.setor === setor;
+  });
+}
+
+function optionsPrecosReferenciaManejo(op, setor, selecionado = "") {
+  const precos = getPrecosReferenciaPorOPSetor(op, setor);
+
+  if (!precos.length) {
+    return `<option value="">Preço não cadastrado</option>`;
   }
 
-  return `<option value="">Serviço</option>` + servicos.map(servico => {
-    const selected = servico.id === selecionado ? " selected" : "";
-    return `<option value="${escapeHtml(servico.id)}"${selected}>${escapeHtml(servico.nome)} - ${escapeHtml(formatarMoedaBR(servico.valor))}</option>`;
+  return `<option value="">Processo / preço</option>` + precos.map(preco => {
+    const selected = preco.id === selecionado ? " selected" : "";
+    return `<option value="${escapeHtml(preco.id)}"${selected}>${escapeHtml(preco.processo)} - ${escapeHtml(formatarMoedaBR(preco.valor))}</option>`;
   }).join("");
 }
 
@@ -1350,9 +1365,9 @@ function getDataHojeISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function totalEntreguePagamento(opId, servicoId) {
+function totalEntreguePagamento(opId, precoReferenciaId) {
   return state.entregasPagamento
-    .filter(entrega => entrega.opId === opId && entrega.servicoId === servicoId)
+    .filter(entrega => entrega.opId === opId && (entrega.precoReferenciaId === precoReferenciaId || entrega.servicoId === precoReferenciaId))
     .reduce((soma, entrega) => soma + Number(entrega.quantidade || 0), 0);
 }
 
@@ -1370,18 +1385,23 @@ async function registrarEntregaManejo(ordemId) {
 
   const setor = getManejoSetorAtual();
   const rowId = idLinhaManejo(ordem);
-  const servicoId = document.getElementById(`${rowId}-servicoPagamento`)?.value || "";
+  const precoId = document.getElementById(`${rowId}-precoReferencia`)?.value || "";
   const dataEntrega = document.getElementById(`${rowId}-dataEntregaPagamento`)?.value || "";
   const quantidade = Number(document.getElementById(`${rowId}-qtdEntregaPagamento`)?.value || 0);
-  const servico = getServicoPagamento(servicoId);
+  const preco = getPrecoReferencia(precoId);
 
-  if (!servico) {
-    toast("Selecione o serviço que será pago.");
+  if (!preco) {
+    toast("Selecione um preço cadastrado para essa referência/processo.");
     return;
   }
 
-  if (servico.setor !== setor) {
-    toast(`Esse serviço pertence ao setor ${getLabelSetorPagamento(servico.setor)}. Troque o manejo ou selecione outro serviço.`);
+  if (preco.setor !== setor) {
+    toast(`Esse preço pertence ao setor ${getLabelSetorPagamento(preco.setor)}. Troque o manejo ou selecione outro preço.`);
+    return;
+  }
+
+  if (normalizarReferencia(preco.referencia || "") !== normalizarReferencia(ordem.referencia || "")) {
+    toast("Esse preço não pertence à referência desta OP.");
     return;
   }
 
@@ -1402,7 +1422,7 @@ async function registrarEntregaManejo(ordemId) {
     if (!continuar) return;
   }
 
-  const valorUnitario = Number(servico.valor || 0);
+  const valorUnitario = Number(preco.valor || 0);
   const total = quantidade * valorUnitario;
 
   const dadosEntrega = {
@@ -1413,10 +1433,12 @@ async function registrarEntregaManejo(ordemId) {
     cor: ordem.cor || "",
     produtoNome: ordem.produtoNome || "",
     faccao,
-    servicoId: servico.id,
-    servicoNome: servico.nome,
-    setor: servico.setor,
-    setorLabel: getLabelSetorPagamento(servico.setor),
+    precoReferenciaId: preco.id,
+    processo: preco.processo,
+    servicoId: preco.id,
+    servicoNome: preco.processo,
+    setor: preco.setor,
+    setorLabel: getLabelSetorPagamento(preco.setor),
     dataEntrega,
     quantidade,
     valorUnitario,
@@ -1432,7 +1454,7 @@ async function registrarEntregaManejo(ordemId) {
   try {
     await addDoc(collection(db, "entregasPagamento"), dadosEntrega);
 
-    const totalEntregue = totalEntreguePagamento(ordem.id, servico.id) + quantidade;
+    const totalEntregue = totalEntreguePagamento(ordem.id, preco.id) + quantidade;
     const faltaCalculada = Math.max(numeroQuantidadeOP(ordem) - totalEntregue, 0);
     const faltaInput = document.getElementById(`${rowId}-falta`);
     if (faltaInput) faltaInput.value = faltaCalculada;
@@ -1458,8 +1480,8 @@ async function registrarEntregaManejo(ordemId) {
       producao: valorLinhaManejo(ordem, "producao") || manejoExistente.producao || dataEntrega,
       celu: limparTexto(valorLinhaManejo(ordem, "celu")) || manejoExistente.celu || "",
       necessidade: getNecessidadeDaOrdem(ordem),
-      ultimoServicoPagamentoId: servico.id,
-      ultimoServicoPagamentoNome: servico.nome,
+      ultimoPrecoReferenciaId: preco.id,
+      ultimoProcessoPagamento: preco.processo,
       ultimaEntregaPagamento: dataEntrega,
       ultimaQuantidadeEntregue: quantidade,
       totalEntreguePagamento: totalEntregue,
@@ -1486,7 +1508,7 @@ async function registrarEntregaManejo(ordemId) {
       "entrega_manejo_pagamento",
       "entregaPagamento",
       ordem.id,
-      `OP ${ordem.numeroOP} | ${faccao} | ${servico.nome} | ${quantidade} peças | Falta ${faltaCalculada} | ${formatarMoedaBR(total)}`
+      `OP ${ordem.numeroOP} | Ref. ${ordem.referencia} | ${faccao} | ${preco.processo} | ${quantidade} peças | Falta ${faltaCalculada} | ${formatarMoedaBR(total)}`
     );
 
     document.getElementById(`${rowId}-qtdEntregaPagamento`).value = "";
@@ -1572,7 +1594,7 @@ function renderManejoInline() {
             <button class="btn btn-sm btn-primary" onclick="salvarManejoLinha('${op.id}')">Salvar</button>
             ${manejo && ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="limparManejoLinha('${op.id}')">Limpar</button>` : ""}
             <div class="manejo-entrega-box">
-              <select id="${rowId}-servicoPagamento">${optionsServicosPagamentoManejo(setor, manejo?.ultimoServicoPagamentoId || "")}</select>
+              <select id="${rowId}-precoReferencia">${optionsPrecosReferenciaManejo(op, setor, manejo?.ultimoPrecoReferenciaId || manejo?.ultimoServicoPagamentoId || "")}</select>
               <input id="${rowId}-dataEntregaPagamento" type="date" value="${escapeHtml(getDataHojeISO())}" />
               <input id="${rowId}-qtdEntregaPagamento" type="number" min="1" step="1" placeholder="Qtd entregue" />
               <button class="btn btn-sm btn-success" onclick="registrarEntregaManejo('${op.id}')">Registrar entrega</button>
@@ -2953,14 +2975,14 @@ async function excluirFaccao(id) {
 
 
 function configurarPagamentos() {
-  const formServico = document.getElementById("formServicoPagamento");
-  if (formServico) {
-    formServico.addEventListener("submit", salvarServicoPagamento);
+  const formPreco = document.getElementById("formPrecoReferencia");
+  if (formPreco) {
+    formPreco.addEventListener("submit", salvarPrecoReferencia);
   }
 
-  const cancelarServico = document.getElementById("btnCancelarServicoPagamento");
-  if (cancelarServico) {
-    cancelarServico.addEventListener("click", limparFormServicoPagamento);
+  const cancelarPreco = document.getElementById("btnCancelarPrecoReferencia");
+  if (cancelarPreco) {
+    cancelarPreco.addEventListener("click", limparFormPrecoReferencia);
   }
 
   const formEntrega = document.getElementById("formEntregaPagamento");
@@ -2977,7 +2999,8 @@ function configurarPagamentos() {
     "pagamentoDataInicio",
     "pagamentoDataFim",
     "pagamentoFiltroFaccao",
-    "pagamentoFiltroServico",
+    "pagamentoFiltroReferencia",
+    "pagamentoFiltroPreco",
     "pagamentoFiltroSetor",
     "pagamentoFiltroStatus"
   ].forEach(id => {
@@ -2985,20 +3008,23 @@ function configurarPagamentos() {
     if (el) el.addEventListener("change", renderPagamentos);
   });
 
-  const entregaServico = document.getElementById("entregaServico");
-  if (entregaServico) {
-    entregaServico.addEventListener("change", preencherFaccaoDaEntregaPeloManejo);
+  const entregaPreco = document.getElementById("entregaPreco");
+  if (entregaPreco) {
+    entregaPreco.addEventListener("change", preencherFaccaoDaEntregaPeloManejo);
   }
 
   const entregaOP = document.getElementById("entregaOP");
   if (entregaOP) {
-    entregaOP.addEventListener("change", preencherFaccaoDaEntregaPeloManejo);
+    entregaOP.addEventListener("change", () => {
+      preencherFiltrosPagamento();
+      preencherFaccaoDaEntregaPeloManejo();
+    });
   }
 
   const limpar = document.getElementById("btnLimparFiltrosPagamento");
   if (limpar) {
     limpar.addEventListener("click", () => {
-      ["pagamentoDataInicio", "pagamentoDataFim", "pagamentoFiltroFaccao", "pagamentoFiltroServico", "pagamentoFiltroSetor"].forEach(id => {
+      ["pagamentoDataInicio", "pagamentoDataFim", "pagamentoFiltroFaccao", "pagamentoFiltroReferencia", "pagamentoFiltroPreco", "pagamentoFiltroSetor"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = "";
       });
@@ -3046,184 +3072,161 @@ function getCampoSetorPagamento(setor) {
   return mapa[setor] || "";
 }
 
-function getServicosPagamentoAtivos() {
-  return [...state.servicosPagamento]
-    .filter(servico => servico && servico.ativo !== false)
-    .sort((a, b) => {
-      const setorCompare = getLabelSetorPagamento(a.setor).localeCompare(getLabelSetorPagamento(b.setor), "pt-BR");
-      if (setorCompare !== 0) return setorCompare;
-      return String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true });
-    });
+function getPrecoReferencia(id) {
+  return state.precosReferencia.find(preco => preco.id === id) || null;
 }
 
-function limparFormServicoPagamento() {
-  const form = document.getElementById("formServicoPagamento");
+function limparFormPrecoReferencia() {
+  const form = document.getElementById("formPrecoReferencia");
   if (form) form.reset();
 
-  const id = document.getElementById("servicoPagamentoId");
+  const id = document.getElementById("precoReferenciaId");
   if (id) id.value = "";
 }
 
-async function salvarListaServicosPagamento(servicos, acaoLog, detalhesLog) {
-  await setDoc(doc(db, "configuracoes", "servicosPagamento"), {
-    servicos,
-    atualizadoPor: state.currentUser.uid,
-    atualizadoEm: serverTimestamp()
-  }, { merge: true });
-
-  await registrarLog(acaoLog, "configuracao", "servicosPagamento", detalhesLog);
-}
-
-async function salvarServicoPagamento(event) {
+async function salvarPrecoReferencia(event) {
   event.preventDefault();
 
   if (!ehAdmin()) {
-    toast("Apenas admin pode salvar serviços de pagamento.");
+    toast("Apenas admin pode salvar tabela de preços.");
     return;
   }
 
-  const idAtual = document.getElementById("servicoPagamentoId").value;
-  const nome = limparTexto(document.getElementById("servicoPagamentoNome").value).toUpperCase();
-  const setor = document.getElementById("servicoPagamentoSetor").value;
-  const valor = Number(document.getElementById("servicoPagamentoValor").value || 0);
+  const idAtual = document.getElementById("precoReferenciaId").value;
+  const referencia = normalizarReferencia(document.getElementById("precoReferenciaRef").value);
+  const processo = limparTexto(document.getElementById("precoReferenciaProcesso").value).toUpperCase();
+  const setor = document.getElementById("precoReferenciaSetor").value;
+  const valor = Number(document.getElementById("precoReferenciaValor").value || 0);
 
-  if (!nome || !setor || valor <= 0) {
-    toast("Informe nome, setor e valor maior que zero.");
+  if (!referencia || !processo || !setor || valor <= 0) {
+    toast("Informe referência, processo, setor e valor maior que zero.");
     return;
   }
 
-  const servicos = [...state.servicosPagamento];
-  const id = idAtual || `${docIdSeguro(nome)}-${Date.now()}`;
-  const existenteIndex = servicos.findIndex(item => item.id === id);
+  const docId = idAtual || docIdSeguro(`${referencia}-${setor}-${processo}`);
 
-  const servico = {
-    ...(existenteIndex >= 0 ? servicos[existenteIndex] : {}),
-    id,
-    nome,
+  const dados = {
+    referencia,
+    processo,
     setor,
+    setorLabel: getLabelSetorPagamento(setor),
     valor,
-    ativo: existenteIndex >= 0 ? servicos[existenteIndex].ativo !== false : true,
+    ativo: true,
     atualizadoPor: state.currentUser.uid,
-    atualizadoEmISO: new Date().toISOString()
+    atualizadoEm: serverTimestamp()
   };
 
-  if (existenteIndex >= 0) {
-    servicos[existenteIndex] = servico;
-  } else {
-    servico.criadoPor = state.currentUser.uid;
-    servico.criadoEmISO = new Date().toISOString();
-    servicos.push(servico);
+  if (!idAtual) {
+    dados.criadoPor = state.currentUser.uid;
+    dados.criadoEm = serverTimestamp();
   }
 
   try {
-    await salvarListaServicosPagamento(
-      servicos,
-      existenteIndex >= 0 ? "servico_pagamento_atualizado" : "servico_pagamento_criado",
-      `${nome} | ${getLabelSetorPagamento(setor)} | ${formatarMoedaBR(valor)}`
+    await setDoc(doc(db, "precosReferencia", docId), dados, { merge: true });
+    await registrarLog(
+      idAtual ? "preco_referencia_atualizado" : "preco_referencia_criado",
+      "precoReferencia",
+      docId,
+      `Ref. ${referencia} | ${processo} | ${getLabelSetorPagamento(setor)} | ${formatarMoedaBR(valor)}`
     );
-
-    limparFormServicoPagamento();
-    toast("Serviço de pagamento salvo.");
+    limparFormPrecoReferencia();
+    toast("Preço da referência salvo.");
   } catch (error) {
     console.error(error);
-    toast("Erro ao salvar serviço de pagamento.");
+    toast("Erro ao salvar preço da referência.");
   }
 }
 
-function renderServicosPagamento() {
-  const tbody = document.getElementById("listaServicosPagamento");
+function renderPrecosReferencia() {
+  const tbody = document.getElementById("listaPrecosReferencia");
   if (!tbody) return;
 
-  const servicos = [...state.servicosPagamento].sort((a, b) => {
-    const setorCompare = getLabelSetorPagamento(a.setor).localeCompare(getLabelSetorPagamento(b.setor), "pt-BR");
-    if (setorCompare !== 0) return setorCompare;
-    return String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true });
+  const precos = [...state.precosReferencia].sort((a, b) => {
+    const refCompare = String(a.referencia || "").localeCompare(String(b.referencia || ""), "pt-BR", { numeric: true });
+    if (refCompare !== 0) return refCompare;
+    return String(a.processo || "").localeCompare(String(b.processo || ""), "pt-BR", { numeric: true });
   });
 
-  if (!servicos.length) {
-    tbody.innerHTML = `<tr><td colspan="5" class="empty">Nenhum serviço cadastrado.</td></tr>`;
+  if (!precos.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhum preço cadastrado.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = servicos.map(servico => `
+  tbody.innerHTML = precos.map(preco => `
     <tr>
-      <td><strong>${escapeHtml(servico.nome || "-")}</strong></td>
-      <td>${escapeHtml(getLabelSetorPagamento(servico.setor))}</td>
-      <td><strong>${escapeHtml(formatarMoedaBR(servico.valor))}</strong></td>
+      <td><strong>${escapeHtml(preco.referencia || "-")}</strong></td>
+      <td><strong>${escapeHtml(preco.processo || "-")}</strong></td>
+      <td>${escapeHtml(getLabelSetorPagamento(preco.setor))}</td>
+      <td><strong>${escapeHtml(formatarMoedaBR(preco.valor))}</strong></td>
       <td>
-        <span class="status-dot ${servico.ativo !== false ? "active" : "inactive"}">
-          ${servico.ativo !== false ? "Ativo" : "Inativo"}
+        <span class="status-dot ${preco.ativo !== false ? "active" : "inactive"}">
+          ${preco.ativo !== false ? "Ativo" : "Inativo"}
         </span>
       </td>
       <td>
-        <button class="btn btn-sm" onclick="editarServicoPagamento('${servico.id}')">Editar</button>
-        <button class="btn btn-sm ${servico.ativo !== false ? "btn-warning" : "btn-success"}" onclick="alternarServicoPagamento('${servico.id}')">
-          ${servico.ativo !== false ? "Inativar" : "Ativar"}
+        <button class="btn btn-sm" onclick="editarPrecoReferencia('${preco.id}')">Editar</button>
+        <button class="btn btn-sm ${preco.ativo !== false ? "btn-warning" : "btn-success"}" onclick="alternarPrecoReferencia('${preco.id}')">
+          ${preco.ativo !== false ? "Inativar" : "Ativar"}
         </button>
-        <button class="btn btn-sm btn-danger" onclick="excluirServicoPagamento('${servico.id}')">Excluir</button>
+        <button class="btn btn-sm btn-danger" onclick="excluirPrecoReferencia('${preco.id}')">Excluir</button>
       </td>
     </tr>
   `).join("");
 }
 
-function editarServicoPagamento(id) {
-  const servico = state.servicosPagamento.find(item => item.id === id);
-  if (!servico) return;
+function editarPrecoReferencia(id) {
+  const preco = getPrecoReferencia(id);
+  if (!preco) return;
 
-  document.getElementById("servicoPagamentoId").value = servico.id;
-  document.getElementById("servicoPagamentoNome").value = servico.nome || "";
-  document.getElementById("servicoPagamentoSetor").value = servico.setor || "";
-  document.getElementById("servicoPagamentoValor").value = Number(servico.valor || 0).toFixed(2);
+  document.getElementById("precoReferenciaId").value = preco.id;
+  document.getElementById("precoReferenciaRef").value = preco.referencia || "";
+  document.getElementById("precoReferenciaProcesso").value = preco.processo || "";
+  document.getElementById("precoReferenciaSetor").value = preco.setor || "";
+  document.getElementById("precoReferenciaValor").value = Number(preco.valor || 0).toFixed(2);
 }
 
-async function alternarServicoPagamento(id) {
+async function alternarPrecoReferencia(id) {
   if (!ehAdmin()) {
-    toast("Apenas admin pode alterar serviços.");
+    toast("Apenas admin pode alterar preços.");
     return;
   }
 
-  const servicos = state.servicosPagamento.map(servico => {
-    if (servico.id !== id) return servico;
-    return {
-      ...servico,
-      ativo: servico.ativo === false,
+  const preco = getPrecoReferencia(id);
+  if (!preco) return;
+
+  const ativo = preco.ativo === false;
+
+  try {
+    await setDoc(doc(db, "precosReferencia", id), {
+      ativo,
       atualizadoPor: state.currentUser.uid,
-      atualizadoEmISO: new Date().toISOString()
-    };
-  });
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
 
-  const servico = servicos.find(item => item.id === id);
-
-  try {
-    await salvarListaServicosPagamento(
-      servicos,
-      servico?.ativo === false ? "servico_pagamento_inativado" : "servico_pagamento_ativado",
-      `${servico?.nome || id}`
-    );
-    toast(servico?.ativo === false ? "Serviço inativado." : "Serviço ativado.");
+    await registrarLog(ativo ? "preco_referencia_ativado" : "preco_referencia_inativado", "precoReferencia", id, `Ref. ${preco.referencia} | ${preco.processo}`);
+    toast(ativo ? "Preço ativado." : "Preço inativado.");
   } catch (error) {
     console.error(error);
-    toast("Erro ao alterar serviço.");
+    toast("Erro ao alterar preço.");
   }
 }
 
-async function excluirServicoPagamento(id) {
+async function excluirPrecoReferencia(id) {
   if (!ehAdmin()) {
-    toast("Apenas admin pode excluir serviços.");
+    toast("Apenas admin pode excluir preços.");
     return;
   }
 
-  const servico = state.servicosPagamento.find(item => item.id === id);
-  if (!confirm(`Excluir o serviço ${servico?.nome || id}?`)) return;
-
-  const servicos = state.servicosPagamento.filter(item => item.id !== id);
+  const preco = getPrecoReferencia(id);
+  if (!confirm(`Excluir o preço da referência ${preco?.referencia || id} - ${preco?.processo || ""}?`)) return;
 
   try {
-    await salvarListaServicosPagamento(servicos, "servico_pagamento_excluido", `${servico?.nome || id}`);
-    toast("Serviço excluído.");
+    await deleteDoc(doc(db, "precosReferencia", id));
+    await registrarLog("preco_referencia_excluido", "precoReferencia", id, `Ref. ${preco?.referencia || id} | ${preco?.processo || "-"}`);
+    toast("Preço excluído.");
   } catch (error) {
     console.error(error);
-    toast("Erro ao excluir serviço.");
+    toast("Erro ao excluir preço.");
   }
 }
 
@@ -3239,21 +3242,24 @@ function getOrdemPorEntradaPagamento(valor) {
   }) || null;
 }
 
-function getServicoPagamento(id) {
-  return state.servicosPagamento.find(servico => servico.id === id) || null;
+function getPrecosValidosParaEntregaManual(op) {
+  const referencia = normalizarReferencia(op?.referencia || "");
+  if (!referencia) return getPrecosReferenciaAtivos();
+
+  return getPrecosReferenciaAtivos().filter(preco => normalizarReferencia(preco.referencia || "") === referencia);
 }
 
-function getFaccaoSugeridaEntrega(op, servico) {
-  if (!op || !servico) return "";
+function getFaccaoSugeridaEntrega(op, preco) {
+  if (!op || !preco) return "";
 
-  const manejo = getManejoDaOrdem(op, servico.setor);
+  const manejo = getManejoDaOrdem(op, preco.setor);
   return limparTexto(manejo?.faccao || "").toUpperCase();
 }
 
 function preencherFaccaoDaEntregaPeloManejo() {
   const op = getOrdemPorEntradaPagamento(document.getElementById("entregaOP")?.value || "");
-  const servico = getServicoPagamento(document.getElementById("entregaServico")?.value || "");
-  const faccao = getFaccaoSugeridaEntrega(op, servico);
+  const preco = getPrecoReferencia(document.getElementById("entregaPreco")?.value || "");
+  const faccao = getFaccaoSugeridaEntrega(op, preco);
   const inputFaccao = document.getElementById("entregaFaccao");
 
   if (inputFaccao && faccao && !inputFaccao.value) {
@@ -3279,7 +3285,7 @@ async function salvarEntregaPagamento(event) {
 
   const idAtual = document.getElementById("entregaPagamentoId").value;
   const op = getOrdemPorEntradaPagamento(document.getElementById("entregaOP").value);
-  const servico = getServicoPagamento(document.getElementById("entregaServico").value);
+  const preco = getPrecoReferencia(document.getElementById("entregaPreco").value);
   const faccao = limparTexto(document.getElementById("entregaFaccao").value).toUpperCase();
   const dataEntrega = document.getElementById("entregaData").value;
   const quantidade = Number(document.getElementById("entregaQuantidade").value || 0);
@@ -3290,8 +3296,13 @@ async function salvarEntregaPagamento(event) {
     return;
   }
 
-  if (!servico) {
-    toast("Selecione um serviço cadastrado.");
+  if (!preco) {
+    toast("Selecione um preço/processo cadastrado.");
+    return;
+  }
+
+  if (normalizarReferencia(preco.referencia || "") !== normalizarReferencia(op.referencia || "")) {
+    toast("Esse preço não pertence à referência da OP selecionada.");
     return;
   }
 
@@ -3300,12 +3311,12 @@ async function salvarEntregaPagamento(event) {
     return;
   }
 
-  if (!op[getCampoSetorPagamento(servico.setor)]) {
-    toast(`Essa OP não pertence ao setor ${getLabelSetorPagamento(servico.setor)}.`);
+  if (!op[getCampoSetorPagamento(preco.setor)]) {
+    toast(`Essa OP não pertence ao setor ${getLabelSetorPagamento(preco.setor)}.`);
     return;
   }
 
-  const valorUnitario = Number(servico.valor || 0);
+  const valorUnitario = Number(preco.valor || 0);
   const total = quantidade * valorUnitario;
 
   const dados = {
@@ -3315,10 +3326,12 @@ async function salvarEntregaPagamento(event) {
     cor: op.cor || "",
     produtoNome: op.produtoNome || "",
     faccao,
-    servicoId: servico.id,
-    servicoNome: servico.nome,
-    setor: servico.setor,
-    setorLabel: getLabelSetorPagamento(servico.setor),
+    precoReferenciaId: preco.id,
+    processo: preco.processo,
+    servicoId: preco.id,
+    servicoNome: preco.processo,
+    setor: preco.setor,
+    setorLabel: getLabelSetorPagamento(preco.setor),
     dataEntrega,
     quantidade,
     valorUnitario,
@@ -3345,7 +3358,7 @@ async function salvarEntregaPagamento(event) {
       idAtual ? "entrega_pagamento_atualizada" : "entrega_pagamento_criada",
       "entregaPagamento",
       idAtual || dados.numeroOP,
-      `${dados.dataEntrega} | OP ${dados.numeroOP} | ${dados.faccao} | ${dados.servicoNome} | ${dados.quantidade} peças | ${formatarMoedaBR(dados.total)}`
+      `${dados.dataEntrega} | OP ${dados.numeroOP} | Ref. ${dados.referencia} | ${dados.faccao} | ${dados.processo} | ${dados.quantidade} peças | ${formatarMoedaBR(dados.total)}`
     );
 
     limparFormEntregaPagamento();
@@ -3362,7 +3375,7 @@ function editarEntregaPagamento(id) {
 
   document.getElementById("entregaPagamentoId").value = entrega.id;
   document.getElementById("entregaOP").value = entrega.numeroOP || entrega.opId || "";
-  document.getElementById("entregaServico").value = entrega.servicoId || "";
+  document.getElementById("entregaPreco").value = entrega.precoReferenciaId || entrega.servicoId || "";
   document.getElementById("entregaFaccao").value = entrega.faccao || "";
   document.getElementById("entregaData").value = entrega.dataEntrega || "";
   document.getElementById("entregaQuantidade").value = entrega.quantidade || "";
@@ -3393,7 +3406,7 @@ async function alternarStatusEntregaPagamento(id) {
       novoStatus === "pago" ? "entrega_pagamento_paga" : "entrega_pagamento_reaberta",
       "entregaPagamento",
       id,
-      `OP ${entrega.numeroOP} | ${entrega.faccao} | ${entrega.servicoNome} | ${entrega.quantidade} peças`
+      `OP ${entrega.numeroOP} | ${entrega.faccao} | ${entrega.processo || entrega.servicoNome} | ${entrega.quantidade} peças`
     );
 
     toast(novoStatus === "pago" ? "Entrega marcada como paga." : "Entrega reaberta como pendente.");
@@ -3426,7 +3439,8 @@ function getEntregasPagamentoFiltradas() {
   const inicio = document.getElementById("pagamentoDataInicio")?.value || "";
   const fim = document.getElementById("pagamentoDataFim")?.value || "";
   const filtroFaccao = document.getElementById("pagamentoFiltroFaccao")?.value || "";
-  const filtroServico = document.getElementById("pagamentoFiltroServico")?.value || "";
+  const filtroReferencia = document.getElementById("pagamentoFiltroReferencia")?.value || "";
+  const filtroPreco = document.getElementById("pagamentoFiltroPreco")?.value || "";
   const filtroSetor = document.getElementById("pagamentoFiltroSetor")?.value || "";
   const filtroStatus = document.getElementById("pagamentoFiltroStatus")?.value || "pendente";
 
@@ -3434,7 +3448,8 @@ function getEntregasPagamentoFiltradas() {
     if (inicio && String(item.dataEntrega || "") < inicio) return false;
     if (fim && String(item.dataEntrega || "") > fim) return false;
     if (filtroFaccao && item.faccao !== filtroFaccao) return false;
-    if (filtroServico && item.servicoId !== filtroServico) return false;
+    if (filtroReferencia && normalizarReferencia(item.referencia || "") !== normalizarReferencia(filtroReferencia)) return false;
+    if (filtroPreco && (item.precoReferenciaId || item.servicoId) !== filtroPreco) return false;
     if (filtroSetor && item.setor !== filtroSetor) return false;
     if (filtroStatus && (item.statusPagamento || "pendente") !== filtroStatus) return false;
     return true;
@@ -3443,12 +3458,15 @@ function getEntregasPagamentoFiltradas() {
 
 function preencherFiltrosPagamento() {
   const selectFaccao = document.getElementById("pagamentoFiltroFaccao");
-  const selectServico = document.getElementById("pagamentoFiltroServico");
-  const entregaServico = document.getElementById("entregaServico");
+  const selectReferencia = document.getElementById("pagamentoFiltroReferencia");
+  const selectPreco = document.getElementById("pagamentoFiltroPreco");
+  const entregaPreco = document.getElementById("entregaPreco");
   const entregaOPList = document.getElementById("entregaOPList");
   const entregaFaccaoList = document.getElementById("entregaFaccaoList");
 
-  const servicos = getServicosPagamentoAtivos();
+  const precos = getPrecosReferenciaAtivos();
+  const opEntrega = getOrdemPorEntradaPagamento(document.getElementById("entregaOP")?.value || "");
+  const precosEntrega = getPrecosValidosParaEntregaManual(opEntrega);
 
   if (selectFaccao) {
     const atual = selectFaccao.value;
@@ -3467,24 +3485,37 @@ function preencherFiltrosPagamento() {
     if (faccoes.includes(atual)) selectFaccao.value = atual;
   }
 
-  if (selectServico) {
-    const atual = selectServico.value;
+  if (selectReferencia) {
+    const atual = selectReferencia.value;
+    const referencias = [...new Set([
+      ...state.entregasPagamento.map(item => item.referencia),
+      ...state.precosReferencia.map(item => item.referencia),
+      ...state.ordens.map(item => item.referencia)
+    ].map(item => normalizarReferencia(item || "")).filter(Boolean))]
+      .sort((a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true }));
 
-    selectServico.innerHTML = `<option value="">Todos</option>` + servicos.map(servico => {
-      return `<option value="${escapeHtml(servico.id)}">${escapeHtml(servico.nome)} - ${escapeHtml(getLabelSetorPagamento(servico.setor))} - ${escapeHtml(formatarMoedaBR(servico.valor))}</option>`;
-    }).join("");
-
-    if (servicos.some(servico => servico.id === atual)) selectServico.value = atual;
+    selectReferencia.innerHTML = `<option value="">Todas</option>` + referencias.map(ref => `<option value="${escapeHtml(ref)}">${escapeHtml(ref)}</option>`).join("");
+    if (referencias.includes(atual)) selectReferencia.value = atual;
   }
 
-  if (entregaServico) {
-    const atual = entregaServico.value;
+  if (selectPreco) {
+    const atual = selectPreco.value;
 
-    entregaServico.innerHTML = `<option value="">Selecione</option>` + servicos.map(servico => {
-      return `<option value="${escapeHtml(servico.id)}">${escapeHtml(servico.nome)} - ${escapeHtml(getLabelSetorPagamento(servico.setor))} - ${escapeHtml(formatarMoedaBR(servico.valor))}</option>`;
+    selectPreco.innerHTML = `<option value="">Todos</option>` + precos.map(preco => {
+      return `<option value="${escapeHtml(preco.id)}">${escapeHtml(preco.referencia)} - ${escapeHtml(preco.processo)} - ${escapeHtml(formatarMoedaBR(preco.valor))}</option>`;
     }).join("");
 
-    if (servicos.some(servico => servico.id === atual)) entregaServico.value = atual;
+    if (precos.some(preco => preco.id === atual)) selectPreco.value = atual;
+  }
+
+  if (entregaPreco) {
+    const atual = entregaPreco.value;
+
+    entregaPreco.innerHTML = `<option value="">Selecione</option>` + precosEntrega.map(preco => {
+      return `<option value="${escapeHtml(preco.id)}">${escapeHtml(preco.referencia)} - ${escapeHtml(preco.processo)} - ${escapeHtml(formatarMoedaBR(preco.valor))}</option>`;
+    }).join("");
+
+    if (precosEntrega.some(preco => preco.id === atual)) entregaPreco.value = atual;
   }
 
   if (entregaOPList) {
@@ -3511,13 +3542,16 @@ function agruparPagamento(entregas) {
   const mapa = new Map();
 
   entregas.forEach(item => {
-    const chave = `${item.faccao}||${item.servicoId}`;
+    const processo = item.processo || item.servicoNome || "-";
+    const precoId = item.precoReferenciaId || item.servicoId || `${item.referencia}-${item.setor}-${processo}`;
+    const chave = `${item.faccao}||${precoId}`;
 
     if (!mapa.has(chave)) {
       mapa.set(chave, {
         faccao: item.faccao,
-        servicoId: item.servicoId,
-        servicoNome: item.servicoNome,
+        referencia: item.referencia || "-",
+        precoReferenciaId: precoId,
+        processo,
         setor: item.setor,
         setorLabel: item.setorLabel || getLabelSetorPagamento(item.setor),
         entregas: 0,
@@ -3537,9 +3571,9 @@ function agruparPagamento(entregas) {
   return [...mapa.values()].sort((a, b) => {
     const faccaoCompare = a.faccao.localeCompare(b.faccao, "pt-BR", { numeric: true });
     if (faccaoCompare !== 0) return faccaoCompare;
-    const setorCompare = a.setorLabel.localeCompare(b.setorLabel, "pt-BR");
-    if (setorCompare !== 0) return setorCompare;
-    return a.servicoNome.localeCompare(b.servicoNome, "pt-BR", { numeric: true });
+    const refCompare = String(a.referencia).localeCompare(String(b.referencia), "pt-BR", { numeric: true });
+    if (refCompare !== 0) return refCompare;
+    return a.processo.localeCompare(b.processo, "pt-BR", { numeric: true });
   });
 }
 
@@ -3547,7 +3581,7 @@ function renderPagamentos() {
   const tbody = document.getElementById("listaPagamento");
   if (!tbody) return;
 
-  renderServicosPagamento();
+  renderPrecosReferencia();
   preencherFiltrosPagamento();
 
   const entregas = getEntregasPagamentoFiltradas();
@@ -3568,15 +3602,16 @@ function renderPagamentos() {
   setText("pagamentoTotalRecebidas", totalRecebidas.toLocaleString("pt-BR"));
   setText("pagamentoTotalValor", formatarMoedaBR(totalValor));
 
-  if (!getServicosPagamentoAtivos().length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty">Cadastre pelo menos um serviço para gerar pagamentos.</td></tr>`;
+  if (!getPrecosReferenciaAtivos().length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">Cadastre pelo menos um preço por referência para gerar pagamentos.</td></tr>`;
   } else if (!grupos.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty">Nenhuma entrega encontrada para o período/filtro selecionado.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">Nenhuma entrega encontrada para o período/filtro selecionado.</td></tr>`;
   } else {
     tbody.innerHTML = grupos.map(grupo => `
       <tr class="${grupo.faccao === "SEM FACÇÃO" ? "pagamento-sem-faccao" : ""}">
         <td><strong>${escapeHtml(grupo.faccao)}</strong></td>
-        <td><strong>${escapeHtml(grupo.servicoNome)}</strong></td>
+        <td><strong>${escapeHtml(grupo.referencia)}</strong></td>
+        <td><strong>${escapeHtml(grupo.processo)}</strong></td>
         <td>${escapeHtml(grupo.setorLabel)}</td>
         <td>${escapeHtml(grupo.entregas.toLocaleString("pt-BR"))}</td>
         <td><strong>${escapeHtml(grupo.quantidade.toLocaleString("pt-BR"))}</strong></td>
@@ -3594,7 +3629,7 @@ function renderEntregasPagamento(entregas = getEntregasPagamentoFiltradas()) {
   if (!tbody) return;
 
   if (!entregas.length) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty">Nenhuma entrega registrada para os filtros selecionados.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="empty">Nenhuma entrega registrada para os filtros selecionados.</td></tr>`;
     return;
   }
 
@@ -3602,8 +3637,9 @@ function renderEntregasPagamento(entregas = getEntregasPagamentoFiltradas()) {
     <tr>
       <td>${escapeHtml(dataISOParaBR(entrega.dataEntrega) || entrega.dataEntrega || "-")}</td>
       <td><strong>${escapeHtml(entrega.numeroOP || "-")}</strong></td>
+      <td><strong>${escapeHtml(entrega.referencia || "-")}</strong></td>
       <td>${escapeHtml(entrega.faccao || "-")}</td>
-      <td>${escapeHtml(entrega.servicoNome || "-")}</td>
+      <td>${escapeHtml(entrega.processo || entrega.servicoNome || "-")}</td>
       <td><strong>${escapeHtml(Number(entrega.quantidade || 0).toLocaleString("pt-BR"))}</strong></td>
       <td><strong>${escapeHtml(formatarMoedaBR(entrega.total))}</strong></td>
       <td>
@@ -3667,14 +3703,16 @@ function getTextoFiltrosPagamento() {
   const inicio = document.getElementById("pagamentoDataInicio")?.value || "";
   const fim = document.getElementById("pagamentoDataFim")?.value || "";
   const faccao = document.getElementById("pagamentoFiltroFaccao")?.value || "";
-  const servico = document.getElementById("pagamentoFiltroServico")?.selectedOptions?.[0]?.textContent || "Todos";
+  const referencia = document.getElementById("pagamentoFiltroReferencia")?.value || "";
+  const preco = document.getElementById("pagamentoFiltroPreco")?.selectedOptions?.[0]?.textContent || "Todos";
   const setor = document.getElementById("pagamentoFiltroSetor")?.selectedOptions?.[0]?.textContent || "Todos";
   const status = document.getElementById("pagamentoFiltroStatus")?.selectedOptions?.[0]?.textContent || "Pendentes";
 
   const partes = [];
   if (inicio || fim) partes.push(`Período: ${inicio ? dataISOParaBR(inicio) : "início"} até ${fim ? dataISOParaBR(fim) : "hoje"}`);
   if (faccao) partes.push(`Facção: ${faccao}`);
-  if (servico && servico !== "Todos") partes.push(`Serviço: ${servico}`);
+  if (referencia) partes.push(`Referência: ${referencia}`);
+  if (preco && preco !== "Todos") partes.push(`Processo: ${preco}`);
   if (setor && setor !== "Todos") partes.push(`Setor: ${setor}`);
   if (status) partes.push(`Pagamento: ${status}`);
 
@@ -3698,7 +3736,8 @@ function imprimirRelatorioPagamento() {
   const linhas = grupos.map(grupo => `
     <tr>
       <td>${escapeHtml(grupo.faccao)}</td>
-      <td>${escapeHtml(grupo.servicoNome)}</td>
+      <td>${escapeHtml(grupo.referencia)}</td>
+      <td>${escapeHtml(grupo.processo)}</td>
       <td>${escapeHtml(grupo.setorLabel)}</td>
       <td class="num">${escapeHtml(grupo.entregas.toLocaleString("pt-BR"))}</td>
       <td class="num">${escapeHtml(grupo.quantidade.toLocaleString("pt-BR"))}</td>
@@ -3753,7 +3792,8 @@ function imprimirRelatorioPagamento() {
           <thead>
             <tr>
               <th>Facção</th>
-              <th>Serviço</th>
+              <th>Referência</th>
+              <th>Processo</th>
               <th>Setor</th>
               <th>Entregas</th>
               <th>Peças</th>
@@ -5313,6 +5353,10 @@ window.registrarEntregaManejo = registrarEntregaManejo;
 window.excluirEntregaPagamento = excluirEntregaPagamento;
 window.alternarStatusEntregaPagamento = alternarStatusEntregaPagamento;
 window.editarEntregaPagamento = editarEntregaPagamento;
-window.editarServicoPagamento = editarServicoPagamento;
-window.alternarServicoPagamento = alternarServicoPagamento;
-window.excluirServicoPagamento = excluirServicoPagamento;
+
+
+
+
+window.editarPrecoReferencia = editarPrecoReferencia;
+window.alternarPrecoReferencia = alternarPrecoReferencia;
+window.excluirPrecoReferencia = excluirPrecoReferencia;

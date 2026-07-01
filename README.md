@@ -1561,3 +1561,56 @@ Falta no Manejo: 0
 ```
 
 Assim o pagamento fica organizado por data e evita pagar duas vezes.
+
+
+## Atualização: tabela de preços por referência
+
+A aba **Pagamentos** não usa mais cadastro de serviços soltos.
+
+Agora o sistema usa a tabela:
+
+```txt
+Referência + Processo + Setor + Valor
+```
+
+Exemplo:
+
+```txt
+Ref. 2082 | ENCAPAR BOJO | Bojo | R$ 0,39
+Ref. 622  | ENCAPAR BOJO | Bojo | R$ 1,98
+Ref. 2107 | ENCAPAR BOJO | Bojo | R$ 0,39
+```
+
+Na prática:
+
+```txt
+1. A OP tem uma referência
+2. No Manejo, o usuário registra uma entrega
+3. O sistema mostra somente os processos/preços daquela referência e daquele setor
+4. Ao registrar a entrega, o valor cai no Pagamentos automaticamente
+```
+
+O relatório de pagamento agora calcula com base em:
+
+```txt
+Referência da OP
+Processo escolhido
+Quantidade entregue
+Valor cadastrado naquela referência/processo
+```
+
+Fórmula:
+
+```txt
+Total = Quantidade entregue × Valor da referência naquele processo
+```
+
+Nova coleção criada:
+
+```txt
+precosReferencia
+```
+
+Depois de subir essa versão, publique também o `firebase-rules.txt` atualizado no Firebase.
+
+Futuramente podemos adicionar importação de preços por planilha/PDF, igual foi feito com ordens de produção.

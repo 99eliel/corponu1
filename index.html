@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema OP Confecção</title>
-  <link rel="stylesheet" href="style.css?v=manejo-entregas-pagamento-1" />
+  <link rel="stylesheet" href="style.css?v=tabela-precos-referencia-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -742,27 +742,33 @@
 
       
       
+      
       <section id="pagamentos" class="page">
         <div class="grid-2 pagamentos-grid pagamentos-grid-entregas">
           <div class="panel form admin-only-block">
             <div class="panel-header">
               <div>
-                <h3>Cadastro de serviços</h3>
-                <p>Cadastre cada processo com seu setor e valor por peça.</p>
+                <h3>Tabela de preços por referência</h3>
+                <p>Cadastre o valor de cada referência em cada processo. Depois o Manejo e Pagamentos usam automaticamente.</p>
               </div>
             </div>
 
-            <form id="formServicoPagamento" class="form compact-form">
-              <input type="hidden" id="servicoPagamentoId" />
+            <form id="formPrecoReferencia" class="form compact-form">
+              <input type="hidden" id="precoReferenciaId" />
 
               <label>
-                Nome do serviço / processo
-                <input id="servicoPagamentoNome" type="text" placeholder="Ex: ENCAPAR BOJO" required />
+                Referência
+                <input id="precoReferenciaRef" type="text" list="referenciasList" placeholder="Ex: 2082" required />
+              </label>
+
+              <label>
+                Processo
+                <input id="precoReferenciaProcesso" type="text" placeholder="Ex: ENCAPAR BOJO" required />
               </label>
 
               <label>
                 Setor do manejo
-                <select id="servicoPagamentoSetor" required>
+                <select id="precoReferenciaSetor" required>
                   <option value="">Selecione</option>
                   <option value="bojo">Bojo</option>
                   <option value="alca">Alça</option>
@@ -772,27 +778,33 @@
 
               <label>
                 Valor por peça
-                <input id="servicoPagamentoValor" type="number" min="0" step="0.01" placeholder="Ex: 5.00" required />
+                <input id="precoReferenciaValor" type="number" min="0" step="0.01" placeholder="Ex: 0.39" required />
               </label>
 
               <div class="actions">
-                <button class="btn btn-primary" type="submit">Salvar serviço</button>
-                <button class="btn" id="btnCancelarServicoPagamento" type="button">Cancelar</button>
+                <button class="btn btn-primary" type="submit">Salvar preço</button>
+                <button class="btn" id="btnCancelarPrecoReferencia" type="button">Cancelar</button>
               </div>
             </form>
 
-            <div class="table-wrap servicos-pagamento-wrap">
-              <table class="servicos-pagamento-table">
+            <div class="notice small">
+              <strong>Exemplo:</strong> Ref. 2082 + Processo ENCAPAR BOJO = R$ 0,39.
+              Na entrega, o sistema procura automaticamente o valor pela referência da OP.
+            </div>
+
+            <div class="table-wrap precos-referencia-wrap">
+              <table class="precos-referencia-table">
                 <thead>
                   <tr>
-                    <th>Serviço</th>
+                    <th>Referência</th>
+                    <th>Processo</th>
                     <th>Setor</th>
                     <th>Valor</th>
                     <th>Status</th>
                     <th>Ações</th>
                   </tr>
                 </thead>
-                <tbody id="listaServicosPagamento"></tbody>
+                <tbody id="listaPrecosReferencia"></tbody>
               </table>
             </div>
 
@@ -801,7 +813,7 @@
             <div class="panel-header compact-header">
               <div>
                 <h3>Registrar entrega da facção</h3>
-                <p>Use uma linha por entrega. Assim o pagamento pode ser fechado por período sem pagar duplicado.</p>
+                <p>Normalmente a entrega nasce no Manejo. Esta área fica como lançamento manual/ajuste.</p>
               </div>
             </div>
 
@@ -815,8 +827,8 @@
               </label>
 
               <label>
-                Serviço
-                <select id="entregaServico" required>
+                Processo/preço
+                <select id="entregaPreco" required>
                   <option value="">Selecione</option>
                 </select>
               </label>
@@ -847,18 +859,13 @@
                 <button class="btn" id="btnCancelarEntregaPagamento" type="button">Cancelar</button>
               </div>
             </form>
-
-            <div class="notice small">
-              <strong>Exemplo:</strong> se a facção entregou 30 peças dia 30 e mais 20 dia 02,
-              registre duas entregas separadas. O calendário decide em qual fechamento cada entrega entra.
-            </div>
           </div>
 
           <div class="panel">
             <div class="panel-header">
               <div>
                 <h3>Relatório de pagamento por período</h3>
-                <p>Filtre por calendário para fechar mês, quinzena ou qualquer intervalo.</p>
+                <p>Feche o pagamento por calendário usando as entregas registradas no Manejo.</p>
               </div>
             </div>
 
@@ -881,8 +888,15 @@
               </label>
 
               <label>
-                Serviço
-                <select id="pagamentoFiltroServico">
+                Referência
+                <select id="pagamentoFiltroReferencia">
+                  <option value="">Todas</option>
+                </select>
+              </label>
+
+              <label>
+                Processo
+                <select id="pagamentoFiltroPreco">
                   <option value="">Todos</option>
                 </select>
               </label>
@@ -935,7 +949,8 @@
                 <thead>
                   <tr>
                     <th>Facção</th>
-                    <th>Serviço</th>
+                    <th>Referência</th>
+                    <th>Processo</th>
                     <th>Setor</th>
                     <th>Entregas</th>
                     <th>Peças</th>
@@ -960,8 +975,9 @@
                   <tr>
                     <th>Data</th>
                     <th>OP</th>
+                    <th>Ref.</th>
                     <th>Facção</th>
-                    <th>Serviço</th>
+                    <th>Processo</th>
                     <th>Qtd.</th>
                     <th>Total</th>
                     <th>Status</th>
@@ -1312,6 +1328,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="app.js?v=manejo-entregas-pagamento-1"></script>
+  <script type="module" src="app.js?v=tabela-precos-referencia-1"></script>
 </body>
 </html>

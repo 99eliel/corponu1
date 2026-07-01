@@ -78,6 +78,12 @@ service cloud.firestore {
       allow write: if admin();
     }
 
+
+    match /precosReferencia/{precoId} {
+      allow read: if usuarioComum();
+      allow create, update, delete: if admin();
+    }
+
     match /entregasPagamento/{entregaId} {
       allow read: if admin();
       allow create, update, delete: if admin();

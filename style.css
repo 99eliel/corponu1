@@ -2812,3 +2812,42 @@ table td {
     min-height: 25px;
   }
 }
+
+
+/* Tabela de preços por referência */
+.precos-referencia-wrap {
+  margin-top: 14px;
+}
+
+.precos-referencia-table {
+  min-width: 760px;
+}
+
+.precos-referencia-table th,
+.precos-referencia-table td {
+  white-space: nowrap;
+}
+
+.precos-referencia-table td:nth-child(4) {
+  text-align: right;
+}
+
+.pagamento-table {
+  min-width: 1120px;
+}
+
+.pagamento-table td:nth-child(5),
+.pagamento-table td:nth-child(6),
+.pagamento-table td:nth-child(7),
+.pagamento-table td:nth-child(8) {
+  text-align: right;
+}
+
+.entregas-pagamento-table {
+  min-width: 1120px;
+}
+
+.entregas-pagamento-table td:nth-child(6),
+.entregas-pagamento-table td:nth-child(7) {
+  text-align: right;
+}
