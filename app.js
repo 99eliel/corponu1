@@ -415,6 +415,7 @@ function iniciarListenersFirestore() {
     const dados = snapshot.exists() ? snapshot.data() : {};
     state.servicosPagamento = Array.isArray(dados.servicos) ? dados.servicos : [];
     renderServicosPagamento();
+    renderManejoInline();
     renderPagamentos();
   }, error => {
     console.error(error);
@@ -1327,6 +1328,176 @@ function imprimirManejoFiltrado() {
 }
 
 
+
+function getServicosPagamentoPorSetor(setor) {
+  return getServicosPagamentoAtivos().filter(servico => servico.setor === setor);
+}
+
+function optionsServicosPagamentoManejo(setor, selecionado = "") {
+  const servicos = getServicosPagamentoPorSetor(setor);
+
+  if (!servicos.length) {
+    return `<option value="">Cadastre serviço</option>`;
+  }
+
+  return `<option value="">Serviço</option>` + servicos.map(servico => {
+    const selected = servico.id === selecionado ? " selected" : "";
+    return `<option value="${escapeHtml(servico.id)}"${selected}>${escapeHtml(servico.nome)} - ${escapeHtml(formatarMoedaBR(servico.valor))}</option>`;
+  }).join("");
+}
+
+function getDataHojeISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function totalEntreguePagamento(opId, servicoId) {
+  return state.entregasPagamento
+    .filter(entrega => entrega.opId === opId && entrega.servicoId === servicoId)
+    .reduce((soma, entrega) => soma + Number(entrega.quantidade || 0), 0);
+}
+
+async function registrarEntregaManejo(ordemId) {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode registrar entregas para pagamento.");
+    return;
+  }
+
+  const ordem = state.ordens.find(op => op.id === ordemId);
+  if (!ordem) {
+    toast("OP não encontrada.");
+    return;
+  }
+
+  const setor = getManejoSetorAtual();
+  const rowId = idLinhaManejo(ordem);
+  const servicoId = document.getElementById(`${rowId}-servicoPagamento`)?.value || "";
+  const dataEntrega = document.getElementById(`${rowId}-dataEntregaPagamento`)?.value || "";
+  const quantidade = Number(document.getElementById(`${rowId}-qtdEntregaPagamento`)?.value || 0);
+  const servico = getServicoPagamento(servicoId);
+
+  if (!servico) {
+    toast("Selecione o serviço que será pago.");
+    return;
+  }
+
+  if (servico.setor !== setor) {
+    toast(`Esse serviço pertence ao setor ${getLabelSetorPagamento(servico.setor)}. Troque o manejo ou selecione outro serviço.`);
+    return;
+  }
+
+  const faccao = limparTexto(valorLinhaManejo(ordem, "faccao") || getManejoDaOrdem(ordem, setor)?.faccao || "").toUpperCase();
+
+  if (!faccao) {
+    toast("Informe a facção na linha antes de registrar a entrega.");
+    return;
+  }
+
+  if (!dataEntrega || quantidade <= 0) {
+    toast("Informe data da entrega e quantidade entregue.");
+    return;
+  }
+
+  if (quantidade > numeroQuantidadeOP(ordem)) {
+    const continuar = confirm("A quantidade entregue é maior que a quantidade da OP. Deseja continuar mesmo assim?");
+    if (!continuar) return;
+  }
+
+  const valorUnitario = Number(servico.valor || 0);
+  const total = quantidade * valorUnitario;
+
+  const dadosEntrega = {
+    origem: "manejo",
+    opId: ordem.id,
+    numeroOP: ordem.numeroOP || "",
+    referencia: ordem.referencia || "",
+    cor: ordem.cor || "",
+    produtoNome: ordem.produtoNome || "",
+    faccao,
+    servicoId: servico.id,
+    servicoNome: servico.nome,
+    setor: servico.setor,
+    setorLabel: getLabelSetorPagamento(servico.setor),
+    dataEntrega,
+    quantidade,
+    valorUnitario,
+    total,
+    statusPagamento: "pendente",
+    observacoes: `Registrado pelo Manejo ${getInfoManejoSetor(setor).label}`,
+    criadoPor: state.currentUser.uid,
+    criadoEm: serverTimestamp(),
+    atualizadoPor: state.currentUser.uid,
+    atualizadoEm: serverTimestamp()
+  };
+
+  try {
+    await addDoc(collection(db, "entregasPagamento"), dadosEntrega);
+
+    const totalEntregue = totalEntreguePagamento(ordem.id, servico.id) + quantidade;
+    const faltaCalculada = Math.max(numeroQuantidadeOP(ordem) - totalEntregue, 0);
+    const faltaInput = document.getElementById(`${rowId}-falta`);
+    if (faltaInput) faltaInput.value = faltaCalculada;
+
+    const manejoExistente = getManejoDaOrdem(ordem, setor) || {};
+    const silkNome = limparTexto(valorLinhaManejo(ordem, "silkNome")).toUpperCase() || manejoExistente.silkNome || manejoExistente.silk || "";
+    const silkData = valorLinhaManejo(ordem, "silkData") || manejoExistente.silkData || "";
+    const fase = limparTexto(valorLinhaManejo(ordem, "fase")).toUpperCase() || manejoExistente.fase || "ENTREGA";
+
+    const manejo = {
+      ...manejoExistente,
+      silk: silkNome,
+      silkNome,
+      silkData,
+      setor,
+      setorLabel: getInfoManejoSetor(setor).label,
+      dataTecido: valorLinhaManejo(ordem, "dataTecido") || manejoExistente.dataTecido || "",
+      fase,
+      data: valorLinhaManejo(ordem, "data") || manejoExistente.data || "",
+      faccao,
+      chegada: valorLinhaManejo(ordem, "chegada") || manejoExistente.chegada || dataEntrega,
+      falta: faltaCalculada,
+      producao: valorLinhaManejo(ordem, "producao") || manejoExistente.producao || dataEntrega,
+      celu: limparTexto(valorLinhaManejo(ordem, "celu")) || manejoExistente.celu || "",
+      necessidade: getNecessidadeDaOrdem(ordem),
+      ultimoServicoPagamentoId: servico.id,
+      ultimoServicoPagamentoNome: servico.nome,
+      ultimaEntregaPagamento: dataEntrega,
+      ultimaQuantidadeEntregue: quantidade,
+      totalEntreguePagamento: totalEntregue,
+      status: faltaCalculada <= 0 ? "bipado" : "organizada",
+      bipado: faltaCalculada <= 0,
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    };
+
+    if (!manejoExistente?.criadoEm) {
+      manejo.criadoPor = state.currentUser.uid;
+      manejo.criadoEm = serverTimestamp();
+    }
+
+    const statusManejo = faltaCalculada <= 0 ? "bipado" : "organizada";
+    const patch = montarPatchManejoSetor(setor, manejo, statusManejo, {
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    });
+
+    await setDoc(doc(db, "ordensProducao", ordem.id), patch, { merge: true });
+
+    await registrarLog(
+      "entrega_manejo_pagamento",
+      "entregaPagamento",
+      ordem.id,
+      `OP ${ordem.numeroOP} | ${faccao} | ${servico.nome} | ${quantidade} peças | Falta ${faltaCalculada} | ${formatarMoedaBR(total)}`
+    );
+
+    document.getElementById(`${rowId}-qtdEntregaPagamento`).value = "";
+    toast(`Entrega registrada. Falta atual: ${faltaCalculada} peça(s).`);
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao registrar entrega pelo manejo.");
+  }
+}
+
+
 function renderManejoInline() {
   const tbody = document.getElementById("listaManejoInline");
   if (!tbody) return;
@@ -1344,12 +1515,12 @@ function renderManejoInline() {
   }
 
   tbody.innerHTML = ordens.map(op => {
-    const manejo = getManejoDaOrdem(op);
+    const manejo = getManejoDaOrdem(op, setor);
     const rowId = idLinhaManejo(op);
     const rowClass = manejo ? "manejo-row-saved" : "manejo-row-pending";
 
     return `
-      <tr class="${rowClass}" data-manejo-row="1" data-qti="${escapeHtml(numeroQuantidadeOP(op))}" data-falta="${escapeHtml(numeroFaltaManejo(op))}" data-status="${escapeHtml(getStatusManejo(op, setor))}" data-fase="${escapeHtml(manejo?.fase || "Sem fase")}" data-cor="${escapeHtml(op.cor || "Sem cor")}">
+      <tr class="${rowClass}" data-manejo-row="1" data-qti="${escapeHtml(numeroQuantidadeOP(op))}" data-falta="${escapeHtml(numeroFaltaManejo(op, setor))}" data-status="${escapeHtml(getStatusManejo(op, setor))}" data-fase="${escapeHtml(manejo?.fase || "Sem fase")}" data-cor="${escapeHtml(op.cor || "Sem cor")}">
         <td><input class="manejo-readonly" value="${escapeHtml(op.numeroOP || "")}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(op.referencia || "")}" readonly /></td>
         <td>
@@ -1397,9 +1568,15 @@ function renderManejoInline() {
         </td>
         <td>${manejoStatusBadge(manejo, op, setor)}</td>
         <td>
-          <div class="manejo-actions">
+          <div class="manejo-actions manejo-actions-com-entrega">
             <button class="btn btn-sm btn-primary" onclick="salvarManejoLinha('${op.id}')">Salvar</button>
             ${manejo && ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="limparManejoLinha('${op.id}')">Limpar</button>` : ""}
+            <div class="manejo-entrega-box">
+              <select id="${rowId}-servicoPagamento">${optionsServicosPagamentoManejo(setor, manejo?.ultimoServicoPagamentoId || "")}</select>
+              <input id="${rowId}-dataEntregaPagamento" type="date" value="${escapeHtml(getDataHojeISO())}" />
+              <input id="${rowId}-qtdEntregaPagamento" type="number" min="1" step="1" placeholder="Qtd entregue" />
+              <button class="btn btn-sm btn-success" onclick="registrarEntregaManejo('${op.id}')">Registrar entrega</button>
+            </div>
           </div>
         </td>
       </tr>
@@ -5132,6 +5309,7 @@ window.editarFaccao = editarFaccao;
 window.alternarFaccao = alternarFaccao;
 window.excluirFaccao = excluirFaccao;
 window.imprimirRelatorioPagamento = imprimirRelatorioPagamento;
+window.registrarEntregaManejo = registrarEntregaManejo;
 window.excluirEntregaPagamento = excluirEntregaPagamento;
 window.alternarStatusEntregaPagamento = alternarStatusEntregaPagamento;
 window.editarEntregaPagamento = editarEntregaPagamento;

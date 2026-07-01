@@ -2768,3 +2768,47 @@ table td {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Manejo como origem das entregas de pagamento */
+.manejo-actions-com-entrega {
+  min-width: 190px;
+}
+
+.manejo-entrega-box {
+  display: grid;
+  gap: 5px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #cbd5e1;
+}
+
+.manejo-entrega-box select,
+.manejo-entrega-box input {
+  width: 100%;
+  min-height: 28px;
+  border: 1px solid #bcc8da;
+  border-radius: 8px;
+  padding: 5px 6px;
+  color: #0f172a;
+  background: #ffffff;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.manejo-entrega-box .btn-success {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 1920px) {
+  .manejo-actions-com-entrega {
+    min-width: 165px;
+  }
+
+  .manejo-entrega-box select,
+  .manejo-entrega-box input {
+    font-size: 10px;
+    min-height: 25px;
+  }
+}

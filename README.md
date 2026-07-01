@@ -1517,3 +1517,47 @@ entregasPagamento
 ```
 
 Depois de subir essa versão, publique também o `firebase-rules.txt` atualizado no Firebase.
+
+
+## Atualização: entregas do pagamento diretamente pelo Manejo
+
+O fluxo de pagamento agora nasce no **Manejo**.
+
+Em cada linha do Manejo foi adicionada uma área para registrar entrega:
+
+```txt
+Serviço de pagamento
+Data da entrega
+Qtd entregue
+Registrar entrega
+```
+
+Fluxo correto:
+
+```txt
+1. A OP aparece no Manejo Bojo / Alça / Renda
+2. O usuário escolhe o serviço cadastrado
+3. Informa a data e a quantidade entregue
+4. Clica em Registrar entrega
+5. O sistema cria automaticamente um registro em entregasPagamento
+6. A aba Pagamentos já recebe essa entrega no relatório por calendário
+```
+
+A falta passa a ser atualizada automaticamente:
+
+```txt
+Falta = Quantidade da OP - Total entregue daquele serviço
+```
+
+Exemplo:
+
+```txt
+QTI da OP: 50
+Dia 30/07: entregou 30
+Falta no Manejo: 20
+
+Dia 02/08: entregou 20
+Falta no Manejo: 0
+```
+
+Assim o pagamento fica organizado por data e evita pagar duas vezes.
