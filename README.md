@@ -854,3 +854,67 @@ Exemplo:
 ```
 
 Como o Manejo já busca a necessidade da própria OP, as OPs importadas do PDF já entram no Manejo com o intervalo correto.
+
+
+## Atualização: PDF sem Semana/Mês/Ano manual
+
+Na tela **Importar / Backup**, a importação de PDF não pede mais:
+
+```txt
+Semana
+Mês
+Ano
+```
+
+Agora o usuário informa apenas:
+
+```txt
+Tipo da peça
+Data inicial da necessidade
+Data final da necessidade
+```
+
+A coluna **Necessidade** no Manejo passa a usar o intervalo:
+
+```txt
+DD/MM/AAAA a DD/MM/AAAA
+```
+
+Para manter compatibilidade com partes antigas do sistema, o sistema ainda salva internamente:
+
+```txt
+mes
+ano
+```
+
+com base na data inicial do intervalo, mas o usuário não precisa preencher isso manualmente.
+
+
+## Atualização: Ordens de Produção por intervalo
+
+A aba **Ordens de Produção** não usa mais Semana/Mês/Ano manualmente na tela.
+
+Agora o formulário de OP pede:
+
+```txt
+Início da necessidade
+Final da necessidade
+```
+
+Ao salvar uma OP manual, o sistema grava:
+
+```txt
+necessidadeInicio
+necessidadeFim
+necessidade
+```
+
+A necessidade fica no formato:
+
+```txt
+DD/MM/AAAA a DD/MM/AAAA
+```
+
+Na tabela de ordens, as colunas **Semana** e **Mês/Ano** foram removidas e substituídas por **Necessidade**.
+
+Para compatibilidade interna, o sistema ainda salva mês e ano com base na data inicial, mas isso não aparece mais para o usuário.

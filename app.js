@@ -508,6 +508,13 @@ async function excluirProduto(id) {
   }
 }
 
+
+function montarTextoNecessidade(inicio, fim) {
+  if (!inicio || !fim) return "";
+  return `${dataISOParaBR(inicio)} a ${dataISOParaBR(fim)}`;
+}
+
+
 function configurarOrdem() {
   const form = document.getElementById("formOrdem");
 
@@ -539,9 +546,12 @@ function configurarOrdem() {
 
     const cor = normalizarCor(document.getElementById("ordemCor").value);
     const quantidade = Number(document.getElementById("ordemQuantidade").value);
-    const semana = Number(document.getElementById("ordemSemana").value);
-    const mes = document.getElementById("ordemMes").value;
-    const ano = Number(document.getElementById("ordemAno").value);
+    const necessidadeInicio = document.getElementById("ordemNecessidadeInicio").value;
+    const necessidadeFim = document.getElementById("ordemNecessidadeFim").value;
+    const necessidade = montarTextoNecessidade(necessidadeInicio, necessidadeFim);
+    const semana = "";
+    const mes = nomeMesPorDataISO(necessidadeInicio);
+    const ano = anoPorDataISO(necessidadeInicio);
 
     if (!cor) {
       toast("Informe a cor da OP.");
@@ -553,13 +563,13 @@ function configurarOrdem() {
       return;
     }
 
-    if (!semana || semana < 1 || semana > 5) {
-      toast("A semana deve ser de 1 a 5.");
+    if (!necessidadeInicio || !necessidadeFim) {
+      toast("Informe a data inicial e a data final da necessidade.");
       return;
     }
 
-    if (!mes || !ano) {
-      toast("Informe mês e ano.");
+    if (necessidadeInicio > necessidadeFim) {
+      toast("A data inicial não pode ser maior que a data final.");
       return;
     }
 
@@ -575,6 +585,9 @@ function configurarOrdem() {
           semana,
           mes,
           ano,
+          necessidadeInicio,
+          necessidadeFim,
+          necessidade,
           observacoes: document.getElementById("ordemObs").value.trim(),
           criada: false
         });
@@ -593,6 +606,9 @@ function configurarOrdem() {
           semana,
           mes,
           ano,
+          necessidadeInicio,
+          necessidadeFim,
+          necessidade,
           observacoes: document.getElementById("ordemObs").value.trim(),
           criada: true
         });
@@ -614,7 +630,7 @@ function configurarOrdem() {
   document.getElementById("btnCancelarOrdem").addEventListener("click", limparFormOrdem);
 }
 
-function montarDadosOrdem({ numeroOP, produto, referencia, cor, quantidade, semana, mes, ano, observacoes, criada }) {
+function montarDadosOrdem({ numeroOP, produto, referencia, cor, quantidade, semana, mes, ano, necessidadeInicio, necessidadeFim, necessidade, observacoes, criada }) {
   const dados = {
     numeroOP,
     referencia,
@@ -623,6 +639,9 @@ function montarDadosOrdem({ numeroOP, produto, referencia, cor, quantidade, sema
     semana,
     mes,
     ano,
+    necessidadeInicio,
+    necessidadeFim,
+    necessidade,
     quantidade,
     possuiAlca: Boolean(produto.possuiAlca),
     possuiBojo: Boolean(produto.possuiBojo),
@@ -705,13 +724,15 @@ function mostrarPreviewProduto() {
 }
 
 function capturarOrdemPendente(referencia) {
+  const necessidadeInicio = document.getElementById("ordemNecessidadeInicio")?.value || "";
+  const necessidadeFim = document.getElementById("ordemNecessidadeFim")?.value || "";
+
   return {
     referencia: normalizarReferencia(referencia),
     cor: normalizarCor(document.getElementById("ordemCor").value),
     quantidade: document.getElementById("ordemQuantidade").value,
-    semana: document.getElementById("ordemSemana").value,
-    mes: document.getElementById("ordemMes").value,
-    ano: document.getElementById("ordemAno").value,
+    necessidadeInicio,
+    necessidadeFim,
     observacoes: document.getElementById("ordemObs").value
   };
 }
@@ -756,9 +777,8 @@ function restaurarOrdemPendenteSePossivel(produtoCadastrado) {
     document.getElementById("ordemReferencia").value = produtoCadastrado.referencia;
     document.getElementById("ordemCor").value = pendente.cor || "";
     document.getElementById("ordemQuantidade").value = pendente.quantidade || "";
-    document.getElementById("ordemSemana").value = pendente.semana || "";
-    document.getElementById("ordemMes").value = pendente.mes || "";
-    document.getElementById("ordemAno").value = pendente.ano || new Date().getFullYear();
+    document.getElementById("ordemNecessidadeInicio").value = pendente.necessidadeInicio || "";
+    document.getElementById("ordemNecessidadeFim").value = pendente.necessidadeFim || "";
     document.getElementById("ordemObs").value = pendente.observacoes || "";
 
     mostrarPreviewProduto();
@@ -776,11 +796,10 @@ function limparFormOrdem() {
   document.getElementById("ordemReferencia").value = "";
   document.getElementById("ordemCor").value = "";
   document.getElementById("ordemQuantidade").value = "";
-  document.getElementById("ordemSemana").value = "";
-  document.getElementById("ordemMes").value = "";
+  document.getElementById("ordemNecessidadeInicio").value = "";
+  document.getElementById("ordemNecessidadeFim").value = "";
   document.getElementById("ordemObs").value = "";
   document.getElementById("produtoPreview").classList.add("hidden");
-  preencherAnoAtual();
 }
 
 function editarOrdem(id) {
@@ -791,9 +810,8 @@ function editarOrdem(id) {
   document.getElementById("ordemReferencia").value = ordem.referencia;
   document.getElementById("ordemCor").value = ordem.cor || "";
   document.getElementById("ordemQuantidade").value = ordem.quantidade;
-  document.getElementById("ordemSemana").value = ordem.semana;
-  document.getElementById("ordemMes").value = ordem.mes;
-  document.getElementById("ordemAno").value = ordem.ano;
+  document.getElementById("ordemNecessidadeInicio").value = ordem.necessidadeInicio || "";
+  document.getElementById("ordemNecessidadeFim").value = ordem.necessidadeFim || "";
   document.getElementById("ordemObs").value = ordem.observacoes || "";
 
   mostrarPreviewProduto();
@@ -1721,8 +1739,7 @@ function renderRelatorio() {
   tbody.innerHTML = ordens.map(op => `
     <tr>
       <td><strong>${escapeHtml(op.numeroOP)}</strong></td>
-      <td>Semana ${op.semana}</td>
-      <td>${escapeHtml(op.mes)}/${op.ano}</td>
+      <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
       <td>${escapeHtml(op.referencia)}</td>
       <td><strong>${escapeHtml(op.cor || "-")}</strong></td>
       <td>${op.quantidade}</td>
@@ -2002,6 +2019,25 @@ function normalizarTexto(valor) {
 
 
 
+
+function nomeMesPorDataISO(dataISO) {
+  const match = String(dataISO || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "";
+
+  const meses = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+  ];
+
+  return meses[Number(match[2]) - 1] || "";
+}
+
+function anoPorDataISO(dataISO) {
+  const match = String(dataISO || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? Number(match[1]) : new Date().getFullYear();
+}
+
+
 function getConfiguracaoImportacaoPDF() {
   const tipoPeca = document.getElementById("pdfTipoPeca")?.value || "";
   const inicio = document.getElementById("pdfNecessidadeInicio")?.value || "";
@@ -2088,17 +2124,8 @@ function configurarImportadorPDF() {
 }
 
 function preencherCamposPDFImportacao() {
-  const ano = new Date().getFullYear();
-  const mes = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-  ][new Date().getMonth()];
-
-  const pdfAno = document.getElementById("pdfAno");
-  const pdfMes = document.getElementById("pdfMes");
-
-  if (pdfAno) pdfAno.value = ano;
-  if (pdfMes) pdfMes.value = mes;
+  // A importação por PDF agora usa o intervalo de necessidade no calendário.
+  // Semana, mês e ano não são mais preenchidos manualmente nesta tela.
 }
 
 async function extrairTextoPDF(file) {
@@ -2310,16 +2337,11 @@ async function importarPDFConfirmado() {
     return;
   }
 
-  const semana = Number(document.getElementById("pdfSemana").value);
-  const mes = document.getElementById("pdfMes").value;
-  const ano = Number(document.getElementById("pdfAno").value);
   const criarProdutos = document.getElementById("pdfCriarProdutos").checked;
   const configPDF = getConfiguracaoImportacaoPDF();
-
-  if (!semana || !mes || !ano) {
-    toast("Informe semana, mês e ano para importar.");
-    return;
-  }
+  const semana = "";
+  const mes = configPDF.ok ? nomeMesPorDataISO(configPDF.necessidadeInicio) : "";
+  const ano = configPDF.ok ? anoPorDataISO(configPDF.necessidadeInicio) : new Date().getFullYear();
 
   if (!configPDF.ok) {
     toast(configPDF.mensagem);
@@ -2658,15 +2680,14 @@ function renderDashboard() {
   const tbody = document.getElementById("ultimasOrdens");
 
   if (!ultimas.length) {
-    tbody.innerHTML = `<tr><td colspan="11" class="empty">Nenhuma ordem cadastrada ainda.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma ordem cadastrada ainda.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = ultimas.map(op => `
     <tr>
       <td><strong>${escapeHtml(op.numeroOP)}</strong></td>
-      <td>Semana ${op.semana}</td>
-      <td>${escapeHtml(op.mes)}/${op.ano}</td>
+      <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
       <td>${escapeHtml(op.referencia)}</td>
       <td><strong>${escapeHtml(op.cor || "-")}</strong></td>
       <td>${escapeHtml(op.produtoNome)}</td>
@@ -2780,6 +2801,7 @@ function renderOrdens() {
       return String(op.numeroOP).toUpperCase().includes(busca) ||
         String(op.referencia).includes(busca) ||
         String(op.cor || "").toUpperCase().includes(busca) ||
+        normalizarTexto(getNecessidadeDaOrdem(op)).includes(normalizarTexto(busca)) ||
         String(op.produtoNome).toUpperCase().includes(busca);
     });
   }
@@ -2787,7 +2809,7 @@ function renderOrdens() {
   const tbody = document.getElementById("listaOrdens");
 
   if (!ordens.length) {
-    tbody.innerHTML = `<tr><td colspan="12" class="empty">Nenhuma ordem cadastrada.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="empty">Nenhuma ordem cadastrada.</td></tr>`;
     return;
   }
 
@@ -2832,15 +2854,13 @@ function getLinhasCSVRelatorio(ordens) {
 
   if (info.tipo === "geral") {
     const linhas = [
-      ["OP", "Semana", "Mês", "Ano", "Referência", "Cor", "Produto", "Quantidade", "Alça", "Bojo", "Renda", "Observações"]
+      ["OP", "Necessidade", "Referência", "Cor", "Produto", "Quantidade", "Alça", "Bojo", "Renda", "Observações"]
     ];
 
     ordens.forEach(op => {
       linhas.push([
         op.numeroOP,
-        `Semana ${op.semana}`,
-        op.mes,
-        op.ano,
+        getNecessidadeDaOrdem(op) || "",
         op.referencia,
         op.cor || "",
         op.produtoNome,
@@ -2856,15 +2876,13 @@ function getLinhasCSVRelatorio(ordens) {
   }
 
   const linhas = [
-    ["OP", "Semana", "Mês", "Ano", "Referência", "Cor", "Quantidade", info.coluna]
+    ["OP", "Necessidade", "Referência", "Cor", "Quantidade", info.coluna]
   ];
 
   ordens.forEach(op => {
     linhas.push([
       op.numeroOP,
-      `Semana ${op.semana}`,
-      op.mes,
-      op.ano,
+      getNecessidadeDaOrdem(op) || "",
       op.referencia,
       op.cor || "",
       op.quantidade,
@@ -2902,7 +2920,7 @@ function exportarCSV() {
 }
 
 function preencherAnoAtual() {
-  document.getElementById("ordemAno").value = new Date().getFullYear();
+  // Campo Ano foi removido da tela de OP. O ano é calculado pela data inicial da necessidade.
 }
 
 function normalizarReferencia(valor) {

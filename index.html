@@ -128,8 +128,7 @@
               <thead>
                 <tr>
                   <th>OP</th>
-                  <th>Semana</th>
-                  <th>Mês/Ano</th>
+                  <th>Necessidade</th>
                   <th>Referência</th>
                   <th>Cor</th>
                   <th>Produto</th>
@@ -253,7 +252,7 @@
             <div class="panel-header">
               <div>
                 <h3>Adicionar ordem de produção</h3>
-                <p>A OP usa referência + cor como dados principais.</p>
+                <p>A OP usa referência, cor, quantidade e intervalo de necessidade como dados principais.</p>
               </div>
             </div>
 
@@ -280,39 +279,13 @@
 
             <div class="row">
               <label>
-                Semana
-                <select id="ordemSemana" required>
-                  <option value="">Selecione</option>
-                  <option value="1">Semana 1</option>
-                  <option value="2">Semana 2</option>
-                  <option value="3">Semana 3</option>
-                  <option value="4">Semana 4</option>
-                  <option value="5">Semana 5</option>
-                </select>
+                Início da necessidade
+                <input id="ordemNecessidadeInicio" type="date" required />
               </label>
 
               <label>
-                Mês
-                <select id="ordemMes" required>
-                  <option value="">Selecione</option>
-                  <option>Janeiro</option>
-                  <option>Fevereiro</option>
-                  <option>Março</option>
-                  <option>Abril</option>
-                  <option>Maio</option>
-                  <option>Junho</option>
-                  <option>Julho</option>
-                  <option>Agosto</option>
-                  <option>Setembro</option>
-                  <option>Outubro</option>
-                  <option>Novembro</option>
-                  <option>Dezembro</option>
-                </select>
-              </label>
-
-              <label>
-                Ano
-                <input id="ordemAno" type="number" min="2020" max="2100" required />
+                Final da necessidade
+                <input id="ordemNecessidadeFim" type="date" required />
               </label>
             </div>
 
@@ -341,8 +314,7 @@
                 <thead>
                   <tr>
                     <th>OP</th>
-                    <th>Semana</th>
-                    <th>Mês/Ano</th>
+                    <th>Necessidade</th>
                     <th>Referência</th>
                     <th>Cor</th>
                     <th>Produto</th>
@@ -760,7 +732,7 @@
           <div class="panel-header">
             <div>
               <h3>Importar relatório externo PDF</h3>
-              <p>Antes de ler o PDF, selecione o tipo da peça e o intervalo de necessidade das OPs.</p>
+              <p>Antes de ler o PDF, selecione o tipo da peça e o intervalo de necessidade das OPs. Não é mais necessário preencher semana ou mês.</p>
             </div>
           </div>
 
@@ -770,42 +742,7 @@
           </div>
 
           <div class="pdf-import-grid">
-            <label>
-              Semana
-              <select id="pdfSemana">
-                <option value="1">Semana 1</option>
-                <option value="2">Semana 2</option>
-                <option value="3">Semana 3</option>
-                <option value="4">Semana 4</option>
-                <option value="5">Semana 5</option>
-              </select>
-            </label>
-
-            <label>
-              Mês
-              <select id="pdfMes">
-                <option>Janeiro</option>
-                <option>Fevereiro</option>
-                <option>Março</option>
-                <option>Abril</option>
-                <option>Maio</option>
-                <option>Junho</option>
-                <option>Julho</option>
-                <option>Agosto</option>
-                <option>Setembro</option>
-                <option>Outubro</option>
-                <option>Novembro</option>
-                <option>Dezembro</option>
-              </select>
-            </label>
-
-            <label>
-              Ano
-              <input id="pdfAno" type="number" min="2020" max="2100" />
-            </label>
-
-
-            <label>
+<label>
               Tipo da peça
               <select id="pdfTipoPeca" required>
                 <option value="">Selecione</option>
