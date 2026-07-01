@@ -73,11 +73,15 @@ const pageInfo = {
   },
   ordens: {
     title: "Ordens de Produção",
-    subtitle: "Crie OPs informando referência, cor, semana, mês e quantidade."
+    subtitle: "Crie OPs informando referência, cor, quantidade e intervalo de necessidade."
   },
   manejo: {
     title: "Manejo",
     subtitle: "Controle fases, facção, produção e necessidade usando as OPs cadastradas."
+  },
+  processos: {
+    title: "Processos",
+    subtitle: "Visualização em tempo real das informações do manejo."
   },
   relatorios: {
     title: "Relatórios",
@@ -168,6 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
   configurarProduto();
   configurarOrdem();
   configurarManejo();
+  configurarProcessos();
   configurarRelatorios();
   configurarUsuarios();
   configurarLogs();
@@ -1710,6 +1715,7 @@ function adicionarSugestaoManejo(ordemId, campo, listaState, chaveStorage, nomeC
   }
 
   renderDatalistManejo();
+  renderProcessos();
   renderFiltrosColunasManejo();
   toast(`${nomeCampo} "${valor}" adicionada às sugestões.`);
 }
@@ -1833,6 +1839,197 @@ function formatarDataSimples(valor) {
     return `${partes[2]}/${partes[1]}/${partes[0]}`;
   }
   return escapeHtml(valor);
+}
+
+
+
+function configurarProcessos() {
+  const busca = document.getElementById("buscaProcessos");
+  if (busca) {
+    busca.addEventListener("input", renderProcessos);
+  }
+
+  [
+    "processoFiltroStatus",
+    "processoFiltroReferencia",
+    "processoFiltroCor",
+    "processoFiltroFase",
+    "processoFiltroFaccao",
+    "processoFiltroCelu",
+    "processoFiltroNecessidade"
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", renderProcessos);
+  });
+
+  const limpar = document.getElementById("btnLimparFiltrosProcessos");
+  if (limpar) {
+    limpar.addEventListener("click", () => {
+      limparFiltrosProcessos();
+      renderProcessos();
+    });
+  }
+}
+
+function preencherSelectProcessos(id, valores, labelTodos = "Todos") {
+  const select = document.getElementById(id);
+  if (!select) return;
+
+  const atual = select.value;
+  const limpos = [...new Set(valores.map(valor => String(valor ?? "").trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+
+  select.innerHTML = `<option value="">${labelTodos}</option>` + limpos.map(valor => {
+    return `<option value="${escapeHtml(valor)}">${escapeHtml(valor)}</option>`;
+  }).join("");
+
+  if (limpos.includes(atual)) select.value = atual;
+}
+
+function renderFiltrosProcessos() {
+  const ordens = [...state.ordens];
+
+  preencherSelectProcessos("processoFiltroReferencia", ordens.map(op => op.referencia), "Todas");
+  preencherSelectProcessos("processoFiltroCor", ordens.map(op => op.cor), "Todas");
+  preencherSelectProcessos("processoFiltroFase", [
+    ...ordens.map(op => getManejoDaOrdem(op)?.fase || ""),
+    ...(state.fasesManejoExtras || [])
+  ], "Todas");
+  preencherSelectProcessos("processoFiltroFaccao", [
+    ...ordens.map(op => getManejoDaOrdem(op)?.faccao || ""),
+    ...(state.faccoesManejoExtras || [])
+  ], "Todas");
+  preencherSelectProcessos("processoFiltroCelu", [
+    ...ordens.map(op => getManejoDaOrdem(op)?.celu || ""),
+    ...(state.celusManejoExtras || [])
+  ], "Todos");
+  preencherSelectProcessos("processoFiltroNecessidade", ordens.map(op => getNecessidadeDaOrdem(op)), "Todas");
+}
+
+function getFiltrosProcessos() {
+  return {
+    busca: normalizarTexto(document.getElementById("buscaProcessos")?.value || ""),
+    status: document.getElementById("processoFiltroStatus")?.value || "",
+    referencia: document.getElementById("processoFiltroReferencia")?.value || "",
+    cor: document.getElementById("processoFiltroCor")?.value || "",
+    fase: document.getElementById("processoFiltroFase")?.value || "",
+    faccao: document.getElementById("processoFiltroFaccao")?.value || "",
+    celu: document.getElementById("processoFiltroCelu")?.value || "",
+    necessidade: document.getElementById("processoFiltroNecessidade")?.value || ""
+  };
+}
+
+function filtrarOrdensProcessos() {
+  const filtros = getFiltrosProcessos();
+
+  return [...state.ordens].filter(op => {
+    const manejo = getManejoDaOrdem(op);
+    const status = getStatusManejo(op);
+    const necessidade = getNecessidadeDaOrdem(op);
+
+    const texto = normalizarTexto([
+      op.numeroOP,
+      op.numeroOPExterno,
+      op.referencia,
+      op.cor,
+      op.produtoNome,
+      op.quantidade,
+      necessidade,
+      manejo?.fase,
+      manejo?.faccao,
+      manejo?.celu,
+      manejo?.silkNome,
+      manejo?.silk,
+      status
+    ].join(" "));
+
+    if (filtros.busca && !texto.includes(filtros.busca)) return false;
+    if (filtros.status && status !== filtros.status) return false;
+    if (filtros.referencia && String(op.referencia || "") !== filtros.referencia) return false;
+    if (filtros.cor && String(op.cor || "") !== filtros.cor) return false;
+    if (filtros.fase && String(manejo?.fase || "") !== filtros.fase) return false;
+    if (filtros.faccao && String(manejo?.faccao || "") !== filtros.faccao) return false;
+    if (filtros.celu && String(manejo?.celu || "") !== filtros.celu) return false;
+    if (filtros.necessidade && String(necessidade || "") !== filtros.necessidade) return false;
+
+    return true;
+  });
+}
+
+function limparFiltrosProcessos() {
+  [
+    "buscaProcessos",
+    "processoFiltroStatus",
+    "processoFiltroReferencia",
+    "processoFiltroCor",
+    "processoFiltroFase",
+    "processoFiltroFaccao",
+    "processoFiltroCelu",
+    "processoFiltroNecessidade"
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+}
+
+function renderResumoProcessos(ordens) {
+  const totalOps = ordens.length;
+  const totalPecas = ordens.reduce((soma, op) => soma + numeroQuantidadeOP(op), 0);
+  const totalFalta = ordens.reduce((soma, op) => soma + numeroFaltaManejo(op), 0);
+  const organizadas = ordens.filter(op => getStatusManejo(op) === "organizada").length;
+  const pendentes = totalOps - organizadas;
+
+  const setText = (id, valor) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = valor;
+  };
+
+  setText("processosTotalOps", totalOps.toLocaleString("pt-BR"));
+  setText("processosTotalPecas", totalPecas.toLocaleString("pt-BR"));
+  setText("processosTotalFalta", totalFalta.toLocaleString("pt-BR"));
+  setText("processosOrganizadas", organizadas.toLocaleString("pt-BR"));
+  setText("processosPendentes", pendentes.toLocaleString("pt-BR"));
+}
+
+function renderProcessos() {
+  const tbody = document.getElementById("listaProcessos");
+  if (!tbody) return;
+
+  renderFiltrosProcessos();
+
+  const ordens = filtrarOrdensProcessos();
+  renderResumoProcessos(ordens);
+
+  if (!ordens.length) {
+    tbody.innerHTML = `<tr><td colspan="13" class="empty">Nenhum processo encontrado com os filtros selecionados.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = ordens.map(op => {
+    const manejo = getManejoDaOrdem(op);
+    const silkNome = getSilkNomeManejo(manejo);
+    const silkTexto = silkNome || manejo?.silkData
+      ? `${silkNome || "-"}${manejo?.silkData ? ` | ${formatarDataSimples(manejo.silkData)}` : ""}`
+      : "-";
+
+    return `
+      <tr class="${manejo ? "processo-organizado" : "processo-pendente"}">
+        <td><strong>${escapeHtml(op.numeroOP || "-")}</strong></td>
+        <td>${escapeHtml(op.referencia || "-")}</td>
+        <td><strong>${escapeHtml(op.cor || "-")}</strong></td>
+        <td class="num">${escapeHtml(op.quantidade ?? 0)}</td>
+        <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
+        <td>${escapeHtml(manejo?.fase || "-")}</td>
+        <td>${escapeHtml(manejo?.faccao || "-")}</td>
+        <td>${escapeHtml(formatarDataSimples(manejo?.chegada || ""))}</td>
+        <td class="num">${escapeHtml(manejo?.falta ?? 0)}</td>
+        <td>${escapeHtml(formatarDataSimples(manejo?.producao || ""))}</td>
+        <td>${escapeHtml(manejo?.celu || "-")}</td>
+        <td>${escapeHtml(silkTexto)}</td>
+        <td>${manejoStatusBadge(manejo)}</td>
+      </tr>
+    `;
+  }).join("");
 }
 
 

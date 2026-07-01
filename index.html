@@ -69,6 +69,7 @@
         <button class="nav-btn" data-page="produtos">Produtos / Referências</button>
         <button class="nav-btn" data-page="ordens">Ordens de Produção</button>
         <button class="nav-btn" data-page="manejo">Manejo</button>
+        <button class="nav-btn" data-page="processos">Processos</button>
         <button class="nav-btn" data-page="relatorios">Relatórios</button>
         <button class="nav-btn admin-only" data-page="usuarios">Usuários</button>
         <button class="nav-btn admin-only" data-page="logs">Logs / Auditoria</button>
@@ -532,6 +533,120 @@
           <datalist id="manejoFaccaoList"></datalist>
           <datalist id="manejoCeluList"></datalist>
           <datalist id="manejoSilkNomesList"></datalist>
+        </div>
+      </section>
+
+
+      <section id="processos" class="page">
+        <div class="panel processos-panel">
+          <div class="panel-header">
+            <div>
+              <h3>Visualizar processos</h3>
+              <p>Tela de acompanhamento em tempo real do manejo. Use os filtros para acompanhar cor, fase, facção, CELU e status.</p>
+            </div>
+            <input id="buscaProcessos" class="search" type="text" placeholder="Buscar OP, ref., cor, fase..." />
+          </div>
+
+          <div class="processos-cards">
+            <div class="processo-card">
+              <span>OPs na tela</span>
+              <strong id="processosTotalOps">0</strong>
+            </div>
+            <div class="processo-card">
+              <span>Total de peças</span>
+              <strong id="processosTotalPecas">0</strong>
+            </div>
+            <div class="processo-card">
+              <span>Total em falta</span>
+              <strong id="processosTotalFalta">0</strong>
+            </div>
+            <div class="processo-card ok-card">
+              <span>Organizadas</span>
+              <strong id="processosOrganizadas">0</strong>
+            </div>
+            <div class="processo-card pending-card">
+              <span>Pendentes</span>
+              <strong id="processosPendentes">0</strong>
+            </div>
+          </div>
+
+          <div class="processos-filters">
+            <label>
+              Status
+              <select id="processoFiltroStatus">
+                <option value="">Todos</option>
+                <option value="organizada">Organizadas</option>
+                <option value="pendente">Pendentes</option>
+              </select>
+            </label>
+
+            <label>
+              Referência
+              <select id="processoFiltroReferencia">
+                <option value="">Todas</option>
+              </select>
+            </label>
+
+            <label>
+              Cor
+              <select id="processoFiltroCor">
+                <option value="">Todas</option>
+              </select>
+            </label>
+
+            <label>
+              Fase
+              <select id="processoFiltroFase">
+                <option value="">Todas</option>
+              </select>
+            </label>
+
+            <label>
+              Facção
+              <select id="processoFiltroFaccao">
+                <option value="">Todas</option>
+              </select>
+            </label>
+
+            <label>
+              CELU
+              <select id="processoFiltroCelu">
+                <option value="">Todos</option>
+              </select>
+            </label>
+
+            <label>
+              Necessidade
+              <select id="processoFiltroNecessidade">
+                <option value="">Todas</option>
+              </select>
+            </label>
+
+            <button class="btn" id="btnLimparFiltrosProcessos" type="button">Limpar filtros</button>
+          </div>
+
+          <div class="table-wrap processos-table-wrap">
+            <table class="processos-table">
+              <thead>
+                <tr>
+                  <th>OP</th>
+                  <th>REF</th>
+                  <th>Cor</th>
+                  <th>QTI</th>
+                  <th>Necessidade</th>
+                  <th>Fase</th>
+                  <th>Facção</th>
+                  <th>Chegada</th>
+                  <th>Falta</th>
+                  <th>Produção</th>
+                  <th>CELU</th>
+                  <th>Silk</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="listaProcessos"></tbody>
+            </table>
+          </div>
         </div>
       </section>
 

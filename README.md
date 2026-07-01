@@ -1007,3 +1007,58 @@ Status
 ```
 
 A página de impressão usa layout horizontal para caber melhor na folha.
+
+
+## Nova aba: Processos
+
+Foi criada a aba **Processos** para visualização em tempo real das informações do Manejo.
+
+A diferença é:
+
+```txt
+Manejo = edição dos dados
+Processos = acompanhamento do chefe / visualização
+```
+
+A nova aba mostra:
+
+```txt
+OP
+Referência
+Cor
+Quantidade
+Necessidade
+Fase
+Facção
+Chegada
+Falta
+Produção
+CELU
+Silk
+Status
+```
+
+Também possui filtros por:
+
+```txt
+Status
+Referência
+Cor
+Fase
+Facção
+CELU
+Necessidade
+Busca geral
+```
+
+E cards com:
+
+```txt
+OPs na tela
+Total de peças
+Total em falta
+Organizadas
+Pendentes
+```
+
+Como o sistema usa os listeners do Firebase, quando um usuário salva algo no Manejo, a aba Processos atualiza junto com os dados carregados no sistema.
