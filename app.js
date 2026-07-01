@@ -1120,6 +1120,48 @@ function renderTabelaSomaManejo(tbodyId, linhas) {
   `).join("");
 }
 
+
+function textoSelectSelecionado(id) {
+  const select = document.getElementById(id);
+  if (!select || !select.value) return "";
+
+  const label = select.options[select.selectedIndex]?.textContent || select.value;
+  return label.trim();
+}
+
+function getFiltrosManejoAtivosTexto() {
+  const filtros = [
+    ["Status", "filtroManejoStatus"],
+    ["OP", "filtroManejoOP"],
+    ["REF", "filtroManejoReferencia"],
+    ["Silk", "filtroManejoSilk"],
+    ["Data tecido", "filtroManejoDataTecido"],
+    ["Fase", "filtroManejoFase"],
+    ["QTI", "filtroManejoQuantidade"],
+    ["Cor", "filtroManejoCor"],
+    ["Data", "filtroManejoData"],
+    ["Facção", "filtroManejoFaccao"],
+    ["Chegada", "filtroManejoChegada"],
+    ["Falta", "filtroManejoFalta"],
+    ["Produção", "filtroManejoProducao"],
+    ["CELU", "filtroManejoCelu"],
+    ["Necessidade", "filtroManejoNecessidade"]
+  ];
+
+  const busca = document.getElementById("buscaManejoLinha")?.value?.trim();
+  const ativos = filtros
+    .map(([nome, id]) => {
+      const valor = textoSelectSelecionado(id);
+      return valor ? `${nome}: ${valor}` : "";
+    })
+    .filter(Boolean);
+
+  if (busca) ativos.unshift(`Busca: ${busca}`);
+
+  return ativos.length ? `Filtro: ${ativos.join(" + ")}` : "Filtro: todos os registros";
+}
+
+
 function renderResumoSomasManejo(ordens) {
   const totalOps = ordens.length;
   const totalPecas = ordens.reduce((soma, op) => soma + numeroQuantidadeOP(op), 0);
@@ -1137,9 +1179,10 @@ function renderResumoSomasManejo(ordens) {
   setText("somaManejoFalta", formatarNumeroInteiro(totalFalta));
   setText("somaManejoStatus", `${formatarNumeroInteiro(organizadas)} / ${formatarNumeroInteiro(pendentes)}`);
   setText("somaManejoPecasCompacto", `${formatarNumeroInteiro(totalPecas)} peças`);
+  setText("somaManejoFiltroAtivo", getFiltrosManejoAtivosTexto());
   setText(
     "somaManejoResumoCompacto",
-    `${formatarNumeroInteiro(totalOps)} OPs | ${formatarNumeroInteiro(totalFalta)} falta | ${formatarNumeroInteiro(organizadas)} organizadas / ${formatarNumeroInteiro(pendentes)} pendentes`
+    `${formatarNumeroInteiro(totalOps)} OPs encontradas | ${formatarNumeroInteiro(totalFalta)} falta | ${formatarNumeroInteiro(organizadas)} organizadas / ${formatarNumeroInteiro(pendentes)} pendentes`
   );
 
   renderTabelaSomaManejo("somaManejoFases", agruparSomaManejo(ordens, op => getManejoDaOrdem(op)?.fase || "Sem fase"));

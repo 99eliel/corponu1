@@ -736,3 +736,26 @@ Soma por cor
 ```
 
 Isso mantém a tela do Manejo mais limpa e evita ocupar muito espaço.
+
+
+## Ajuste: soma imediata dos filtros
+
+A soma compacta do Manejo agora mostra claramente qual filtro está ativo.
+
+Exemplo:
+
+```txt
+Filtro: Cor: BRANCO
+Total do filtro: 1.250 peças
+8 OPs encontradas
+```
+
+Se combinar filtros, o sistema mostra todos:
+
+```txt
+Filtro: Cor: BRANCO + Facção: X
+Total do filtro: 620 peças
+4 OPs encontradas
+```
+
+A soma muda automaticamente assim que o usuário seleciona qualquer filtro no cabeçalho.

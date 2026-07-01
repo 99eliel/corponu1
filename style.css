@@ -1193,3 +1193,24 @@ small {
     width: 100%;
   }
 }
+
+
+.soma-compacta-textos {
+  display: grid;
+  gap: 3px;
+}
+
+#somaManejoFiltroAtivo {
+  color: var(--text);
+  font-weight: 900;
+}
+
+#somaManejoResumoCompacto {
+  color: var(--muted);
+}
+
+@media (max-width: 680px) {
+  .soma-compacta-textos {
+    width: 100%;
+  }
+}
