@@ -2651,3 +2651,45 @@ table td {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Pagamentos - catálogo de serviços */
+.compact-form {
+  display: grid;
+  gap: 12px;
+}
+
+.servicos-pagamento-wrap {
+  margin-top: 14px;
+}
+
+.servicos-pagamento-table {
+  min-width: 680px;
+}
+
+.servicos-pagamento-table th,
+.servicos-pagamento-table td {
+  white-space: nowrap;
+}
+
+.servicos-pagamento-table td:nth-child(3) {
+  text-align: right;
+}
+
+.pagamento-table {
+  min-width: 1120px;
+}
+
+.pagamento-table td:nth-child(5),
+.pagamento-table td:nth-child(6),
+.pagamento-table td:nth-child(7),
+.pagamento-table td:nth-child(8),
+.pagamento-table td:nth-child(9) {
+  text-align: right;
+}
+
+@media (max-width: 1180px) {
+  .pagamento-filtros {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+}

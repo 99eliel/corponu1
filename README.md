@@ -1384,3 +1384,55 @@ Status
 ```
 
 E botão para imprimir o relatório.
+
+
+## Atualização: catálogo de serviços para pagamento
+
+A aba **Pagamentos** não usa mais valores fixos apenas para Bojo, Alça e Renda.
+
+Agora existe um cadastro de serviços/processos:
+
+```txt
+Nome do serviço
+Setor do manejo
+Valor por peça
+Status ativo/inativo
+```
+
+Exemplo:
+
+```txt
+Serviço: ENCAPAR BOJO
+Setor: Bojo
+Valor: R$ 5,00
+```
+
+O sistema salva esses serviços em:
+
+```txt
+configuracoes/servicosPagamento
+```
+
+Depois, no relatório, o cálculo usa automaticamente os serviços cadastrados:
+
+```txt
+Peças a pagar = Quantidade da OP - Falta
+Total = Peças a pagar × Valor do serviço cadastrado
+```
+
+Agora é possível ter vários cenários de valor, por exemplo:
+
+```txt
+ENCAPAR BOJO - Bojo - R$ 5,00
+PREGAR ALÇA - Alça - R$ 0,05
+APLICAR RENDA - Renda - R$ 0,12
+```
+
+O relatório pode ser filtrado por:
+
+```txt
+Facção
+Serviço
+Setor
+Status
+```

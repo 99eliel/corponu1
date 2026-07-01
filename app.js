@@ -56,11 +56,7 @@ const state = {
   fasesManejoExtras: [],
   faccoesManejoExtras: [],
   celusManejoExtras: [],
-  valoresServicos: {
-    bojo: 0,
-    alca: 0,
-    renda: 0
-  },
+  servicosPagamento: [],
   usuarios: [],
   logs: [],
   pdfImportacaoPendente: [],
@@ -414,18 +410,14 @@ function iniciarListenersFirestore() {
   }));
 
 
-  state.unsubscribers.push(onSnapshot(doc(db, "configuracoes", "valoresServicos"), snapshot => {
+  state.unsubscribers.push(onSnapshot(doc(db, "configuracoes", "servicosPagamento"), snapshot => {
     const dados = snapshot.exists() ? snapshot.data() : {};
-    state.valoresServicos = {
-      bojo: Number(dados.bojo || 0),
-      alca: Number(dados.alca || 0),
-      renda: Number(dados.renda || 0)
-    };
-    preencherFormularioValoresServicos();
+    state.servicosPagamento = Array.isArray(dados.servicos) ? dados.servicos : [];
+    renderServicosPagamento();
     renderPagamentos();
   }, error => {
     console.error(error);
-    toast("Erro ao carregar valores dos serviços.");
+    toast("Erro ao carregar serviços de pagamento.");
   }));
 
 
@@ -2770,14 +2762,21 @@ async function excluirFaccao(id) {
 
 
 
+
 function configurarPagamentos() {
-  const form = document.getElementById("formValoresServicos");
+  const form = document.getElementById("formServicoPagamento");
   if (form) {
-    form.addEventListener("submit", salvarValoresServicos);
+    form.addEventListener("submit", salvarServicoPagamento);
+  }
+
+  const cancelar = document.getElementById("btnCancelarServicoPagamento");
+  if (cancelar) {
+    cancelar.addEventListener("click", limparFormServicoPagamento);
   }
 
   [
     "pagamentoFiltroFaccao",
+    "pagamentoFiltroServico",
     "pagamentoFiltroSetor",
     "pagamentoFiltroStatus"
   ].forEach(id => {
@@ -2788,7 +2787,7 @@ function configurarPagamentos() {
   const limpar = document.getElementById("btnLimparFiltrosPagamento");
   if (limpar) {
     limpar.addEventListener("click", () => {
-      ["pagamentoFiltroFaccao", "pagamentoFiltroSetor", "pagamentoFiltroStatus"].forEach(id => {
+      ["pagamentoFiltroFaccao", "pagamentoFiltroServico", "pagamentoFiltroSetor", "pagamentoFiltroStatus"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = "";
       });
@@ -2809,82 +2808,233 @@ function formatarMoedaBR(valor) {
   });
 }
 
-function preencherFormularioValoresServicos() {
-  const form = document.getElementById("formValoresServicos");
-  if (!form) return;
-
-  const ativo = document.activeElement;
-  if (ativo && form.contains(ativo)) return;
-
-  const setValue = (id, valor) => {
-    const el = document.getElementById(id);
-    if (el) el.value = Number(valor || 0).toFixed(2);
+function getLabelSetorPagamento(setor) {
+  const mapa = {
+    bojo: "Bojo",
+    alca: "Alça",
+    renda: "Renda"
   };
 
-  setValue("valorServicoBojo", state.valoresServicos.bojo);
-  setValue("valorServicoAlca", state.valoresServicos.alca);
-  setValue("valorServicoRenda", state.valoresServicos.renda);
+  return mapa[setor] || setor || "-";
 }
 
-async function salvarValoresServicos(event) {
+function getCampoSetorPagamento(setor) {
+  const mapa = {
+    bojo: "possuiBojo",
+    alca: "possuiAlca",
+    renda: "possuiRenda"
+  };
+
+  return mapa[setor] || "";
+}
+
+function getServicosPagamentoAtivos() {
+  return [...state.servicosPagamento]
+    .filter(servico => servico && servico.ativo !== false)
+    .sort((a, b) => {
+      const setorCompare = getLabelSetorPagamento(a.setor).localeCompare(getLabelSetorPagamento(b.setor), "pt-BR");
+      if (setorCompare !== 0) return setorCompare;
+      return String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true });
+    });
+}
+
+function limparFormServicoPagamento() {
+  const form = document.getElementById("formServicoPagamento");
+  if (form) form.reset();
+
+  const id = document.getElementById("servicoPagamentoId");
+  if (id) id.value = "";
+}
+
+async function salvarListaServicosPagamento(servicos, acaoLog, detalhesLog) {
+  await setDoc(doc(db, "configuracoes", "servicosPagamento"), {
+    servicos,
+    atualizadoPor: state.currentUser.uid,
+    atualizadoEm: serverTimestamp()
+  }, { merge: true });
+
+  await registrarLog(acaoLog, "configuracao", "servicosPagamento", detalhesLog);
+}
+
+async function salvarServicoPagamento(event) {
   event.preventDefault();
 
   if (!ehAdmin()) {
-    toast("Apenas admin pode salvar valores dos serviços.");
+    toast("Apenas admin pode salvar serviços de pagamento.");
     return;
   }
 
-  const valores = {
-    bojo: Number(document.getElementById("valorServicoBojo").value || 0),
-    alca: Number(document.getElementById("valorServicoAlca").value || 0),
-    renda: Number(document.getElementById("valorServicoRenda").value || 0),
+  const idAtual = document.getElementById("servicoPagamentoId").value;
+  const nome = limparTexto(document.getElementById("servicoPagamentoNome").value).toUpperCase();
+  const setor = document.getElementById("servicoPagamentoSetor").value;
+  const valor = Number(document.getElementById("servicoPagamentoValor").value || 0);
+
+  if (!nome || !setor || valor <= 0) {
+    toast("Informe nome, setor e valor maior que zero.");
+    return;
+  }
+
+  const servicos = [...state.servicosPagamento];
+  const id = idAtual || `${docIdSeguro(nome)}-${Date.now()}`;
+  const existenteIndex = servicos.findIndex(item => item.id === id);
+
+  const servico = {
+    ...(existenteIndex >= 0 ? servicos[existenteIndex] : {}),
+    id,
+    nome,
+    setor,
+    valor,
+    ativo: existenteIndex >= 0 ? servicos[existenteIndex].ativo !== false : true,
     atualizadoPor: state.currentUser.uid,
-    atualizadoEm: serverTimestamp()
+    atualizadoEmISO: new Date().toISOString()
   };
 
+  if (existenteIndex >= 0) {
+    servicos[existenteIndex] = servico;
+  } else {
+    servico.criadoPor = state.currentUser.uid;
+    servico.criadoEmISO = new Date().toISOString();
+    servicos.push(servico);
+  }
+
   try {
-    await setDoc(doc(db, "configuracoes", "valoresServicos"), valores, { merge: true });
-    await registrarLog("valores_servicos_atualizados", "configuracao", "valoresServicos", `Bojo: ${valores.bojo} | Alça: ${valores.alca} | Renda: ${valores.renda}`);
-    toast("Valores dos serviços salvos.");
+    await salvarListaServicosPagamento(
+      servicos,
+      existenteIndex >= 0 ? "servico_pagamento_atualizado" : "servico_pagamento_criado",
+      `${nome} | ${getLabelSetorPagamento(setor)} | ${formatarMoedaBR(valor)}`
+    );
+
+    limparFormServicoPagamento();
+    toast("Serviço de pagamento salvo.");
   } catch (error) {
     console.error(error);
-    toast("Erro ao salvar valores dos serviços.");
+    toast("Erro ao salvar serviço de pagamento.");
   }
 }
 
-function getValorServicoPagamento(setor) {
-  return Number(state.valoresServicos?.[setor] || 0);
+function renderServicosPagamento() {
+  const tbody = document.getElementById("listaServicosPagamento");
+  if (!tbody) return;
+
+  const servicos = [...state.servicosPagamento].sort((a, b) => {
+    const setorCompare = getLabelSetorPagamento(a.setor).localeCompare(getLabelSetorPagamento(b.setor), "pt-BR");
+    if (setorCompare !== 0) return setorCompare;
+    return String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true });
+  });
+
+  if (!servicos.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty">Nenhum serviço cadastrado.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = servicos.map(servico => `
+    <tr>
+      <td><strong>${escapeHtml(servico.nome || "-")}</strong></td>
+      <td>${escapeHtml(getLabelSetorPagamento(servico.setor))}</td>
+      <td><strong>${escapeHtml(formatarMoedaBR(servico.valor))}</strong></td>
+      <td>
+        <span class="status-dot ${servico.ativo !== false ? "active" : "inactive"}">
+          ${servico.ativo !== false ? "Ativo" : "Inativo"}
+        </span>
+      </td>
+      <td>
+        <button class="btn btn-sm" onclick="editarServicoPagamento('${servico.id}')">Editar</button>
+        <button class="btn btn-sm ${servico.ativo !== false ? "btn-warning" : "btn-success"}" onclick="alternarServicoPagamento('${servico.id}')">
+          ${servico.ativo !== false ? "Inativar" : "Ativar"}
+        </button>
+        <button class="btn btn-sm btn-danger" onclick="excluirServicoPagamento('${servico.id}')">Excluir</button>
+      </td>
+    </tr>
+  `).join("");
 }
 
-function getSetoresPagamento() {
-  return [
-    { id: "bojo", label: "Bojo", campo: "possuiBojo" },
-    { id: "alca", label: "Alça", campo: "possuiAlca" },
-    { id: "renda", label: "Renda", campo: "possuiRenda" }
-  ];
+function editarServicoPagamento(id) {
+  const servico = state.servicosPagamento.find(item => item.id === id);
+  if (!servico) return;
+
+  document.getElementById("servicoPagamentoId").value = servico.id;
+  document.getElementById("servicoPagamentoNome").value = servico.nome || "";
+  document.getElementById("servicoPagamentoSetor").value = servico.setor || "";
+  document.getElementById("servicoPagamentoValor").value = Number(servico.valor || 0).toFixed(2);
+}
+
+async function alternarServicoPagamento(id) {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode alterar serviços.");
+    return;
+  }
+
+  const servicos = state.servicosPagamento.map(servico => {
+    if (servico.id !== id) return servico;
+    return {
+      ...servico,
+      ativo: servico.ativo === false,
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEmISO: new Date().toISOString()
+    };
+  });
+
+  const servico = servicos.find(item => item.id === id);
+
+  try {
+    await salvarListaServicosPagamento(
+      servicos,
+      servico?.ativo === false ? "servico_pagamento_inativado" : "servico_pagamento_ativado",
+      `${servico?.nome || id}`
+    );
+    toast(servico?.ativo === false ? "Serviço inativado." : "Serviço ativado.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao alterar serviço.");
+  }
+}
+
+async function excluirServicoPagamento(id) {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode excluir serviços.");
+    return;
+  }
+
+  const servico = state.servicosPagamento.find(item => item.id === id);
+  if (!confirm(`Excluir o serviço ${servico?.nome || id}?`)) return;
+
+  const servicos = state.servicosPagamento.filter(item => item.id !== id);
+
+  try {
+    await salvarListaServicosPagamento(servicos, "servico_pagamento_excluido", `${servico?.nome || id}`);
+    toast("Serviço excluído.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao excluir serviço.");
+  }
 }
 
 function getItensPagamento() {
   const itens = [];
 
-  getSetoresPagamento().forEach(setorInfo => {
-    state.ordens.forEach(op => {
-      if (!op?.[setorInfo.campo]) return;
+  getServicosPagamentoAtivos().forEach(servico => {
+    const campoSetor = getCampoSetorPagamento(servico.setor);
+    if (!campoSetor) return;
 
-      const manejo = getManejoDaOrdem(op, setorInfo.id);
+    state.ordens.forEach(op => {
+      if (!op?.[campoSetor]) return;
+
+      const manejo = getManejoDaOrdem(op, servico.setor);
       const faccao = limparTexto(manejo?.faccao || "SEM FACÇÃO").toUpperCase();
       const quantidadeRecebida = numeroQuantidadeOP(op);
       const falta = Math.max(0, Number(manejo?.falta || 0));
       const quantidadePagar = Math.max(quantidadeRecebida - falta, 0);
-      const valorUnitario = getValorServicoPagamento(setorInfo.id);
+      const valorUnitario = Number(servico.valor || 0);
       const total = quantidadePagar * valorUnitario;
-      const status = getStatusManejo(op, setorInfo.id);
+      const status = getStatusManejo(op, servico.setor);
 
       itens.push({
         op,
         manejo,
-        setor: setorInfo.id,
-        setorLabel: setorInfo.label,
+        servicoId: servico.id,
+        servicoNome: servico.nome,
+        setor: servico.setor,
+        setorLabel: getLabelSetorPagamento(servico.setor),
         faccao,
         quantidadeRecebida,
         falta,
@@ -2901,11 +3051,13 @@ function getItensPagamento() {
 
 function getItensPagamentoFiltrados() {
   const filtroFaccao = document.getElementById("pagamentoFiltroFaccao")?.value || "";
+  const filtroServico = document.getElementById("pagamentoFiltroServico")?.value || "";
   const filtroSetor = document.getElementById("pagamentoFiltroSetor")?.value || "";
   const filtroStatus = document.getElementById("pagamentoFiltroStatus")?.value || "";
 
   return getItensPagamento().filter(item => {
     if (filtroFaccao && item.faccao !== filtroFaccao) return false;
+    if (filtroServico && item.servicoId !== filtroServico) return false;
     if (filtroSetor && item.setor !== filtroSetor) return false;
     if (filtroStatus && item.status !== filtroStatus) return false;
     return true;
@@ -2913,29 +3065,44 @@ function getItensPagamentoFiltrados() {
 }
 
 function preencherFiltrosPagamento() {
-  const select = document.getElementById("pagamentoFiltroFaccao");
-  if (!select) return;
+  const selectFaccao = document.getElementById("pagamentoFiltroFaccao");
+  const selectServico = document.getElementById("pagamentoFiltroServico");
 
-  const atual = select.value;
-  const faccoes = [...new Set(getItensPagamento().map(item => item.faccao).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+  if (selectFaccao) {
+    const atual = selectFaccao.value;
+    const faccoes = [...new Set(getItensPagamento().map(item => item.faccao).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
 
-  select.innerHTML = `<option value="">Todas</option>` + faccoes.map(faccao => {
-    return `<option value="${escapeHtml(faccao)}">${escapeHtml(faccao)}</option>`;
-  }).join("");
+    selectFaccao.innerHTML = `<option value="">Todas</option>` + faccoes.map(faccao => {
+      return `<option value="${escapeHtml(faccao)}">${escapeHtml(faccao)}</option>`;
+    }).join("");
 
-  if (faccoes.includes(atual)) select.value = atual;
+    if (faccoes.includes(atual)) selectFaccao.value = atual;
+  }
+
+  if (selectServico) {
+    const atual = selectServico.value;
+    const servicos = getServicosPagamentoAtivos();
+
+    selectServico.innerHTML = `<option value="">Todos</option>` + servicos.map(servico => {
+      return `<option value="${escapeHtml(servico.id)}">${escapeHtml(servico.nome)} - ${escapeHtml(getLabelSetorPagamento(servico.setor))} - ${escapeHtml(formatarMoedaBR(servico.valor))}</option>`;
+    }).join("");
+
+    if (servicos.some(servico => servico.id === atual)) selectServico.value = atual;
+  }
 }
 
 function agruparPagamento(itens) {
   const mapa = new Map();
 
   itens.forEach(item => {
-    const chave = `${item.faccao}||${item.setor}`;
+    const chave = `${item.faccao}||${item.servicoId}`;
 
     if (!mapa.has(chave)) {
       mapa.set(chave, {
         faccao: item.faccao,
+        servicoId: item.servicoId,
+        servicoNome: item.servicoNome,
         setor: item.setor,
         setorLabel: item.setorLabel,
         ops: new Set(),
@@ -2959,7 +3126,9 @@ function agruparPagamento(itens) {
   return [...mapa.values()].sort((a, b) => {
     const faccaoCompare = a.faccao.localeCompare(b.faccao, "pt-BR", { numeric: true });
     if (faccaoCompare !== 0) return faccaoCompare;
-    return a.setorLabel.localeCompare(b.setorLabel, "pt-BR");
+    const setorCompare = a.setorLabel.localeCompare(b.setorLabel, "pt-BR");
+    if (setorCompare !== 0) return setorCompare;
+    return a.servicoNome.localeCompare(b.servicoNome, "pt-BR", { numeric: true });
   });
 }
 
@@ -2967,8 +3136,8 @@ function renderPagamentos() {
   const tbody = document.getElementById("listaPagamento");
   if (!tbody) return;
 
+  renderServicosPagamento();
   preencherFiltrosPagamento();
-  preencherFormularioValoresServicos();
 
   const itens = getItensPagamentoFiltrados();
   const grupos = agruparPagamento(itens);
@@ -2988,14 +3157,20 @@ function renderPagamentos() {
   setText("pagamentoTotalFalta", totalFalta.toLocaleString("pt-BR"));
   setText("pagamentoTotalValor", formatarMoedaBR(totalValor));
 
+  if (!getServicosPagamentoAtivos().length) {
+    tbody.innerHTML = `<tr><td colspan="9" class="empty">Cadastre pelo menos um serviço para gerar pagamentos.</td></tr>`;
+    return;
+  }
+
   if (!grupos.length) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty">Nenhum item encontrado para pagamento.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="empty">Nenhum item encontrado para pagamento.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = grupos.map(grupo => `
     <tr class="${grupo.faccao === "SEM FACÇÃO" ? "pagamento-sem-faccao" : ""}">
       <td><strong>${escapeHtml(grupo.faccao)}</strong></td>
+      <td><strong>${escapeHtml(grupo.servicoNome)}</strong></td>
       <td>${escapeHtml(grupo.setorLabel)}</td>
       <td>${escapeHtml(grupo.ops.size)}</td>
       <td>${escapeHtml(grupo.recebidas.toLocaleString("pt-BR"))}</td>
@@ -3009,12 +3184,14 @@ function renderPagamentos() {
 
 function getTextoFiltrosPagamento() {
   const faccao = document.getElementById("pagamentoFiltroFaccao")?.value || "";
+  const servico = document.getElementById("pagamentoFiltroServico")?.selectedOptions?.[0]?.textContent || "Todos";
   const setor = document.getElementById("pagamentoFiltroSetor")?.selectedOptions?.[0]?.textContent || "Todos";
   const status = document.getElementById("pagamentoFiltroStatus")?.selectedOptions?.[0]?.textContent || "Todos";
 
   const partes = [];
   if (faccao) partes.push(`Facção: ${faccao}`);
-  if (setor && setor !== "Todos") partes.push(`Serviço: ${setor}`);
+  if (servico && servico !== "Todos") partes.push(`Serviço: ${servico}`);
+  if (setor && setor !== "Todos") partes.push(`Setor: ${setor}`);
   if (status && status !== "Todos") partes.push(`Status: ${status}`);
 
   return partes.length ? `Filtro: ${partes.join(" + ")}` : "Filtro: todos os pagamentos";
@@ -3037,6 +3214,7 @@ function imprimirRelatorioPagamento() {
   const linhas = grupos.map(grupo => `
     <tr>
       <td>${escapeHtml(grupo.faccao)}</td>
+      <td>${escapeHtml(grupo.servicoNome)}</td>
       <td>${escapeHtml(grupo.setorLabel)}</td>
       <td>${escapeHtml(grupo.ops.size)}</td>
       <td class="num">${escapeHtml(grupo.recebidas.toLocaleString("pt-BR"))}</td>
@@ -3094,6 +3272,7 @@ function imprimirRelatorioPagamento() {
             <tr>
               <th>Facção</th>
               <th>Serviço</th>
+              <th>Setor</th>
               <th>OPs</th>
               <th>Recebidas</th>
               <th>Falta</th>
@@ -4650,3 +4829,6 @@ window.editarFaccao = editarFaccao;
 window.alternarFaccao = alternarFaccao;
 window.excluirFaccao = excluirFaccao;
 window.imprimirRelatorioPagamento = imprimirRelatorioPagamento;
+window.editarServicoPagamento = editarServicoPagamento;
+window.alternarServicoPagamento = alternarServicoPagamento;
+window.excluirServicoPagamento = excluirServicoPagamento;
