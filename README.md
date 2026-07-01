@@ -1183,3 +1183,33 @@ app.js?v=bipado-botao-corrigido-2
 ```
 
 Isso força o navegador/GitHub Pages a carregar a versão nova.
+
+
+## Atualização: filtros digitáveis no Manejo
+
+Os filtros do cabeçalho do **Manejo** continuam no mesmo lugar, mas agora viraram campos digitáveis com sugestões.
+
+Antes:
+
+```txt
+Apenas selecionar na lista
+```
+
+Agora:
+
+```txt
+Selecionar uma sugestão
+ou
+Digitar manualmente
+```
+
+Exemplo:
+
+```txt
+Filtro Nº OP: digitar 58384
+Filtro QTI: digitar 160
+Filtro Cor: digitar BRANCO
+Filtro Facção: digitar parte do nome
+```
+
+A busca por coluna aceita texto parcial. Isso facilita encontrar números ou valores específicos sem precisar rolar a lista inteira.

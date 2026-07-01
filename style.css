@@ -2145,3 +2145,34 @@ small {
     min-width: 1440px !important;
   }
 }
+
+
+/* Filtros digitáveis no cabeçalho do Manejo */
+.manejo-filter-row input.filtro-digitavel {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.manejo-filter-row input.filtro-digitavel:focus {
+  outline: 2px solid rgba(124, 58, 237, 0.22);
+  border-color: var(--primary);
+}
+
+.manejo-filter-row input.filtro-digitavel::placeholder {
+  color: #64748b;
+}
+
+@media (max-width: 1920px) {
+  .manejo-filter-row input.filtro-digitavel {
+    padding: 5px 6px;
+    font-size: 10px;
+    border-radius: 8px;
+  }
+}

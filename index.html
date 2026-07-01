@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema OP Confecção</title>
-  <link rel="stylesheet" href="style.css?v=bipado-botao-corrigido-2" />
+  <link rel="stylesheet" href="style.css?v=manejo-filtros-digitaveis-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -446,74 +446,60 @@
                 </tr>
                 <tr class="manejo-filter-row">
                   <th>
-                    <select id="filtroManejoOP">
-                      <option value="">Todas</option>
-                    </select>
+                    <input id="filtroManejoOP" class="filtro-digitavel" type="text" list="filtroManejoOPList" placeholder="Todas" autocomplete="off" />
+                    <datalist id="filtroManejoOPList"></datalist>
                   </th>
                   <th>
-                    <select id="filtroManejoReferencia">
-                      <option value="">Todas</option>
-                    </select>
+                    <input id="filtroManejoReferencia" class="filtro-digitavel" type="text" list="filtroManejoReferenciaList" placeholder="Todas" autocomplete="off" />
+                    <datalist id="filtroManejoReferenciaList"></datalist>
                   </th>
                   <th>
-                    <select id="filtroManejoSilk">
-                      <option value="">Todos</option>
-                    </select>
+                    <input id="filtroManejoSilk" class="filtro-digitavel" type="text" list="filtroManejoSilkList" placeholder="Todos" autocomplete="off" />
+                    <datalist id="filtroManejoSilkList"></datalist>
                   </th>
                   <th>
-                    <select id="filtroManejoDataTecido">
-                      <option value="">Todas</option>
-                    </select>
+                    <input id="filtroManejoDataTecido" class="filtro-digitavel" type="text" list="filtroManejoDataTecidoList" placeholder="Todas" autocomplete="off" />
+                    <datalist id="filtroManejoDataTecidoList"></datalist>
                   </th>
                   <th>
-                    <select id="filtroManejoFase">
-                      <option value="">Todas</option>
-                    </select>
+                    <input id="filtroManejoFase" class="filtro-digitavel" type="text" list="filtroManejoFaseList" placeholder="Todas" autocomplete="off" />
+                    <datalist id="filtroManejoFaseList"></datalist>
                   </th>
                   <th>
-                    <select id="filtroManejoQuantidade">
-                      <option value="">Todas</option>
-                    </select>
+                    <input id="filtroManejoQuantidade" class="filtro-digitavel" type="text" list="filtroManejoQuantidadeList" placeholder="Todas" autocomplete="off" />
+                    <datalist id="filtroManejoQuantidadeList"></datalist>
                   </th>
                   <th>
-                    <select id="filtroManejoCor">
-                      <option value="">Todas</option>
-                    </select>
+                    <input id="filtroManejoCor" class="filtro-digitavel" type="text" list="filtroManejoCorList" placeholder="Todas" autocomplete="off" />
+                    <datalist id="filtroManejoCorList"></datalist>
                   </th>
                   <th>
-                    <select id="filtroManejoData">
-                      <option value="">Todas</option>
-                    </select>
+                    <input id="filtroManejoData" class="filtro-digitavel" type="text" list="filtroManejoDataList" placeholder="Todas" autocomplete="off" />
+                    <datalist id="filtroManejoDataList"></datalist>
                   </th>
                   <th>
-                    <select id="filtroManejoFaccao">
-                      <option value="">Todas</option>
-                    </select>
+                    <input id="filtroManejoFaccao" class="filtro-digitavel" type="text" list="filtroManejoFaccaoList" placeholder="Todas" autocomplete="off" />
+                    <datalist id="filtroManejoFaccaoList"></datalist>
                   </th>
                   <th>
-                    <select id="filtroManejoChegada">
-                      <option value="">Todas</option>
-                    </select>
+                    <input id="filtroManejoChegada" class="filtro-digitavel" type="text" list="filtroManejoChegadaList" placeholder="Todas" autocomplete="off" />
+                    <datalist id="filtroManejoChegadaList"></datalist>
                   </th>
                   <th>
-                    <select id="filtroManejoFalta">
-                      <option value="">Todas</option>
-                    </select>
+                    <input id="filtroManejoFalta" class="filtro-digitavel" type="text" list="filtroManejoFaltaList" placeholder="Todas" autocomplete="off" />
+                    <datalist id="filtroManejoFaltaList"></datalist>
                   </th>
                   <th>
-                    <select id="filtroManejoProducao">
-                      <option value="">Todas</option>
-                    </select>
+                    <input id="filtroManejoProducao" class="filtro-digitavel" type="text" list="filtroManejoProducaoList" placeholder="Todas" autocomplete="off" />
+                    <datalist id="filtroManejoProducaoList"></datalist>
                   </th>
                   <th>
-                    <select id="filtroManejoCelu">
-                      <option value="">Todos</option>
-                    </select>
+                    <input id="filtroManejoCelu" class="filtro-digitavel" type="text" list="filtroManejoCeluList" placeholder="Todos" autocomplete="off" />
+                    <datalist id="filtroManejoCeluList"></datalist>
                   </th>
                   <th>
-                    <select id="filtroManejoNecessidade">
-                      <option value="">Todas</option>
-                    </select>
+                    <input id="filtroManejoNecessidade" class="filtro-digitavel" type="text" list="filtroManejoNecessidadeList" placeholder="Todas" autocomplete="off" />
+                    <datalist id="filtroManejoNecessidadeList"></datalist>
                   </th>
                   <th>
                     <span class="filter-placeholder">—</span>
@@ -999,6 +985,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="app.js?v=bipado-botao-corrigido-2"></script>
+  <script type="module" src="app.js?v=manejo-filtros-digitaveis-1"></script>
 </body>
 </html>

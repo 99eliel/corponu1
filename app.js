@@ -932,7 +932,9 @@ function configurarManejo() {
   ].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.addEventListener("change", atualizarManejoComSoma);
+    ["input", "change"].forEach(evento => {
+      el.addEventListener(evento, atualizarManejoComSoma);
+    });
   });
 
   const limpar = document.getElementById("btnLimparFiltrosManejo");
@@ -1356,7 +1358,15 @@ function filtrarOrdensManejoPorColunas() {
 
     return Object.entries(filtros).every(([campo, valor]) => {
       if (!valor) return true;
-      return getValorManejoParaFiltro(op, campo) === valor;
+
+      const valorFiltro = normalizarTexto(valor);
+      const valorItem = normalizarTexto(getValorManejoParaFiltro(op, campo));
+
+      if (campo === "status") {
+        return getValorManejoParaFiltro(op, campo) === valor;
+      }
+
+      return valorItem.includes(valorFiltro);
     });
   });
 }
@@ -1386,19 +1396,30 @@ function limparFiltrosColunasManejo() {
 }
 
 function preencherSelectFiltroManejo(id, valores, labelTodos = "Todos") {
-  const select = document.getElementById(id);
-  if (!select) return;
+  const campo = document.getElementById(id);
+  if (!campo) return;
 
-  const atual = select.value;
+  const atual = campo.value;
   const limpos = [...new Set(valores.map(valor => String(valor ?? "").trim()).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
 
-  select.innerHTML = `<option value="">${labelTodos}</option>` + limpos.map(valor => {
+  const datalist = document.getElementById(`${id}List`);
+
+  if (datalist) {
+    datalist.innerHTML = limpos.map(valor => {
+      return `<option value="${escapeHtml(valor)}"></option>`;
+    }).join("");
+
+    campo.value = atual;
+    return;
+  }
+
+  campo.innerHTML = `<option value="">${labelTodos}</option>` + limpos.map(valor => {
     return `<option value="${escapeHtml(valor)}">${escapeHtml(valor)}</option>`;
   }).join("");
 
   if (limpos.includes(atual)) {
-    select.value = atual;
+    campo.value = atual;
   }
 }
 
@@ -1484,11 +1505,15 @@ function renderTabelaSomaManejo(tbodyId, linhas) {
 
 
 function textoSelectSelecionado(id) {
-  const select = document.getElementById(id);
-  if (!select || !select.value) return "";
+  const campo = document.getElementById(id);
+  if (!campo || !campo.value) return "";
 
-  const label = select.options[select.selectedIndex]?.textContent || select.value;
-  return label.trim();
+  if (campo.tagName === "SELECT") {
+    const label = campo.options[campo.selectedIndex]?.textContent || campo.value;
+    return label.trim();
+  }
+
+  return String(campo.value || "").trim();
 }
 
 function getFiltrosManejoAtivosTexto() {
