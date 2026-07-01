@@ -1318,3 +1318,69 @@ manejoStatusSetores.renda
 bipadoSetores.alca
 bipadoSetores.renda
 ```
+
+
+## Nova aba: Pagamentos
+
+Foi criada a aba **Pagamentos** para preparar a lógica de pagamento por facção.
+
+### 1. Cadastro de valores dos serviços
+
+A tela permite cadastrar valor por peça para:
+
+```txt
+Bojo
+Alça
+Renda
+```
+
+Os valores são salvos em:
+
+```txt
+configuracoes/valoresServicos
+```
+
+Não foi criada nova coleção, então usa a permissão já existente de `configuracoes`.
+
+### 2. Relatório de pagamento
+
+O relatório calcula automaticamente:
+
+```txt
+Facção
+Serviço
+Quantidade recebida
+Quantidade em falta
+Peças a pagar
+Valor unitário
+Total
+```
+
+Fórmula usada:
+
+```txt
+Peças a pagar = Quantidade da OP - Falta
+Total = Peças a pagar × Valor unitário cadastrado
+```
+
+Exemplo:
+
+```txt
+Facção X
+Serviço: Alça
+Recebeu: 300 peças
+Falta: 5 peças
+Pagar: 295 peças
+Valor: R$ 0,05
+Total: R$ 14,75
+```
+
+A aba também possui filtros por:
+
+```txt
+Facção
+Serviço
+Status
+```
+
+E botão para imprimir o relatório.

@@ -2534,3 +2534,120 @@ table td {
     text-align: left;
   }
 }
+
+
+/* Aba Pagamentos */
+.pagamentos-grid {
+  grid-template-columns: 360px 1fr;
+}
+
+.pagamento-filtros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 1fr)) auto auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.pagamento-filtros label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 950;
+  color: #334155;
+}
+
+.pagamento-filtros select {
+  min-height: 40px;
+  border: 1px solid #bcc8da;
+  border-radius: 12px;
+  padding: 8px 10px;
+  color: #0f172a;
+  font-weight: 800;
+  background: #ffffff;
+}
+
+.pagamento-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.pagamento-card {
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  padding: 12px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.pagamento-card span {
+  display: block;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.pagamento-card strong {
+  display: block;
+  margin-top: 6px;
+  color: #0b1220;
+  font-size: 23px;
+  font-weight: 950;
+}
+
+.pagamento-card.destaque {
+  background: #ecfdf5;
+  border-color: #86efac;
+}
+
+.pagamento-card.destaque strong {
+  color: #14532d;
+}
+
+.pagamento-table {
+  min-width: 1000px;
+}
+
+.pagamento-table td,
+.pagamento-table th {
+  white-space: nowrap;
+}
+
+.pagamento-table td:nth-child(4),
+.pagamento-table td:nth-child(5),
+.pagamento-table td:nth-child(6),
+.pagamento-table td:nth-child(7),
+.pagamento-table td:nth-child(8) {
+  text-align: right;
+}
+
+.pagamento-sem-faccao td {
+  background: #fff7ed !important;
+}
+
+@media (max-width: 1180px) {
+  .pagamentos-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pagamento-filtros {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+
+  .pagamento-cards {
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .pagamento-filtros,
+  .pagamento-cards {
+    grid-template-columns: 1fr;
+  }
+}

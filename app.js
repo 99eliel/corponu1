@@ -56,6 +56,11 @@ const state = {
   fasesManejoExtras: [],
   faccoesManejoExtras: [],
   celusManejoExtras: [],
+  valoresServicos: {
+    bojo: 0,
+    alca: 0,
+    renda: 0
+  },
   usuarios: [],
   logs: [],
   pdfImportacaoPendente: [],
@@ -88,6 +93,10 @@ const pageInfo = {
   faccoes: {
     title: "Gerenciar Facção",
     subtitle: "Cadastre facções, cidade, chave PIX e contato."
+  },
+  pagamentos: {
+    title: "Pagamentos",
+    subtitle: "Cadastre valores dos serviços e gere relatórios de pagamento por facção."
   },
   relatorios: {
     title: "Relatórios",
@@ -236,6 +245,7 @@ document.addEventListener("DOMContentLoaded", () => {
   configurarManejo();
   configurarProcessos();
   configurarFaccoes();
+  configurarPagamentos();
   configurarRelatorios();
   configurarUsuarios();
   configurarLogs();
@@ -397,9 +407,25 @@ function iniciarListenersFirestore() {
     state.faccoes = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     renderFaccoes();
     renderDatalistManejo();
+    renderPagamentos();
   }, error => {
     console.error(error);
     toast("Erro ao carregar facções. Verifique as permissões.");
+  }));
+
+
+  state.unsubscribers.push(onSnapshot(doc(db, "configuracoes", "valoresServicos"), snapshot => {
+    const dados = snapshot.exists() ? snapshot.data() : {};
+    state.valoresServicos = {
+      bojo: Number(dados.bojo || 0),
+      alca: Number(dados.alca || 0),
+      renda: Number(dados.renda || 0)
+    };
+    preencherFormularioValoresServicos();
+    renderPagamentos();
+  }, error => {
+    console.error(error);
+    toast("Erro ao carregar valores dos serviços.");
   }));
 
 
@@ -435,7 +461,7 @@ function aplicarPermissoesTela() {
 
   if (!admin) {
     const paginaAtiva = document.querySelector(".page.active")?.id;
-    if (paginaAtiva === "usuarios" || paginaAtiva === "backup" || paginaAtiva === "logs" || paginaAtiva === "faccoes") {
+    if (paginaAtiva === "usuarios" || paginaAtiva === "backup" || paginaAtiva === "logs" || paginaAtiva === "faccoes" || paginaAtiva === "pagamentos") {
       abrirPagina("dashboard");
     }
   }
@@ -448,7 +474,7 @@ function ehAdmin() {
 function configurarNavegacao() {
   document.querySelectorAll(".nav-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      if ((btn.dataset.page === "usuarios" || btn.dataset.page === "backup" || btn.dataset.page === "logs" || btn.dataset.page === "faccoes") && !ehAdmin()) {
+      if ((btn.dataset.page === "usuarios" || btn.dataset.page === "backup" || btn.dataset.page === "logs" || btn.dataset.page === "faccoes" || btn.dataset.page === "pagamentos") && !ehAdmin()) {
         toast("Apenas admin acessa esta área.");
         return;
       }
@@ -2743,6 +2769,364 @@ async function excluirFaccao(id) {
 }
 
 
+
+function configurarPagamentos() {
+  const form = document.getElementById("formValoresServicos");
+  if (form) {
+    form.addEventListener("submit", salvarValoresServicos);
+  }
+
+  [
+    "pagamentoFiltroFaccao",
+    "pagamentoFiltroSetor",
+    "pagamentoFiltroStatus"
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", renderPagamentos);
+  });
+
+  const limpar = document.getElementById("btnLimparFiltrosPagamento");
+  if (limpar) {
+    limpar.addEventListener("click", () => {
+      ["pagamentoFiltroFaccao", "pagamentoFiltroSetor", "pagamentoFiltroStatus"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+      renderPagamentos();
+    });
+  }
+
+  const imprimir = document.getElementById("btnImprimirPagamento");
+  if (imprimir) {
+    imprimir.addEventListener("click", imprimirRelatorioPagamento);
+  }
+}
+
+function formatarMoedaBR(valor) {
+  return Number(valor || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  });
+}
+
+function preencherFormularioValoresServicos() {
+  const form = document.getElementById("formValoresServicos");
+  if (!form) return;
+
+  const ativo = document.activeElement;
+  if (ativo && form.contains(ativo)) return;
+
+  const setValue = (id, valor) => {
+    const el = document.getElementById(id);
+    if (el) el.value = Number(valor || 0).toFixed(2);
+  };
+
+  setValue("valorServicoBojo", state.valoresServicos.bojo);
+  setValue("valorServicoAlca", state.valoresServicos.alca);
+  setValue("valorServicoRenda", state.valoresServicos.renda);
+}
+
+async function salvarValoresServicos(event) {
+  event.preventDefault();
+
+  if (!ehAdmin()) {
+    toast("Apenas admin pode salvar valores dos serviços.");
+    return;
+  }
+
+  const valores = {
+    bojo: Number(document.getElementById("valorServicoBojo").value || 0),
+    alca: Number(document.getElementById("valorServicoAlca").value || 0),
+    renda: Number(document.getElementById("valorServicoRenda").value || 0),
+    atualizadoPor: state.currentUser.uid,
+    atualizadoEm: serverTimestamp()
+  };
+
+  try {
+    await setDoc(doc(db, "configuracoes", "valoresServicos"), valores, { merge: true });
+    await registrarLog("valores_servicos_atualizados", "configuracao", "valoresServicos", `Bojo: ${valores.bojo} | Alça: ${valores.alca} | Renda: ${valores.renda}`);
+    toast("Valores dos serviços salvos.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao salvar valores dos serviços.");
+  }
+}
+
+function getValorServicoPagamento(setor) {
+  return Number(state.valoresServicos?.[setor] || 0);
+}
+
+function getSetoresPagamento() {
+  return [
+    { id: "bojo", label: "Bojo", campo: "possuiBojo" },
+    { id: "alca", label: "Alça", campo: "possuiAlca" },
+    { id: "renda", label: "Renda", campo: "possuiRenda" }
+  ];
+}
+
+function getItensPagamento() {
+  const itens = [];
+
+  getSetoresPagamento().forEach(setorInfo => {
+    state.ordens.forEach(op => {
+      if (!op?.[setorInfo.campo]) return;
+
+      const manejo = getManejoDaOrdem(op, setorInfo.id);
+      const faccao = limparTexto(manejo?.faccao || "SEM FACÇÃO").toUpperCase();
+      const quantidadeRecebida = numeroQuantidadeOP(op);
+      const falta = Math.max(0, Number(manejo?.falta || 0));
+      const quantidadePagar = Math.max(quantidadeRecebida - falta, 0);
+      const valorUnitario = getValorServicoPagamento(setorInfo.id);
+      const total = quantidadePagar * valorUnitario;
+      const status = getStatusManejo(op, setorInfo.id);
+
+      itens.push({
+        op,
+        manejo,
+        setor: setorInfo.id,
+        setorLabel: setorInfo.label,
+        faccao,
+        quantidadeRecebida,
+        falta,
+        quantidadePagar,
+        valorUnitario,
+        total,
+        status
+      });
+    });
+  });
+
+  return itens;
+}
+
+function getItensPagamentoFiltrados() {
+  const filtroFaccao = document.getElementById("pagamentoFiltroFaccao")?.value || "";
+  const filtroSetor = document.getElementById("pagamentoFiltroSetor")?.value || "";
+  const filtroStatus = document.getElementById("pagamentoFiltroStatus")?.value || "";
+
+  return getItensPagamento().filter(item => {
+    if (filtroFaccao && item.faccao !== filtroFaccao) return false;
+    if (filtroSetor && item.setor !== filtroSetor) return false;
+    if (filtroStatus && item.status !== filtroStatus) return false;
+    return true;
+  });
+}
+
+function preencherFiltrosPagamento() {
+  const select = document.getElementById("pagamentoFiltroFaccao");
+  if (!select) return;
+
+  const atual = select.value;
+  const faccoes = [...new Set(getItensPagamento().map(item => item.faccao).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+
+  select.innerHTML = `<option value="">Todas</option>` + faccoes.map(faccao => {
+    return `<option value="${escapeHtml(faccao)}">${escapeHtml(faccao)}</option>`;
+  }).join("");
+
+  if (faccoes.includes(atual)) select.value = atual;
+}
+
+function agruparPagamento(itens) {
+  const mapa = new Map();
+
+  itens.forEach(item => {
+    const chave = `${item.faccao}||${item.setor}`;
+
+    if (!mapa.has(chave)) {
+      mapa.set(chave, {
+        faccao: item.faccao,
+        setor: item.setor,
+        setorLabel: item.setorLabel,
+        ops: new Set(),
+        recebidas: 0,
+        falta: 0,
+        pagar: 0,
+        valorUnitario: item.valorUnitario,
+        total: 0
+      });
+    }
+
+    const grupo = mapa.get(chave);
+    grupo.ops.add(item.op.numeroOP || item.op.id);
+    grupo.recebidas += item.quantidadeRecebida;
+    grupo.falta += item.falta;
+    grupo.pagar += item.quantidadePagar;
+    grupo.valorUnitario = item.valorUnitario;
+    grupo.total += item.total;
+  });
+
+  return [...mapa.values()].sort((a, b) => {
+    const faccaoCompare = a.faccao.localeCompare(b.faccao, "pt-BR", { numeric: true });
+    if (faccaoCompare !== 0) return faccaoCompare;
+    return a.setorLabel.localeCompare(b.setorLabel, "pt-BR");
+  });
+}
+
+function renderPagamentos() {
+  const tbody = document.getElementById("listaPagamento");
+  if (!tbody) return;
+
+  preencherFiltrosPagamento();
+  preencherFormularioValoresServicos();
+
+  const itens = getItensPagamentoFiltrados();
+  const grupos = agruparPagamento(itens);
+
+  const totalFaccoes = new Set(grupos.map(g => g.faccao)).size;
+  const totalRecebidas = grupos.reduce((soma, g) => soma + g.recebidas, 0);
+  const totalFalta = grupos.reduce((soma, g) => soma + g.falta, 0);
+  const totalValor = grupos.reduce((soma, g) => soma + g.total, 0);
+
+  const setText = (id, valor) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = valor;
+  };
+
+  setText("pagamentoTotalFaccoes", totalFaccoes.toLocaleString("pt-BR"));
+  setText("pagamentoTotalRecebidas", totalRecebidas.toLocaleString("pt-BR"));
+  setText("pagamentoTotalFalta", totalFalta.toLocaleString("pt-BR"));
+  setText("pagamentoTotalValor", formatarMoedaBR(totalValor));
+
+  if (!grupos.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">Nenhum item encontrado para pagamento.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = grupos.map(grupo => `
+    <tr class="${grupo.faccao === "SEM FACÇÃO" ? "pagamento-sem-faccao" : ""}">
+      <td><strong>${escapeHtml(grupo.faccao)}</strong></td>
+      <td>${escapeHtml(grupo.setorLabel)}</td>
+      <td>${escapeHtml(grupo.ops.size)}</td>
+      <td>${escapeHtml(grupo.recebidas.toLocaleString("pt-BR"))}</td>
+      <td>${escapeHtml(grupo.falta.toLocaleString("pt-BR"))}</td>
+      <td><strong>${escapeHtml(grupo.pagar.toLocaleString("pt-BR"))}</strong></td>
+      <td>${escapeHtml(formatarMoedaBR(grupo.valorUnitario))}</td>
+      <td><strong>${escapeHtml(formatarMoedaBR(grupo.total))}</strong></td>
+    </tr>
+  `).join("");
+}
+
+function getTextoFiltrosPagamento() {
+  const faccao = document.getElementById("pagamentoFiltroFaccao")?.value || "";
+  const setor = document.getElementById("pagamentoFiltroSetor")?.selectedOptions?.[0]?.textContent || "Todos";
+  const status = document.getElementById("pagamentoFiltroStatus")?.selectedOptions?.[0]?.textContent || "Todos";
+
+  const partes = [];
+  if (faccao) partes.push(`Facção: ${faccao}`);
+  if (setor && setor !== "Todos") partes.push(`Serviço: ${setor}`);
+  if (status && status !== "Todos") partes.push(`Status: ${status}`);
+
+  return partes.length ? `Filtro: ${partes.join(" + ")}` : "Filtro: todos os pagamentos";
+}
+
+function imprimirRelatorioPagamento() {
+  const grupos = agruparPagamento(getItensPagamentoFiltrados());
+
+  if (!grupos.length) {
+    toast("Não há dados para imprimir.");
+    return;
+  }
+
+  const totalRecebidas = grupos.reduce((soma, g) => soma + g.recebidas, 0);
+  const totalFalta = grupos.reduce((soma, g) => soma + g.falta, 0);
+  const totalValor = grupos.reduce((soma, g) => soma + g.total, 0);
+  const dataImpressao = new Date().toLocaleString("pt-BR");
+  const filtro = getTextoFiltrosPagamento();
+
+  const linhas = grupos.map(grupo => `
+    <tr>
+      <td>${escapeHtml(grupo.faccao)}</td>
+      <td>${escapeHtml(grupo.setorLabel)}</td>
+      <td>${escapeHtml(grupo.ops.size)}</td>
+      <td class="num">${escapeHtml(grupo.recebidas.toLocaleString("pt-BR"))}</td>
+      <td class="num">${escapeHtml(grupo.falta.toLocaleString("pt-BR"))}</td>
+      <td class="num">${escapeHtml(grupo.pagar.toLocaleString("pt-BR"))}</td>
+      <td class="num">${escapeHtml(formatarMoedaBR(grupo.valorUnitario))}</td>
+      <td class="num">${escapeHtml(formatarMoedaBR(grupo.total))}</td>
+    </tr>
+  `).join("");
+
+  const htmlImpressao = `
+    <!doctype html>
+    <html lang="pt-BR">
+      <head>
+        <meta charset="utf-8" />
+        <title>Relatório de Pagamento</title>
+        <style>
+          * { box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; color: #0f172a; margin: 18px; font-size: 12px; }
+          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; }
+          h1 { margin: 0; font-size: 22px; }
+          .muted { color: #475569; font-size: 11px; }
+          .filter { border: 1px solid #cbd5e1; background: #f8fafc; padding: 8px; border-radius: 8px; margin-bottom: 12px; }
+          .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+          .summary div { border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; }
+          .summary span { display: block; color: #475569; font-size: 11px; }
+          .summary strong { display: block; font-size: 17px; margin-top: 3px; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #cbd5e1; padding: 7px; }
+          th { background: #eef2ff; text-align: left; }
+          .num { text-align: right; font-weight: bold; }
+          @page { size: landscape; margin: 10mm; }
+          @media print { body { margin: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <h1>Relatório de Pagamento</h1>
+            <div class="muted">Sistema OP Confecção</div>
+          </div>
+          <div class="muted">Impresso em:<br><strong>${escapeHtml(dataImpressao)}</strong></div>
+        </div>
+
+        <div class="filter"><strong>${escapeHtml(filtro)}</strong></div>
+
+        <div class="summary">
+          <div><span>Peças recebidas</span><strong>${totalRecebidas.toLocaleString("pt-BR")}</strong></div>
+          <div><span>Peças em falta</span><strong>${totalFalta.toLocaleString("pt-BR")}</strong></div>
+          <div><span>Total a pagar</span><strong>${formatarMoedaBR(totalValor)}</strong></div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Facção</th>
+              <th>Serviço</th>
+              <th>OPs</th>
+              <th>Recebidas</th>
+              <th>Falta</th>
+              <th>Peças a pagar</th>
+              <th>Valor unit.</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>${linhas}</tbody>
+        </table>
+
+        <script>
+          window.addEventListener("load", () => {
+            window.focus();
+            window.print();
+          });
+        </script>
+      </body>
+    </html>
+  `;
+
+  const janela = window.open("", "_blank");
+  if (!janela) {
+    toast("O navegador bloqueou a impressão. Permita pop-ups para este site.");
+    return;
+  }
+
+  janela.document.open();
+  janela.document.write(htmlImpressao);
+  janela.document.close();
+}
+
+
 function configurarRelatorios() {
   document.querySelectorAll(".report-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -3868,6 +4252,9 @@ function renderTudo() {
   renderDatalistManejo();
   renderDatalistReferencias();
   renderDatalistCores();
+  renderProcessos();
+  renderFaccoes();
+  renderPagamentos();
   renderRelatorio();
   renderLogs();
   aplicarPermissoesTela();
@@ -4262,3 +4649,4 @@ window.imprimirProcessosFiltrados = imprimirProcessosFiltrados;
 window.editarFaccao = editarFaccao;
 window.alternarFaccao = alternarFaccao;
 window.excluirFaccao = excluirFaccao;
+window.imprimirRelatorioPagamento = imprimirRelatorioPagamento;

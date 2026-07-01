@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema OP Confecção</title>
-  <link rel="stylesheet" href="style.css?v=manejo-por-setor-1" />
+  <link rel="stylesheet" href="style.css?v=pagamentos-servicos-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -72,6 +72,7 @@
         <button class="nav-btn" data-page="manejo">Manejo</button>
         <button class="nav-btn" data-page="processos">Processos</button>
         <button class="nav-btn admin-only" data-page="faccoes">Gerenciar Facção</button>
+        <button class="nav-btn admin-only" data-page="pagamentos">Pagamentos</button>
         <button class="nav-btn" data-page="relatorios">Relatórios</button>
         <button class="nav-btn admin-only" data-page="usuarios">Usuários</button>
         <button class="nav-btn admin-only" data-page="logs">Logs / Auditoria</button>
@@ -738,6 +739,122 @@
         </div>
       </section>
 
+
+      <section id="pagamentos" class="page">
+        <div class="grid-2 pagamentos-grid">
+          <form class="panel form admin-only-block" id="formValoresServicos">
+            <div class="panel-header">
+              <div>
+                <h3>Valores dos serviços</h3>
+                <p>Cadastre o valor por peça de cada serviço antes de gerar pagamentos.</p>
+              </div>
+            </div>
+
+            <label>
+              Valor por peça - Bojo
+              <input id="valorServicoBojo" type="number" min="0" step="0.01" placeholder="Ex: 0.05" />
+            </label>
+
+            <label>
+              Valor por peça - Alça
+              <input id="valorServicoAlca" type="number" min="0" step="0.01" placeholder="Ex: 0.05" />
+            </label>
+
+            <label>
+              Valor por peça - Renda
+              <input id="valorServicoRenda" type="number" min="0" step="0.01" placeholder="Ex: 0.05" />
+            </label>
+
+            <div class="notice small">
+              <strong>Exemplo:</strong> se a facção recebeu 300 peças de alça a R$ 0,05 e faltaram 5,
+              o sistema calcula 295 peças para pagar.
+            </div>
+
+            <div class="actions">
+              <button class="btn btn-primary" type="submit">Salvar valores</button>
+            </div>
+          </form>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <h3>Relatório de pagamento</h3>
+                <p>O sistema calcula por facção, setor, quantidade recebida, falta e valor cadastrado.</p>
+              </div>
+            </div>
+
+            <div class="pagamento-filtros">
+              <label>
+                Facção
+                <select id="pagamentoFiltroFaccao">
+                  <option value="">Todas</option>
+                </select>
+              </label>
+
+              <label>
+                Serviço
+                <select id="pagamentoFiltroSetor">
+                  <option value="">Todos</option>
+                  <option value="bojo">Bojo</option>
+                  <option value="alca">Alça</option>
+                  <option value="renda">Renda</option>
+                </select>
+              </label>
+
+              <label>
+                Status
+                <select id="pagamentoFiltroStatus">
+                  <option value="">Todos</option>
+                  <option value="organizada">Organizadas</option>
+                  <option value="bipado">Bipadas</option>
+                  <option value="pendente">Pendentes</option>
+                </select>
+              </label>
+
+              <button class="btn" id="btnLimparFiltrosPagamento" type="button">Limpar</button>
+              <button class="btn btn-print" id="btnImprimirPagamento" type="button">Imprimir pagamento</button>
+            </div>
+
+            <div class="pagamento-cards">
+              <div class="pagamento-card">
+                <span>Facções</span>
+                <strong id="pagamentoTotalFaccoes">0</strong>
+              </div>
+              <div class="pagamento-card">
+                <span>Peças recebidas</span>
+                <strong id="pagamentoTotalRecebidas">0</strong>
+              </div>
+              <div class="pagamento-card">
+                <span>Peças em falta</span>
+                <strong id="pagamentoTotalFalta">0</strong>
+              </div>
+              <div class="pagamento-card destaque">
+                <span>Total a pagar</span>
+                <strong id="pagamentoTotalValor">R$ 0,00</strong>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table class="pagamento-table">
+                <thead>
+                  <tr>
+                    <th>Facção</th>
+                    <th>Serviço</th>
+                    <th>OPs</th>
+                    <th>Recebidas</th>
+                    <th>Falta</th>
+                    <th>Peças a pagar</th>
+                    <th>Valor unit.</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody id="listaPagamento"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="relatorios" class="page">
         <div class="panel">
           <div class="panel-header">
@@ -1075,6 +1192,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="app.js?v=manejo-por-setor-1"></script>
+  <script type="module" src="app.js?v=pagamentos-servicos-1"></script>
 </body>
 </html>
