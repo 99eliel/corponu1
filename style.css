@@ -1309,3 +1309,196 @@ small {
     justify-content: center;
   }
 }
+
+
+/* Tela Importar / Backup - layout profissional */
+#backup .panel.form {
+  padding: 24px;
+}
+
+#backup .panel-header {
+  margin-bottom: 18px;
+}
+
+.pdf-pro-card {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+.pdf-pro-section {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.pdf-pro-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.pdf-step {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  flex: 0 0 auto;
+}
+
+.pdf-pro-title h4 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.pdf-pro-title p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pdf-pro-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 16px;
+  align-items: end;
+}
+
+#backup .pro-field {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+  font-weight: 800;
+  color: var(--text);
+}
+
+#backup .pro-field > span {
+  font-size: 13px;
+}
+
+#backup .pro-field select,
+#backup .pro-field input[type="date"] {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  box-sizing: border-box;
+}
+
+.pdf-pro-options {
+  background: #fbfdff;
+}
+
+#backup .pdf-pro-check {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #fff;
+  cursor: pointer;
+}
+
+#backup .pdf-pro-check input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+#backup .pdf-pro-check span {
+  display: grid;
+  gap: 4px;
+  line-height: 1.25;
+}
+
+#backup .pdf-pro-check strong {
+  color: var(--text);
+}
+
+#backup .pdf-pro-check small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pdf-pro-actions,
+.backup-pro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pdf-pro-actions .btn,
+.backup-pro-actions .btn {
+  min-height: 46px;
+  padding-inline: 18px;
+}
+
+.backup-pro-content {
+  display: grid;
+  gap: 16px;
+}
+
+.backup-note {
+  margin: 0;
+}
+
+#pdfImportResumo {
+  margin-top: 18px;
+}
+
+#pdfPreviewWrap {
+  margin-top: 18px;
+}
+
+@media (max-width: 980px) {
+  .pdf-pro-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pdf-pro-actions .btn,
+  .backup-pro-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 560px) {
+  #backup .panel.form {
+    padding: 16px;
+  }
+
+  .pdf-pro-card {
+    padding: 14px;
+  }
+
+  .pdf-pro-section {
+    padding: 14px;
+  }
+
+  .pdf-pro-title {
+    gap: 10px;
+  }
+}

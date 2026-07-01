@@ -941,3 +941,24 @@ Ler relatório PDF
 Confirmar importação do PDF
 Zerar ordens de produção
 ```
+
+
+## Ajuste visual profissional: Importar / Backup
+
+A tela **Importar / Backup** foi reorganizada em três etapas:
+
+```txt
+1. Configuração do relatório
+2. Opções da importação
+3. Ações
+```
+
+Melhorias visuais:
+
+```txt
+- Campos alinhados dentro de cards
+- Checkbox corrigido e com descrição
+- Botões organizados em área própria
+- Backup JSON separado em painel limpo
+- Layout responsivo para celular
+```
