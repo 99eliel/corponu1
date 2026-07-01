@@ -760,13 +760,13 @@
           <div class="panel-header">
             <div>
               <h3>Importar relatório externo PDF</h3>
-              <p>Extraia automaticamente OP-Lote, referência, cor e planejado de relatórios em PDF.</p>
+              <p>Antes de ler o PDF, selecione o tipo da peça e o intervalo de necessidade das OPs.</p>
             </div>
           </div>
 
           <div class="notice small">
             <strong>Formato esperado:</strong> relatório com blocos contendo OP-Lote, Referência, Cor e Planejado.
-            O sistema vai gerar uma prévia antes de importar.
+            O tipo da peça e o intervalo informado aqui serão aplicados em todas as OPs importadas.
           </div>
 
           <div class="pdf-import-grid">
@@ -804,6 +804,26 @@
               <input id="pdfAno" type="number" min="2020" max="2100" />
             </label>
 
+
+            <label>
+              Tipo da peça
+              <select id="pdfTipoPeca" required>
+                <option value="">Selecione</option>
+                <option value="calcinha">Calcinha</option>
+                <option value="sutia">Sutiã</option>
+              </select>
+            </label>
+
+            <label>
+              Início da necessidade
+              <input id="pdfNecessidadeInicio" type="date" required />
+            </label>
+
+            <label>
+              Final da necessidade
+              <input id="pdfNecessidadeFim" type="date" required />
+            </label>
+
             <label class="check pdf-check">
               <input id="pdfCriarProdutos" type="checkbox" checked />
               <span>Cadastrar referências novas automaticamente</span>
@@ -837,6 +857,8 @@
                   <th>Produto</th>
                   <th>Cor</th>
                   <th>Planejado</th>
+                  <th>Tipo</th>
+                  <th>Necessidade</th>
                   <th>Status ref.</th>
                 </tr>
               </thead>

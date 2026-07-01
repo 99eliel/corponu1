@@ -1223,3 +1223,13 @@ small {
   align-items: center;
   min-width: 180px;
 }
+
+
+.pdf-import-grid label select,
+.pdf-import-grid label input[type="date"] {
+  width: 100%;
+}
+
+.pdf-import-grid label {
+  min-width: 160px;
+}

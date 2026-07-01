@@ -2001,6 +2001,38 @@ function normalizarTexto(valor) {
 }
 
 
+
+function getConfiguracaoImportacaoPDF() {
+  const tipoPeca = document.getElementById("pdfTipoPeca")?.value || "";
+  const inicio = document.getElementById("pdfNecessidadeInicio")?.value || "";
+  const fim = document.getElementById("pdfNecessidadeFim")?.value || "";
+
+  if (!tipoPeca) {
+    return { ok: false, mensagem: "Selecione se o PDF é de calcinha ou sutiã." };
+  }
+
+  if (!inicio || !fim) {
+    return { ok: false, mensagem: "Informe a data inicial e a data final da necessidade." };
+  }
+
+  if (inicio > fim) {
+    return { ok: false, mensagem: "A data inicial não pode ser maior que a data final." };
+  }
+
+  const necessidadeTexto = `${dataISOParaBR(inicio)} a ${dataISOParaBR(fim)}`;
+  const tipoPecaLabel = tipoPeca === "sutia" ? "Sutiã" : "Calcinha";
+
+  return {
+    ok: true,
+    tipoPeca,
+    tipoPecaLabel,
+    necessidadeInicio: inicio,
+    necessidadeFim: fim,
+    necessidadeTexto
+  };
+}
+
+
 function configurarImportadorPDF() {
   const input = document.getElementById("inputImportarPDF");
   const confirmar = document.getElementById("btnConfirmarImportacaoPDF");
@@ -2013,6 +2045,13 @@ function configurarImportadorPDF() {
 
       if (!ehAdmin()) {
         toast("Apenas admin pode importar relatório PDF.");
+        event.target.value = "";
+        return;
+      }
+
+      const configPDF = getConfiguracaoImportacaoPDF();
+      if (!configPDF.ok) {
+        toast(configPDF.mensagem);
         event.target.value = "";
         return;
       }
@@ -2230,9 +2269,13 @@ function renderPreviewPDF(registros) {
   wrap.classList.remove("hidden");
   btnConfirmar.disabled = false;
 
+  const configPDF = getConfiguracaoImportacaoPDF();
+
   resumo.innerHTML = `
     <strong>Prévia do PDF:</strong><br>
     Ordens encontradas: ${registros.length}<br>
+    Tipo: ${configPDF.ok ? configPDF.tipoPecaLabel : "Não informado"}<br>
+    Necessidade: ${configPDF.ok ? configPDF.necessidadeTexto : "Não informada"}<br>
     Referências novas: ${refsNovas.length}${refsNovas.length ? ` (${refsNovas.slice(0, 12).join(", ")}${refsNovas.length > 12 ? "..." : ""})` : ""}
   `;
 
@@ -2246,6 +2289,8 @@ function renderPreviewPDF(registros) {
         <td>${escapeHtml(item.produto || "-")}</td>
         <td>${escapeHtml(item.cor)}</td>
         <td>${escapeHtml(item.planejadoTexto)}</td>
+        <td>${escapeHtml(configPDF.ok ? configPDF.tipoPecaLabel : "-")}</td>
+        <td>${escapeHtml(configPDF.ok ? configPDF.necessidadeTexto : "-")}</td>
         <td class="${existe ? "pdf-ok" : "pdf-missing"}">${existe ? "Cadastrada" : "Nova"}</td>
       </tr>
     `;
@@ -2269,9 +2314,15 @@ async function importarPDFConfirmado() {
   const mes = document.getElementById("pdfMes").value;
   const ano = Number(document.getElementById("pdfAno").value);
   const criarProdutos = document.getElementById("pdfCriarProdutos").checked;
+  const configPDF = getConfiguracaoImportacaoPDF();
 
   if (!semana || !mes || !ano) {
     toast("Informe semana, mês e ano para importar.");
+    return;
+  }
+
+  if (!configPDF.ok) {
+    toast(configPDF.mensagem);
     return;
   }
 
@@ -2283,7 +2334,7 @@ async function importarPDFConfirmado() {
     return;
   }
 
-  const confirmar = confirm(`Importar ${registros.length} ordens do PDF para o Firestore?`);
+  const confirmar = confirm(`Importar ${registros.length} ordens do PDF como ${configPDF.tipoPecaLabel}, com necessidade ${configPDF.necessidadeTexto}?`);
   if (!confirmar) return;
 
   try {
@@ -2309,7 +2360,9 @@ async function importarPDFConfirmado() {
           cadastroPendente: true,
           statusCadastro: "pendente",
           pendencia: "Conferir se esta referência possui alça, bojo e renda/sutiã.",
-          observacoes: "Cadastrado automaticamente pela importação de relatório externo PDF. Conferir alça, bojo e renda/sutiã.",
+          tipoPecaPadrao: configPDF.tipoPeca,
+          tipoPecaPadraoLabel: configPDF.tipoPecaLabel,
+          observacoes: `Cadastrado automaticamente pela importação de relatório externo PDF como ${configPDF.tipoPecaLabel}. Conferir alça, bojo e renda/sutiã.`,
           criadoPor: state.currentUser.uid,
           criadoEm: serverTimestamp(),
           atualizadoPor: state.currentUser.uid,
@@ -2343,14 +2396,19 @@ async function importarPDFConfirmado() {
         cadastroExterno: item.cadastro || "",
         liberacaoExterna: item.liberacao || "",
         previsaoEntrega: item.previsaoEntrega || "",
-        necessidade: item.necessidade || "",
+        tipoPeca: configPDF.tipoPeca,
+        tipoPecaLabel: configPDF.tipoPecaLabel,
+        necessidadeInicio: configPDF.necessidadeInicio,
+        necessidadeFim: configPDF.necessidadeFim,
+        necessidade: configPDF.necessidadeTexto,
+        necessidadeOrigemPDF: item.necessidade || item.previsaoEntrega || "",
         possuiAlca: Boolean(produtoExistente?.possuiAlca),
         possuiBojo: Boolean(produtoExistente?.possuiBojo),
         possuiRenda: Boolean(produtoExistente?.possuiRenda),
         referenciaPendente,
         statusReferencia: referenciaPendente ? "pendente" : "conferida",
         pendencia: referenciaPendente ? "Referência nova cadastrada automaticamente. Conferir alça, bojo e renda/sutiã no cadastro do produto." : "",
-        observacoes: `Importado do relatório externo PDF. OP-Lote: ${item.opLote}.${referenciaPendente ? " Referência pendente de conferência." : ""}`,
+        observacoes: `Importado do relatório externo PDF como ${configPDF.tipoPecaLabel}. Necessidade: ${configPDF.necessidadeTexto}. OP-Lote: ${item.opLote}.${referenciaPendente ? " Referência pendente de conferência." : ""}`,
         status: "aberta",
         origem: "pdf_externo",
         criadoPor: state.currentUser.uid,
@@ -2372,7 +2430,7 @@ async function importarPDFConfirmado() {
       await batch.commit();
     }
 
-    await registrarLog("pdf_importado", "importacao", "relatorio-pdf", `${registros.length} ordens importadas do PDF. Referências novas: ${refsNovas.length}.`);
+    await registrarLog("pdf_importado", "importacao", "relatorio-pdf", `${registros.length} ordens importadas do PDF como ${configPDF.tipoPecaLabel}. Necessidade: ${configPDF.necessidadeTexto}. Referências novas: ${refsNovas.length}.`);
 
     state.pdfImportacaoPendente = [];
     renderPreviewPDF([]);

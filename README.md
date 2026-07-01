@@ -819,3 +819,38 @@ CELU +
 ```
 
 Digite o valor, clique em **+**, e ele vira sugestão para as próximas linhas.
+
+
+## Atualização: tipo da peça e intervalo na importação PDF
+
+Antes de ler/importar o PDF, o usuário precisa informar:
+
+```txt
+Tipo da peça: Calcinha ou Sutiã
+Início da necessidade
+Final da necessidade
+```
+
+Ao confirmar a importação, todas as OPs importadas recebem:
+
+```txt
+tipoPeca
+tipoPecaLabel
+necessidadeInicio
+necessidadeFim
+necessidade
+```
+
+A necessidade fica salva no formato:
+
+```txt
+DD/MM/AAAA a DD/MM/AAAA
+```
+
+Exemplo:
+
+```txt
+01/07/2026 a 15/07/2026
+```
+
+Como o Manejo já busca a necessidade da própria OP, as OPs importadas do PDF já entram no Manejo com o intervalo correto.
