@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema OP Confecção</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=bipado-botao-corrigido-2" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -440,6 +440,7 @@
                   <th>PRODUÇÃO</th>
                   <th>CELU</th>
                   <th>NECESSIDADE</th>
+                  <th>BIPADO</th>
                   <th>STATUS</th>
                   <th>AÇÕES</th>
                 </tr>
@@ -515,10 +516,14 @@
                     </select>
                   </th>
                   <th>
+                    <span class="filter-placeholder">—</span>
+                  </th>
+                  <th>
                     <select id="filtroManejoStatus">
                       <option value="">Todos</option>
                       <option value="pendente">Pendente</option>
                       <option value="organizada">Organizada</option>
+                      <option value="bipado">Bipado</option>
                     </select>
                   </th>
                   <th>
@@ -994,6 +999,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="app.js?v=filtros-coluna-corrigido-1"></script>
+  <script type="module" src="app.js?v=bipado-botao-corrigido-2"></script>
 </body>
 </html>

@@ -2103,3 +2103,45 @@ small {
 .processo-bipado td {
   background: rgba(17, 24, 39, 0.045);
 }
+
+
+/* Correção visual: coluna própria para Bipado no Manejo */
+.manejo-bipado-cell {
+  text-align: center;
+  min-width: 76px;
+}
+
+.manejo-bipado-cell .btn-bipado {
+  width: 100%;
+  justify-content: center;
+}
+
+.filter-placeholder {
+  display: inline-flex;
+  width: 100%;
+  justify-content: center;
+  color: var(--muted);
+  font-weight: 900;
+}
+
+/* Com a nova coluna BIPADO, o Manejo passa a ter 17 colunas */
+@media (max-width: 1920px) {
+  .manejo-inline-table {
+    min-width: 1520px !important;
+  }
+
+  .manejo-inline-table th:nth-child(15),
+  .manejo-inline-table td:nth-child(15) { width: 76px; }
+
+  .manejo-inline-table th:nth-child(16),
+  .manejo-inline-table td:nth-child(16) { width: 82px; }
+
+  .manejo-inline-table th:nth-child(17),
+  .manejo-inline-table td:nth-child(17) { width: 82px; }
+}
+
+@media (max-width: 1700px) {
+  .manejo-inline-table {
+    min-width: 1440px !important;
+  }
+}

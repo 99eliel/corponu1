@@ -1190,7 +1190,7 @@ function renderManejoInline() {
   renderResumoSomasManejo(ordens);
 
   if (!ordens.length) {
-    tbody.innerHTML = `<tr><td colspan="16" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="17" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
     return;
   }
 
@@ -1241,11 +1241,15 @@ function renderManejoInline() {
           </div>
         </td>
         <td><input class="manejo-readonly" value="${escapeHtml(getNecessidadeDaOrdem(op))}" readonly /></td>
+        <td class="manejo-bipado-cell">
+          <button class="btn btn-sm btn-bipado" onclick="biparManejoLinha('${op.id}')">
+            ${getStatusManejo(op) === "bipado" ? "Bipado ✓" : "Bipar"}
+          </button>
+        </td>
         <td>${manejoStatusBadge(manejo, op)}</td>
         <td>
           <div class="manejo-actions">
             <button class="btn btn-sm btn-primary" onclick="salvarManejoLinha('${op.id}')">Salvar</button>
-            <button class="btn btn-sm btn-bipado" onclick="biparManejoLinha('${op.id}')">${getStatusManejo(op) === "bipado" ? "Bipado ✓" : "Bipado"}</button>
             ${manejo && ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="limparManejoLinha('${op.id}')">Limpar</button>` : ""}
           </div>
         </td>
@@ -1789,6 +1793,10 @@ async function limparManejoLinha(ordemId) {
     console.error(error);
     toast("Erro ao limpar manejo.");
   }
+}
+
+function bipadoBadgeTexto(op) {
+  return getStatusManejo(op) === "bipado" ? "Bipado ✓" : "Bipar";
 }
 
 function manejoStatusBadge(manejo, op = null) {

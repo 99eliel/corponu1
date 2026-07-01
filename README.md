@@ -1163,3 +1163,23 @@ Clique em Imprimir processos
 ```
 
 A impressão abre somente com os processos filtrados na tela.
+
+
+## Correção: botão Bipado no Manejo
+
+O botão **Bipado** foi movido para uma coluna própria no Manejo:
+
+```txt
+BIPADO
+```
+
+Agora ele não fica escondido junto dos botões de ação.
+
+Também foi atualizado o cache do sistema:
+
+```txt
+style.css?v=bipado-botao-corrigido-2
+app.js?v=bipado-botao-corrigido-2
+```
+
+Isso força o navegador/GitHub Pages a carregar a versão nova.
