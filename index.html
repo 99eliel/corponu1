@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema OP Confecção</title>
-  <link rel="stylesheet" href="style.css?v=gerenciar-faccao-1" />
+  <link rel="stylesheet" href="style.css?v=manejo-por-setor-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -351,6 +351,23 @@
           <div class="notice small">
             <strong>Funcionamento:</strong> Nº OP, REF, QTI, COR e NECESSIDADE vêm das ordens de produção. Os demais campos são preenchidos pelo usuário.
             Fases já usadas aparecem como sugestão, mas sempre é possível digitar uma fase nova.
+          </div>
+
+
+          <div class="manejo-setor-tabs">
+            <button class="manejo-setor-btn active" type="button" data-setor="bojo">
+              Manejo Bojo <span id="contadorManejoBojo">0</span>
+            </button>
+            <button class="manejo-setor-btn" type="button" data-setor="alca">
+              Manejo Alça <span id="contadorManejoAlca">0</span>
+            </button>
+            <button class="manejo-setor-btn" type="button" data-setor="renda">
+              Manejo Renda <span id="contadorManejoRenda">0</span>
+            </button>
+          </div>
+
+          <div class="manejo-setor-info" id="manejoSetorInfo">
+            Mostrando OPs de referências com bojo. Este é o manejo atual do sistema.
           </div>
 
           <div class="manejo-soma-compacta">
@@ -1058,6 +1075,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="app.js?v=gerenciar-faccao-1"></script>
+  <script type="module" src="app.js?v=manejo-por-setor-1"></script>
 </body>
 </html>

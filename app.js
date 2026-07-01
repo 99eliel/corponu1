@@ -60,6 +60,7 @@ const state = {
   logs: [],
   pdfImportacaoPendente: [],
   relatorioAtual: "enfesto",
+  manejoSetorAtual: "bojo",
   unsubscribers: []
 };
 
@@ -920,12 +921,106 @@ async function excluirOrdem(id) {
 
 
 
+
+const manejoSetoresInfo = {
+  bojo: {
+    label: "Bojo",
+    campo: "possuiBojo",
+    descricao: "Mostrando OPs de referências com bojo. Este é o manejo atual do sistema."
+  },
+  alca: {
+    label: "Alça",
+    campo: "possuiAlca",
+    descricao: "Mostrando OPs de referências com alça."
+  },
+  renda: {
+    label: "Renda",
+    campo: "possuiRenda",
+    descricao: "Mostrando OPs de referências com renda."
+  }
+};
+
+function getManejoSetorAtual() {
+  return state.manejoSetorAtual || "bojo";
+}
+
+function getInfoManejoSetor(setor = getManejoSetorAtual()) {
+  return manejoSetoresInfo[setor] || manejoSetoresInfo.bojo;
+}
+
+function ordemPertenceAoSetorManejo(op, setor = getManejoSetorAtual()) {
+  const info = getInfoManejoSetor(setor);
+  return Boolean(op?.[info.campo]);
+}
+
+function getOrdensDoSetorManejo(setor = getManejoSetorAtual()) {
+  return [...state.ordens].filter(op => ordemPertenceAoSetorManejo(op, setor));
+}
+
+function atualizarBotoesManejoSetor() {
+  const setorAtual = getManejoSetorAtual();
+
+  document.querySelectorAll(".manejo-setor-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.setor === setorAtual);
+  });
+
+  const setText = (id, valor) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = valor;
+  };
+
+  setText("contadorManejoBojo", getOrdensDoSetorManejo("bojo").length);
+  setText("contadorManejoAlca", getOrdensDoSetorManejo("alca").length);
+  setText("contadorManejoRenda", getOrdensDoSetorManejo("renda").length);
+
+  const info = document.getElementById("manejoSetorInfo");
+  if (info) info.textContent = getInfoManejoSetor(setorAtual).descricao;
+}
+
+function selecionarManejoSetor(setor) {
+  if (!manejoSetoresInfo[setor]) return;
+
+  state.manejoSetorAtual = setor;
+  limparFiltrosColunasManejo();
+  atualizarBotoesManejoSetor();
+  renderFiltrosColunasManejo();
+  atualizarManejoComSoma();
+}
+
+function montarPatchManejoSetor(setor, manejo, status, extras = {}) {
+  if (setor === "bojo") {
+    return {
+      manejo,
+      manejoStatus: status,
+      ...extras
+    };
+  }
+
+  return {
+    manejosSetores: {
+      [setor]: manejo
+    },
+    manejoStatusSetores: {
+      [setor]: status
+    },
+    bipadoSetores: {
+      [setor]: status === "bipado"
+    },
+    ...extras
+  };
+}
+
+
 function atualizarManejoComSoma() {
   renderManejoInline();
   setTimeout(renderResumoSomasManejoPeloDOM, 0);
 }
 
 function configurarManejo() {
+  document.querySelectorAll(".manejo-setor-btn").forEach(btn => {
+    btn.addEventListener("click", () => selecionarManejoSetor(btn.dataset.setor));
+  });
+
   const busca = document.getElementById("buscaManejoLinha");
   if (busca) {
     busca.addEventListener("input", atualizarManejoComSoma);
@@ -979,16 +1074,18 @@ function configurarManejo() {
 
 
 function valorManejoParaImpressao(op, campo) {
+  const setor = getManejoSetorAtual();
   const valorTela = valorLinhaManejo(op, campo);
   if (valorTela !== "") return valorTela;
 
-  const manejo = getManejoDaOrdem(op);
+  const manejo = getManejoDaOrdem(op, setor);
   return manejo?.[campo] ?? "";
 }
 
 function getLinhasManejoParaImpressao() {
   return filtrarOrdensManejoPorColunas().map(op => {
-    const manejo = getManejoDaOrdem(op);
+    const setor = getManejoSetorAtual();
+    const manejo = getManejoDaOrdem(op, setor);
 
     return {
       numeroOP: op.numeroOP || "",
@@ -1006,7 +1103,7 @@ function getLinhasManejoParaImpressao() {
       producao: valorManejoParaImpressao(op, "producao"),
       celu: valorManejoParaImpressao(op, "celu"),
       necessidade: getNecessidadeDaOrdem(op),
-      status: getStatusManejo(op) === "bipado" ? "Bipado" : getStatusManejo(op) === "organizada" ? "Organizada" : "Pendente"
+      status: getStatusManejo(op, setor) === "bipado" ? "Bipado" : getStatusManejo(op, setor) === "organizada" ? "Organizada" : "Pendente"
     };
   });
 }
@@ -1205,6 +1302,9 @@ function renderManejoInline() {
   const tbody = document.getElementById("listaManejoInline");
   if (!tbody) return;
 
+  atualizarBotoesManejoSetor();
+
+  const setor = getManejoSetorAtual();
   const ordens = filtrarOrdensManejoPorColunas();
 
   renderResumoSomasManejo(ordens);
@@ -1220,7 +1320,7 @@ function renderManejoInline() {
     const rowClass = manejo ? "manejo-row-saved" : "manejo-row-pending";
 
     return `
-      <tr class="${rowClass}" data-manejo-row="1" data-qti="${escapeHtml(numeroQuantidadeOP(op))}" data-falta="${escapeHtml(numeroFaltaManejo(op))}" data-status="${escapeHtml(getStatusManejo(op))}" data-fase="${escapeHtml(manejo?.fase || "Sem fase")}" data-cor="${escapeHtml(op.cor || "Sem cor")}">
+      <tr class="${rowClass}" data-manejo-row="1" data-qti="${escapeHtml(numeroQuantidadeOP(op))}" data-falta="${escapeHtml(numeroFaltaManejo(op))}" data-status="${escapeHtml(getStatusManejo(op, setor))}" data-fase="${escapeHtml(manejo?.fase || "Sem fase")}" data-cor="${escapeHtml(op.cor || "Sem cor")}">
         <td><input class="manejo-readonly" value="${escapeHtml(op.numeroOP || "")}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(op.referencia || "")}" readonly /></td>
         <td>
@@ -1263,10 +1363,10 @@ function renderManejoInline() {
         <td><input class="manejo-readonly" value="${escapeHtml(getNecessidadeDaOrdem(op))}" readonly /></td>
         <td class="manejo-bipado-cell">
           <button class="btn btn-sm btn-bipado" onclick="biparManejoLinha('${op.id}')">
-            ${getStatusManejo(op) === "bipado" ? "Bipado ✓" : "Bipar"}
+            ${getStatusManejo(op, setor) === "bipado" ? "Bipado ✓" : "Bipar"}
           </button>
         </td>
-        <td>${manejoStatusBadge(manejo, op)}</td>
+        <td>${manejoStatusBadge(manejo, op, setor)}</td>
         <td>
           <div class="manejo-actions">
             <button class="btn btn-sm btn-primary" onclick="salvarManejoLinha('${op.id}')">Salvar</button>
@@ -1297,18 +1397,28 @@ function getSilkNomeManejo(manejo) {
   return valorSilkAntigoValido(manejo.silk);
 }
 
-function getStatusManejo(op) {
-  const manejo = getManejoDaOrdem(op);
-  if (op?.bipado || op?.manejoStatus === "bipado" || manejo?.bipado || manejo?.status === "bipado") return "bipado";
-  if (op?.manejoStatus) return op.manejoStatus;
+function getStatusManejo(op, setor = "bojo") {
+  const manejo = getManejoDaOrdem(op, setor);
+
+  if (setor === "bojo") {
+    if (op?.bipado || op?.manejoStatus === "bipado" || manejo?.bipado || manejo?.status === "bipado") return "bipado";
+    if (op?.manejoStatus) return op.manejoStatus;
+    return manejo ? "organizada" : "pendente";
+  }
+
+  const statusSetor = op?.manejoStatusSetores?.[setor];
+
+  if (op?.bipadoSetores?.[setor] || statusSetor === "bipado" || manejo?.bipado || manejo?.status === "bipado") return "bipado";
+  if (statusSetor) return statusSetor;
+
   return manejo ? "organizada" : "pendente";
 }
 
-function getValorManejoParaFiltro(op, campo) {
-  const manejo = getManejoDaOrdem(op);
+function getValorManejoParaFiltro(op, campo, setor = getManejoSetorAtual()) {
+  const manejo = getManejoDaOrdem(op, setor);
 
   const mapa = {
-    status: getStatusManejo(op),
+    status: getStatusManejo(op, setor),
     op: op.numeroOP || "",
     referencia: op.referencia || "",
     silk: getSilkNomeManejo(manejo),
@@ -1329,6 +1439,7 @@ function getValorManejoParaFiltro(op, campo) {
 }
 
 function filtrarOrdensManejoPorColunas() {
+  const setor = getManejoSetorAtual();
   const busca = normalizarTexto(document.getElementById("buscaManejoLinha")?.value || "");
 
   const filtros = {
@@ -1349,8 +1460,8 @@ function filtrarOrdensManejoPorColunas() {
     necessidade: document.getElementById("filtroManejoNecessidade")?.value || ""
   };
 
-  return [...state.ordens].filter(op => {
-    const manejo = getManejoDaOrdem(op);
+  return getOrdensDoSetorManejo(setor).filter(op => {
+    const manejo = getManejoDaOrdem(op, setor);
 
     const textoGeral = normalizarTexto([
       op.numeroOP,
@@ -1378,10 +1489,10 @@ function filtrarOrdensManejoPorColunas() {
       if (!valor) return true;
 
       const valorFiltro = normalizarTexto(valor);
-      const valorItem = normalizarTexto(getValorManejoParaFiltro(op, campo));
+      const valorItem = normalizarTexto(getValorManejoParaFiltro(op, campo, setor));
 
       if (campo === "status") {
-        return getValorManejoParaFiltro(op, campo) === valor;
+        return getValorManejoParaFiltro(op, campo, setor) === valor;
       }
 
       return valorItem.includes(valorFiltro);
@@ -1442,7 +1553,8 @@ function preencherSelectFiltroManejo(id, valores, labelTodos = "Todos") {
 }
 
 function renderFiltrosColunasManejo() {
-  const ordens = [...state.ordens];
+  const setor = getManejoSetorAtual();
+  const ordens = getOrdensDoSetorManejo(setor);
 
   preencherSelectFiltroManejo("filtroManejoOP", ordens.map(op => getValorManejoParaFiltro(op, "op")), "Todas");
   preencherSelectFiltroManejo("filtroManejoReferencia", ordens.map(op => getValorManejoParaFiltro(op, "referencia")), "Todas");
@@ -1475,8 +1587,8 @@ function numeroQuantidadeOP(op) {
   return Number.isFinite(valor) ? valor : 0;
 }
 
-function numeroFaltaManejo(op) {
-  const manejo = getManejoDaOrdem(op);
+function numeroFaltaManejo(op, setor = "bojo") {
+  const manejo = getManejoDaOrdem(op, setor);
   const valor = Number(manejo?.falta || 0);
   return Number.isFinite(valor) ? valor : 0;
 }
@@ -1568,12 +1680,13 @@ function getFiltrosManejoAtivosTexto() {
 
 
 function renderResumoSomasManejo(ordens) {
+  const setor = getManejoSetorAtual();
   const totalOps = ordens.length;
   const totalPecas = ordens.reduce((soma, op) => soma + numeroQuantidadeOP(op), 0);
-  const totalFalta = ordens.reduce((soma, op) => soma + numeroFaltaManejo(op), 0);
-  const bipadas = ordens.filter(op => getStatusManejo(op) === "bipado").length;
-  const organizadas = ordens.filter(op => getStatusManejo(op) === "organizada").length;
-  const pendentes = ordens.filter(op => getStatusManejo(op) === "pendente").length;
+  const totalFalta = ordens.reduce((soma, op) => soma + numeroFaltaManejo(op, setor), 0);
+  const bipadas = ordens.filter(op => getStatusManejo(op, setor) === "bipado").length;
+  const organizadas = ordens.filter(op => getStatusManejo(op, setor) === "organizada").length;
+  const pendentes = ordens.filter(op => getStatusManejo(op, setor) === "pendente").length;
 
   const setText = (id, valor) => {
     const el = document.getElementById(id);
@@ -1646,13 +1759,28 @@ function getNecessidadeDaOrdem(op) {
   return "";
 }
 
-function getManejoDaOrdem(op) {
+function getManejoDaOrdem(op, setor = "bojo") {
   if (!op) return null;
 
-  if (op.manejo) {
+  if (setor === "bojo") {
+    if (op.manejo) {
+      return {
+        id: op.id,
+        setor,
+        ...op.manejo
+      };
+    }
+
+    return null;
+  }
+
+  const manejoSetor = op.manejosSetores?.[setor];
+
+  if (manejoSetor) {
     return {
       id: op.id,
-      ...op.manejo
+      setor,
+      ...manejoSetor
     };
   }
 
@@ -1675,7 +1803,9 @@ async function salvarManejoLinha(ordemId) {
     return;
   }
 
-  const manejoExistente = getManejoDaOrdem(ordem);
+  const setor = getManejoSetorAtual();
+  const infoSetor = getInfoManejoSetor(setor);
+  const manejoExistente = getManejoDaOrdem(ordem, setor);
   const fase = limparTexto(valorLinhaManejo(ordem, "fase")).toUpperCase();
 
   if (!fase) {
@@ -1690,6 +1820,8 @@ async function salvarManejoLinha(ordemId) {
     silk: silkNome,
     silkNome,
     silkData,
+    setor,
+    setorLabel: infoSetor.label,
     dataTecido: valorLinhaManejo(ordem, "dataTecido") || "",
     fase,
     data: valorLinhaManejo(ordem, "data") || "",
@@ -1711,21 +1843,21 @@ async function salvarManejoLinha(ordemId) {
   }
 
   try {
-    await setDoc(doc(db, "ordensProducao", ordem.id), {
-      manejo,
-      manejoStatus: "organizada",
+    const patch = montarPatchManejoSetor(setor, manejo, "organizada", {
       atualizadoPor: state.currentUser.uid,
       atualizadoEm: serverTimestamp()
-    }, { merge: true });
+    });
+
+    await setDoc(doc(db, "ordensProducao", ordem.id), patch, { merge: true });
 
     await registrarLog(
       manejoExistente ? "manejo_atualizado" : "manejo_criado",
       "ordemProducao",
       ordem.id,
-      `OP ${ordem.numeroOP} | Ref. ${ordem.referencia} | Fase ${fase}`
+      `OP ${ordem.numeroOP} | Setor ${infoSetor.label} | Ref. ${ordem.referencia} | Fase ${fase}`
     );
 
-    toast("Manejo salvo. Você pode editar essa linha novamente quando precisar.");
+    toast(`Manejo ${infoSetor.label} salvo.`);
   } catch (error) {
     console.error(error);
 
@@ -1737,7 +1869,6 @@ async function salvarManejoLinha(ordemId) {
   }
 }
 
-
 async function biparManejoLinha(ordemId) {
   const ordem = state.ordens.find(op => op.id === ordemId);
   if (!ordem) {
@@ -1745,7 +1876,9 @@ async function biparManejoLinha(ordemId) {
     return;
   }
 
-  const manejoExistente = getManejoDaOrdem(ordem) || {};
+  const setor = getManejoSetorAtual();
+  const infoSetor = getInfoManejoSetor(setor);
+  const manejoExistente = getManejoDaOrdem(ordem, setor) || {};
   const faseAtual = limparTexto(valorLinhaManejo(ordem, "fase")).toUpperCase() || manejoExistente.fase || "";
 
   if (!faseAtual) {
@@ -1753,7 +1886,7 @@ async function biparManejoLinha(ordemId) {
     if (!continuar) return;
   }
 
-  const confirmar = confirm(`Marcar a OP ${ordem.numeroOP} como BIPADA/finalizada?`);
+  const confirmar = confirm(`Marcar a OP ${ordem.numeroOP} como BIPADA/finalizada no manejo ${infoSetor.label}?`);
   if (!confirmar) return;
 
   const silkNome = limparTexto(valorLinhaManejo(ordem, "silkNome")).toUpperCase() || manejoExistente.silkNome || manejoExistente.silk || "";
@@ -1764,6 +1897,8 @@ async function biparManejoLinha(ordemId) {
     silk: silkNome,
     silkNome,
     silkData,
+    setor,
+    setorLabel: infoSetor.label,
     dataTecido: valorLinhaManejo(ordem, "dataTecido") || manejoExistente.dataTecido || "",
     fase: faseAtual,
     data: valorLinhaManejo(ordem, "data") || manejoExistente.data || "",
@@ -1788,24 +1923,29 @@ async function biparManejoLinha(ordemId) {
   }
 
   try {
-    await setDoc(doc(db, "ordensProducao", ordem.id), {
-      manejo,
-      manejoStatus: "bipado",
-      bipado: true,
-      bipadoPor: state.currentUser.uid,
-      bipadoEm: serverTimestamp(),
+    const extras = setor === "bojo"
+      ? {
+          bipado: true,
+          bipadoPor: state.currentUser.uid,
+          bipadoEm: serverTimestamp()
+        }
+      : {};
+
+    const patch = montarPatchManejoSetor(setor, manejo, "bipado", {
+      ...extras,
       atualizadoPor: state.currentUser.uid,
       atualizadoEm: serverTimestamp()
-    }, { merge: true });
+    });
 
-    await registrarLog("op_bipada", "ordemProducao", ordem.id, `OP ${ordem.numeroOP} | Ref. ${ordem.referencia} | Cor ${ordem.cor || "-"} | Fase ${faseAtual || "-"}`);
-    toast("OP marcada como bipada/finalizada.");
+    await setDoc(doc(db, "ordensProducao", ordem.id), patch, { merge: true });
+
+    await registrarLog("op_bipada", "ordemProducao", ordem.id, `OP ${ordem.numeroOP} | Setor ${infoSetor.label} | Ref. ${ordem.referencia} | Cor ${ordem.cor || "-"} | Fase ${faseAtual || "-"}`);
+    toast(`OP marcada como bipada/finalizada no manejo ${infoSetor.label}.`);
   } catch (error) {
     console.error(error);
     toast("Erro ao marcar OP como bipada.");
   }
 }
-
 
 async function limparManejoLinha(ordemId) {
   if (!ehAdmin()) {
@@ -1816,34 +1956,52 @@ async function limparManejoLinha(ordemId) {
   const ordem = state.ordens.find(op => op.id === ordemId);
   if (!ordem) return;
 
-  const manejo = getManejoDaOrdem(ordem);
+  const setor = getManejoSetorAtual();
+  const infoSetor = getInfoManejoSetor(setor);
+  const manejo = getManejoDaOrdem(ordem, setor);
   if (!manejo) return;
 
-  if (!confirm(`Limpar o manejo da OP ${ordem.numeroOP}?`)) return;
+  if (!confirm(`Limpar o manejo ${infoSetor.label} da OP ${ordem.numeroOP}?`)) return;
 
   try {
-    await setDoc(doc(db, "ordensProducao", ordem.id), {
-      manejo: null,
-      manejoStatus: "pendente",
-      bipado: false,
-      atualizadoPor: state.currentUser.uid,
-      atualizadoEm: serverTimestamp()
-    }, { merge: true });
+    let patch;
 
-    await registrarLog("manejo_excluido", "ordemProducao", ordem.id, `OP ${ordem.numeroOP} | Fase ${manejo.fase || "-"}`);
-    toast("Manejo limpo.");
+    if (setor === "bojo") {
+      patch = {
+        manejo: null,
+        manejoStatus: "pendente",
+        bipado: false,
+        atualizadoPor: state.currentUser.uid,
+        atualizadoEm: serverTimestamp()
+      };
+    } else {
+      patch = {
+        manejosSetores: {
+          [setor]: null
+        },
+        manejoStatusSetores: {
+          [setor]: "pendente"
+        },
+        bipadoSetores: {
+          [setor]: false
+        },
+        atualizadoPor: state.currentUser.uid,
+        atualizadoEm: serverTimestamp()
+      };
+    }
+
+    await setDoc(doc(db, "ordensProducao", ordem.id), patch, { merge: true });
+
+    await registrarLog("manejo_excluido", "ordemProducao", ordem.id, `OP ${ordem.numeroOP} | Setor ${infoSetor.label} | Fase ${manejo.fase || "-"}`);
+    toast(`Manejo ${infoSetor.label} limpo.`);
   } catch (error) {
     console.error(error);
     toast("Erro ao limpar manejo.");
   }
 }
 
-function bipadoBadgeTexto(op) {
-  return getStatusManejo(op) === "bipado" ? "Bipado ✓" : "Bipar";
-}
-
-function manejoStatusBadge(manejo, op = null) {
-  const status = op ? getStatusManejo(op) : (manejo?.bipado || manejo?.status === "bipado" ? "bipado" : manejo ? "organizada" : "pendente");
+function manejoStatusBadge(manejo, op = null, setor = "bojo") {
+  const status = op ? getStatusManejo(op, setor) : (manejo?.bipado || manejo?.status === "bipado" ? "bipado" : manejo ? "organizada" : "pendente");
 
   if (status === "bipado") {
     return `<span class="badge bipado">Bipado</span>`;
@@ -1921,6 +2079,20 @@ function adicionarCeluSugestao(ordemId) {
   adicionarSugestaoManejo(ordemId, "celu", "celusManejoExtras", "celusManejoExtras", "CELU");
 }
 
+
+function getTodosManejosDaOrdem(op) {
+  const lista = [];
+
+  if (op?.manejo) lista.push(op.manejo);
+
+  Object.values(op?.manejosSetores || {}).forEach(manejo => {
+    if (manejo) lista.push(manejo);
+  });
+
+  return lista;
+}
+
+
 function renderDatalistManejo() {
   const fasesList = document.getElementById("manejoFasesList");
   const faccaoList = document.getElementById("manejoFaccaoList");
@@ -1935,7 +2107,9 @@ function renderDatalistManejo() {
     });
 
     state.ordens.forEach(op => {
-      if (op.manejo?.fase) fases.add(String(op.manejo.fase).toUpperCase());
+      getTodosManejosDaOrdem(op).forEach(manejo => {
+        if (manejo?.fase) fases.add(String(manejo.fase).toUpperCase());
+      });
     });
 
     fasesList.innerHTML = [...fases].sort().map(fase => `<option value="${escapeHtml(fase)}"></option>`).join("");
@@ -1954,7 +2128,9 @@ function renderDatalistManejo() {
     });
 
     state.ordens.forEach(op => {
-      if (op.manejo?.faccao) faccoes.add(String(op.manejo.faccao).toUpperCase());
+      getTodosManejosDaOrdem(op).forEach(manejo => {
+        if (manejo?.faccao) faccoes.add(String(manejo.faccao).toUpperCase());
+      });
     });
 
     faccaoList.innerHTML = [...faccoes].sort().map(faccao => `<option value="${escapeHtml(faccao)}"></option>`).join("");
@@ -1968,7 +2144,9 @@ function renderDatalistManejo() {
     });
 
     state.ordens.forEach(op => {
-      if (op.manejo?.celu) celus.add(String(op.manejo.celu).toUpperCase());
+      getTodosManejosDaOrdem(op).forEach(manejo => {
+        if (manejo?.celu) celus.add(String(manejo.celu).toUpperCase());
+      });
     });
 
     celuList.innerHTML = [...celus].sort().map(celu => `<option value="${escapeHtml(celu)}"></option>`).join("");

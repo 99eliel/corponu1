@@ -1273,3 +1273,48 @@ Admin: pode criar, editar, ativar/inativar e excluir
 ```
 
 Os nomes das facções cadastradas também aparecem como sugestão no campo **Facção** dentro do Manejo.
+
+
+## Atualização: Manejo por setor
+
+A aba **Manejo** agora possui divisão por setor:
+
+```txt
+Manejo Bojo
+Manejo Alça
+Manejo Renda
+```
+
+A regra é:
+
+```txt
+Produto com Bojo  -> OP aparece no Manejo Bojo
+Produto com Alça  -> OP aparece no Manejo Alça
+Produto com Renda -> OP aparece no Manejo Renda
+```
+
+Se uma referência tiver mais de uma característica, por exemplo:
+
+```txt
+Bojo + Renda
+```
+
+a OP aparece automaticamente nos dois manejos.
+
+Compatibilidade:
+
+```txt
+Manejo Bojo usa o manejo atual já existente no sistema.
+Manejo Alça e Manejo Renda salvam em campos separados dentro da mesma OP.
+```
+
+Novos campos internos usados nas OPs:
+
+```txt
+manejosSetores.alca
+manejosSetores.renda
+manejoStatusSetores.alca
+manejoStatusSetores.renda
+bipadoSetores.alca
+bipadoSetores.renda
+```
