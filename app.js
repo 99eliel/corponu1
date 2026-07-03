@@ -52,6 +52,8 @@ const state = {
   produtos: [],
   ordens: [],
   faccoes: [],
+  celulas: [],
+  movimentacoesProducao: [],
   manejos: [],
   fasesManejoExtras: [],
   faccoesManejoExtras: [],
@@ -81,19 +83,27 @@ const pageInfo = {
   },
   manejo: {
     title: "Manejo",
-    subtitle: "Controle fases, facção, produção e necessidade usando as OPs cadastradas."
+    subtitle: "Preparação interna da OP e encaminhamento para facção ou célula."
   },
   processos: {
     title: "Processos",
     subtitle: "Visualização em tempo real das informações do manejo."
   },
   faccoes: {
-    title: "Gerenciar Facção",
-    subtitle: "Cadastre facções, cidade, chave PIX e contato."
+    title: "Facções",
+    subtitle: "Cadastre facções externas, dados de pagamento e contato."
+  },
+  celulas: {
+    title: "Células",
+    subtitle: "Cadastre as células internas da produção."
+  },
+  rastreamento: {
+    title: "Rastreamento",
+    subtitle: "Veja onde cada peça/OP está no fluxo de produção."
   },
   pagamentos: {
     title: "Pagamentos",
-    subtitle: "Cadastre valores dos serviços e gere relatórios de pagamento por facção."
+    subtitle: "Use a tabela de preços e as movimentações de facção para fechar pagamentos."
   },
   relatorios: {
     title: "Relatórios",
@@ -242,6 +252,8 @@ document.addEventListener("DOMContentLoaded", () => {
   configurarManejo();
   configurarProcessos();
   configurarFaccoes();
+  configurarCelulas();
+  configurarRastreamento();
   configurarPagamentos();
   configurarRelatorios();
   configurarUsuarios();
@@ -411,6 +423,30 @@ function iniciarListenersFirestore() {
   }));
 
 
+
+  const celulasQuery = query(collection(db, "celulas"), orderBy("nome", "asc"));
+
+  state.unsubscribers.push(onSnapshot(celulasQuery, snapshot => {
+    state.celulas = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    renderCelulas();
+    renderRastreamento();
+  }, error => {
+    console.error(error);
+    toast("Erro ao carregar células. Verifique as permissões.");
+  }));
+
+  const movimentacoesQuery = query(collection(db, "movimentacoesProducao"), orderBy("criadoEm", "desc"));
+
+  state.unsubscribers.push(onSnapshot(movimentacoesQuery, snapshot => {
+    state.movimentacoesProducao = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    renderRastreamento();
+    renderPagamentos();
+  }, error => {
+    console.error(error);
+    toast("Erro ao carregar movimentações. Verifique as permissões.");
+  }));
+
+
   const precosReferenciaQuery = query(collection(db, "precosReferencia"), orderBy("referencia", "asc"));
 
   state.unsubscribers.push(onSnapshot(precosReferenciaQuery, snapshot => {
@@ -479,7 +515,7 @@ function ehAdmin() {
 function configurarNavegacao() {
   document.querySelectorAll(".nav-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      if ((btn.dataset.page === "usuarios" || btn.dataset.page === "backup" || btn.dataset.page === "logs" || btn.dataset.page === "faccoes" || btn.dataset.page === "pagamentos") && !ehAdmin()) {
+      if ((btn.dataset.page === "usuarios" || btn.dataset.page === "backup" || btn.dataset.page === "logs" || btn.dataset.page === "faccoes" || btn.dataset.page === "pagamentos" || btn.dataset.page === "celulas") && !ehAdmin()) {
         toast("Apenas admin acessa esta área.");
         return;
       }
@@ -1533,7 +1569,7 @@ function renderManejoInline() {
   renderResumoSomasManejo(ordens);
 
   if (!ordens.length) {
-    tbody.innerHTML = `<tr><td colspan="17" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
     return;
   }
 
@@ -1541,9 +1577,12 @@ function renderManejoInline() {
     const manejo = getManejoDaOrdem(op, setor);
     const rowId = idLinhaManejo(op);
     const rowClass = manejo ? "manejo-row-saved" : "manejo-row-pending";
+    const status = getStatusManejo(op, setor);
+    const movimentosAbertos = getMovimentacoesDaOrdem(op.id)
+      .filter(mov => mov.status !== "finalizado" && mov.status !== "retornou").length;
 
     return `
-      <tr class="${rowClass}" data-manejo-row="1" data-qti="${escapeHtml(numeroQuantidadeOP(op))}" data-falta="${escapeHtml(numeroFaltaManejo(op, setor))}" data-status="${escapeHtml(getStatusManejo(op, setor))}" data-fase="${escapeHtml(manejo?.fase || "Sem fase")}" data-cor="${escapeHtml(op.cor || "Sem cor")}">
+      <tr class="${rowClass}" data-manejo-row="1" data-qti="${escapeHtml(numeroQuantidadeOP(op))}" data-falta="0" data-status="${escapeHtml(status)}" data-fase="${escapeHtml(manejo?.fase || "Sem fase")}" data-cor="${escapeHtml(op.cor || "Sem cor")}">
         <td><input class="manejo-readonly" value="${escapeHtml(op.numeroOP || "")}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(op.referencia || "")}" readonly /></td>
         <td>
@@ -1568,31 +1607,22 @@ function renderManejoInline() {
         <td><input class="manejo-readonly" type="number" value="${escapeHtml(op.quantidade ?? 0)}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(op.cor || "")}" readonly /></td>
         <td><input id="${rowId}-data" type="date" value="${escapeHtml(manejo?.data || "")}" /></td>
-        <td>
-          <div class="sugestao-plus">
-            <input id="${rowId}-faccao" value="${escapeHtml(manejo?.faccao || "")}" list="manejoFaccaoList" placeholder="Facção" />
-            <button class="btn-plus" type="button" onclick="adicionarFaccaoSugestao('${op.id}')" title="Adicionar facção às sugestões">+</button>
-          </div>
-        </td>
-        <td><input id="${rowId}-chegada" type="date" value="${escapeHtml(manejo?.chegada || "")}" /></td>
-        <td><input id="${rowId}-falta" type="number" min="0" step="1" value="${escapeHtml(manejo?.falta ?? "")}" /></td>
         <td><input id="${rowId}-producao" type="date" value="${escapeHtml(manejo?.producao || "")}" /></td>
-        <td>
-          <div class="sugestao-plus">
-            <input id="${rowId}-celu" value="${escapeHtml(manejo?.celu || "")}" list="manejoCeluList" placeholder="CELU" />
-            <button class="btn-plus" type="button" onclick="adicionarCeluSugestao('${op.id}')" title="Adicionar CELU às sugestões">+</button>
-          </div>
-        </td>
         <td><input class="manejo-readonly" value="${escapeHtml(getNecessidadeDaOrdem(op))}" readonly /></td>
         <td class="manejo-bipado-cell">
           <button class="btn btn-sm btn-bipado" onclick="biparManejoLinha('${op.id}')">
-            ${getStatusManejo(op, setor) === "bipado" ? "Bipado ✓" : "Bipar"}
+            ${status === "bipado" ? "Bipado ✓" : "Bipar"}
           </button>
         </td>
-        <td>${manejoStatusBadge(manejo, op, setor)}</td>
         <td>
-          <div class="manejo-actions">
+          ${manejoStatusBadge(manejo, op, setor)}
+          ${movimentosAbertos ? `<small class="mov-aberto">${movimentosAbertos} mov.</small>` : ""}
+        </td>
+        <td>
+          <div class="manejo-actions manejo-actions-fluxo">
             <button class="btn btn-sm btn-primary" onclick="salvarManejoLinha('${op.id}')">Salvar</button>
+            <button class="btn btn-sm btn-success" onclick="mandarParaFaccao('${op.id}')">Mandar facção</button>
+            <button class="btn btn-sm" onclick="mandarParaCelula('${op.id}')">Mandar célula</button>
             ${manejo && ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="limparManejoLinha('${op.id}')">Limpar</button>` : ""}
           </div>
         </td>
@@ -1602,7 +1632,6 @@ function renderManejoInline() {
 
   renderResumoSomasManejoPeloDOM();
 }
-
 
 function valorSilkAntigoValido(valor) {
   const texto = limparTexto(valor).toUpperCase();
@@ -2169,7 +2198,6 @@ async function salvarManejoLinha(ordemId) {
     });
 
     await setDoc(doc(db, "ordensProducao", ordem.id), patch, { merge: true });
-    const resultadoPagamento = await sincronizarPagamentoPeloManejo(ordem, setor, manejo);
 
     await registrarLog(
       manejoExistente ? "manejo_atualizado" : "manejo_criado",
@@ -2178,11 +2206,7 @@ async function salvarManejoLinha(ordemId) {
       `OP ${ordem.numeroOP} | Setor ${infoSetor.label} | Ref. ${ordem.referencia} | Fase ${fase}`
     );
 
-    if (resultadoPagamento.ok) {
-      toast(`Manejo ${infoSetor.label} salvo. Pagamento atualizado: ${resultadoPagamento.quantidade} peça(s), ${formatarMoedaBR(resultadoPagamento.valor)}.`);
-    } else {
-      toast(`Manejo ${infoSetor.label} salvo. ${resultadoPagamento.motivo}`);
-    }
+    toast(`Manejo ${infoSetor.label} salvo.`);
   } catch (error) {
     console.error(error);
 
@@ -3070,6 +3094,485 @@ async function excluirFaccao(id) {
 
 
 
+
+
+function configurarCelulas() {
+  const form = document.getElementById("formCelula");
+  if (form) {
+    form.addEventListener("submit", salvarCelula);
+  }
+
+  const busca = document.getElementById("buscaCelula");
+  if (busca) {
+    busca.addEventListener("input", renderCelulas);
+  }
+
+  const cancelar = document.getElementById("btnCancelarCelula");
+  if (cancelar) {
+    cancelar.addEventListener("click", limparFormCelula);
+  }
+}
+
+function limparFormCelula() {
+  const form = document.getElementById("formCelula");
+  if (form) form.reset();
+
+  const id = document.getElementById("celulaId");
+  if (id) id.value = "";
+}
+
+async function salvarCelula(event) {
+  event.preventDefault();
+
+  if (!ehAdmin()) {
+    toast("Apenas admin pode salvar células.");
+    return;
+  }
+
+  const idAtual = document.getElementById("celulaId").value;
+  const nome = limparTexto(document.getElementById("celulaNome").value).toUpperCase();
+
+  if (!nome) {
+    toast("Informe o nome da célula.");
+    return;
+  }
+
+  const dados = {
+    nome,
+    ativo: true,
+    atualizadoPor: state.currentUser.uid,
+    atualizadoEm: serverTimestamp()
+  };
+
+  if (!idAtual) {
+    dados.criadoPor = state.currentUser.uid;
+    dados.criadoEm = serverTimestamp();
+  }
+
+  try {
+    const docId = idAtual || docIdSeguro(nome);
+    await setDoc(doc(db, "celulas", docId), dados, { merge: true });
+
+    await registrarLog(idAtual ? "celula_atualizada" : "celula_criada", "celula", docId, nome);
+    limparFormCelula();
+    toast("Célula salva.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao salvar célula.");
+  }
+}
+
+function renderCelulas() {
+  const tbody = document.getElementById("listaCelulas");
+  if (!tbody) return;
+
+  const busca = normalizarTexto(document.getElementById("buscaCelula")?.value || "");
+  let celulas = [...state.celulas];
+
+  if (busca) {
+    celulas = celulas.filter(celula => normalizarTexto(celula.nome || "").includes(busca));
+  }
+
+  if (!celulas.length) {
+    tbody.innerHTML = `<tr><td colspan="${ehAdmin() ? 3 : 2}" class="empty">Nenhuma célula cadastrada.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = celulas.map(celula => `
+    <tr>
+      <td><strong>${escapeHtml(celula.nome || "-")}</strong></td>
+      <td>
+        <span class="status-dot ${celula.ativo !== false ? "active" : "inactive"}">
+          ${celula.ativo !== false ? "Ativa" : "Inativa"}
+        </span>
+      </td>
+      ${ehAdmin() ? `
+        <td>
+          <button class="btn btn-sm" onclick="editarCelula('${celula.id}')">Editar</button>
+          <button class="btn btn-sm ${celula.ativo !== false ? "btn-warning" : "btn-success"}" onclick="alternarCelula('${celula.id}')">
+            ${celula.ativo !== false ? "Inativar" : "Ativar"}
+          </button>
+          <button class="btn btn-sm btn-danger" onclick="excluirCelula('${celula.id}')">Excluir</button>
+        </td>
+      ` : ""}
+    </tr>
+  `).join("");
+}
+
+function editarCelula(id) {
+  const celula = state.celulas.find(item => item.id === id);
+  if (!celula) return;
+
+  document.getElementById("celulaId").value = celula.id;
+  document.getElementById("celulaNome").value = celula.nome || "";
+}
+
+async function alternarCelula(id) {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode alterar células.");
+    return;
+  }
+
+  const celula = state.celulas.find(item => item.id === id);
+  if (!celula) return;
+
+  const ativo = celula.ativo === false;
+
+  try {
+    await setDoc(doc(db, "celulas", id), {
+      ativo,
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+
+    await registrarLog(ativo ? "celula_ativada" : "celula_inativada", "celula", id, celula.nome || id);
+    toast(ativo ? "Célula ativada." : "Célula inativada.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao alterar célula.");
+  }
+}
+
+async function excluirCelula(id) {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode excluir células.");
+    return;
+  }
+
+  const celula = state.celulas.find(item => item.id === id);
+  if (!confirm(`Excluir a célula ${celula?.nome || id}?`)) return;
+
+  try {
+    await deleteDoc(doc(db, "celulas", id));
+    await registrarLog("celula_excluida", "celula", id, celula?.nome || id);
+    toast("Célula excluída.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao excluir célula.");
+  }
+}
+
+function configurarRastreamento() {
+  const busca = document.getElementById("buscaRastreamento");
+  if (busca) {
+    busca.addEventListener("input", renderRastreamento);
+  }
+}
+
+function getMovimentacoesDaOrdem(opId) {
+  return state.movimentacoesProducao.filter(mov => mov.opId === opId);
+}
+
+function getDestinoMovimento(tipo, nome) {
+  const lista = tipo === "faccao" ? state.faccoes : state.celulas;
+  const texto = limparTexto(nome).toUpperCase();
+  return lista.find(item => limparTexto(item.nome || "").toUpperCase() === texto) || null;
+}
+
+function labelTipoMovimento(tipo) {
+  return tipo === "celula" ? "Célula" : "Facção";
+}
+
+function labelStatusMovimento(status) {
+  const mapa = {
+    em_andamento: "Em andamento",
+    retornou: "Retornou",
+    finalizado: "Finalizado"
+  };
+
+  return mapa[status] || status || "Em andamento";
+}
+
+function classeStatusMovimento(status) {
+  if (status === "finalizado") return "ok";
+  if (status === "retornou") return "bipado";
+  return "pending";
+}
+
+async function criarMovimentacaoOP(ordemId, tipoDestino) {
+  const ordem = state.ordens.find(op => op.id === ordemId);
+  if (!ordem) {
+    toast("OP não encontrada.");
+    return;
+  }
+
+  const setor = getManejoSetorAtual();
+  const infoSetor = getInfoManejoSetor(setor);
+  const destinos = tipoDestino === "faccao"
+    ? state.faccoes.filter(item => item.ativo !== false).map(item => item.nome)
+    : state.celulas.filter(item => item.ativo !== false).map(item => item.nome);
+
+  const label = labelTipoMovimento(tipoDestino);
+  const sugestoes = destinos.length ? `\nSugestões: ${destinos.slice(0, 8).join(", ")}` : "";
+  const destino = limparTexto(prompt(`Nome da ${label}:${sugestoes}`) || "").toUpperCase();
+
+  if (!destino) return;
+
+  const processoPadrao = tipoDestino === "faccao" ? infoSetor.label.toUpperCase() : "MONTAGEM";
+  const processo = limparTexto(prompt("Processo/etapa:", processoPadrao) || "").toUpperCase();
+
+  if (!processo) {
+    toast("Informe o processo/etapa.");
+    return;
+  }
+
+  const quantidadeInformada = prompt("Quantidade enviada:", String(numeroQuantidadeOP(ordem)));
+  const quantidadeEnviada = Number(quantidadeInformada || 0);
+
+  if (!quantidadeEnviada || quantidadeEnviada <= 0) {
+    toast("Informe uma quantidade válida.");
+    return;
+  }
+
+  const dataEnvio = prompt("Data de envio (AAAA-MM-DD):", getDataHojeISO()) || getDataHojeISO();
+
+  const destinoCadastrado = getDestinoMovimento(tipoDestino, destino);
+
+  const dados = {
+    origem: "manejo",
+    opId: ordem.id,
+    numeroOP: ordem.numeroOP || "",
+    referencia: ordem.referencia || "",
+    cor: ordem.cor || "",
+    produtoNome: ordem.produtoNome || "",
+    tipoDestino,
+    tipoDestinoLabel: label,
+    destino,
+    destinoId: destinoCadastrado?.id || "",
+    processo,
+    setor,
+    setorLabel: infoSetor.label,
+    quantidadeEnviada,
+    dataEnvio,
+    dataChegada: "",
+    falta: 0,
+    quantidadeRecebida: 0,
+    status: "em_andamento",
+    criadoPor: state.currentUser.uid,
+    criadoEm: serverTimestamp(),
+    atualizadoPor: state.currentUser.uid,
+    atualizadoEm: serverTimestamp()
+  };
+
+  try {
+    const ref = await addDoc(collection(db, "movimentacoesProducao"), dados);
+    await registrarLog("movimentacao_criada", "movimentacaoProducao", ref.id, `OP ${dados.numeroOP} | ${label} ${destino} | ${processo} | ${quantidadeEnviada} peças`);
+    toast(`OP enviada para ${label}: ${destino}.`);
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao criar movimentação.");
+  }
+}
+
+function mandarParaFaccao(ordemId) {
+  criarMovimentacaoOP(ordemId, "faccao");
+}
+
+function mandarParaCelula(ordemId) {
+  criarMovimentacaoOP(ordemId, "celula");
+}
+
+function getPrecoReferenciaPorMovimento(mov) {
+  return getPrecosReferenciaAtivos().find(preco => {
+    return normalizarReferencia(preco.referencia || "") === normalizarReferencia(mov.referencia || "") &&
+      preco.setor === mov.setor &&
+      normalizarTexto(preco.processo || "") === normalizarTexto(mov.processo || "");
+  }) || null;
+}
+
+async function gerarPagamentoPorMovimentacao(mov) {
+  if (!mov || mov.tipoDestino !== "faccao" || !mov.dataChegada) {
+    return { ok: false, motivo: "Pagamento só é gerado para facção com data de chegada." };
+  }
+
+  const preco = getPrecoReferenciaPorMovimento(mov);
+
+  if (!preco) {
+    return {
+      ok: false,
+      motivo: `Preço não cadastrado para Ref. ${mov.referencia} + ${mov.processo} + ${getLabelSetorPagamento(mov.setor)}.`
+    };
+  }
+
+  const quantidade = Math.max(Number(mov.quantidadeEnviada || 0) - Number(mov.falta || 0), 0);
+  const valorUnitario = Number(preco.valor || 0);
+  const total = quantidade * valorUnitario;
+  const pagamentoId = docIdSeguro(`mov-${mov.id}-${preco.id}`);
+
+  await setDoc(doc(db, "entregasPagamento", pagamentoId), {
+    origem: "movimentacao",
+    movimentacaoId: mov.id,
+    opId: mov.opId,
+    numeroOP: mov.numeroOP || "",
+    referencia: mov.referencia || "",
+    cor: mov.cor || "",
+    produtoNome: mov.produtoNome || "",
+    faccao: mov.destino || "",
+    precoReferenciaId: preco.id,
+    processo: preco.processo,
+    servicoId: preco.id,
+    servicoNome: preco.processo,
+    setor: preco.setor,
+    setorLabel: getLabelSetorPagamento(preco.setor),
+    dataEntrega: mov.dataChegada,
+    quantidade,
+    falta: Number(mov.falta || 0),
+    valorUnitario,
+    total,
+    statusPagamento: "pendente",
+    observacoes: "Gerado pela chegada da movimentação de facção",
+    atualizadoPor: state.currentUser.uid,
+    atualizadoEm: serverTimestamp(),
+    criadoPor: state.currentUser.uid,
+    criadoEm: serverTimestamp()
+  }, { merge: true });
+
+  return { ok: true, quantidade, total };
+}
+
+async function registrarChegadaMovimentacao(id) {
+  const mov = state.movimentacoesProducao.find(item => item.id === id);
+  if (!mov) return;
+
+  const dataChegada = prompt("Data de chegada/retorno (AAAA-MM-DD):", mov.dataChegada || getDataHojeISO());
+  if (!dataChegada) return;
+
+  const faltaTexto = prompt("Falta / quantidade que não voltou:", String(mov.falta || 0));
+  const falta = Math.max(0, Number(faltaTexto || 0));
+  const quantidadeRecebida = Math.max(Number(mov.quantidadeEnviada || 0) - falta, 0);
+
+  try {
+    await setDoc(doc(db, "movimentacoesProducao", id), {
+      dataChegada,
+      falta,
+      quantidadeRecebida,
+      status: "retornou",
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+
+    const movAtualizada = { ...mov, dataChegada, falta, quantidadeRecebida, status: "retornou" };
+    const pagamento = await gerarPagamentoPorMovimentacao(movAtualizada);
+
+    await registrarLog("movimentacao_retorno", "movimentacaoProducao", id, `OP ${mov.numeroOP} | ${mov.destino} | voltou ${quantidadeRecebida} peças | falta ${falta}`);
+
+    if (mov.tipoDestino === "faccao") {
+      toast(pagamento.ok
+        ? `Chegada registrada e pagamento gerado: ${formatarMoedaBR(pagamento.total)}.`
+        : `Chegada registrada. ${pagamento.motivo}`);
+    } else {
+      toast("Chegada da célula registrada.");
+    }
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao registrar chegada.");
+  }
+}
+
+async function finalizarMovimentacao(id) {
+  const mov = state.movimentacoesProducao.find(item => item.id === id);
+  if (!mov) return;
+
+  if (!confirm(`Finalizar movimentação da OP ${mov.numeroOP}?`)) return;
+
+  try {
+    await setDoc(doc(db, "movimentacoesProducao", id), {
+      status: "finalizado",
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+
+    await registrarLog("movimentacao_finalizada", "movimentacaoProducao", id, `OP ${mov.numeroOP} | ${mov.destino}`);
+    toast("Movimentação finalizada.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao finalizar movimentação.");
+  }
+}
+
+async function excluirMovimentacao(id) {
+  const mov = state.movimentacoesProducao.find(item => item.id === id);
+  if (!mov) return;
+
+  if (!confirm(`Excluir movimentação da OP ${mov.numeroOP}?`)) return;
+
+  try {
+    await deleteDoc(doc(db, "movimentacoesProducao", id));
+    await registrarLog("movimentacao_excluida", "movimentacaoProducao", id, `OP ${mov.numeroOP} | ${mov.destino}`);
+    toast("Movimentação excluída.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao excluir movimentação.");
+  }
+}
+
+function renderRastreamento() {
+  const tbody = document.getElementById("listaRastreamento");
+  if (!tbody) return;
+
+  const busca = normalizarTexto(document.getElementById("buscaRastreamento")?.value || "");
+  let movimentos = [...state.movimentacoesProducao];
+
+  if (busca) {
+    movimentos = movimentos.filter(mov => {
+      const texto = normalizarTexto([
+        mov.numeroOP,
+        mov.referencia,
+        mov.cor,
+        mov.tipoDestinoLabel,
+        mov.destino,
+        mov.processo,
+        mov.status
+      ].join(" "));
+      return texto.includes(busca);
+    });
+  }
+
+  const total = movimentos.length;
+  const emAndamento = movimentos.filter(mov => mov.status === "em_andamento" || !mov.status).length;
+  const retornaram = movimentos.filter(mov => mov.status === "retornou").length;
+  const finalizadas = movimentos.filter(mov => mov.status === "finalizado").length;
+
+  const setText = (id, valor) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = Number(valor || 0).toLocaleString("pt-BR");
+  };
+
+  setText("rastTotalMovimentacoes", total);
+  setText("rastEmAndamento", emAndamento);
+  setText("rastRetornaram", retornaram);
+  setText("rastFinalizadas", finalizadas);
+
+  if (!movimentos.length) {
+    tbody.innerHTML = `<tr><td colspan="12" class="empty">Nenhuma movimentação encontrada.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = movimentos.map(mov => `
+    <tr>
+      <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
+      <td><strong>${escapeHtml(mov.referencia || "-")}</strong></td>
+      <td>${escapeHtml(mov.cor || "-")}</td>
+      <td>${escapeHtml(mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino))}</td>
+      <td><strong>${escapeHtml(mov.destino || "-")}</strong></td>
+      <td>${escapeHtml(mov.processo || "-")}</td>
+      <td><strong>${escapeHtml(Number(mov.quantidadeEnviada || 0).toLocaleString("pt-BR"))}</strong></td>
+      <td>${escapeHtml(dataISOParaBR(mov.dataEnvio) || mov.dataEnvio || "-")}</td>
+      <td>${escapeHtml(dataISOParaBR(mov.dataChegada) || mov.dataChegada || "-")}</td>
+      <td>${escapeHtml(Number(mov.falta || 0).toLocaleString("pt-BR"))}</td>
+      <td>
+        <span class="badge ${classeStatusMovimento(mov.status)}">
+          ${escapeHtml(labelStatusMovimento(mov.status))}
+        </span>
+      </td>
+      <td>
+        <button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>
+        <button class="btn btn-sm" onclick="finalizarMovimentacao('${mov.id}')">Finalizar</button>
+        ${ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="excluirMovimentacao('${mov.id}')">Excluir</button>` : ""}
+      </td>
+    </tr>
+  `).join("");
+}
 
 function configurarPagamentos() {
   const formPreco = document.getElementById("formPrecoReferencia");
@@ -5050,6 +5553,8 @@ function renderTudo() {
   renderDatalistCores();
   renderProcessos();
   renderFaccoes();
+  renderCelulas();
+  renderRastreamento();
   renderPagamentos();
   renderRelatorio();
   renderLogs();
@@ -5457,3 +5962,11 @@ window.editarEntregaPagamento = editarEntregaPagamento;
 window.editarPrecoReferencia = editarPrecoReferencia;
 window.alternarPrecoReferencia = alternarPrecoReferencia;
 window.excluirPrecoReferencia = excluirPrecoReferencia;
+window.editarCelula = editarCelula;
+window.alternarCelula = alternarCelula;
+window.excluirCelula = excluirCelula;
+window.mandarParaFaccao = mandarParaFaccao;
+window.mandarParaCelula = mandarParaCelula;
+window.registrarChegadaMovimentacao = registrarChegadaMovimentacao;
+window.finalizarMovimentacao = finalizarMovimentacao;
+window.excluirMovimentacao = excluirMovimentacao;

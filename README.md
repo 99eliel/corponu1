@@ -1727,3 +1727,89 @@ Se aparecer aviso de permissão, publique novamente o `firebase-rules.txt` no Fi
 ```txt
 entregasPagamento
 ```
+
+
+## Atualização: fluxo por Manejo, Facção, Células e Rastreamento
+
+Esta versão reorganiza o fluxo para teste:
+
+```txt
+Manejo = preparação interna da OP
+Facção = produção externa
+Célula = produção interna
+Rastreamento = onde a peça está
+Bipagem = finalização
+Pagamentos = valores de facção
+```
+
+### Manejo
+
+O Manejo agora fica mais limpo, com foco em:
+
+```txt
+- Silk
+- Data tecido
+- Fase
+- Produção
+- Necessidade
+- Bipagem
+```
+
+Foram adicionados os botões:
+
+```txt
+Mandar facção
+Mandar célula
+```
+
+### Células
+
+Nova aba **Células**.
+
+Para teste, o cadastro da célula usa apenas:
+
+```txt
+Nome da célula
+```
+
+### Rastreamento
+
+Nova aba **Rastreamento**.
+
+Cada vez que uma OP é enviada para facção ou célula, o sistema cria uma movimentação com:
+
+```txt
+OP
+Referência
+Cor
+Tipo: Facção ou Célula
+Destino
+Processo
+Quantidade enviada
+Data de envio
+Chegada
+Falta
+Status
+```
+
+Assim é possível saber onde a peça está.
+
+### Pagamento
+
+Quando uma movimentação de **Facção** recebe chegada, o sistema tenta gerar o pagamento usando:
+
+```txt
+Referência + Processo + Setor
+```
+
+Se existir preço cadastrado, gera o valor em Pagamentos.
+Se não existir, o sistema avisa que falta cadastrar o preço.
+
+Nova coleção criada:
+
+```txt
+celulas
+movimentacoesProducao
+```
+
+Depois de subir os arquivos, publique o `firebase-rules.txt` atualizado no Firebase.

@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-01-fix-pagamento-manejo-1";
+  const APP_VERSION = "2026-07-03-fluxo-celulas-rastreamento-1";
   const STORAGE_KEY = "op_confeccao_app_version";
   let refreshing = false;
 

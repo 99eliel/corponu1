@@ -2861,3 +2861,57 @@ table td {
 .manejo-actions {
   min-width: 82px;
 }
+
+
+/* Fluxo por Facção, Células e Rastreamento */
+.manejo-limpo-table {
+  min-width: 1460px;
+}
+
+.manejo-actions-fluxo {
+  min-width: 240px;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mov-aberto {
+  display: block;
+  margin-top: 4px;
+  color: #0f766e;
+  font-weight: 800;
+}
+
+.celulas-table {
+  min-width: 520px;
+}
+
+.rastreamento-panel .panel-header {
+  align-items: flex-start;
+}
+
+.rastreamento-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.rastreamento-table {
+  min-width: 1280px;
+}
+
+.rastreamento-table th,
+.rastreamento-table td {
+  white-space: nowrap;
+}
+
+.rastreamento-table td:nth-child(7),
+.rastreamento-table td:nth-child(10) {
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .rastreamento-cards {
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
+  }
+}
