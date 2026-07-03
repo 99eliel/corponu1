@@ -3450,3 +3450,15 @@ table td {
     flex-direction: column;
   }
 }
+
+
+/* Manejo dividido somente por Sutiã e Calcinha */
+.manejo-tipo-tabs {
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+}
+
+@media (max-width: 760px) {
+  .manejo-tipo-tabs {
+    grid-template-columns: 1fr;
+  }
+}

@@ -2134,3 +2134,41 @@ Lista completa para conferência:
 5051	0,4029
 5151	0,4029
 ```
+
+
+## Atualização: Manejo dividido em Sutiã e Calcinha
+
+A aba **Manejo** não é mais dividida em Bojo, Alça e Renda.
+
+Agora ela é dividida apenas em:
+
+```txt
+- Manejo Sutiã
+- Manejo Calcinha
+```
+
+A separação vem da própria importação do PDF:
+
+```txt
+Se o PDF foi importado como Sutiã -> OP aparece no Manejo Sutiã
+Se o PDF foi importado como Calcinha -> OP aparece no Manejo Calcinha
+```
+
+As informações continuam vindo da importação normalmente:
+
+```txt
+Nº OP
+Referência
+Quantidade
+Cor
+Necessidade
+Tipo da peça
+```
+
+A busca de valores para pagamento também foi ajustada para usar:
+
+```txt
+Referência + Processo
+```
+
+Assim os valores cadastrados por processo continuam funcionando mesmo com o Manejo dividido por Sutiã/Calcinha.

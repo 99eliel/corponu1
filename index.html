@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-03-bojo-encapado-valores-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-03-bojo-encapado-valores-1" />
+  <meta name="app-version" content="2026-07-03-manejo-sutia-calcinha-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-03-manejo-sutia-calcinha-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -350,30 +350,27 @@
           <div class="panel-header">
             <div>
               <h3>Manejo das ordens de produção</h3>
-              <p>Toda OP que entra no sistema aparece aqui automaticamente. O Manejo fica para preparação interna; facções e células ficam em movimentações separadas.</p>
+              <p>Toda OP que entra no sistema aparece aqui automaticamente. O Manejo agora é separado por Sutiã e Calcinha; facções e células ficam em movimentações separadas.</p>
             </div>
             <input id="buscaManejoLinha" class="search" type="text" placeholder="Buscar OP, ref., cor ou fase..." />
           </div>
 
           <div class="notice small">
-            <strong>Funcionamento:</strong> Nº OP, REF, QTI, COR e NECESSIDADE vêm das ordens de produção. Aqui ficam Silk, Tecido, Fase, Produção e encaminhamentos. Use os botões para mandar a OP para Facção ou Célula.
+            <strong>Funcionamento:</strong> Nº OP, REF, QTI, COR, NECESSIDADE e o tipo da peça vêm da importação. Aqui ficam Silk, Tecido, Fase, Produção e encaminhamentos. Use os botões para mandar a OP para Facção ou Célula.
           </div>
 
 
-          <div class="manejo-setor-tabs">
-            <button class="manejo-setor-btn active" type="button" data-setor="bojo">
-              Manejo Bojo <span id="contadorManejoBojo">0</span>
+          <div class="manejo-setor-tabs manejo-tipo-tabs">
+            <button class="manejo-setor-btn active" type="button" data-setor="sutia">
+              Manejo Sutiã <span id="contadorManejoSutia">0</span>
             </button>
-            <button class="manejo-setor-btn" type="button" data-setor="alca">
-              Manejo Alça <span id="contadorManejoAlca">0</span>
-            </button>
-            <button class="manejo-setor-btn" type="button" data-setor="renda">
-              Manejo Renda <span id="contadorManejoRenda">0</span>
+            <button class="manejo-setor-btn" type="button" data-setor="calcinha">
+              Manejo Calcinha <span id="contadorManejoCalcinha">0</span>
             </button>
           </div>
 
           <div class="manejo-setor-info" id="manejoSetorInfo">
-            Mostrando OPs de referências com bojo. Este é o manejo atual do sistema.
+            Mostrando OPs de sutiã importadas do PDF. A separação vem automaticamente da importação.
           </div>
 
           <div class="manejo-soma-compacta">
@@ -1584,8 +1581,8 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="update.js?v=2026-07-03-bojo-encapado-valores-1"></script>
-  <script type="module" src="app.js?v=2026-07-03-bojo-encapado-valores-1"></script>
+  <script src="update.js?v=2026-07-03-manejo-sutia-calcinha-1"></script>
+  <script type="module" src="app.js?v=2026-07-03-manejo-sutia-calcinha-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">

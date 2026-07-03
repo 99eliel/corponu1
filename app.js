@@ -64,7 +64,7 @@ const state = {
   logs: [],
   pdfImportacaoPendente: [],
   relatorioAtual: "enfesto",
-  manejoSetorAtual: "bojo",
+  manejoSetorAtual: "sutia",
   unsubscribers: []
 };
 
@@ -998,34 +998,47 @@ async function excluirOrdem(id) {
 
 
 const manejoSetoresInfo = {
-  bojo: {
-    label: "Bojo",
-    campo: "possuiBojo",
-    descricao: "Mostrando OPs de referências com bojo. Este é o manejo atual do sistema."
+  sutia: {
+    label: "Sutiã",
+    tipoPeca: "sutia",
+    descricao: "Mostrando OPs de sutiã importadas do PDF. A separação vem automaticamente da importação."
   },
-  alca: {
-    label: "Alça",
-    campo: "possuiAlca",
-    descricao: "Mostrando OPs de referências com alça."
-  },
-  renda: {
-    label: "Renda",
-    campo: "possuiRenda",
-    descricao: "Mostrando OPs de referências com renda."
+  calcinha: {
+    label: "Calcinha",
+    tipoPeca: "calcinha",
+    descricao: "Mostrando OPs de calcinha importadas do PDF. A separação vem automaticamente da importação."
   }
 };
 
+function getTipoPecaManejoOP(op) {
+  const texto = normalizarTexto([
+    op?.tipoPeca,
+    op?.tipoPecaLabel,
+    op?.produtoNome,
+    op?.observacoes,
+    op?.pendencia
+  ].join(" "));
+
+  if (texto.includes("calcinha")) return "calcinha";
+  if (texto.includes("sutia")) return "sutia";
+
+  // Fallback para OPs antigas/importações antigas: se possuía bojo/alça/renda, normalmente é sutiã.
+  if (op?.possuiBojo || op?.possuiAlca || op?.possuiRenda) return "sutia";
+
+  return "sutia";
+}
+
 function getManejoSetorAtual() {
-  return state.manejoSetorAtual || "bojo";
+  return state.manejoSetorAtual || "sutia";
 }
 
 function getInfoManejoSetor(setor = getManejoSetorAtual()) {
-  return manejoSetoresInfo[setor] || manejoSetoresInfo.bojo;
+  return manejoSetoresInfo[setor] || manejoSetoresInfo.sutia;
 }
 
 function ordemPertenceAoSetorManejo(op, setor = getManejoSetorAtual()) {
   const info = getInfoManejoSetor(setor);
-  return Boolean(op?.[info.campo]);
+  return getTipoPecaManejoOP(op) === info.tipoPeca;
 }
 
 function getOrdensDoSetorManejo(setor = getManejoSetorAtual()) {
@@ -1044,9 +1057,8 @@ function atualizarBotoesManejoSetor() {
     if (el) el.textContent = valor;
   };
 
-  setText("contadorManejoBojo", getOrdensDoSetorManejo("bojo").length);
-  setText("contadorManejoAlca", getOrdensDoSetorManejo("alca").length);
-  setText("contadorManejoRenda", getOrdensDoSetorManejo("renda").length);
+  setText("contadorManejoSutia", getOrdensDoSetorManejo("sutia").length);
+  setText("contadorManejoCalcinha", getOrdensDoSetorManejo("calcinha").length);
 
   const info = document.getElementById("manejoSetorInfo");
   if (info) info.textContent = getInfoManejoSetor(setorAtual).descricao;
@@ -1657,7 +1669,7 @@ function getSilkNomeManejo(manejo) {
   return valorSilkAntigoValido(manejo.silk);
 }
 
-function getStatusManejo(op, setor = "bojo") {
+function getStatusManejo(op, setor = "sutia") {
   const manejo = getManejoDaOrdem(op, setor);
 
   if (setor === "bojo") {
@@ -2019,9 +2031,10 @@ function getNecessidadeDaOrdem(op) {
   return "";
 }
 
-function getManejoDaOrdem(op, setor = "bojo") {
+function getManejoDaOrdem(op, setor = "sutia") {
   if (!op) return null;
 
+  // Mantém compatibilidade com registros antigos que usavam "bojo" como manejo principal.
   if (setor === "bojo") {
     if (op.manejo) {
       return {
@@ -2061,7 +2074,7 @@ function getPrecosReferenciaDoManejo(op, setor) {
   const referencia = normalizarReferencia(op?.referencia || "");
 
   return getPrecosReferenciaAtivos().filter(preco => {
-    return normalizarReferencia(preco.referencia || "") === referencia && preco.setor === setor;
+    return normalizarReferencia(preco.referencia || "") === referencia;
   });
 }
 
@@ -3554,14 +3567,14 @@ function configurarModalMovimentacao() {
 function getProcessosSugeridosMovimentacao(op, setor, tipoDestino) {
   const referencia = normalizarReferencia(op?.referencia || "");
   const processosTabela = getPrecosReferenciaAtivos()
-    .filter(preco => normalizarReferencia(preco.referencia || "") === referencia && preco.setor === setor)
+    .filter(preco => normalizarReferencia(preco.referencia || "") === referencia)
     .map(preco => preco.processo);
 
   const processosHistorico = state.movimentacoesProducao
-    .filter(mov => normalizarReferencia(mov.referencia || "") === referencia && mov.setor === setor)
+    .filter(mov => normalizarReferencia(mov.referencia || "") === referencia)
     .map(mov => mov.processo);
 
-  const padrao = tipoDestino === "faccao" ? getInfoManejoSetor(setor).label.toUpperCase() : "MONTAGEM";
+  const padrao = tipoDestino === "faccao" ? "ENCAPAR BOJO" : "MONTAGEM";
 
   return [...new Set([
     padrao,
@@ -3766,11 +3779,14 @@ function mandarParaCelula(ordemId) {
 }
 
 function getPrecoReferenciaPorMovimento(mov) {
-  return getPrecosReferenciaAtivos().find(preco => {
+  const candidatos = getPrecosReferenciaAtivos().filter(preco => {
     return normalizarReferencia(preco.referencia || "") === normalizarReferencia(mov.referencia || "") &&
-      preco.setor === mov.setor &&
       normalizarTexto(preco.processo || "") === normalizarTexto(mov.processo || "");
-  }) || null;
+  });
+
+  if (!candidatos.length) return null;
+
+  return candidatos.find(preco => preco.setor === mov.setor) || candidatos[0];
 }
 
 async function gerarPagamentoPorMovimentacao(mov) {
@@ -3783,7 +3799,7 @@ async function gerarPagamentoPorMovimentacao(mov) {
   if (!preco) {
     return {
       ok: false,
-      motivo: `Preço não cadastrado para Ref. ${mov.referencia} + ${mov.processo} + ${getLabelSetorPagamento(mov.setor)}.`
+      motivo: `Preço não cadastrado para Ref. ${mov.referencia} + ${mov.processo}.`
     };
   }
 
@@ -4219,7 +4235,9 @@ function getLabelSetorPagamento(setor) {
   const mapa = {
     bojo: "Bojo",
     alca: "Alça",
-    renda: "Renda"
+    renda: "Renda",
+    sutia: "Sutiã",
+    calcinha: "Calcinha"
   };
 
   return mapa[setor] || setor || "-";
