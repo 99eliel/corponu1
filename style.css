@@ -3097,3 +3097,104 @@ table td {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Modal de movimentação sem prompt do navegador */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.55);
+  padding: 18px;
+}
+
+.modal-backdrop.hidden {
+  display: none !important;
+}
+
+.modal-card {
+  width: min(620px, 100%);
+  max-height: 92vh;
+  overflow: auto;
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.35);
+  border: 1px solid #e2e8f0;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-header h3 {
+  margin: 0 0 4px;
+}
+
+.modal-header p {
+  margin: 0;
+  color: #64748b;
+}
+
+.modal-close {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.movimentacao-form {
+  padding: 18px 20px 20px;
+  display: grid;
+  gap: 12px;
+}
+
+.movimentacao-op-info {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #dbe4f0;
+}
+
+.movimentacao-op-info strong {
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.movimentacao-op-info span {
+  color: #475569;
+  font-weight: 700;
+}
+
+.movimentacao-form label {
+  display: grid;
+  gap: 6px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.movimentacao-form select,
+.movimentacao-form input {
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  padding: 9px 11px;
+  font-weight: 700;
+  background: #ffffff;
+}
+
+.movimentacao-form .actions {
+  margin-top: 4px;
+}

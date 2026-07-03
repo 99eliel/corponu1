@@ -1891,3 +1891,26 @@ Gerenciar células
 ```
 
 Assim quem acompanha a produção interna vê primeiro as movimentações, e não os dados de cadastro.
+
+
+## Ajuste: escolher facção/célula por lista
+
+O envio pelo Manejo não usa mais o `prompt` do navegador.
+
+Agora, ao clicar em:
+
+```txt
+Mandar facção
+Mandar célula
+```
+
+O sistema abre uma janela própria com:
+
+```txt
+- Destino já cadastrado para escolher
+- Processo/etapa
+- Quantidade enviada
+- Data de envio
+```
+
+Assim o usuário não precisa digitar o nome da facção ou célula manualmente.

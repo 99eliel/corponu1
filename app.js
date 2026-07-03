@@ -254,6 +254,7 @@ document.addEventListener("DOMContentLoaded", () => {
   configurarFaccoes();
   configurarCelulas();
   configurarRastreamento();
+  configurarModalMovimentacao();
   configurarPagamentos();
   configurarRelatorios();
   configurarUsuarios();
@@ -3507,7 +3508,63 @@ function classeStatusMovimento(status) {
   return "pending";
 }
 
-async function criarMovimentacaoOP(ordemId, tipoDestino) {
+let movimentacaoModalContexto = null;
+
+function configurarModalMovimentacao() {
+  const form = document.getElementById("formMovimentacaoProducao");
+  if (form) {
+    form.addEventListener("submit", confirmarMovimentacaoProducao);
+  }
+
+  const fechar = document.getElementById("btnFecharModalMovimentacao");
+  if (fechar) {
+    fechar.addEventListener("click", fecharModalMovimentacao);
+  }
+
+  const cancelar = document.getElementById("btnCancelarModalMovimentacao");
+  if (cancelar) {
+    cancelar.addEventListener("click", fecharModalMovimentacao);
+  }
+
+  const modal = document.getElementById("modalMovimentacao");
+  if (modal) {
+    modal.addEventListener("click", event => {
+      if (event.target === modal) fecharModalMovimentacao();
+    });
+  }
+
+  const processoSelect = document.getElementById("movimentacaoProcessoSelect");
+  if (processoSelect) {
+    processoSelect.addEventListener("change", () => {
+      const processoInput = document.getElementById("movimentacaoProcesso");
+      if (processoInput && processoSelect.value) {
+        processoInput.value = processoSelect.value;
+      }
+    });
+  }
+}
+
+function getProcessosSugeridosMovimentacao(op, setor, tipoDestino) {
+  const referencia = normalizarReferencia(op?.referencia || "");
+  const processosTabela = getPrecosReferenciaAtivos()
+    .filter(preco => normalizarReferencia(preco.referencia || "") === referencia && preco.setor === setor)
+    .map(preco => preco.processo);
+
+  const processosHistorico = state.movimentacoesProducao
+    .filter(mov => normalizarReferencia(mov.referencia || "") === referencia && mov.setor === setor)
+    .map(mov => mov.processo);
+
+  const padrao = tipoDestino === "faccao" ? getInfoManejoSetor(setor).label.toUpperCase() : "MONTAGEM";
+
+  return [...new Set([
+    padrao,
+    ...processosTabela,
+    ...processosHistorico
+  ].map(item => limparTexto(item).toUpperCase()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+}
+
+function abrirModalMovimentacao(ordemId, tipoDestino) {
   const ordem = state.ordens.find(op => op.id === ordemId);
   if (!ordem) {
     toast("OP não encontrada.");
@@ -3515,35 +3572,132 @@ async function criarMovimentacaoOP(ordemId, tipoDestino) {
   }
 
   const setor = getManejoSetorAtual();
-  const infoSetor = getInfoManejoSetor(setor);
+  const label = labelTipoMovimento(tipoDestino);
   const destinos = tipoDestino === "faccao"
-    ? state.faccoes.filter(item => item.ativo !== false).map(item => item.nome)
-    : state.celulas.filter(item => item.ativo !== false).map(item => item.nome);
+    ? state.faccoes.filter(item => item.ativo !== false)
+    : state.celulas.filter(item => item.ativo !== false);
+
+  if (!destinos.length) {
+    toast(`Cadastre pelo menos uma ${label.toLowerCase()} antes de enviar a OP.`);
+    abrirPagina(tipoDestino === "faccao" ? "faccoes" : "celulas");
+
+    if (tipoDestino === "faccao") {
+      document.getElementById("painelGerenciarFaccoes")?.classList.remove("hidden");
+      const toggle = document.getElementById("btnToggleGerenciarFaccoes");
+      if (toggle) toggle.textContent = "Ocultar gerenciamento";
+    } else {
+      document.getElementById("painelGerenciarCelulas")?.classList.remove("hidden");
+      const toggle = document.getElementById("btnToggleGerenciarCelulas");
+      if (toggle) toggle.textContent = "Ocultar gerenciamento";
+    }
+
+    return;
+  }
+
+  movimentacaoModalContexto = {
+    ordemId,
+    tipoDestino,
+    setor
+  };
+
+  const titulo = document.getElementById("modalMovimentacaoTitulo");
+  const resumo = document.getElementById("modalMovimentacaoResumo");
+  const info = document.getElementById("movimentacaoOpInfo");
+  const destinoSelect = document.getElementById("movimentacaoDestino");
+  const processoSelect = document.getElementById("movimentacaoProcessoSelect");
+  const processoInput = document.getElementById("movimentacaoProcesso");
+  const quantidadeInput = document.getElementById("movimentacaoQuantidade");
+  const dataInput = document.getElementById("movimentacaoDataEnvio");
+  const ordemInput = document.getElementById("movimentacaoOrdemId");
+  const tipoInput = document.getElementById("movimentacaoTipoDestino");
+
+  if (titulo) titulo.textContent = `Mandar para ${label}`;
+  if (resumo) resumo.textContent = `Escolha uma ${label.toLowerCase()} já cadastrada e confirme os dados do envio.`;
+  if (info) {
+    info.innerHTML = `
+      <strong>OP ${escapeHtml(ordem.numeroOP || "-")}</strong>
+      <span>Ref. ${escapeHtml(ordem.referencia || "-")} | Cor ${escapeHtml(ordem.cor || "-")} | QTI ${escapeHtml(numeroQuantidadeOP(ordem))}</span>
+    `;
+  }
+
+  if (ordemInput) ordemInput.value = ordemId;
+  if (tipoInput) tipoInput.value = tipoDestino;
+
+  if (destinoSelect) {
+    destinoSelect.innerHTML = `<option value="">Selecione ${escapeHtml(label.toLowerCase())}</option>` + destinos.map(destino => {
+      return `<option value="${escapeHtml(destino.nome || "")}">${escapeHtml(destino.nome || "")}</option>`;
+    }).join("");
+    destinoSelect.value = "";
+  }
+
+  const processos = getProcessosSugeridosMovimentacao(ordem, setor, tipoDestino);
+
+  if (processoSelect) {
+    processoSelect.innerHTML = `<option value="">Selecione ou digite abaixo</option>` + processos.map(processo => {
+      return `<option value="${escapeHtml(processo)}">${escapeHtml(processo)}</option>`;
+    }).join("");
+    processoSelect.value = processos[0] || "";
+  }
+
+  if (processoInput) processoInput.value = processos[0] || "";
+  if (quantidadeInput) quantidadeInput.value = numeroQuantidadeOP(ordem);
+  if (dataInput) dataInput.value = getDataHojeISO();
+
+  document.getElementById("modalMovimentacao")?.classList.remove("hidden");
+  destinoSelect?.focus();
+}
+
+function fecharModalMovimentacao() {
+  document.getElementById("modalMovimentacao")?.classList.add("hidden");
+  document.getElementById("formMovimentacaoProducao")?.reset();
+  movimentacaoModalContexto = null;
+}
+
+async function confirmarMovimentacaoProducao(event) {
+  event.preventDefault();
+
+  const ordemId = document.getElementById("movimentacaoOrdemId")?.value || movimentacaoModalContexto?.ordemId || "";
+  const tipoDestino = document.getElementById("movimentacaoTipoDestino")?.value || movimentacaoModalContexto?.tipoDestino || "";
+  const setor = movimentacaoModalContexto?.setor || getManejoSetorAtual();
+  const ordem = state.ordens.find(op => op.id === ordemId);
+
+  if (!ordem) {
+    toast("OP não encontrada.");
+    return;
+  }
 
   const label = labelTipoMovimento(tipoDestino);
-  const sugestoes = destinos.length ? `\nSugestões: ${destinos.slice(0, 8).join(", ")}` : "";
-  const destino = limparTexto(prompt(`Nome da ${label}:${sugestoes}`) || "").toUpperCase();
+  const destino = limparTexto(document.getElementById("movimentacaoDestino")?.value || "").toUpperCase();
+  const processo = limparTexto(document.getElementById("movimentacaoProcesso")?.value || "").toUpperCase();
+  const quantidadeEnviada = Number(document.getElementById("movimentacaoQuantidade")?.value || 0);
+  const dataEnvio = document.getElementById("movimentacaoDataEnvio")?.value || "";
 
-  if (!destino) return;
-
-  const processoPadrao = tipoDestino === "faccao" ? infoSetor.label.toUpperCase() : "MONTAGEM";
-  const processo = limparTexto(prompt("Processo/etapa:", processoPadrao) || "").toUpperCase();
+  if (!destino) {
+    toast(`Selecione a ${label.toLowerCase()}.`);
+    return;
+  }
 
   if (!processo) {
     toast("Informe o processo/etapa.");
     return;
   }
 
-  const quantidadeInformada = prompt("Quantidade enviada:", String(numeroQuantidadeOP(ordem)));
-  const quantidadeEnviada = Number(quantidadeInformada || 0);
-
   if (!quantidadeEnviada || quantidadeEnviada <= 0) {
     toast("Informe uma quantidade válida.");
     return;
   }
 
-  const dataEnvio = prompt("Data de envio (AAAA-MM-DD):", getDataHojeISO()) || getDataHojeISO();
+  if (!dataEnvio) {
+    toast("Informe a data de envio.");
+    return;
+  }
 
+  if (quantidadeEnviada > numeroQuantidadeOP(ordem)) {
+    const continuar = confirm("A quantidade enviada é maior que a QTI da OP. Deseja continuar mesmo assim?");
+    if (!continuar) return;
+  }
+
+  const infoSetor = getInfoManejoSetor(setor);
   const destinoCadastrado = getDestinoMovimento(tipoDestino, destino);
 
   const dados = {
@@ -3575,6 +3729,7 @@ async function criarMovimentacaoOP(ordemId, tipoDestino) {
   try {
     const ref = await addDoc(collection(db, "movimentacoesProducao"), dados);
     await registrarLog("movimentacao_criada", "movimentacaoProducao", ref.id, `OP ${dados.numeroOP} | ${label} ${destino} | ${processo} | ${quantidadeEnviada} peças`);
+    fecharModalMovimentacao();
     toast(`OP enviada para ${label}: ${destino}.`);
   } catch (error) {
     console.error(error);
@@ -3582,12 +3737,13 @@ async function criarMovimentacaoOP(ordemId, tipoDestino) {
   }
 }
 
+
 function mandarParaFaccao(ordemId) {
-  criarMovimentacaoOP(ordemId, "faccao");
+  abrirModalMovimentacao(ordemId, "faccao");
 }
 
 function mandarParaCelula(ordemId) {
-  criarMovimentacaoOP(ordemId, "celula");
+  abrirModalMovimentacao(ordemId, "celula");
 }
 
 function getPrecoReferenciaPorMovimento(mov) {
