@@ -4261,7 +4261,7 @@ function getPrecoReferenciaPorMovimento(mov) {
 
   if (!candidatos.length) return null;
 
-  return candidatos.find(preco => preco.setor === mov.setor) || candidatos[0];
+  return candidatos[0];
 }
 
 async function gerarPagamentoPorMovimentacao(mov) {
@@ -4306,8 +4306,8 @@ async function gerarPagamentoPorMovimentacao(mov) {
     processoMovimentacao: mov.processo || preco.processo,
     servicoId: preco.id,
     servicoNome: preco.processo,
-    setor: preco.setor,
-    setorLabel: getLabelSetorPagamento(preco.setor),
+    setor: "",
+    setorLabel: "",
     dataEntrega: mov.dataChegada,
     quantidade,
     falta: Number(mov.falta || 0),
@@ -4679,7 +4679,6 @@ function configurarPagamentos() {
     "pagamentoFiltroFaccao",
     "pagamentoFiltroReferencia",
     "pagamentoFiltroPreco",
-    "pagamentoFiltroSetor",
     "pagamentoFiltroStatus"
   ].forEach(id => {
     const el = document.getElementById(id);
@@ -4702,7 +4701,7 @@ function configurarPagamentos() {
   const limpar = document.getElementById("btnLimparFiltrosPagamento");
   if (limpar) {
     limpar.addEventListener("click", () => {
-      ["pagamentoDataInicio", "pagamentoDataFim", "pagamentoFiltroFaccao", "pagamentoFiltroReferencia", "pagamentoFiltroPreco", "pagamentoFiltroSetor"].forEach(id => {
+      ["pagamentoDataInicio", "pagamentoDataFim", "pagamentoFiltroFaccao", "pagamentoFiltroReferencia", "pagamentoFiltroPreco"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = "";
       });
@@ -4765,15 +4764,13 @@ function getPrecoReferencia(id) {
 
 let processoValorAtivo = "";
 
-function chaveProcessoValor(processo, setor) {
-  return `${limparTexto(setor || "").toLowerCase()}__${limparTexto(processo || "").toUpperCase()}`;
+function chaveProcessoValor(processo) {
+  return limparTexto(processo || "").toUpperCase();
 }
 
 function getProcessoValorDeChave(chave) {
-  const [setor, ...resto] = String(chave || "").split("__");
   return {
-    setor: setor || "",
-    processo: resto.join("__") || ""
+    processo: limparTexto(chave || "").toUpperCase()
   };
 }
 
@@ -4782,17 +4779,14 @@ function getProcessosValores() {
 
   state.precosReferencia.forEach(preco => {
     const processo = limparTexto(preco.processo || "").toUpperCase();
-    const setor = preco.setor || "";
-    if (!processo || !setor) return;
+    if (!processo) return;
 
-    const chave = chaveProcessoValor(processo, setor);
+    const chave = chaveProcessoValor(processo);
 
     if (!mapa.has(chave)) {
       mapa.set(chave, {
         chave,
         processo,
-        setor,
-        setorLabel: getLabelSetorPagamento(setor),
         total: 0,
         ativos: 0,
         inativos: 0
@@ -4809,11 +4803,7 @@ function getProcessosValores() {
     }
   });
 
-  return [...mapa.values()].sort((a, b) => {
-    const procCompare = a.processo.localeCompare(b.processo, "pt-BR", { numeric: true });
-    if (procCompare !== 0) return procCompare;
-    return a.setorLabel.localeCompare(b.setorLabel, "pt-BR", { numeric: true });
-  });
+  return [...mapa.values()].sort((a, b) => a.processo.localeCompare(b.processo, "pt-BR", { numeric: true }));
 }
 
 function preencherProcessosValores() {
@@ -4824,7 +4814,7 @@ function preencherProcessosValores() {
   const atual = processoValorAtivo || select.value;
 
   select.innerHTML = `<option value="">Todos os processos</option>` + processos.map(item => {
-    return `<option value="${escapeHtml(item.chave)}">${escapeHtml(item.processo)} | ${escapeHtml(item.setorLabel)} (${item.total})</option>`;
+    return `<option value="${escapeHtml(item.chave)}">${escapeHtml(item.processo)} (${item.total})</option>`;
   }).join("");
 
   if (atual && processos.some(item => item.chave === atual)) {
@@ -4842,13 +4832,10 @@ function preencherProcessosValores() {
 
 function aplicarProcessoValorSelecionado(chave) {
   processoValorAtivo = chave || "";
-  const { processo, setor } = getProcessoValorDeChave(processoValorAtivo);
-
+  const { processo } = getProcessoValorDeChave(processoValorAtivo);
   const processoInput = document.getElementById("precoReferenciaProcesso");
-  const setorInput = document.getElementById("precoReferenciaSetor");
 
   if (processoInput && processo) processoInput.value = processo;
-  if (setorInput && setor) setorInput.value = setor;
 }
 
 function abrirGerenciarValores() {
@@ -4892,14 +4879,13 @@ function fecharGerenciarValores() {
 
 function usarNovoProcessoValor() {
   const processo = limparTexto(document.getElementById("valorNovoProcesso")?.value || "").toUpperCase();
-  const setor = document.getElementById("valorNovoSetor")?.value || "bojo";
 
   if (!processo) {
     toast("Digite o nome do processo.");
     return;
   }
 
-  const chave = chaveProcessoValor(processo, setor);
+  const chave = chaveProcessoValor(processo);
   processoValorAtivo = chave;
 
   const select = document.getElementById("valorProcessoAtivo");
@@ -4908,14 +4894,13 @@ function usarNovoProcessoValor() {
   if (select && !existeOpcao) {
     const option = document.createElement("option");
     option.value = chave;
-    option.textContent = `${processo} | ${getLabelSetorPagamento(setor)} (novo)`;
+    option.textContent = `${processo} (novo)`;
     select.appendChild(option);
   }
 
   if (select) select.value = chave;
 
   document.getElementById("precoReferenciaProcesso").value = processo;
-  document.getElementById("precoReferenciaSetor").value = setor;
   document.getElementById("precoReferenciaRef")?.focus();
 
   renderProcessosValores();
@@ -4931,7 +4916,7 @@ function renderProcessosValores() {
   let processos = getProcessosValores();
 
   if (busca) {
-    processos = processos.filter(item => normalizarTexto(`${item.processo} ${item.setorLabel}`).includes(busca));
+    processos = processos.filter(item => normalizarTexto(item.processo).includes(busca));
   }
 
   if (!processos.length) {
@@ -4942,7 +4927,7 @@ function renderProcessosValores() {
   container.innerHTML = processos.map(item => `
     <button class="processo-valor-item ${item.chave === processoValorAtivo ? "active" : ""}" type="button" onclick="selecionarProcessoValor('${escapeHtml(item.chave)}')">
       <strong>${escapeHtml(item.processo)}</strong>
-      <span>${escapeHtml(item.setorLabel)} • ${item.total} ref.</span>
+      <span>${item.total} referências</span>
       <small>${item.ativos} ativos / ${item.inativos} inativos</small>
     </button>
   `).join("");
@@ -4982,21 +4967,20 @@ async function salvarPrecoReferencia(event) {
   const idAtual = document.getElementById("precoReferenciaId").value;
   const referencia = normalizarReferencia(document.getElementById("precoReferenciaRef").value);
   const processo = limparTexto(document.getElementById("precoReferenciaProcesso").value).toUpperCase();
-  const setor = document.getElementById("precoReferenciaSetor").value;
   const valor = Number(document.getElementById("precoReferenciaValor").value || 0);
 
-  if (!referencia || !processo || !setor || valor <= 0) {
-    toast("Informe referência, processo, setor e valor maior que zero.");
+  if (!referencia || !processo || valor <= 0) {
+    toast("Informe referência, processo e valor maior que zero.");
     return;
   }
 
-  const docId = idAtual || docIdSeguro(`${referencia}-${setor}-${processo}`);
+  const docId = idAtual || docIdSeguro(`${referencia}-${processo}`);
 
   const dados = {
     referencia,
     processo,
-    setor,
-    setorLabel: getLabelSetorPagamento(setor),
+    setor: "",
+    setorLabel: "",
     valor,
     ativo: true,
     atualizadoPor: state.currentUser.uid,
@@ -5014,10 +4998,10 @@ async function salvarPrecoReferencia(event) {
       idAtual ? "preco_referencia_atualizado" : "preco_referencia_criado",
       "precoReferencia",
       docId,
-      `Ref. ${referencia} | ${processo} | ${getLabelSetorPagamento(setor)} | ${formatarMoedaBR(valor)}`
+      `Ref. ${referencia} | ${processo} | ${formatarMoedaBR(valor)}`
     );
 
-    processoValorAtivo = chaveProcessoValor(processo, setor);
+    processoValorAtivo = chaveProcessoValor(processo);
     limparFormPrecoReferencia();
     preencherProcessosValores();
     renderProcessosValores();
@@ -5036,19 +5020,17 @@ function renderPrecosReferencia() {
   preencherProcessosValores();
 
   const busca = normalizarTexto(document.getElementById("buscaPrecosReferencia")?.value || "");
-  const { processo, setor } = getProcessoValorDeChave(processoValorAtivo);
+  const { processo } = getProcessoValorDeChave(processoValorAtivo);
 
   let precos = [...state.precosReferencia];
 
-  if (processoValorAtivo && processo && setor) {
-    precos = precos.filter(preco => {
-      return limparTexto(preco.processo || "").toUpperCase() === processo && preco.setor === setor;
-    });
+  if (processoValorAtivo && processo) {
+    precos = precos.filter(preco => limparTexto(preco.processo || "").toUpperCase() === processo);
   }
 
   if (busca) {
     precos = precos.filter(preco => {
-      const texto = normalizarTexto(`${preco.referencia} ${preco.processo} ${preco.setorLabel} ${preco.valor}`);
+      const texto = normalizarTexto(`${preco.referencia} ${preco.processo} ${preco.valor}`);
       return texto.includes(busca);
     });
   }
@@ -5056,8 +5038,6 @@ function renderPrecosReferencia() {
   precos = precos.sort((a, b) => {
     const procCompare = String(a.processo || "").localeCompare(String(b.processo || ""), "pt-BR", { numeric: true });
     if (procCompare !== 0) return procCompare;
-    const setorCompare = String(getLabelSetorPagamento(a.setor)).localeCompare(String(getLabelSetorPagamento(b.setor)), "pt-BR", { numeric: true });
-    if (setorCompare !== 0) return setorCompare;
     return String(a.referencia || "").localeCompare(String(b.referencia || ""), "pt-BR", { numeric: true });
   });
 
@@ -5070,7 +5050,7 @@ function renderPrecosReferencia() {
     if (el) el.textContent = valor;
   };
 
-  setText("valorProcessoSelecionadoLabel", processo ? `${processo} / ${getLabelSetorPagamento(setor)}` : "Todos");
+  setText("valorProcessoSelecionadoLabel", processo || "Todos");
   setText("valorTotalReferencias", Number(total).toLocaleString("pt-BR"));
   setText("valorTotalAtivos", Number(ativos).toLocaleString("pt-BR"));
   setText("valorTotalInativos", Number(inativos).toLocaleString("pt-BR"));
@@ -5079,14 +5059,13 @@ function renderPrecosReferencia() {
   if (titulo) titulo.textContent = processo ? `Valores: ${processo}` : "Todos os valores cadastrados";
 
   if (!precos.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhum valor cadastrado para esse processo.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="empty">Nenhum valor cadastrado para esse processo.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = precos.map(preco => `
     <tr>
       <td><strong>${escapeHtml(preco.processo || "-")}</strong></td>
-      <td>${escapeHtml(getLabelSetorPagamento(preco.setor))}</td>
       <td><strong>${escapeHtml(preco.referencia || "-")}</strong></td>
       <td><strong>${escapeHtml(formatarValorUnitarioBR(preco.valor))}</strong></td>
       <td>
@@ -5170,19 +5149,15 @@ const MODELO_BOJO_ENCAPADO_CN = [
 ];
 
 function carregarModeloBojoEncapado() {
-  processoValorAtivo = chaveProcessoValor("ENCAPAR BOJO", "bojo");
+  processoValorAtivo = chaveProcessoValor("ENCAPAR BOJO");
 
   const novoProcesso = document.getElementById("valorNovoProcesso");
-  const novoSetor = document.getElementById("valorNovoSetor");
   const processoInput = document.getElementById("precoReferenciaProcesso");
-  const setorInput = document.getElementById("precoReferenciaSetor");
   const select = document.getElementById("valorProcessoAtivo");
   const textarea = document.getElementById("valoresImportacaoTexto");
 
   if (novoProcesso) novoProcesso.value = "ENCAPAR BOJO";
-  if (novoSetor) novoSetor.value = "bojo";
   if (processoInput) processoInput.value = "ENCAPAR BOJO";
-  if (setorInput) setorInput.value = "bojo";
 
   preencherProcessosValores();
 
@@ -5192,7 +5167,7 @@ function carregarModeloBojoEncapado() {
     if (!existe) {
       const option = document.createElement("option");
       option.value = processoValorAtivo;
-      option.textContent = "ENCAPAR BOJO | Bojo (modelo)";
+      option.textContent = "ENCAPAR BOJO (modelo)";
       select.appendChild(option);
     }
 
@@ -5233,14 +5208,14 @@ function quebrarLinhaImportacaoValor(linha) {
   return linha.trim().split(/\s{2,}/).map(item => item.trim()).filter(Boolean);
 }
 
-async function importarValoresColados() {
+async async function importarValoresColados() {
   if (!podeUsarRecurso("gerenciarValores")) {
     toast("Seu usuário não tem permissão para importar valores.");
     return;
   }
 
   const texto = document.getElementById("valoresImportacaoTexto")?.value || "";
-  const { processo: processoAtivo, setor: setorAtivo } = getProcessoValorDeChave(processoValorAtivo);
+  const { processo: processoAtivo } = getProcessoValorDeChave(processoValorAtivo);
 
   if (!texto.trim()) {
     toast("Cole os dados da planilha antes de importar.");
@@ -5258,26 +5233,19 @@ async function importarValoresColados() {
 
     let referencia = "";
     let processo = processoAtivo;
-    let setor = setorAtivo;
     let valor = 0;
 
-    if (colunas.length >= 4) {
+    if (colunas.length >= 3 && !processoAtivo) {
       referencia = normalizarReferencia(colunas[0]);
       processo = limparTexto(colunas[1]).toUpperCase();
-      setor = normalizarTexto(colunas[2]).includes("al") ? "alca" : normalizarTexto(colunas[2]).includes("renda") ? "renda" : "bojo";
-      valor = parseValorMonetario(colunas[3]);
-    } else if (colunas.length >= 3 && !processoAtivo) {
-      referencia = normalizarReferencia(colunas[0]);
-      processo = limparTexto(colunas[1]).toUpperCase();
-      setor = setor || "bojo";
-      valor = parseValorMonetario(colunas[2]);
+      valor = parseValorMonetario(colunas[colunas.length - 1]);
     } else {
       referencia = normalizarReferencia(colunas[0]);
       valor = parseValorMonetario(colunas[colunas.length - 1]);
     }
 
-    if (referencia && processo && setor && valor > 0) {
-      registros.push({ referencia, processo, setor, valor });
+    if (referencia && processo && valor > 0) {
+      registros.push({ referencia, processo, valor });
     }
   });
 
@@ -5292,12 +5260,12 @@ async function importarValoresColados() {
     let total = 0;
 
     for (const item of registros) {
-      const id = docIdSeguro(`${item.referencia}-${item.setor}-${item.processo}`);
+      const id = docIdSeguro(`${item.referencia}-${item.processo}`);
       batch.set(doc(db, "precosReferencia", id), {
         referencia: item.referencia,
         processo: item.processo,
-        setor: item.setor,
-        setorLabel: getLabelSetorPagamento(item.setor),
+        setor: "",
+        setorLabel: "",
         valor: item.valor,
         ativo: true,
         atualizadoPor: state.currentUser.uid,
@@ -5321,7 +5289,7 @@ async function importarValoresColados() {
     }
 
     const primeiro = registros[0];
-    processoValorAtivo = chaveProcessoValor(primeiro.processo, primeiro.setor);
+    processoValorAtivo = chaveProcessoValor(primeiro.processo);
 
     await registrarLog("precos_referencia_importados", "precosReferencia", "importacao", `${total} valores importados/atualizados`);
     document.getElementById("valoresImportacaoTexto").value = "";
@@ -5345,13 +5313,12 @@ function editarPrecoReferencia(id) {
   const botao = document.getElementById("btnToggleGerenciarValores");
   if (botao) botao.textContent = "Ocultar gerenciamento";
 
-  processoValorAtivo = chaveProcessoValor(preco.processo, preco.setor);
+  processoValorAtivo = chaveProcessoValor(preco.processo);
   preencherProcessosValores();
 
   document.getElementById("precoReferenciaId").value = preco.id;
   document.getElementById("precoReferenciaRef").value = preco.referencia || "";
   document.getElementById("precoReferenciaProcesso").value = preco.processo || "";
-  document.getElementById("precoReferenciaSetor").value = preco.setor || "";
   document.getElementById("precoReferenciaValor").value = Number(preco.valor || 0).toFixed(4);
   document.getElementById("precoReferenciaRef")?.focus();
 }
@@ -5612,7 +5579,6 @@ function getEntregasPagamentoFiltradas() {
   const filtroFaccao = document.getElementById("pagamentoFiltroFaccao")?.value || "";
   const filtroReferencia = document.getElementById("pagamentoFiltroReferencia")?.value || "";
   const filtroPreco = document.getElementById("pagamentoFiltroPreco")?.value || "";
-  const filtroSetor = document.getElementById("pagamentoFiltroSetor")?.value || "";
   const filtroStatus = document.getElementById("pagamentoFiltroStatus")?.value || "pendente";
 
   return [...state.entregasPagamento].filter(item => {
@@ -5621,7 +5587,6 @@ function getEntregasPagamentoFiltradas() {
     if (filtroFaccao && item.faccao !== filtroFaccao) return false;
     if (filtroReferencia && normalizarReferencia(item.referencia || "") !== normalizarReferencia(filtroReferencia)) return false;
     if (filtroPreco && (item.precoReferenciaId || item.servicoId) !== filtroPreco) return false;
-    if (filtroSetor && item.setor !== filtroSetor) return false;
     if (filtroStatus && (item.statusPagamento || "pendente") !== filtroStatus) return false;
     return true;
   });
@@ -5714,7 +5679,7 @@ function agruparPagamento(entregas) {
 
   entregas.forEach(item => {
     const processo = item.processo || item.servicoNome || "-";
-    const precoId = item.precoReferenciaId || item.servicoId || `${item.referencia}-${item.setor}-${processo}`;
+    const precoId = item.precoReferenciaId || item.servicoId || `${item.referencia}-${processo}`;
     const chave = `${item.faccao}||${precoId}`;
 
     if (!mapa.has(chave)) {
@@ -5723,8 +5688,6 @@ function agruparPagamento(entregas) {
         referencia: item.referencia || "-",
         precoReferenciaId: precoId,
         processo,
-        setor: item.setor,
-        setorLabel: item.setorLabel || getLabelSetorPagamento(item.setor),
         entregas: 0,
         quantidade: 0,
         valorUnitario: Number(item.valorUnitario || 0),
@@ -5778,16 +5741,15 @@ function renderPagamentos() {
   setText("pagamentoTotalValor", formatarMoedaBR(totalValor));
 
   if (!getPrecosReferenciaAtivos().length) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty">Cadastre pelo menos um preço por referência para gerar pagamentos.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">Cadastre pelo menos um preço por referência para gerar pagamentos.</td></tr>`;
   } else if (!grupos.length) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty">Nenhuma entrega encontrada para o período/filtro selecionado.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">Nenhuma entrega encontrada para o período/filtro selecionado.</td></tr>`;
   } else {
     tbody.innerHTML = grupos.map(grupo => `
       <tr class="${grupo.faccao === "SEM FACÇÃO" ? "pagamento-sem-faccao" : ""}">
         <td><strong>${escapeHtml(grupo.faccao)}</strong></td>
         <td><strong>${escapeHtml(grupo.referencia)}</strong></td>
         <td><strong>${escapeHtml(grupo.processo)}</strong></td>
-        <td>${escapeHtml(grupo.setorLabel)}</td>
         <td>${escapeHtml(grupo.entregas.toLocaleString("pt-BR"))}</td>
         <td><strong>${escapeHtml(grupo.quantidade.toLocaleString("pt-BR"))}</strong></td>
         <td>${escapeHtml(formatarValorUnitarioBR(grupo.valorUnitario))}</td>
@@ -5883,7 +5845,6 @@ function getTextoFiltrosPagamento() {
   const faccao = document.getElementById("pagamentoFiltroFaccao")?.value || "";
   const referencia = document.getElementById("pagamentoFiltroReferencia")?.value || "";
   const preco = document.getElementById("pagamentoFiltroPreco")?.selectedOptions?.[0]?.textContent || "Todos";
-  const setor = document.getElementById("pagamentoFiltroSetor")?.selectedOptions?.[0]?.textContent || "Todos";
   const status = document.getElementById("pagamentoFiltroStatus")?.selectedOptions?.[0]?.textContent || "Pendentes";
 
   const partes = [];
@@ -5891,7 +5852,6 @@ function getTextoFiltrosPagamento() {
   if (faccao) partes.push(`Facção: ${faccao}`);
   if (referencia) partes.push(`Referência: ${referencia}`);
   if (preco && preco !== "Todos") partes.push(`Processo: ${preco}`);
-  if (setor && setor !== "Todos") partes.push(`Setor: ${setor}`);
   if (status) partes.push(`Pagamento: ${status}`);
 
   return partes.length ? `Filtro: ${partes.join(" + ")}` : "Filtro: todos os pagamentos";
@@ -5916,7 +5876,6 @@ function imprimirRelatorioPagamento() {
       <td>${escapeHtml(grupo.faccao)}</td>
       <td>${escapeHtml(grupo.referencia)}</td>
       <td>${escapeHtml(grupo.processo)}</td>
-      <td>${escapeHtml(grupo.setorLabel)}</td>
       <td class="num">${escapeHtml(grupo.entregas.toLocaleString("pt-BR"))}</td>
       <td class="num">${escapeHtml(grupo.quantidade.toLocaleString("pt-BR"))}</td>
       <td class="num">${escapeHtml(formatarValorUnitarioBR(grupo.valorUnitario))}</td>
@@ -5972,7 +5931,6 @@ function imprimirRelatorioPagamento() {
               <th>Facção</th>
               <th>Referência</th>
               <th>Processo</th>
-              <th>Setor</th>
               <th>Entregas</th>
               <th>Peças</th>
               <th>Valor unit.</th>

@@ -3678,3 +3678,17 @@ table td {
   font-size: 11px;
   font-weight: 900;
 }
+
+
+/* Pagamentos sem setor */
+.valores-form {
+  grid-template-columns: minmax(140px, 1fr) minmax(220px, 1.4fr) minmax(130px, .8fr) auto;
+}
+
+.pagamento-table {
+  min-width: 980px;
+}
+
+.precos-referencia-table {
+  min-width: 860px;
+}

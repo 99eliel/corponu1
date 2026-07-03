@@ -2517,3 +2517,46 @@ Na tabela de pagamentos, pagamentos gerados por reenvio aparecem marcados como:
 ```txt
 Reenvio
 ```
+
+
+## Atualização: Pagamentos sem setor
+
+A área de **Pagamentos** e **Gerenciar valores** não usa mais Setor.
+
+A nova regra de valor ficou:
+
+```txt
+Referência + Processo = Valor
+```
+
+Exemplo:
+
+```txt
+170 + MONTAR BOJO = valor do processo
+170 + MONTAR CALCINHA = valor do processo
+```
+
+Ou seja, a organização passa a acontecer pelo nome do processo escolhido no envio para facção.
+
+Foram removidos:
+
+```txt
+- filtro Setor em Pagamentos
+- coluna Setor no resumo de pagamentos
+- campo Setor no cadastro de valores
+- coluna Setor na tabela de valores
+```
+
+A importação de valores agora aceita:
+
+```txt
+Referência + Valor
+```
+
+quando um processo estiver selecionado, ou:
+
+```txt
+Referência + Processo + Valor
+```
+
+quando nenhum processo estiver selecionado.

@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-03-reenvio-novo-pagamento-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-03-reenvio-novo-pagamento-1" />
+  <meta name="app-version" content="2026-07-03-pagamento-sem-setor-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-03-pagamento-sem-setor-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -982,16 +982,6 @@
             </label>
 
             <label>
-              Setor
-              <select id="pagamentoFiltroSetor">
-                <option value="">Todos</option>
-                <option value="bojo">Bojo</option>
-                <option value="alca">Alça</option>
-                <option value="renda">Renda</option>
-              </select>
-            </label>
-
-            <label>
               Pagamento
               <select id="pagamentoFiltroStatus">
                 <option value="pendente" selected>Pendentes</option>
@@ -1031,7 +1021,6 @@
                   <th>Facção</th>
                   <th>Referência</th>
                   <th>Processo</th>
-                  <th>Setor</th>
                   <th>Entregas</th>
                   <th>Peças</th>
                   <th>Valor unit.</th>
@@ -1101,15 +1090,6 @@
                     <input id="valorNovoProcesso" type="text" placeholder="Ex: ENCAPAR BOJO" />
                   </label>
 
-                  <label>
-                    Setor
-                    <select id="valorNovoSetor">
-                      <option value="bojo">Bojo</option>
-                      <option value="alca">Alça</option>
-                      <option value="renda">Renda</option>
-                    </select>
-                  </label>
-
                   <button class="btn btn-primary" id="btnUsarNovoProcesso" type="button">Usar processo</button>
                 </div>
               </div>
@@ -1148,16 +1128,6 @@
                 <label>
                   Processo
                   <input id="precoReferenciaProcesso" type="text" placeholder="Ex: ENCAPAR BOJO" required />
-                </label>
-
-                <label>
-                  Setor
-                  <select id="precoReferenciaSetor" required>
-                    <option value="">Selecione</option>
-                    <option value="bojo">Bojo</option>
-                    <option value="alca">Alça</option>
-                    <option value="renda">Renda</option>
-                  </select>
                 </label>
 
                 <label>
@@ -1215,7 +1185,6 @@
                   <thead>
                     <tr>
                       <th>Processo</th>
-                      <th>Setor</th>
                       <th>Referência</th>
                       <th>Valor</th>
                       <th>Status</th>
@@ -1635,8 +1604,8 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="update.js?v=2026-07-03-reenvio-novo-pagamento-1"></script>
-  <script type="module" src="app.js?v=2026-07-03-reenvio-novo-pagamento-1"></script>
+  <script src="update.js?v=2026-07-03-pagamento-sem-setor-1"></script>
+  <script type="module" src="app.js?v=2026-07-03-pagamento-sem-setor-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
