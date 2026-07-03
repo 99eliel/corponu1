@@ -2915,3 +2915,88 @@ table td {
     grid-template-columns: repeat(2, minmax(130px, 1fr));
   }
 }
+
+
+/* Facções operacional */
+.faccoes-operacional-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.faccao-form-inline {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 12px;
+  border: 1px solid #dbe4f0;
+  border-radius: 16px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.faccao-form-inline.hidden {
+  display: none !important;
+}
+
+.faccao-form-inline textarea,
+.faccao-form-inline .actions {
+  grid-column: 1 / -1;
+}
+
+.faccoes-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.panel-subheader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.panel-subheader h3 {
+  margin: 0 0 4px;
+}
+
+.panel-subheader p {
+  margin: 0;
+  color: #64748b;
+}
+
+.faccoes-list-header {
+  margin-top: 18px;
+}
+
+.faccoes-mov-table {
+  min-width: 1220px;
+}
+
+.faccoes-mov-table th,
+.faccoes-mov-table td {
+  white-space: nowrap;
+}
+
+.faccoes-mov-table td:nth-child(6),
+.faccoes-mov-table td:nth-child(9) {
+  text-align: right;
+}
+
+.mov-em-faccao {
+  background: #fff7ed;
+}
+
+@media (max-width: 900px) {
+  .faccao-form-inline,
+  .faccoes-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-subheader {
+    flex-direction: column;
+  }
+}

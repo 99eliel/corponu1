@@ -415,6 +415,7 @@ function iniciarListenersFirestore() {
   state.unsubscribers.push(onSnapshot(faccoesQuery, snapshot => {
     state.faccoes = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     renderFaccoes();
+    renderFaccoesMovimentacoes();
     renderDatalistManejo();
     renderPagamentos();
   }, error => {
@@ -440,6 +441,7 @@ function iniciarListenersFirestore() {
   state.unsubscribers.push(onSnapshot(movimentacoesQuery, snapshot => {
     state.movimentacoesProducao = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     renderRastreamento();
+    renderFaccoesMovimentacoes();
     renderPagamentos();
   }, error => {
     console.error(error);
@@ -2916,6 +2918,22 @@ function configurarFaccoes() {
     busca.addEventListener("input", renderFaccoes);
   }
 
+  const buscaMovimentacoes = document.getElementById("buscaFaccaoMovimentacoes");
+  if (buscaMovimentacoes) {
+    buscaMovimentacoes.addEventListener("input", renderFaccoesMovimentacoes);
+  }
+
+  const abrirCadastro = document.getElementById("btnAbrirCadastroFaccao");
+  if (abrirCadastro) {
+    abrirCadastro.addEventListener("click", () => {
+      const formFaccao = document.getElementById("formFaccao");
+      if (formFaccao) {
+        formFaccao.classList.remove("hidden");
+        document.getElementById("faccaoNome")?.focus();
+      }
+    });
+  }
+
   const cancelar = document.getElementById("btnCancelarFaccao");
   if (cancelar) {
     cancelar.addEventListener("click", limparFormFaccao);
@@ -2924,7 +2942,10 @@ function configurarFaccoes() {
 
 function limparFormFaccao() {
   const form = document.getElementById("formFaccao");
-  if (form) form.reset();
+  if (form) {
+    form.reset();
+    form.classList.add("hidden");
+  }
 
   const id = document.getElementById("faccaoId");
   if (id) id.value = "";
@@ -3032,11 +3053,79 @@ function renderFaccoes() {
   `).join("");
 }
 
+
+function renderFaccoesMovimentacoes() {
+  const tbody = document.getElementById("listaFaccoesMovimentacoes");
+  if (!tbody) return;
+
+  const busca = normalizarTexto(document.getElementById("buscaFaccaoMovimentacoes")?.value || "");
+  let movimentos = state.movimentacoesProducao.filter(mov => mov.tipoDestino === "faccao");
+
+  if (busca) {
+    movimentos = movimentos.filter(mov => {
+      const texto = normalizarTexto([
+        mov.numeroOP,
+        mov.referencia,
+        mov.cor,
+        mov.destino,
+        mov.processo,
+        mov.status
+      ].join(" "));
+      return texto.includes(busca);
+    });
+  }
+
+  const emFaccoes = movimentos.filter(mov => mov.status === "em_andamento" || !mov.status);
+  const pecasEnviadas = movimentos.reduce((soma, mov) => soma + Number(mov.quantidadeEnviada || 0), 0);
+  const pecasRecebidas = movimentos.reduce((soma, mov) => soma + Number(mov.quantidadeRecebida || 0), 0);
+
+  const setText = (id, valor) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = Number(valor || 0).toLocaleString("pt-BR");
+  };
+
+  setText("faccoesTotalCadastradas", state.faccoes.length);
+  setText("faccoesOpsEmAndamento", emFaccoes.length);
+  setText("faccoesPecasEnviadas", pecasEnviadas);
+  setText("faccoesPecasRecebidas", pecasRecebidas);
+
+  if (!movimentos.length) {
+    tbody.innerHTML = `<tr><td colspan="11" class="empty">Nenhuma OP enviada para facção ainda.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = movimentos.map(mov => `
+    <tr class="${mov.status === "em_andamento" || !mov.status ? "mov-em-faccao" : ""}">
+      <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
+      <td><strong>${escapeHtml(mov.referencia || "-")}</strong></td>
+      <td>${escapeHtml(mov.cor || "-")}</td>
+      <td><strong>${escapeHtml(mov.destino || "-")}</strong></td>
+      <td>${escapeHtml(mov.processo || "-")}</td>
+      <td><strong>${escapeHtml(Number(mov.quantidadeEnviada || 0).toLocaleString("pt-BR"))}</strong></td>
+      <td>${escapeHtml(dataISOParaBR(mov.dataEnvio) || mov.dataEnvio || "-")}</td>
+      <td>${escapeHtml(dataISOParaBR(mov.dataChegada) || mov.dataChegada || "-")}</td>
+      <td>${escapeHtml(Number(mov.falta || 0).toLocaleString("pt-BR"))}</td>
+      <td>
+        <span class="badge ${classeStatusMovimento(mov.status)}">
+          ${escapeHtml(labelStatusMovimento(mov.status))}
+        </span>
+      </td>
+      <td>
+        <button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>
+        <button class="btn btn-sm" onclick="finalizarMovimentacao('${mov.id}')">Finalizar</button>
+        ${ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="excluirMovimentacao('${mov.id}')">Excluir</button>` : ""}
+      </td>
+    </tr>
+  `).join("");
+}
+
+
 function editarFaccao(id) {
   const faccao = state.faccoes.find(item => item.id === id);
   if (!faccao) return;
 
   abrirPagina("faccoes");
+  document.getElementById("formFaccao")?.classList.remove("hidden");
 
   document.getElementById("faccaoId").value = faccao.id;
   document.getElementById("faccaoNome").value = faccao.nome || "";
@@ -5553,6 +5642,7 @@ function renderTudo() {
   renderDatalistCores();
   renderProcessos();
   renderFaccoes();
+  renderFaccoesMovimentacoes();
   renderCelulas();
   renderRastreamento();
   renderPagamentos();

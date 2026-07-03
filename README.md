@@ -1813,3 +1813,36 @@ movimentacoesProducao
 ```
 
 Depois de subir os arquivos, publique o `firebase-rules.txt` atualizado no Firebase.
+
+
+## Atualização: aba Facções operacional
+
+A aba **Facções** agora não fica só como cadastro.
+
+Ela tem:
+
+```txt
+- Botão Cadastrar facção
+- Lista de facções cadastradas
+- Resumo de OPs em facção
+- Total de peças enviadas
+- Total de peças recebidas
+- Tabela "O que está nas facções"
+```
+
+A tabela mostra as movimentações do tipo Facção:
+
+```txt
+OP
+Referência
+Cor
+Facção
+Processo
+Quantidade enviada
+Data de envio
+Data de chegada
+Falta
+Status
+```
+
+Assim fica fácil abrir a aba **Facções** e ver quais peças estão com cada facção.

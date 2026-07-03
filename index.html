@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-03-fluxo-celulas-rastreamento-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-03-fluxo-celulas-rastreamento-1" />
+  <meta name="app-version" content="2026-07-03-faccoes-operacional-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-03-faccoes-operacional-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -652,15 +652,18 @@
 
 
       <section id="faccoes" class="page">
-        <div class="grid-2">
-          <form class="panel form admin-only-block" id="formFaccao">
-            <div class="panel-header">
-              <div>
-                <h3>Facções</h3>
-                <p>Cadastre as facções externas usadas nas movimentações da produção.</p>
-              </div>
+        <div class="panel faccoes-operacional-panel">
+          <div class="panel-header">
+            <div>
+              <h3>Facções</h3>
+              <p>Cadastre facções e acompanhe tudo que está nas facções externas.</p>
             </div>
+            <div class="actions">
+              <button class="btn btn-primary" id="btnAbrirCadastroFaccao" type="button">Cadastrar facção</button>
+            </div>
+          </div>
 
+          <form class="form admin-only-block faccao-form-inline hidden" id="formFaccao">
             <input type="hidden" id="faccaoId" />
 
             <label>
@@ -685,7 +688,7 @@
 
             <label>
               Observações
-              <textarea id="faccaoObs" rows="3" placeholder="Opcional"></textarea>
+              <textarea id="faccaoObs" rows="2" placeholder="Opcional"></textarea>
             </label>
 
             <div class="actions">
@@ -694,39 +697,85 @@
             </div>
           </form>
 
-          <div class="panel">
-            <div class="panel-header">
-              <div>
-                <h3>Facções cadastradas</h3>
-                <p>Esses nomes aparecem ao mandar peças para facção.</p>
-              </div>
-              <input id="buscaFaccao" class="search" type="text" placeholder="Buscar facção, cidade, PIX ou celular..." />
+          <div class="faccoes-cards">
+            <div class="processo-card">
+              <span>Facções cadastradas</span>
+              <strong id="faccoesTotalCadastradas">0</strong>
             </div>
+            <div class="processo-card pending-card">
+              <span>OPs em facção</span>
+              <strong id="faccoesOpsEmAndamento">0</strong>
+            </div>
+            <div class="processo-card">
+              <span>Peças enviadas</span>
+              <strong id="faccoesPecasEnviadas">0</strong>
+            </div>
+            <div class="processo-card ok-card">
+              <span>Peças recebidas</span>
+              <strong id="faccoesPecasRecebidas">0</strong>
+            </div>
+          </div>
 
-            <div class="table-wrap">
-              <table class="faccoes-table">
-                <thead>
-                  <tr>
-                    <th>Nome</th>
-                    <th>Cidade</th>
-                    <th>Chave PIX</th>
-                    <th>Celular</th>
-                    <th>Status</th>
-                    <th class="admin-only-cell">Ações</th>
-                  </tr>
-                </thead>
-                <tbody id="listaFaccoes"></tbody>
-              </table>
+          <div class="panel-subheader">
+            <div>
+              <h3>O que está nas facções</h3>
+              <p>Movimentações abertas e retornadas de facções externas.</p>
             </div>
+            <input id="buscaFaccaoMovimentacoes" class="search" type="text" placeholder="Buscar OP, ref., facção, processo..." />
+          </div>
+
+          <div class="table-wrap">
+            <table class="faccoes-mov-table">
+              <thead>
+                <tr>
+                  <th>OP</th>
+                  <th>REF</th>
+                  <th>Cor</th>
+                  <th>Facção</th>
+                  <th>Processo</th>
+                  <th>Qtd enviada</th>
+                  <th>Envio</th>
+                  <th>Chegada</th>
+                  <th>Falta</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="listaFaccoesMovimentacoes"></tbody>
+            </table>
+          </div>
+
+          <div class="panel-subheader faccoes-list-header">
+            <div>
+              <h3>Facções cadastradas</h3>
+              <p>Lista de nomes disponíveis para envio no Manejo.</p>
+            </div>
+            <input id="buscaFaccao" class="search" type="text" placeholder="Buscar facção, cidade, PIX ou celular..." />
+          </div>
+
+          <div class="table-wrap">
+            <table class="faccoes-table">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Cidade</th>
+                  <th>Chave PIX</th>
+                  <th>Celular</th>
+                  <th>Status</th>
+                  <th class="admin-only-cell">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="listaFaccoes"></tbody>
+            </table>
           </div>
         </div>
       </section>
 
 
-      
-      
-      
-      
+
+
+
+
       <section id="celulas" class="page">
         <div class="grid-2">
           <form class="panel form admin-only-block" id="formCelula">
@@ -1364,7 +1413,7 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="update.js?v=2026-07-03-fluxo-celulas-rastreamento-1"></script>
-  <script type="module" src="app.js?v=2026-07-03-fluxo-celulas-rastreamento-1"></script>
+  <script src="update.js?v=2026-07-03-faccoes-operacional-1"></script>
+  <script type="module" src="app.js?v=2026-07-03-faccoes-operacional-1"></script>
 </body>
 </html>
