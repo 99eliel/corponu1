@@ -2485,3 +2485,35 @@ Saiu da facção
 ```
 
 E os botões de Chegada/Bipar/Reenviar somem daquela etapa antiga.
+
+
+## Atualização: reenvio para facção gera novo pagamento
+
+Quando uma OP volta da facção e é **reenviada para facção**, o sistema cria uma nova movimentação.
+
+Agora ficou garantido:
+
+```txt
+1ª facção retornou
+→ gera pagamento da primeira etapa
+
+Reenviou para facção
+→ cria nova movimentação de facção
+
+Nova facção retornou
+→ gera outro pagamento separado
+```
+
+Cada pagamento fica ligado ao ID da movimentação de facção:
+
+```txt
+movimentacaoId
+```
+
+Assim o pagamento da segunda ida para facção não sobrescreve o pagamento da primeira.
+
+Na tabela de pagamentos, pagamentos gerados por reenvio aparecem marcados como:
+
+```txt
+Reenvio
+```

@@ -4285,11 +4285,16 @@ async function gerarPagamentoPorMovimentacao(mov) {
   const subtotal = quantidade * valorUnitario;
   const descontoDefeito = Number(mov.descontoDefeito ?? mov.defeito ?? 0);
   const total = Math.max(subtotal - descontoDefeito, 0);
+  // Cada movimentação de facção gera um pagamento próprio.
+  // Se a OP for reenviada para facção, ela recebe outro mov.id e gera outro pagamento separado.
   const pagamentoId = docIdSeguro(`mov-${mov.id}-${preco.id}`);
+  const pagamentoReenvio = Boolean(mov.movimentacaoOrigemId || mov.reenvio || mov.origem === "movimentacao");
 
   await setDoc(doc(db, "entregasPagamento", pagamentoId), {
     origem: "movimentacao",
     movimentacaoId: mov.id,
+    movimentacaoOrigemId: mov.movimentacaoOrigemId || "",
+    pagamentoReenvio,
     opId: mov.opId,
     numeroOP: mov.numeroOP || "",
     referencia: mov.referencia || "",
@@ -4298,6 +4303,7 @@ async function gerarPagamentoPorMovimentacao(mov) {
     faccao: mov.destino || "",
     precoReferenciaId: preco.id,
     processo: preco.processo,
+    processoMovimentacao: mov.processo || preco.processo,
     servicoId: preco.id,
     servicoNome: preco.processo,
     setor: preco.setor,
@@ -4310,14 +4316,16 @@ async function gerarPagamentoPorMovimentacao(mov) {
     valorUnitario,
     total,
     statusPagamento: "pendente",
-    observacoes: "Gerado pela chegada da movimentação de facção, descontando falta e valor de defeito",
+    observacoes: pagamentoReenvio
+      ? "Gerado por retorno de reenvio para facção. Este pagamento é separado da etapa anterior."
+      : "Gerado pela chegada da movimentação de facção, descontando falta e valor de defeito",
     atualizadoPor: state.currentUser.uid,
     atualizadoEm: serverTimestamp(),
     criadoPor: state.currentUser.uid,
     criadoEm: serverTimestamp()
   }, { merge: true });
 
-  return { ok: true, quantidade, total, subtotal, descontoDefeito };
+  return { ok: true, quantidade, total, subtotal, descontoDefeito, pagamentoReenvio };
 }
 
 let chegadaModalMovimentacaoId = "";
@@ -4455,7 +4463,7 @@ async function confirmarChegadaMovimentacao(event) {
 
     if (mov.tipoDestino === "faccao") {
       toast(pagamento.ok
-        ? `Chegada registrada e pagamento gerado: ${formatarMoedaBR(pagamento.total)}.`
+        ? `${pagamento.pagamentoReenvio ? "Chegada de reenvio registrada e novo pagamento gerado" : "Chegada registrada e pagamento gerado"}: ${formatarMoedaBR(pagamento.total)}.`
         : `Chegada registrada. ${pagamento.motivo}`);
     } else {
       toast("Chegada da célula registrada.");
@@ -5740,6 +5748,10 @@ function agruparPagamento(entregas) {
   });
 }
 
+function labelOrigemPagamento(item) {
+  return item?.pagamentoReenvio ? "Reenvio" : "Normal";
+}
+
 function renderPagamentos() {
   const tbody = document.getElementById("listaPagamento");
   if (!tbody) return;
@@ -5802,7 +5814,10 @@ function renderEntregasPagamento(entregas = getEntregasPagamentoFiltradas()) {
       <td><strong>${escapeHtml(entrega.numeroOP || "-")}</strong></td>
       <td><strong>${escapeHtml(entrega.referencia || "-")}</strong></td>
       <td>${escapeHtml(entrega.faccao || "-")}</td>
-      <td>${escapeHtml(entrega.processo || entrega.servicoNome || "-")}</td>
+      <td>
+        ${escapeHtml(entrega.processo || entrega.servicoNome || "-")}
+        ${entrega.pagamentoReenvio ? `<small class="pagamento-origem-badge">Reenvio</small>` : ""}
+      </td>
       <td><strong>${escapeHtml(Number(entrega.quantidade || 0).toLocaleString("pt-BR"))}</strong></td>
       <td><strong>${escapeHtml(formatarMoedaBR(entrega.total))}</strong></td>
       <td>

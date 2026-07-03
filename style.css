@@ -3665,3 +3665,16 @@ table td {
 .mov-encaminhado {
   opacity: 0.82;
 }
+
+
+/* Pagamento gerado por reenvio para facção */
+.pagamento-origem-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 900;
+}
