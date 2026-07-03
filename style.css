@@ -3198,3 +3198,9 @@ table td {
 .movimentacao-form .actions {
   margin-top: 4px;
 }
+
+
+/* Célula não exige processo no envio */
+#grupoMovimentacaoProcesso.hidden {
+  display: none !important;
+}

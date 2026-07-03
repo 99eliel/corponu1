@@ -1914,3 +1914,24 @@ O sistema abre uma janela própria com:
 ```
 
 Assim o usuário não precisa digitar o nome da facção ou célula manualmente.
+
+
+## Ajuste: envio para célula sem processo
+
+Ao clicar em **Mandar célula**, o sistema não pede mais processo.
+
+Agora o envio para célula pede apenas:
+
+```txt
+- Célula
+- Quantidade enviada
+- Data de envio
+```
+
+Internamente o sistema registra o processo como:
+
+```txt
+CÉLULA INTERNA
+```
+
+Para **Mandar facção**, o processo continua aparecendo normalmente, porque ele influencia a tabela de preço e o pagamento.

@@ -3630,16 +3630,27 @@ function abrirModalMovimentacao(ordemId, tipoDestino) {
     destinoSelect.value = "";
   }
 
+  const grupoProcesso = document.getElementById("grupoMovimentacaoProcesso");
+  const exigeProcesso = tipoDestino === "faccao";
+
+  if (grupoProcesso) {
+    grupoProcesso.classList.toggle("hidden", !exigeProcesso);
+  }
+
+  if (processoInput) {
+    processoInput.required = exigeProcesso;
+  }
+
   const processos = getProcessosSugeridosMovimentacao(ordem, setor, tipoDestino);
 
   if (processoSelect) {
     processoSelect.innerHTML = `<option value="">Selecione ou digite abaixo</option>` + processos.map(processo => {
       return `<option value="${escapeHtml(processo)}">${escapeHtml(processo)}</option>`;
     }).join("");
-    processoSelect.value = processos[0] || "";
+    processoSelect.value = exigeProcesso ? (processos[0] || "") : "";
   }
 
-  if (processoInput) processoInput.value = processos[0] || "";
+  if (processoInput) processoInput.value = exigeProcesso ? (processos[0] || "") : "CÉLULA INTERNA";
   if (quantidadeInput) quantidadeInput.value = numeroQuantidadeOP(ordem);
   if (dataInput) dataInput.value = getDataHojeISO();
 
@@ -3668,7 +3679,8 @@ async function confirmarMovimentacaoProducao(event) {
 
   const label = labelTipoMovimento(tipoDestino);
   const destino = limparTexto(document.getElementById("movimentacaoDestino")?.value || "").toUpperCase();
-  const processo = limparTexto(document.getElementById("movimentacaoProcesso")?.value || "").toUpperCase();
+  const processoDigitado = limparTexto(document.getElementById("movimentacaoProcesso")?.value || "").toUpperCase();
+  const processo = tipoDestino === "celula" ? "CÉLULA INTERNA" : processoDigitado;
   const quantidadeEnviada = Number(document.getElementById("movimentacaoQuantidade")?.value || 0);
   const dataEnvio = document.getElementById("movimentacaoDataEnvio")?.value || "";
 
@@ -3677,7 +3689,7 @@ async function confirmarMovimentacaoProducao(event) {
     return;
   }
 
-  if (!processo) {
+  if (tipoDestino === "faccao" && !processo) {
     toast("Informe o processo/etapa.");
     return;
   }
