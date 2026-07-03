@@ -2923,10 +2923,26 @@ function configurarFaccoes() {
     buscaMovimentacoes.addEventListener("input", renderFaccoesMovimentacoes);
   }
 
+  const toggleGerenciar = document.getElementById("btnToggleGerenciarFaccoes");
+  if (toggleGerenciar) {
+    toggleGerenciar.addEventListener("click", () => {
+      const painel = document.getElementById("painelGerenciarFaccoes");
+      if (!painel) return;
+
+      const abrindo = painel.classList.contains("hidden");
+      painel.classList.toggle("hidden");
+      toggleGerenciar.textContent = abrindo ? "Ocultar gerenciamento" : "Gerenciar facções";
+    });
+  }
+
   const abrirCadastro = document.getElementById("btnAbrirCadastroFaccao");
   if (abrirCadastro) {
     abrirCadastro.addEventListener("click", () => {
+      const painel = document.getElementById("painelGerenciarFaccoes");
       const formFaccao = document.getElementById("formFaccao");
+
+      if (painel) painel.classList.remove("hidden");
+
       if (formFaccao) {
         formFaccao.classList.remove("hidden");
         document.getElementById("faccaoNome")?.focus();
@@ -3125,6 +3141,9 @@ function editarFaccao(id) {
   if (!faccao) return;
 
   abrirPagina("faccoes");
+  document.getElementById("painelGerenciarFaccoes")?.classList.remove("hidden");
+  const toggleGerenciar = document.getElementById("btnToggleGerenciarFaccoes");
+  if (toggleGerenciar) toggleGerenciar.textContent = "Ocultar gerenciamento";
   document.getElementById("formFaccao")?.classList.remove("hidden");
 
   document.getElementById("faccaoId").value = faccao.id;

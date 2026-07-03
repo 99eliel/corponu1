@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-03-faccoes-operacional-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-03-faccoes-operacional-1" />
+  <meta name="app-version" content="2026-07-03-faccoes-gerenciar-oculto-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-03-faccoes-gerenciar-oculto-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -656,46 +656,12 @@
           <div class="panel-header">
             <div>
               <h3>Facções</h3>
-              <p>Cadastre facções e acompanhe tudo que está nas facções externas.</p>
+              <p>Acompanhe tudo que está nas facções externas. O cadastro fica separado em Gerenciar facções.</p>
             </div>
             <div class="actions">
-              <button class="btn btn-primary" id="btnAbrirCadastroFaccao" type="button">Cadastrar facção</button>
+              <button class="btn" id="btnToggleGerenciarFaccoes" type="button">Gerenciar facções</button>
             </div>
           </div>
-
-          <form class="form admin-only-block faccao-form-inline hidden" id="formFaccao">
-            <input type="hidden" id="faccaoId" />
-
-            <label>
-              Nome da facção
-              <input id="faccaoNome" type="text" placeholder="Ex: FACÇÃO KELLY" required />
-            </label>
-
-            <label>
-              Cidade
-              <input id="faccaoCidade" type="text" placeholder="Ex: Pontalina" required />
-            </label>
-
-            <label>
-              Chave PIX
-              <input id="faccaoPix" type="text" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" />
-            </label>
-
-            <label>
-              Número de celular
-              <input id="faccaoCelular" type="tel" placeholder="Ex: (64) 99999-9999" />
-            </label>
-
-            <label>
-              Observações
-              <textarea id="faccaoObs" rows="2" placeholder="Opcional"></textarea>
-            </label>
-
-            <div class="actions">
-              <button class="btn btn-primary" type="submit">Salvar facção</button>
-              <button class="btn" type="button" id="btnCancelarFaccao">Cancelar</button>
-            </div>
-          </form>
 
           <div class="faccoes-cards">
             <div class="processo-card">
@@ -745,28 +711,72 @@
             </table>
           </div>
 
-          <div class="panel-subheader faccoes-list-header">
-            <div>
-              <h3>Facções cadastradas</h3>
-              <p>Lista de nomes disponíveis para envio no Manejo.</p>
+          <div class="gerenciar-faccoes-panel hidden" id="painelGerenciarFaccoes">
+            <div class="panel-subheader">
+              <div>
+                <h3>Gerenciar facções</h3>
+                <p>Cadastre, edite ou inative facções. Esta área fica escondida para não poluir a movimentação.</p>
+              </div>
+              <button class="btn btn-primary" id="btnAbrirCadastroFaccao" type="button">Cadastrar facção</button>
             </div>
-            <input id="buscaFaccao" class="search" type="text" placeholder="Buscar facção, cidade, PIX ou celular..." />
-          </div>
 
-          <div class="table-wrap">
-            <table class="faccoes-table">
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Cidade</th>
-                  <th>Chave PIX</th>
-                  <th>Celular</th>
-                  <th>Status</th>
-                  <th class="admin-only-cell">Ações</th>
-                </tr>
-              </thead>
-              <tbody id="listaFaccoes"></tbody>
-            </table>
+            <form class="form admin-only-block faccao-form-inline hidden" id="formFaccao">
+              <input type="hidden" id="faccaoId" />
+
+              <label>
+                Nome da facção
+                <input id="faccaoNome" type="text" placeholder="Ex: FACÇÃO KELLY" required />
+              </label>
+
+              <label>
+                Cidade
+                <input id="faccaoCidade" type="text" placeholder="Ex: Pontalina" required />
+              </label>
+
+              <label>
+                Chave PIX
+                <input id="faccaoPix" type="text" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" />
+              </label>
+
+              <label>
+                Número de celular
+                <input id="faccaoCelular" type="tel" placeholder="Ex: (64) 99999-9999" />
+              </label>
+
+              <label>
+                Observações
+                <textarea id="faccaoObs" rows="2" placeholder="Opcional"></textarea>
+              </label>
+
+              <div class="actions">
+                <button class="btn btn-primary" type="submit">Salvar facção</button>
+                <button class="btn" type="button" id="btnCancelarFaccao">Cancelar</button>
+              </div>
+            </form>
+
+            <div class="panel-subheader faccoes-list-header">
+              <div>
+                <h3>Facções cadastradas</h3>
+                <p>Lista de nomes disponíveis para envio no Manejo.</p>
+              </div>
+              <input id="buscaFaccao" class="search" type="text" placeholder="Buscar facção, cidade, PIX ou celular..." />
+            </div>
+
+            <div class="table-wrap">
+              <table class="faccoes-table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Cidade</th>
+                    <th>Chave PIX</th>
+                    <th>Celular</th>
+                    <th>Status</th>
+                    <th class="admin-only-cell">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="listaFaccoes"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>
@@ -1413,7 +1423,7 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="update.js?v=2026-07-03-faccoes-operacional-1"></script>
-  <script type="module" src="app.js?v=2026-07-03-faccoes-operacional-1"></script>
+  <script src="update.js?v=2026-07-03-faccoes-gerenciar-oculto-1"></script>
+  <script type="module" src="app.js?v=2026-07-03-faccoes-gerenciar-oculto-1"></script>
 </body>
 </html>

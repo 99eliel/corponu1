@@ -1846,3 +1846,20 @@ Status
 ```
 
 Assim fica fácil abrir a aba **Facções** e ver quais peças estão com cada facção.
+
+
+## Ajuste: Gerenciar facções escondido
+
+A aba **Facções** agora abre diretamente na parte operacional:
+
+```txt
+O que está nas facções
+```
+
+O cadastro e a lista de facções cadastradas ficam escondidos no botão:
+
+```txt
+Gerenciar facções
+```
+
+Assim quem está acompanhando a movimentação não precisa ver os dados cadastrais o tempo todo.
