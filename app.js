@@ -1467,11 +1467,9 @@ function configurarManejo() {
     "filtroManejoFase",
     "filtroManejoQuantidade",
     "filtroManejoCor",
-    "filtroManejoData",
     "filtroManejoFaccao",
     "filtroManejoChegada",
     "filtroManejoFalta",
-    "filtroManejoProducao",
     "filtroManejoCelu",
     "filtroManejoNecessidade"
   ].forEach(id => {
@@ -1528,11 +1526,9 @@ function getLinhasManejoParaImpressao() {
       fase: valorManejoParaImpressao(op, "fase"),
       quantidade: numeroQuantidadeOP(op),
       cor: op.cor || "",
-      data: valorManejoParaImpressao(op, "data"),
       faccao: valorManejoParaImpressao(op, "faccao"),
       chegada: valorManejoParaImpressao(op, "chegada"),
       falta: Number(valorManejoParaImpressao(op, "falta") || 0),
-      producao: valorManejoParaImpressao(op, "producao"),
       celu: valorManejoParaImpressao(op, "celu"),
       necessidade: getNecessidadeDaOrdem(op),
       status: getStatusManejo(op, setor) === "bipado" ? "Bipado" : getStatusManejo(op, setor) === "organizada" ? "Organizada" : "Pendente"
@@ -1695,11 +1691,11 @@ function imprimirManejoFiltrado() {
               <th>Fase</th>
               <th>QTI</th>
               <th>Cor</th>
-              <th>Data</th>
+              
               <th>Facção</th>
               <th>Chegada</th>
               <th>Falta</th>
-              <th>Produção</th>
+              
               <th>CELU</th>
               <th>Necessidade</th>
               <th>Status</th>
@@ -1874,11 +1870,9 @@ async function registrarEntregaManejo(ordemId) {
       setorLabel: getInfoManejoSetor(setor).label,
       dataTecido: valorLinhaManejo(ordem, "dataTecido") || manejoExistente.dataTecido || "",
       fase,
-      data: valorLinhaManejo(ordem, "data") || manejoExistente.data || "",
       faccao,
       chegada: valorLinhaManejo(ordem, "chegada") || manejoExistente.chegada || dataEntrega,
       falta: faltaCalculada,
-      producao: valorLinhaManejo(ordem, "producao") || manejoExistente.producao || dataEntrega,
       celu: limparTexto(valorLinhaManejo(ordem, "celu")) || manejoExistente.celu || "",
       necessidade: getNecessidadeDaOrdem(ordem),
       ultimoPrecoReferenciaId: preco.id,
@@ -1931,7 +1925,7 @@ function renderManejoInline() {
   const setor = getManejoSetorAtual();
 
   if (!podeVerManejo(setor)) {
-    tbody.innerHTML = `<tr><td colspan="13" class="empty">Seu usuário não tem acesso a este manejo.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="empty">Seu usuário não tem acesso a este manejo.</td></tr>`;
     renderResumoSomasManejo([]);
     return;
   }
@@ -1941,7 +1935,7 @@ function renderManejoInline() {
   renderResumoSomasManejo(ordens);
 
   if (!ordens.length) {
-    tbody.innerHTML = `<tr><td colspan="13" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
     return;
   }
 
@@ -1978,8 +1972,6 @@ function renderManejoInline() {
         </td>
         <td><input class="manejo-readonly" type="number" value="${escapeHtml(op.quantidade ?? 0)}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(op.cor || "")}" readonly /></td>
-        <td><input id="${rowId}-data" type="date" value="${escapeHtml(manejo?.data || "")}" /></td>
-        <td><input id="${rowId}-producao" type="date" value="${escapeHtml(manejo?.producao || "")}" /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(getNecessidadeDaOrdem(op))}" readonly /></td>
         <td class="manejo-bipado-cell">
           <button class="btn btn-sm btn-bipado" onclick="biparManejoLinha('${op.id}')">
@@ -2050,11 +2042,9 @@ function getValorManejoParaFiltro(op, campo, setor = getManejoSetorAtual()) {
     fase: manejo?.fase || "",
     quantidade: op.quantidade ?? "",
     cor: op.cor || "",
-    data: manejo?.data || "",
     faccao: manejo?.faccao || "",
     chegada: manejo?.chegada || "",
     falta: manejo?.falta ?? "",
-    producao: manejo?.producao || "",
     celu: manejo?.celu || "",
     necessidade: getNecessidadeDaOrdem(op)
   };
@@ -2075,11 +2065,9 @@ function filtrarOrdensManejoPorColunas() {
     fase: document.getElementById("filtroManejoFase")?.value || "",
     quantidade: document.getElementById("filtroManejoQuantidade")?.value || "",
     cor: document.getElementById("filtroManejoCor")?.value || "",
-    data: document.getElementById("filtroManejoData")?.value || "",
     faccao: document.getElementById("filtroManejoFaccao")?.value || "",
     chegada: document.getElementById("filtroManejoChegada")?.value || "",
     falta: document.getElementById("filtroManejoFalta")?.value || "",
-    producao: document.getElementById("filtroManejoProducao")?.value || "",
     celu: document.getElementById("filtroManejoCelu")?.value || "",
     necessidade: document.getElementById("filtroManejoNecessidade")?.value || ""
   };
@@ -2099,11 +2087,9 @@ function filtrarOrdensManejoPorColunas() {
       manejo?.silkData,
       manejo?.dataTecido,
       manejo?.fase,
-      manejo?.data,
       manejo?.faccao,
       manejo?.chegada,
       manejo?.falta,
-      manejo?.producao,
       manejo?.celu
     ].join(" "));
 
@@ -2135,11 +2121,9 @@ function limparFiltrosColunasManejo() {
     "filtroManejoFase",
     "filtroManejoQuantidade",
     "filtroManejoCor",
-    "filtroManejoData",
     "filtroManejoFaccao",
     "filtroManejoChegada",
     "filtroManejoFalta",
-    "filtroManejoProducao",
     "filtroManejoCelu",
     "filtroManejoNecessidade"
   ].forEach(id => {
@@ -2190,14 +2174,12 @@ function renderFiltrosColunasManejo() {
   ], "Todas");
   preencherSelectFiltroManejo("filtroManejoQuantidade", ordens.map(op => getValorManejoParaFiltro(op, "quantidade")), "Todas");
   preencherSelectFiltroManejo("filtroManejoCor", ordens.map(op => getValorManejoParaFiltro(op, "cor")), "Todas");
-  preencherSelectFiltroManejo("filtroManejoData", ordens.map(op => getValorManejoParaFiltro(op, "data")), "Todas");
   preencherSelectFiltroManejo("filtroManejoFaccao", [
     ...ordens.map(op => getValorManejoParaFiltro(op, "faccao")),
     ...state.faccoesManejoExtras
   ], "Todas");
   preencherSelectFiltroManejo("filtroManejoChegada", ordens.map(op => getValorManejoParaFiltro(op, "chegada")), "Todas");
   preencherSelectFiltroManejo("filtroManejoFalta", ordens.map(op => getValorManejoParaFiltro(op, "falta")), "Todas");
-  preencherSelectFiltroManejo("filtroManejoProducao", ordens.map(op => getValorManejoParaFiltro(op, "producao")), "Todas");
   preencherSelectFiltroManejo("filtroManejoCelu", [
     ...ordens.map(op => getValorManejoParaFiltro(op, "celu")),
     ...state.celusManejoExtras
@@ -2546,11 +2528,9 @@ async function salvarManejoLinha(ordemId) {
     setorLabel: infoSetor.label,
     dataTecido: valorLinhaManejo(ordem, "dataTecido") || "",
     fase,
-    data: valorLinhaManejo(ordem, "data") || "",
     faccao: limparTexto(valorLinhaManejo(ordem, "faccao")).toUpperCase(),
     chegada: valorLinhaManejo(ordem, "chegada") || "",
     falta: Number(valorLinhaManejo(ordem, "falta") || 0),
-    producao: valorLinhaManejo(ordem, "producao") || "",
     celu: limparTexto(valorLinhaManejo(ordem, "celu")),
     necessidade: getNecessidadeDaOrdem(ordem),
     coluna: "",
@@ -2623,11 +2603,9 @@ async function biparManejoLinha(ordemId) {
     setorLabel: infoSetor.label,
     dataTecido: valorLinhaManejo(ordem, "dataTecido") || manejoExistente.dataTecido || "",
     fase: faseAtual,
-    data: valorLinhaManejo(ordem, "data") || manejoExistente.data || "",
     faccao: limparTexto(valorLinhaManejo(ordem, "faccao")).toUpperCase() || manejoExistente.faccao || "",
     chegada: valorLinhaManejo(ordem, "chegada") || manejoExistente.chegada || "",
     falta: Number(valorLinhaManejo(ordem, "falta") || manejoExistente.falta || 0),
-    producao: valorLinhaManejo(ordem, "producao") || manejoExistente.producao || "",
     celu: limparTexto(valorLinhaManejo(ordem, "celu")) || manejoExistente.celu || "",
     necessidade: getNecessidadeDaOrdem(ordem),
     coluna: "",
@@ -3205,7 +3183,7 @@ function imprimirProcessosFiltrados() {
               <th>Facção</th>
               <th>Chegada</th>
               <th>Falta</th>
-              <th>Produção</th>
+              
               <th>CELU</th>
               <th>Status</th>
             </tr>
@@ -5948,7 +5926,7 @@ function renderRelatorio() {
         <th>Qtd.</th>
         <th>Fase</th>
         <th>Facção</th>
-        <th>Produção</th>
+        
         <th>CELU</th>
         <th>Status</th>
       </tr>

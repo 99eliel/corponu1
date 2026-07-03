@@ -2325,3 +2325,33 @@ Próxima otimização recomendada para planilha gigante:
 - buscar relatórios por data/filtro
 - trocar algumas telas de tempo real por botão Procurar
 ```
+
+
+## Atualização: Manejo sem Data e Produção
+
+Na tela **Manejo**, foram removidas as colunas:
+
+```txt
+- DATA
+- PRODUÇÃO
+```
+
+Também foram removidos os filtros dessas colunas.
+
+O Manejo agora fica focado em:
+
+```txt
+Nº OP
+REF
+SILK
+DATA TECIDO
+FASE
+QTI
+COR
+NECESSIDADE
+BIPADO
+STATUS
+AÇÕES
+```
+
+Os campos de data e produção ficam livres para serem gerenciados em outra tela do sistema.

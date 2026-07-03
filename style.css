@@ -3602,3 +3602,9 @@ table td {
   color: #1e3a8a;
   font-weight: 800;
 }
+
+
+/* Manejo sem colunas Data e Produção */
+.manejo-limpo-table {
+  min-width: 1180px;
+}
