@@ -3680,7 +3680,12 @@ table td {
 }
 
 
-/* Pagamentos sem setor */
+/* Pagamento sem setor visual, mantendo compatibilidade interna */
+#valorNovoSetor.hidden,
+#precoReferenciaSetor.hidden {
+  display: none !important;
+}
+
 .valores-form {
   grid-template-columns: minmax(140px, 1fr) minmax(220px, 1.4fr) minmax(130px, .8fr) auto;
 }

@@ -1,12 +1,12 @@
-const APP_VERSION = "2026-07-03-pagamento-sem-setor-1";
+const APP_VERSION = "2026-07-03-pagamento-sem-setor-corrigido-1";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 
 const CORE_ASSETS = [
   "./",
   "./index.html",
-  "./style.css?v=2026-07-03-pagamento-sem-setor-1",
-  "./app.js?v=2026-07-03-pagamento-sem-setor-1",
-  "./update.js?v=2026-07-03-pagamento-sem-setor-1",
+  "./style.css?v=2026-07-03-pagamento-sem-setor-corrigido-1",
+  "./app.js?v=2026-07-03-pagamento-sem-setor-corrigido-1",
+  "./update.js?v=2026-07-03-pagamento-sem-setor-corrigido-1",
   "./version.json"
 ];
 

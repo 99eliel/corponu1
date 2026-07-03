@@ -2519,44 +2519,34 @@ Reenvio
 ```
 
 
-## Atualização: Pagamentos sem setor
+## Correção: Pagamento sem Setor mantendo compatibilidade
 
-A área de **Pagamentos** e **Gerenciar valores** não usa mais Setor.
+Esta versão corrige a quebra da versão anterior.
 
-A nova regra de valor ficou:
+O **Setor** foi removido da tela de Pagamentos e de Gerenciar Valores, mas foi mantida uma compatibilidade interna escondida para não quebrar funções antigas do sistema.
+
+Visualmente agora a regra é:
 
 ```txt
 Referência + Processo = Valor
 ```
 
-Exemplo:
+Removido da interface:
 
 ```txt
-170 + MONTAR BOJO = valor do processo
-170 + MONTAR CALCINHA = valor do processo
+- Filtro Setor em Pagamentos
+- Coluna Setor no resumo de pagamentos
+- Campo Setor no cadastro de valores
+- Coluna Setor na tabela de valores
 ```
 
-Ou seja, a organização passa a acontecer pelo nome do processo escolhido no envio para facção.
-
-Foram removidos:
+Mantido funcionando:
 
 ```txt
-- filtro Setor em Pagamentos
-- coluna Setor no resumo de pagamentos
-- campo Setor no cadastro de valores
-- coluna Setor na tabela de valores
+- Reenvio para facção/célula
+- Movimentação andando entre etapas
+- Novo pagamento em reenvio para facção
+- Modelo BOJO ENCAPADO
+- Importação de valores
+- Pagamentos por referência + processo
 ```
-
-A importação de valores agora aceita:
-
-```txt
-Referência + Valor
-```
-
-quando um processo estiver selecionado, ou:
-
-```txt
-Referência + Processo + Valor
-```
-
-quando nenhum processo estiver selecionado.

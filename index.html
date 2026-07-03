@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-03-pagamento-sem-setor-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-03-pagamento-sem-setor-1" />
+  <meta name="app-version" content="2026-07-03-pagamento-sem-setor-corrigido-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-03-pagamento-sem-setor-corrigido-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -1062,7 +1062,7 @@
           <div class="panel-header">
             <div>
               <h3>Gerenciar valores por processo</h3>
-              <p>Escolha um processo e organize todas as referências e valores dele.</p>
+              <p>Escolha um processo e organize todas as referências e valores dele. A organização agora é por referência + processo.</p>
             </div>
             <div class="actions">
               <button class="btn" id="btnFecharGerenciarValores" type="button">Ocultar valores</button>
@@ -1089,6 +1089,9 @@
                     Novo processo
                     <input id="valorNovoProcesso" type="text" placeholder="Ex: ENCAPAR BOJO" />
                   </label>
+                  <select id="valorNovoSetor" class="hidden" aria-hidden="true">
+                    <option value="bojo" selected>Bojo</option>
+                  </select>
 
                   <button class="btn btn-primary" id="btnUsarNovoProcesso" type="button">Usar processo</button>
                 </div>
@@ -1129,6 +1132,9 @@
                   Processo
                   <input id="precoReferenciaProcesso" type="text" placeholder="Ex: ENCAPAR BOJO" required />
                 </label>
+                <select id="precoReferenciaSetor" class="hidden" aria-hidden="true" required>
+                  <option value="bojo" selected>Bojo</option>
+                </select>
 
                 <label>
                   Valor por peça
@@ -1604,8 +1610,8 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="update.js?v=2026-07-03-pagamento-sem-setor-1"></script>
-  <script type="module" src="app.js?v=2026-07-03-pagamento-sem-setor-1"></script>
+  <script src="update.js?v=2026-07-03-pagamento-sem-setor-corrigido-1"></script>
+  <script type="module" src="app.js?v=2026-07-03-pagamento-sem-setor-corrigido-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
