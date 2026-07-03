@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-03-desconto-defeito-corrigido-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-03-desconto-defeito-corrigido-1" />
+  <meta name="app-version" content="2026-07-03-gerenciar-valores-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-03-gerenciar-valores-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -954,203 +954,292 @@
 
 
 <section id="pagamentos" class="page">
-        <div class="grid-2 pagamentos-grid pagamentos-grid-entregas">
-          <div class="panel form admin-only-block">
-            <div class="panel-header">
-              <div>
-                <h3>Tabela de preços por referência</h3>
-                <p>Cadastre o valor de cada referência em cada processo. Depois o Manejo e Pagamentos usam automaticamente.</p>
-              </div>
+        <div class="panel pagamentos-relatorio-panel">
+          <div class="panel-header">
+            <div>
+              <h3>Pagamentos de facções</h3>
+              <p>Feche o pagamento usando as chegadas registradas, faltas e descontos por defeito.</p>
             </div>
-
-            <form id="formPrecoReferencia" class="form compact-form">
-              <input type="hidden" id="precoReferenciaId" />
-
-              <label>
-                Referência
-                <input id="precoReferenciaRef" type="text" list="referenciasList" placeholder="Ex: 2082" required />
-              </label>
-
-              <label>
-                Processo
-                <input id="precoReferenciaProcesso" type="text" placeholder="Ex: ENCAPAR BOJO" required />
-              </label>
-
-              <label>
-                Setor do manejo
-                <select id="precoReferenciaSetor" required>
-                  <option value="">Selecione</option>
-                  <option value="bojo">Bojo</option>
-                  <option value="alca">Alça</option>
-                  <option value="renda">Renda</option>
-                </select>
-              </label>
-
-              <label>
-                Valor por peça
-                <input id="precoReferenciaValor" type="number" min="0" step="0.01" placeholder="Ex: 0.39" required />
-              </label>
-
-              <div class="actions">
-                <button class="btn btn-primary" type="submit">Salvar preço</button>
-                <button class="btn" id="btnCancelarPrecoReferencia" type="button">Cancelar</button>
-              </div>
-            </form>
-
-            <div class="notice small">
-              <strong>Exemplo:</strong> Ref. 2082 + Processo ENCAPAR BOJO = R$ 0,39.
-              Na entrega, o sistema procura automaticamente o valor pela referência da OP.
+            <div class="actions">
+              <button class="btn btn-primary" id="btnToggleGerenciarValores" type="button">Gerenciar valores</button>
             </div>
-
-            <div class="table-wrap precos-referencia-wrap">
-              <table class="precos-referencia-table">
-                <thead>
-                  <tr>
-                    <th>Referência</th>
-                    <th>Processo</th>
-                    <th>Setor</th>
-                    <th>Valor</th>
-                    <th>Status</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody id="listaPrecosReferencia"></tbody>
-              </table>
-            </div>
-
           </div>
 
-          <div class="panel">
-            <div class="panel-header">
-              <div>
-                <h3>Relatório de pagamento por período</h3>
-                <p>Feche o pagamento por calendário usando a data de chegada e a falta preenchidas no Manejo.</p>
-              </div>
+          <div class="pagamento-filtros pagamento-filtros-entregas">
+            <label>
+              Início
+              <input id="pagamentoDataInicio" type="date" />
+            </label>
+
+            <label>
+              Final
+              <input id="pagamentoDataFim" type="date" />
+            </label>
+
+            <label>
+              Facção
+              <select id="pagamentoFiltroFaccao">
+                <option value="">Todas</option>
+              </select>
+            </label>
+
+            <label>
+              Referência
+              <select id="pagamentoFiltroReferencia">
+                <option value="">Todas</option>
+              </select>
+            </label>
+
+            <label>
+              Processo
+              <select id="pagamentoFiltroPreco">
+                <option value="">Todos</option>
+              </select>
+            </label>
+
+            <label>
+              Setor
+              <select id="pagamentoFiltroSetor">
+                <option value="">Todos</option>
+                <option value="bojo">Bojo</option>
+                <option value="alca">Alça</option>
+                <option value="renda">Renda</option>
+              </select>
+            </label>
+
+            <label>
+              Pagamento
+              <select id="pagamentoFiltroStatus">
+                <option value="pendente" selected>Pendentes</option>
+                <option value="pago">Pagas</option>
+                <option value="">Todas</option>
+              </select>
+            </label>
+
+            <button class="btn" id="btnLimparFiltrosPagamento" type="button">Limpar</button>
+            <button class="btn btn-success" id="btnMarcarPagamentosFiltrados" type="button">Marcar filtrados como pagos</button>
+            <button class="btn btn-print" id="btnImprimirPagamento" type="button">Imprimir pagamento</button>
+          </div>
+
+          <div class="pagamento-cards">
+            <div class="pagamento-card">
+              <span>Facções</span>
+              <strong id="pagamentoTotalFaccoes">0</strong>
             </div>
-
-            <div class="pagamento-filtros pagamento-filtros-entregas">
-              <label>
-                Início
-                <input id="pagamentoDataInicio" type="date" />
-              </label>
-
-              <label>
-                Final
-                <input id="pagamentoDataFim" type="date" />
-              </label>
-
-              <label>
-                Facção
-                <select id="pagamentoFiltroFaccao">
-                  <option value="">Todas</option>
-                </select>
-              </label>
-
-              <label>
-                Referência
-                <select id="pagamentoFiltroReferencia">
-                  <option value="">Todas</option>
-                </select>
-              </label>
-
-              <label>
-                Processo
-                <select id="pagamentoFiltroPreco">
-                  <option value="">Todos</option>
-                </select>
-              </label>
-
-              <label>
-                Setor
-                <select id="pagamentoFiltroSetor">
-                  <option value="">Todos</option>
-                  <option value="bojo">Bojo</option>
-                  <option value="alca">Alça</option>
-                  <option value="renda">Renda</option>
-                </select>
-              </label>
-
-              <label>
-                Pagamento
-                <select id="pagamentoFiltroStatus">
-                  <option value="pendente" selected>Pendentes</option>
-                  <option value="pago">Pagas</option>
-                  <option value="">Todas</option>
-                </select>
-              </label>
-
-              <button class="btn" id="btnLimparFiltrosPagamento" type="button">Limpar</button>
-              <button class="btn btn-success" id="btnMarcarPagamentosFiltrados" type="button">Marcar filtrados como pagos</button>
-              <button class="btn btn-print" id="btnImprimirPagamento" type="button">Imprimir pagamento</button>
+            <div class="pagamento-card">
+              <span>Entregas</span>
+              <strong id="pagamentoTotalEntregas">0</strong>
             </div>
-
-            <div class="pagamento-cards">
-              <div class="pagamento-card">
-                <span>Facções</span>
-                <strong id="pagamentoTotalFaccoes">0</strong>
-              </div>
-              <div class="pagamento-card">
-                <span>Entregas</span>
-                <strong id="pagamentoTotalEntregas">0</strong>
-              </div>
-              <div class="pagamento-card">
-                <span>Peças entregues</span>
-                <strong id="pagamentoTotalRecebidas">0</strong>
-              </div>
-              <div class="pagamento-card destaque">
-                <span>Total a pagar</span>
-                <strong id="pagamentoTotalValor">R$ 0,00</strong>
-              </div>
+            <div class="pagamento-card">
+              <span>Peças entregues</span>
+              <strong id="pagamentoTotalRecebidas">0</strong>
             </div>
-
-            <div class="table-wrap">
-              <table class="pagamento-table">
-                <thead>
-                  <tr>
-                    <th>Facção</th>
-                    <th>Referência</th>
-                    <th>Processo</th>
-                    <th>Setor</th>
-                    <th>Entregas</th>
-                    <th>Peças</th>
-                    <th>Valor unit.</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody id="listaPagamento"></tbody>
-              </table>
+            <div class="pagamento-card destaque">
+              <span>Total a pagar</span>
+              <strong id="pagamentoTotalValor">R$ 0,00</strong>
             </div>
+          </div>
 
-            <div class="panel-header compact-header entregas-header">
-              <div>
-                <h3>Pagamentos gerados pelo Manejo</h3>
-                <p>Os valores abaixo são criados/atualizados quando a linha do Manejo é salva.</p>
+          <div class="table-wrap">
+            <table class="pagamento-table">
+              <thead>
+                <tr>
+                  <th>Facção</th>
+                  <th>Referência</th>
+                  <th>Processo</th>
+                  <th>Setor</th>
+                  <th>Entregas</th>
+                  <th>Peças</th>
+                  <th>Valor unit.</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody id="listaPagamento"></tbody>
+            </table>
+          </div>
+
+          <div class="panel-header compact-header entregas-header">
+            <div>
+              <h3>Pagamentos gerados</h3>
+              <p>Os valores abaixo são criados quando a chegada da facção é registrada.</p>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="entregas-pagamento-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>OP</th>
+                  <th>Ref.</th>
+                  <th>Facção</th>
+                  <th>Processo</th>
+                  <th>Qtd.</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="listaEntregasPagamento"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel admin-only-block valores-manager-panel hidden" id="painelGerenciarValores">
+          <div class="panel-header">
+            <div>
+              <h3>Gerenciar valores por processo</h3>
+              <p>Escolha um processo e organize todas as referências e valores dele.</p>
+            </div>
+            <div class="actions">
+              <button class="btn" id="btnFecharGerenciarValores" type="button">Ocultar valores</button>
+            </div>
+          </div>
+
+          <div class="valores-workspace">
+            <aside class="valores-sidebar">
+              <div class="valores-toolbox">
+                <label>
+                  Processo ativo
+                  <select id="valorProcessoAtivo">
+                    <option value="">Selecione um processo</option>
+                  </select>
+                </label>
+
+                <label>
+                  Buscar processo
+                  <input id="buscaProcessoValor" type="text" placeholder="Ex: ENCAPAR BOJO" />
+                </label>
+
+                <div class="valores-novo-processo">
+                  <label>
+                    Novo processo
+                    <input id="valorNovoProcesso" type="text" placeholder="Ex: ENCAPAR BOJO" />
+                  </label>
+
+                  <label>
+                    Setor
+                    <select id="valorNovoSetor">
+                      <option value="bojo">Bojo</option>
+                      <option value="alca">Alça</option>
+                      <option value="renda">Renda</option>
+                    </select>
+                  </label>
+
+                  <button class="btn btn-primary" id="btnUsarNovoProcesso" type="button">Usar processo</button>
+                </div>
               </div>
-            </div>
 
-            <div class="table-wrap">
-              <table class="entregas-pagamento-table">
-                <thead>
-                  <tr>
-                    <th>Data</th>
-                    <th>OP</th>
-                    <th>Ref.</th>
-                    <th>Facção</th>
-                    <th>Processo</th>
-                    <th>Qtd.</th>
-                    <th>Total</th>
-                    <th>Status</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody id="listaEntregasPagamento"></tbody>
-              </table>
+              <div class="processos-valores-list" id="listaProcessosValores"></div>
+            </aside>
+
+            <div class="valores-main">
+              <div class="valores-cards">
+                <div class="processo-card">
+                  <span>Processo selecionado</span>
+                  <strong id="valorProcessoSelecionadoLabel">Nenhum</strong>
+                </div>
+                <div class="processo-card">
+                  <span>Referências</span>
+                  <strong id="valorTotalReferencias">0</strong>
+                </div>
+                <div class="processo-card ok-card">
+                  <span>Ativos</span>
+                  <strong id="valorTotalAtivos">0</strong>
+                </div>
+                <div class="processo-card danger-card">
+                  <span>Inativos</span>
+                  <strong id="valorTotalInativos">0</strong>
+                </div>
+              </div>
+
+              <form id="formPrecoReferencia" class="form compact-form valores-form">
+                <input type="hidden" id="precoReferenciaId" />
+
+                <label>
+                  Referência
+                  <input id="precoReferenciaRef" type="text" list="referenciasList" placeholder="Ex: 2082" required />
+                </label>
+
+                <label>
+                  Processo
+                  <input id="precoReferenciaProcesso" type="text" placeholder="Ex: ENCAPAR BOJO" required />
+                </label>
+
+                <label>
+                  Setor
+                  <select id="precoReferenciaSetor" required>
+                    <option value="">Selecione</option>
+                    <option value="bojo">Bojo</option>
+                    <option value="alca">Alça</option>
+                    <option value="renda">Renda</option>
+                  </select>
+                </label>
+
+                <label>
+                  Valor por peça
+                  <input id="precoReferenciaValor" type="number" min="0" step="0.01" placeholder="Ex: 0.39" required />
+                </label>
+
+                <div class="actions">
+                  <button class="btn btn-primary" type="submit">Salvar valor</button>
+                  <button class="btn" id="btnCancelarPrecoReferencia" type="button">Cancelar</button>
+                </div>
+              </form>
+
+              <div class="importar-valores-box">
+                <div class="panel-subheader">
+                  <div>
+                    <h3>Importar valores da planilha</h3>
+                    <p>Copie as linhas da planilha e cole aqui. Aceita: Referência + Valor, ou Referência + Processo + Valor.</p>
+                  </div>
+                </div>
+
+                <textarea id="valoresImportacaoTexto" rows="6" placeholder="Ex:
+2082	0,39
+622	1,98
+170	0,50"></textarea>
+
+                <div class="actions">
+                  <button class="btn btn-success" id="btnImportarValoresColados" type="button">Importar valores colados</button>
+                  <button class="btn" id="btnLimparImportacaoValores" type="button">Limpar importação</button>
+                </div>
+
+                <div class="notice small">
+                  <strong>Modelo mais fácil:</strong> escolha o processo ativo, copie da planilha apenas as colunas <strong>Referência</strong> e <strong>Valor</strong>, depois clique em importar.
+                </div>
+              </div>
+
+              <div class="panel-subheader">
+                <div>
+                  <h3 id="tituloTabelaValores">Valores cadastrados</h3>
+                  <p>Lista filtrada pelo processo selecionado.</p>
+                </div>
+                <input id="buscaPrecosReferencia" class="search" type="text" placeholder="Buscar referência, processo ou valor..." />
+              </div>
+
+              <div class="table-wrap precos-referencia-wrap">
+                <table class="precos-referencia-table">
+                  <thead>
+                    <tr>
+                      <th>Processo</th>
+                      <th>Setor</th>
+                      <th>Referência</th>
+                      <th>Valor</th>
+                      <th>Status</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="listaPrecosReferencia"></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section id="relatorios" class="page">
+
+<section id="relatorios" class="page">
         <div class="panel">
           <div class="panel-header">
             <div>
@@ -1487,8 +1576,8 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="update.js?v=2026-07-03-desconto-defeito-corrigido-1"></script>
-  <script type="module" src="app.js?v=2026-07-03-desconto-defeito-corrigido-1"></script>
+  <script src="update.js?v=2026-07-03-gerenciar-valores-1"></script>
+  <script type="module" src="app.js?v=2026-07-03-gerenciar-valores-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">

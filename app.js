@@ -457,6 +457,8 @@ function iniciarListenersFirestore() {
 
   state.unsubscribers.push(onSnapshot(precosReferenciaQuery, snapshot => {
     state.precosReferencia = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    preencherProcessosValores();
+    renderProcessosValores();
     renderPrecosReferencia();
     renderManejoInline();
     renderPagamentos();
@@ -4088,6 +4090,52 @@ function configurarPagamentos() {
     cancelarPreco.addEventListener("click", limparFormPrecoReferencia);
   }
 
+  const toggleValores = document.getElementById("btnToggleGerenciarValores");
+  if (toggleValores) {
+    toggleValores.addEventListener("click", abrirGerenciarValores);
+  }
+
+  const fecharValores = document.getElementById("btnFecharGerenciarValores");
+  if (fecharValores) {
+    fecharValores.addEventListener("click", fecharGerenciarValores);
+  }
+
+  const processoAtivo = document.getElementById("valorProcessoAtivo");
+  if (processoAtivo) {
+    processoAtivo.addEventListener("change", () => {
+      aplicarProcessoValorSelecionado(processoAtivo.value);
+      renderPrecosReferencia();
+    });
+  }
+
+  const buscaProcesso = document.getElementById("buscaProcessoValor");
+  if (buscaProcesso) {
+    buscaProcesso.addEventListener("input", renderProcessosValores);
+  }
+
+  const buscaPrecos = document.getElementById("buscaPrecosReferencia");
+  if (buscaPrecos) {
+    buscaPrecos.addEventListener("input", renderPrecosReferencia);
+  }
+
+  const usarNovoProcesso = document.getElementById("btnUsarNovoProcesso");
+  if (usarNovoProcesso) {
+    usarNovoProcesso.addEventListener("click", usarNovoProcessoValor);
+  }
+
+  const importarValores = document.getElementById("btnImportarValoresColados");
+  if (importarValores) {
+    importarValores.addEventListener("click", importarValoresColados);
+  }
+
+  const limparImportacao = document.getElementById("btnLimparImportacaoValores");
+  if (limparImportacao) {
+    limparImportacao.addEventListener("click", () => {
+      const textarea = document.getElementById("valoresImportacaoTexto");
+      if (textarea) textarea.value = "";
+    });
+  }
+
   const formEntrega = document.getElementById("formEntregaPagamento");
   if (formEntrega) {
     formEntrega.addEventListener("submit", salvarEntregaPagamento);
@@ -4179,12 +4227,197 @@ function getPrecoReferencia(id) {
   return state.precosReferencia.find(preco => preco.id === id) || null;
 }
 
+let processoValorAtivo = "";
+
+function chaveProcessoValor(processo, setor) {
+  return `${limparTexto(setor || "").toLowerCase()}__${limparTexto(processo || "").toUpperCase()}`;
+}
+
+function getProcessoValorDeChave(chave) {
+  const [setor, ...resto] = String(chave || "").split("__");
+  return {
+    setor: setor || "",
+    processo: resto.join("__") || ""
+  };
+}
+
+function getProcessosValores() {
+  const mapa = new Map();
+
+  state.precosReferencia.forEach(preco => {
+    const processo = limparTexto(preco.processo || "").toUpperCase();
+    const setor = preco.setor || "";
+    if (!processo || !setor) return;
+
+    const chave = chaveProcessoValor(processo, setor);
+
+    if (!mapa.has(chave)) {
+      mapa.set(chave, {
+        chave,
+        processo,
+        setor,
+        setorLabel: getLabelSetorPagamento(setor),
+        total: 0,
+        ativos: 0,
+        inativos: 0
+      });
+    }
+
+    const grupo = mapa.get(chave);
+    grupo.total += 1;
+
+    if (preco.ativo === false) {
+      grupo.inativos += 1;
+    } else {
+      grupo.ativos += 1;
+    }
+  });
+
+  return [...mapa.values()].sort((a, b) => {
+    const procCompare = a.processo.localeCompare(b.processo, "pt-BR", { numeric: true });
+    if (procCompare !== 0) return procCompare;
+    return a.setorLabel.localeCompare(b.setorLabel, "pt-BR", { numeric: true });
+  });
+}
+
+function preencherProcessosValores() {
+  const select = document.getElementById("valorProcessoAtivo");
+  if (!select) return;
+
+  const processos = getProcessosValores();
+  const atual = processoValorAtivo || select.value;
+
+  select.innerHTML = `<option value="">Todos os processos</option>` + processos.map(item => {
+    return `<option value="${escapeHtml(item.chave)}">${escapeHtml(item.processo)} | ${escapeHtml(item.setorLabel)} (${item.total})</option>`;
+  }).join("");
+
+  if (atual && processos.some(item => item.chave === atual)) {
+    select.value = atual;
+    processoValorAtivo = atual;
+  } else if (!processoValorAtivo && processos.length) {
+    select.value = processos[0].chave;
+    processoValorAtivo = processos[0].chave;
+  } else {
+    select.value = processoValorAtivo || "";
+  }
+
+  aplicarProcessoValorSelecionado(select.value);
+}
+
+function aplicarProcessoValorSelecionado(chave) {
+  processoValorAtivo = chave || "";
+  const { processo, setor } = getProcessoValorDeChave(processoValorAtivo);
+
+  const processoInput = document.getElementById("precoReferenciaProcesso");
+  const setorInput = document.getElementById("precoReferenciaSetor");
+
+  if (processoInput && processo) processoInput.value = processo;
+  if (setorInput && setor) setorInput.value = setor;
+}
+
+function abrirGerenciarValores() {
+  const painel = document.getElementById("painelGerenciarValores");
+  const botao = document.getElementById("btnToggleGerenciarValores");
+
+  if (painel) painel.classList.remove("hidden");
+  if (botao) botao.textContent = "Gerenciar valores aberto";
+
+  preencherProcessosValores();
+  renderProcessosValores();
+  renderPrecosReferencia();
+
+  setTimeout(() => {
+    document.getElementById("painelGerenciarValores")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 80);
+}
+
+function fecharGerenciarValores() {
+  const painel = document.getElementById("painelGerenciarValores");
+  const botao = document.getElementById("btnToggleGerenciarValores");
+
+  if (painel) painel.classList.add("hidden");
+  if (botao) botao.textContent = "Gerenciar valores";
+}
+
+function usarNovoProcessoValor() {
+  const processo = limparTexto(document.getElementById("valorNovoProcesso")?.value || "").toUpperCase();
+  const setor = document.getElementById("valorNovoSetor")?.value || "bojo";
+
+  if (!processo) {
+    toast("Digite o nome do processo.");
+    return;
+  }
+
+  const chave = chaveProcessoValor(processo, setor);
+  processoValorAtivo = chave;
+
+  const select = document.getElementById("valorProcessoAtivo");
+  const existeOpcao = select && [...select.options].some(option => option.value === chave);
+
+  if (select && !existeOpcao) {
+    const option = document.createElement("option");
+    option.value = chave;
+    option.textContent = `${processo} | ${getLabelSetorPagamento(setor)} (novo)`;
+    select.appendChild(option);
+  }
+
+  if (select) select.value = chave;
+
+  document.getElementById("precoReferenciaProcesso").value = processo;
+  document.getElementById("precoReferenciaSetor").value = setor;
+  document.getElementById("precoReferenciaRef")?.focus();
+
+  renderProcessosValores();
+  renderPrecosReferencia();
+  toast("Processo selecionado. Agora cadastre as referências e valores.");
+}
+
+function renderProcessosValores() {
+  const container = document.getElementById("listaProcessosValores");
+  if (!container) return;
+
+  const busca = normalizarTexto(document.getElementById("buscaProcessoValor")?.value || "");
+  let processos = getProcessosValores();
+
+  if (busca) {
+    processos = processos.filter(item => normalizarTexto(`${item.processo} ${item.setorLabel}`).includes(busca));
+  }
+
+  if (!processos.length) {
+    container.innerHTML = `<div class="empty-card">Nenhum processo com valores cadastrados ainda.</div>`;
+    return;
+  }
+
+  container.innerHTML = processos.map(item => `
+    <button class="processo-valor-item ${item.chave === processoValorAtivo ? "active" : ""}" type="button" onclick="selecionarProcessoValor('${escapeHtml(item.chave)}')">
+      <strong>${escapeHtml(item.processo)}</strong>
+      <span>${escapeHtml(item.setorLabel)} • ${item.total} ref.</span>
+      <small>${item.ativos} ativos / ${item.inativos} inativos</small>
+    </button>
+  `).join("");
+}
+
+function selecionarProcessoValor(chave) {
+  const select = document.getElementById("valorProcessoAtivo");
+  processoValorAtivo = chave || "";
+
+  if (select) select.value = processoValorAtivo;
+
+  aplicarProcessoValorSelecionado(processoValorAtivo);
+  renderProcessosValores();
+  renderPrecosReferencia();
+}
+
 function limparFormPrecoReferencia() {
   const form = document.getElementById("formPrecoReferencia");
+  const chaveAtual = processoValorAtivo;
+
   if (form) form.reset();
 
   const id = document.getElementById("precoReferenciaId");
   if (id) id.value = "";
+
+  aplicarProcessoValorSelecionado(chaveAtual);
 }
 
 async function salvarPrecoReferencia(event) {
@@ -4232,11 +4465,16 @@ async function salvarPrecoReferencia(event) {
       docId,
       `Ref. ${referencia} | ${processo} | ${getLabelSetorPagamento(setor)} | ${formatarMoedaBR(valor)}`
     );
+
+    processoValorAtivo = chaveProcessoValor(processo, setor);
     limparFormPrecoReferencia();
-    toast("Preço da referência salvo.");
+    preencherProcessosValores();
+    renderProcessosValores();
+    renderPrecosReferencia();
+    toast("Valor salvo.");
   } catch (error) {
     console.error(error);
-    toast("Erro ao salvar preço da referência.");
+    toast("Erro ao salvar valor da referência.");
   }
 }
 
@@ -4244,22 +4482,61 @@ function renderPrecosReferencia() {
   const tbody = document.getElementById("listaPrecosReferencia");
   if (!tbody) return;
 
-  const precos = [...state.precosReferencia].sort((a, b) => {
-    const refCompare = String(a.referencia || "").localeCompare(String(b.referencia || ""), "pt-BR", { numeric: true });
-    if (refCompare !== 0) return refCompare;
-    return String(a.processo || "").localeCompare(String(b.processo || ""), "pt-BR", { numeric: true });
+  preencherProcessosValores();
+
+  const busca = normalizarTexto(document.getElementById("buscaPrecosReferencia")?.value || "");
+  const { processo, setor } = getProcessoValorDeChave(processoValorAtivo);
+
+  let precos = [...state.precosReferencia];
+
+  if (processoValorAtivo && processo && setor) {
+    precos = precos.filter(preco => {
+      return limparTexto(preco.processo || "").toUpperCase() === processo && preco.setor === setor;
+    });
+  }
+
+  if (busca) {
+    precos = precos.filter(preco => {
+      const texto = normalizarTexto(`${preco.referencia} ${preco.processo} ${preco.setorLabel} ${preco.valor}`);
+      return texto.includes(busca);
+    });
+  }
+
+  precos = precos.sort((a, b) => {
+    const procCompare = String(a.processo || "").localeCompare(String(b.processo || ""), "pt-BR", { numeric: true });
+    if (procCompare !== 0) return procCompare;
+    const setorCompare = String(getLabelSetorPagamento(a.setor)).localeCompare(String(getLabelSetorPagamento(b.setor)), "pt-BR", { numeric: true });
+    if (setorCompare !== 0) return setorCompare;
+    return String(a.referencia || "").localeCompare(String(b.referencia || ""), "pt-BR", { numeric: true });
   });
 
+  const total = precos.length;
+  const ativos = precos.filter(preco => preco.ativo !== false).length;
+  const inativos = precos.filter(preco => preco.ativo === false).length;
+
+  const setText = (id, valor) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = valor;
+  };
+
+  setText("valorProcessoSelecionadoLabel", processo ? `${processo} / ${getLabelSetorPagamento(setor)}` : "Todos");
+  setText("valorTotalReferencias", Number(total).toLocaleString("pt-BR"));
+  setText("valorTotalAtivos", Number(ativos).toLocaleString("pt-BR"));
+  setText("valorTotalInativos", Number(inativos).toLocaleString("pt-BR"));
+
+  const titulo = document.getElementById("tituloTabelaValores");
+  if (titulo) titulo.textContent = processo ? `Valores: ${processo}` : "Todos os valores cadastrados";
+
   if (!precos.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhum preço cadastrado.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhum valor cadastrado para esse processo.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = precos.map(preco => `
     <tr>
-      <td><strong>${escapeHtml(preco.referencia || "-")}</strong></td>
       <td><strong>${escapeHtml(preco.processo || "-")}</strong></td>
       <td>${escapeHtml(getLabelSetorPagamento(preco.setor))}</td>
+      <td><strong>${escapeHtml(preco.referencia || "-")}</strong></td>
       <td><strong>${escapeHtml(formatarMoedaBR(preco.valor))}</strong></td>
       <td>
         <span class="status-dot ${preco.ativo !== false ? "active" : "inactive"}">
@@ -4268,24 +4545,151 @@ function renderPrecosReferencia() {
       </td>
       <td>
         <button class="btn btn-sm" onclick="editarPrecoReferencia('${preco.id}')">Editar</button>
-        <button class="btn btn-sm ${preco.ativo !== false ? "btn-warning" : "btn-success"}" onclick="alternarPrecoReferencia('${preco.id}')">
-          ${preco.ativo !== false ? "Inativar" : "Ativar"}
-        </button>
+        <button class="btn btn-sm" onclick="alternarPrecoReferencia('${preco.id}')">${preco.ativo !== false ? "Inativar" : "Ativar"}</button>
         <button class="btn btn-sm btn-danger" onclick="excluirPrecoReferencia('${preco.id}')">Excluir</button>
       </td>
     </tr>
   `).join("");
 }
 
+function parseValorMonetario(texto) {
+  const limpo = String(texto || "")
+    .trim()
+    .replace(/[R$\s]/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+
+  const valor = Number(limpo);
+  return Number.isFinite(valor) ? valor : 0;
+}
+
+function quebrarLinhaImportacaoValor(linha) {
+  if (linha.includes("\t")) return linha.split("\t").map(item => item.trim()).filter(Boolean);
+  if (linha.includes(";")) return linha.split(";").map(item => item.trim()).filter(Boolean);
+
+  const partesVirgula = linha.split(",").map(item => item.trim()).filter(Boolean);
+  if (partesVirgula.length > 2) return partesVirgula;
+
+  return linha.trim().split(/\s{2,}/).map(item => item.trim()).filter(Boolean);
+}
+
+async function importarValoresColados() {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode importar valores.");
+    return;
+  }
+
+  const texto = document.getElementById("valoresImportacaoTexto")?.value || "";
+  const { processo: processoAtivo, setor: setorAtivo } = getProcessoValorDeChave(processoValorAtivo);
+
+  if (!texto.trim()) {
+    toast("Cole os dados da planilha antes de importar.");
+    return;
+  }
+
+  const linhas = texto.split(/\r?\n/).map(linha => linha.trim()).filter(Boolean);
+  const registros = [];
+
+  linhas.forEach(linha => {
+    const colunas = quebrarLinhaImportacaoValor(linha);
+    const primeira = normalizarTexto(colunas[0] || "");
+
+    if (!colunas.length || primeira.includes("referencia") || primeira.includes("referência")) return;
+
+    let referencia = "";
+    let processo = processoAtivo;
+    let setor = setorAtivo;
+    let valor = 0;
+
+    if (colunas.length >= 4) {
+      referencia = normalizarReferencia(colunas[0]);
+      processo = limparTexto(colunas[1]).toUpperCase();
+      setor = normalizarTexto(colunas[2]).includes("al") ? "alca" : normalizarTexto(colunas[2]).includes("renda") ? "renda" : "bojo";
+      valor = parseValorMonetario(colunas[3]);
+    } else if (colunas.length >= 3 && !processoAtivo) {
+      referencia = normalizarReferencia(colunas[0]);
+      processo = limparTexto(colunas[1]).toUpperCase();
+      setor = setor || "bojo";
+      valor = parseValorMonetario(colunas[2]);
+    } else {
+      referencia = normalizarReferencia(colunas[0]);
+      valor = parseValorMonetario(colunas[colunas.length - 1]);
+    }
+
+    if (referencia && processo && setor && valor > 0) {
+      registros.push({ referencia, processo, setor, valor });
+    }
+  });
+
+  if (!registros.length) {
+    toast("Não encontrei linhas válidas. Use Referência + Valor ou Referência + Processo + Valor.");
+    return;
+  }
+
+  try {
+    let batch = writeBatch(db);
+    let contador = 0;
+    let total = 0;
+
+    for (const item of registros) {
+      const id = docIdSeguro(`${item.referencia}-${item.setor}-${item.processo}`);
+      batch.set(doc(db, "precosReferencia", id), {
+        referencia: item.referencia,
+        processo: item.processo,
+        setor: item.setor,
+        setorLabel: getLabelSetorPagamento(item.setor),
+        valor: item.valor,
+        ativo: true,
+        atualizadoPor: state.currentUser.uid,
+        atualizadoEm: serverTimestamp(),
+        criadoPor: state.currentUser.uid,
+        criadoEm: serverTimestamp()
+      }, { merge: true });
+
+      contador++;
+      total++;
+
+      if (contador === 450) {
+        await batch.commit();
+        batch = writeBatch(db);
+        contador = 0;
+      }
+    }
+
+    if (contador > 0) {
+      await batch.commit();
+    }
+
+    const primeiro = registros[0];
+    processoValorAtivo = chaveProcessoValor(primeiro.processo, primeiro.setor);
+
+    await registrarLog("precos_referencia_importados", "precosReferencia", "importacao", `${total} valores importados/atualizados`);
+    document.getElementById("valoresImportacaoTexto").value = "";
+    preencherProcessosValores();
+    renderProcessosValores();
+    renderPrecosReferencia();
+    toast(`${total} valores importados/atualizados.`);
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao importar valores.");
+  }
+}
+
+
 function editarPrecoReferencia(id) {
   const preco = getPrecoReferencia(id);
   if (!preco) return;
+
+  abrirGerenciarValores();
+  processoValorAtivo = chaveProcessoValor(preco.processo, preco.setor);
+  preencherProcessosValores();
 
   document.getElementById("precoReferenciaId").value = preco.id;
   document.getElementById("precoReferenciaRef").value = preco.referencia || "";
   document.getElementById("precoReferenciaProcesso").value = preco.processo || "";
   document.getElementById("precoReferenciaSetor").value = preco.setor || "";
   document.getElementById("precoReferenciaValor").value = Number(preco.valor || 0).toFixed(2);
+  document.getElementById("precoReferenciaRef")?.focus();
 }
 
 async function alternarPrecoReferencia(id) {
@@ -6464,6 +6868,7 @@ window.editarEntregaPagamento = editarEntregaPagamento;
 
 
 
+window.selecionarProcessoValor = selecionarProcessoValor;
 window.editarPrecoReferencia = editarPrecoReferencia;
 window.alternarPrecoReferencia = alternarPrecoReferencia;
 window.excluirPrecoReferencia = excluirPrecoReferencia;

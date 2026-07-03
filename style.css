@@ -3242,3 +3242,166 @@ table td {
     grid-template-columns: repeat(2, minmax(140px, 1fr));
   }
 }
+
+
+/* Gerenciar valores por processo */
+.pagamentos-relatorio-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.valores-manager-panel {
+  margin-top: 16px;
+}
+
+.valores-manager-panel.hidden {
+  display: none !important;
+}
+
+.valores-workspace {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.valores-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.valores-toolbox,
+.valores-novo-processo,
+.importar-valores-box {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #dbe4f0;
+  border-radius: 18px;
+  background: #f8fafc;
+  padding: 14px;
+}
+
+.valores-toolbox label,
+.valores-novo-processo label,
+.importar-valores-box label {
+  display: grid;
+  gap: 6px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.valores-toolbox input,
+.valores-toolbox select,
+.valores-form input,
+.valores-form select,
+.importar-valores-box textarea {
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  min-height: 40px;
+  padding: 9px 11px;
+  background: #ffffff;
+  font-weight: 700;
+}
+
+.importar-valores-box textarea {
+  min-height: 120px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+}
+
+.processos-valores-list {
+  display: grid;
+  gap: 8px;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.processo-valor-item {
+  text-align: left;
+  border: 1px solid #dbe4f0;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 12px;
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  color: #0f172a;
+}
+
+.processo-valor-item strong {
+  font-size: 13px;
+}
+
+.processo-valor-item span,
+.processo-valor-item small {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.processo-valor-item.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 10px 26px rgba(37, 99, 235, 0.13);
+}
+
+.empty-card {
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  padding: 14px;
+  color: #64748b;
+  font-weight: 800;
+  background: #ffffff;
+}
+
+.valores-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.valores-cards {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(3, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.valores-form {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(190px, 1.2fr) minmax(120px, .8fr) minmax(130px, .8fr) auto;
+  gap: 12px;
+  align-items: end;
+  border: 1px solid #dbe4f0;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.precos-referencia-table {
+  min-width: 980px;
+}
+
+.precos-referencia-table th,
+.precos-referencia-table td {
+  white-space: nowrap;
+}
+
+.precos-referencia-table td:nth-child(4) {
+  text-align: right;
+}
+
+@media (max-width: 1100px) {
+  .valores-workspace,
+  .valores-form,
+  .valores-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .processos-valores-list {
+    max-height: none;
+  }
+}

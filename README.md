@@ -1958,3 +1958,62 @@ Total final = Subtotal - Desconto por defeito
 ```
 
 A parte que foi corrigida preserva o restante do arquivo `app.js`, evitando a perda de funções do sistema.
+
+
+## Atualização: Gerenciar valores por processo
+
+A área **Pagamentos** agora tem o botão:
+
+```txt
+Gerenciar valores
+```
+
+Ao abrir, o sistema mostra uma tela própria para organizar a tabela de preços por processo.
+
+A lógica ficou:
+
+```txt
+Processo
+  └── Referência + Valor
+```
+
+Exemplo:
+
+```txt
+ENCAPAR BOJO
+  - Ref. 2082 | R$ 0,39
+  - Ref. 622  | R$ 1,98
+  - Ref. 170  | R$ 0,50
+```
+
+Ferramentas adicionadas:
+
+```txt
+- Escolher processo ativo
+- Criar/usar novo processo
+- Filtrar processos
+- Cadastrar valor manual
+- Editar valor
+- Ativar/inativar valor
+- Excluir valor
+- Buscar referência/processo/valor
+- Importar valores colados da planilha
+```
+
+Importação mais simples:
+
+```txt
+1. Abra sua planilha
+2. Escolha o processo no sistema
+3. Copie as colunas Referência e Valor
+4. Cole na área de importação
+5. Clique em Importar valores colados
+```
+
+O sistema atualiza os valores existentes pela chave:
+
+```txt
+Referência + Setor + Processo
+```
+
+Assim ele evita duplicar valores.
