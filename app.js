@@ -371,11 +371,11 @@ function mostrarSistema() {
   document.getElementById("appShell").classList.remove("hidden");
 
   document.getElementById("userName").textContent = state.perfil.nome || state.currentUser.email;
-  document.getElementById("userRole").textContent = ehAdmin() ? "Admin" : "Usuário comum";
+  document.getElementById("userRole").textContent = ehAdmin() ? "Admin" : "Acesso personalizado";
 
   aplicarEstadoSidebar(sidebarEstaRecolhida());
   aplicarPermissoesTela();
-  abrirPagina("dashboard");
+  abrirPagina(getPrimeiraPaginaPermitida());
 }
 
 function limparListeners() {
@@ -504,15 +504,48 @@ function iniciarListenersFirestore() {
 function aplicarPermissoesTela() {
   const admin = ehAdmin();
 
-  document.querySelectorAll(".admin-only, .admin-only-block, .admin-only-cell").forEach(el => {
+  document.querySelectorAll(".nav-btn").forEach(btn => {
+    const page = btn.dataset.page;
+    btn.classList.toggle("hidden", !podeAcessarTela(page));
+  });
+
+  document.querySelectorAll(".admin-only-block, .admin-only-cell").forEach(el => {
     el.classList.toggle("hidden", !admin);
   });
 
-  if (!admin) {
-    const paginaAtiva = document.querySelector(".page.active")?.id;
-    if (paginaAtiva === "usuarios" || paginaAtiva === "backup" || paginaAtiva === "logs" || paginaAtiva === "faccoes" || paginaAtiva === "pagamentos") {
-      abrirPagina("dashboard");
-    }
+  const btnValores = document.getElementById("btnToggleGerenciarValores");
+  if (btnValores) btnValores.classList.toggle("hidden", !podeUsarRecurso("gerenciarValores"));
+
+  const painelValores = document.getElementById("painelGerenciarValores");
+  if (painelValores && !podeUsarRecurso("gerenciarValores")) {
+    painelValores.classList.add("hidden");
+  }
+
+  const btnMarcarPagos = document.getElementById("btnMarcarPagamentosFiltrados");
+  if (btnMarcarPagos) btnMarcarPagos.classList.toggle("hidden", !podeUsarRecurso("marcarPagamentos"));
+
+  const btnGerenciarFaccoes = document.getElementById("btnToggleGerenciarFaccoes");
+  if (btnGerenciarFaccoes) btnGerenciarFaccoes.classList.toggle("hidden", !podeUsarRecurso("gerenciarFaccoes"));
+
+  const painelFaccoes = document.getElementById("painelGerenciarFaccoes");
+  if (painelFaccoes && !podeUsarRecurso("gerenciarFaccoes")) {
+    painelFaccoes.classList.add("hidden");
+  }
+
+  const btnGerenciarCelulas = document.getElementById("btnToggleGerenciarCelulas");
+  if (btnGerenciarCelulas) btnGerenciarCelulas.classList.toggle("hidden", !podeUsarRecurso("gerenciarCelulas"));
+
+  const painelCelulas = document.getElementById("painelGerenciarCelulas");
+  if (painelCelulas && !podeUsarRecurso("gerenciarCelulas")) {
+    painelCelulas.classList.add("hidden");
+  }
+
+  atualizarBotoesManejoSetor();
+
+  const paginaAtiva = document.querySelector(".page.active")?.id;
+
+  if (paginaAtiva && !podeAcessarTela(paginaAtiva)) {
+    abrirPagina(getPrimeiraPaginaPermitida());
   }
 }
 
@@ -523,8 +556,8 @@ function ehAdmin() {
 function configurarNavegacao() {
   document.querySelectorAll(".nav-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      if ((btn.dataset.page === "usuarios" || btn.dataset.page === "backup" || btn.dataset.page === "logs" || btn.dataset.page === "faccoes" || btn.dataset.page === "pagamentos" || btn.dataset.page === "celulas") && !ehAdmin()) {
-        toast("Apenas admin acessa esta área.");
+      if (!podeAcessarTela(btn.dataset.page)) {
+        toast("Seu usuário não tem acesso a esta tela.");
         return;
       }
 
@@ -534,6 +567,11 @@ function configurarNavegacao() {
 }
 
 function abrirPagina(page) {
+  if (!podeAcessarTela(page)) {
+    toast("Seu usuário não tem acesso a esta tela.");
+    page = getPrimeiraPaginaPermitida();
+  }
+
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
 
@@ -543,6 +581,11 @@ function abrirPagina(page) {
   if (pageInfo[page]) {
     document.getElementById("pageTitle").textContent = pageInfo[page].title;
     document.getElementById("pageSubtitle").textContent = pageInfo[page].subtitle;
+  }
+
+  if (page === "manejo") {
+    atualizarBotoesManejoSetor();
+    atualizarManejoComSoma();
   }
 }
 
@@ -997,6 +1040,145 @@ async function excluirOrdem(id) {
 
 
 
+
+const TELAS_PERMISSAO = {
+  dashboard: "Dashboard",
+  produtos: "Produtos / Referências",
+  ordens: "Ordens de Produção",
+  manejo: "Manejo",
+  processos: "Processos",
+  faccoes: "Facções",
+  celulas: "Células",
+  rastreamento: "Rastreamento",
+  pagamentos: "Pagamentos",
+  relatorios: "Relatórios"
+};
+
+const PAGINAS_SOMENTE_ADMIN = ["usuarios", "logs", "backup"];
+
+const MANEJOS_PERMISSAO = {
+  sutia: "Manejo Sutiã",
+  calcinha: "Manejo Calcinha"
+};
+
+const RECURSOS_PERMISSAO = {
+  gerenciarValores: "Gerenciar valores",
+  marcarPagamentos: "Marcar pagamentos como pagos",
+  gerenciarFaccoes: "Gerenciar facções",
+  gerenciarCelulas: "Gerenciar células"
+};
+
+function getPermissoesPadrao(tipo = "usuario") {
+  if (tipo === "admin") {
+    return {
+      telas: Object.fromEntries(Object.keys(TELAS_PERMISSAO).map(chave => [chave, true])),
+      manejo: Object.fromEntries(Object.keys(MANEJOS_PERMISSAO).map(chave => [chave, true])),
+      recursos: Object.fromEntries(Object.keys(RECURSOS_PERMISSAO).map(chave => [chave, true]))
+    };
+  }
+
+  return {
+    telas: {
+      dashboard: true,
+      produtos: true,
+      ordens: true,
+      manejo: true,
+      processos: true,
+      faccoes: false,
+      celulas: false,
+      rastreamento: true,
+      pagamentos: false,
+      relatorios: true
+    },
+    manejo: {
+      sutia: true,
+      calcinha: true
+    },
+    recursos: {
+      gerenciarValores: false,
+      marcarPagamentos: false,
+      gerenciarFaccoes: false,
+      gerenciarCelulas: false
+    }
+  };
+}
+
+function getPermissoesUsuario(usuario = state.perfil) {
+  const base = getPermissoesPadrao(usuario?.tipo || "usuario");
+
+  if (usuario?.tipo === "admin") {
+    return base;
+  }
+
+  const salvas = usuario?.permissoes || {};
+
+  return {
+    telas: {
+      ...base.telas,
+      ...(salvas.telas || {})
+    },
+    manejo: {
+      ...base.manejo,
+      ...(salvas.manejo || {})
+    },
+    recursos: {
+      ...base.recursos,
+      ...(salvas.recursos || {})
+    }
+  };
+}
+
+function podeAcessarTela(page, usuario = state.perfil) {
+  if (!page) return false;
+  if (usuario?.tipo === "admin") return true;
+  if (PAGINAS_SOMENTE_ADMIN.includes(page)) return false;
+  if (page === "dashboard") return true;
+
+  const permissoes = getPermissoesUsuario(usuario);
+  return Boolean(permissoes.telas?.[page]);
+}
+
+function podeUsarRecurso(recurso, usuario = state.perfil) {
+  if (usuario?.tipo === "admin") return true;
+
+  const permissoes = getPermissoesUsuario(usuario);
+  return Boolean(permissoes.recursos?.[recurso]);
+}
+
+function podeVerManejo(tipo, usuario = state.perfil) {
+  if (usuario?.tipo === "admin") return true;
+
+  const permissoes = getPermissoesUsuario(usuario);
+  return Boolean(permissoes.telas?.manejo && permissoes.manejo?.[tipo]);
+}
+
+function getManejosPermitidos(usuario = state.perfil) {
+  return Object.keys(MANEJOS_PERMISSAO).filter(tipo => podeVerManejo(tipo, usuario));
+}
+
+function getPrimeiraPaginaPermitida(usuario = state.perfil) {
+  const ordem = ["dashboard", "manejo", "processos", "rastreamento", "pagamentos", "faccoes", "celulas", "produtos", "ordens", "relatorios"];
+
+  return ordem.find(page => podeAcessarTela(page, usuario)) || "dashboard";
+}
+
+function resumoPermissoesUsuario(usuario) {
+  if (usuario?.tipo === "admin") return "Acesso total";
+
+  const permissoes = getPermissoesUsuario(usuario);
+  const telas = Object.entries(permissoes.telas || {})
+    .filter(([, permitido]) => permitido)
+    .map(([chave]) => TELAS_PERMISSAO[chave])
+    .filter(Boolean);
+
+  const manejos = Object.entries(permissoes.manejo || {})
+    .filter(([, permitido]) => permitido)
+    .map(([chave]) => MANEJOS_PERMISSAO[chave])
+    .filter(Boolean);
+
+  return [...telas.slice(0, 4), ...manejos].join(", ") || "Sem acesso definido";
+}
+
 const manejoSetoresInfo = {
   sutia: {
     label: "Sutiã",
@@ -1042,14 +1224,23 @@ function ordemPertenceAoSetorManejo(op, setor = getManejoSetorAtual()) {
 }
 
 function getOrdensDoSetorManejo(setor = getManejoSetorAtual()) {
+  if (!podeVerManejo(setor)) return [];
   return [...state.ordens].filter(op => ordemPertenceAoSetorManejo(op, setor));
 }
 
 function atualizarBotoesManejoSetor() {
-  const setorAtual = getManejoSetorAtual();
+  const permitidos = getManejosPermitidos();
+  let setorAtual = getManejoSetorAtual();
+
+  if (!permitidos.includes(setorAtual)) {
+    setorAtual = permitidos[0] || "sutia";
+    state.manejoSetorAtual = setorAtual;
+  }
 
   document.querySelectorAll(".manejo-setor-btn").forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.setor === setorAtual);
+    const permitido = podeVerManejo(btn.dataset.setor);
+    btn.classList.toggle("hidden", !permitido);
+    btn.classList.toggle("active", permitido && btn.dataset.setor === setorAtual);
   });
 
   const setText = (id, valor) => {
@@ -1066,6 +1257,11 @@ function atualizarBotoesManejoSetor() {
 
 function selecionarManejoSetor(setor) {
   if (!manejoSetoresInfo[setor]) return;
+
+  if (!podeVerManejo(setor)) {
+    toast("Seu usuário não tem acesso a este manejo.");
+    return;
+  }
 
   state.manejoSetorAtual = setor;
   limparFiltrosColunasManejo();
@@ -1584,6 +1780,13 @@ function renderManejoInline() {
   atualizarBotoesManejoSetor();
 
   const setor = getManejoSetorAtual();
+
+  if (!podeVerManejo(setor)) {
+    tbody.innerHTML = `<tr><td colspan="13" class="empty">Seu usuário não tem acesso a este manejo.</td></tr>`;
+    renderResumoSomasManejo([]);
+    return;
+  }
+
   const ordens = filtrarOrdensManejoPorColunas();
 
   renderResumoSomasManejo(ordens);
@@ -4346,6 +4549,11 @@ function aplicarProcessoValorSelecionado(chave) {
 }
 
 function abrirGerenciarValores() {
+  if (!podeUsarRecurso("gerenciarValores")) {
+    toast("Seu usuário não tem permissão para gerenciar valores.");
+    return;
+  }
+
   const painel = document.getElementById("painelGerenciarValores");
   const botao = document.getElementById("btnToggleGerenciarValores");
 
@@ -4461,8 +4669,8 @@ function limparFormPrecoReferencia() {
 async function salvarPrecoReferencia(event) {
   event.preventDefault();
 
-  if (!ehAdmin()) {
-    toast("Apenas admin pode salvar tabela de preços.");
+  if (!podeUsarRecurso("gerenciarValores")) {
+    toast("Seu usuário não tem permissão para gerenciar valores.");
     return;
   }
 
@@ -4721,8 +4929,8 @@ function quebrarLinhaImportacaoValor(linha) {
 }
 
 async function importarValoresColados() {
-  if (!ehAdmin()) {
-    toast("Apenas admin pode importar valores.");
+  if (!podeUsarRecurso("gerenciarValores")) {
+    toast("Seu usuário não tem permissão para importar valores.");
     return;
   }
 
@@ -4844,8 +5052,8 @@ function editarPrecoReferencia(id) {
 }
 
 async function alternarPrecoReferencia(id) {
-  if (!ehAdmin()) {
-    toast("Apenas admin pode alterar preços.");
+  if (!podeUsarRecurso("gerenciarValores")) {
+    toast("Seu usuário não tem permissão para alterar valores.");
     return;
   }
 
@@ -4870,8 +5078,8 @@ async function alternarPrecoReferencia(id) {
 }
 
 async function excluirPrecoReferencia(id) {
-  if (!ehAdmin()) {
-    toast("Apenas admin pode excluir preços.");
+  if (!podeUsarRecurso("gerenciarValores")) {
+    toast("Seu usuário não tem permissão para excluir valores.");
     return;
   }
 
@@ -5698,56 +5906,72 @@ function renderRelatorio() {
 }
 
 function configurarUsuarios() {
-  document.getElementById("formUsuario").addEventListener("submit", async event => {
-    event.preventDefault();
+  const formUsuario = document.getElementById("formUsuario");
 
-    if (!ehAdmin()) {
-      toast("Apenas admin pode criar usuários.");
-      return;
-    }
+  if (formUsuario) {
+    formUsuario.addEventListener("submit", async event => {
+      event.preventDefault();
 
-    const nome = document.getElementById("usuarioNome").value.trim();
-    const email = document.getElementById("usuarioEmail").value.trim();
-    const senha = document.getElementById("usuarioSenha").value;
-    const tipo = document.getElementById("usuarioTipo").value;
+      if (!ehAdmin()) {
+        toast("Apenas admin pode criar usuários.");
+        return;
+      }
 
-    if (!nome || !email || !senha || senha.length < 6) {
-      toast("Preencha nome, e-mail e senha com pelo menos 6 caracteres.");
-      return;
-    }
+      const nome = document.getElementById("usuarioNome").value.trim();
+      const email = document.getElementById("usuarioEmail").value.trim();
+      const senha = document.getElementById("usuarioSenha").value;
+      const tipo = document.getElementById("usuarioTipo").value;
 
-    try {
-      const cred = await createUserWithEmailAndPassword(secondaryAuth, email, senha);
+      if (!nome || !email || !senha || senha.length < 6) {
+        toast("Preencha nome, e-mail e senha com pelo menos 6 caracteres.");
+        return;
+      }
 
-      await setDoc(doc(db, "usuarios", cred.user.uid), {
-        nome,
-        email,
-        tipo,
-        ativo: true,
-        criadoPor: state.currentUser.uid,
-        criadoEm: serverTimestamp(),
-        atualizadoEm: serverTimestamp()
-      });
+      try {
+        const cred = await createUserWithEmailAndPassword(secondaryAuth, email, senha);
 
-      await registrarLog("usuario_criado", "usuario", cred.user.uid, `${nome} | ${email} | ${tipo}`);
-      await signOut(secondaryAuth);
+        await setDoc(doc(db, "usuarios", cred.user.uid), {
+          nome,
+          email,
+          tipo,
+          ativo: true,
+          permissoes: getPermissoesPadrao(tipo),
+          criadoPor: state.currentUser.uid,
+          criadoEm: serverTimestamp(),
+          atualizadoEm: serverTimestamp()
+        });
 
-      document.getElementById("formUsuario").reset();
-      document.getElementById("usuarioTipo").value = "usuario";
+        await registrarLog("usuario_criado", "usuario", cred.user.uid, `${nome} | ${email} | ${tipo}`);
+        await signOut(secondaryAuth);
 
-      toast("Usuário criado com sucesso.");
-    } catch (error) {
-      console.error(error);
-      toast("Erro ao criar usuário. Confira se o e-mail já existe.");
-    }
-  });
+        document.getElementById("formUsuario").reset();
+        document.getElementById("usuarioTipo").value = "usuario";
+
+        toast("Usuário criado. Agora clique em Gerenciar permissões para ajustar o acesso.");
+      } catch (error) {
+        console.error(error);
+        toast("Erro ao criar usuário. Confira se o e-mail já existe.");
+      }
+    });
+  }
+
+  const formPermissoes = document.getElementById("formPermissoesUsuario");
+  if (formPermissoes) {
+    formPermissoes.addEventListener("submit", salvarPermissoesUsuario);
+  }
+
+  const cancelarPermissoes = document.getElementById("btnCancelarPermissoesUsuario");
+  if (cancelarPermissoes) {
+    cancelarPermissoes.addEventListener("click", fecharPermissoesUsuario);
+  }
 }
 
 function renderUsuarios() {
   const tbody = document.getElementById("listaUsuarios");
+  if (!tbody) return;
 
   if (!state.usuarios.length) {
-    tbody.innerHTML = `<tr><td colspan="5" class="empty">Nenhum usuário encontrado.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhum usuário encontrado.</td></tr>`;
     return;
   }
 
@@ -5756,18 +5980,143 @@ function renderUsuarios() {
       <td><strong>${escapeHtml(usuario.nome || "-")}</strong></td>
       <td>${escapeHtml(usuario.email || "-")}</td>
       <td>${usuario.tipo === "admin" ? "Admin" : "Usuário comum"}</td>
+      <td class="usuario-acessos">${escapeHtml(resumoPermissoesUsuario(usuario))}</td>
       <td>
         <span class="status-dot ${usuario.ativo ? "active" : "inactive"}">
           ${usuario.ativo ? "Ativo" : "Inativo"}
         </span>
       </td>
       <td>
+        <button class="btn btn-sm" onclick="abrirPermissoesUsuario('${usuario.uid}')">Gerenciar permissões</button>
         <button class="btn btn-sm ${usuario.ativo ? "btn-warning" : "btn-success"}" onclick="alternarUsuario('${usuario.uid}', ${usuario.ativo ? "false" : "true"})">
           ${usuario.ativo ? "Desativar" : "Ativar"}
         </button>
       </td>
     </tr>
   `).join("");
+}
+
+function abrirPermissoesUsuario(uid) {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode gerenciar permissões.");
+    return;
+  }
+
+  const usuario = state.usuarios.find(item => item.uid === uid);
+  if (!usuario) return;
+
+  const painel = document.getElementById("formPermissoesUsuario");
+  const resumo = document.getElementById("permissaoUsuarioResumo");
+  const uidInput = document.getElementById("permissaoUsuarioUid");
+
+  if (uidInput) uidInput.value = uid;
+
+  if (resumo) {
+    resumo.innerHTML = `<strong>${escapeHtml(usuario.nome || "-")}</strong><br><small>${escapeHtml(usuario.email || "-")}</small>`;
+  }
+
+  const permissoes = getPermissoesUsuario(usuario);
+
+  document.querySelectorAll("[data-permissao-tela]").forEach(input => {
+    const tela = input.dataset.permissaoTela;
+    input.checked = Boolean(permissoes.telas?.[tela]);
+    input.disabled = usuario.tipo === "admin";
+  });
+
+  document.querySelectorAll("[data-permissao-manejo]").forEach(input => {
+    const manejo = input.dataset.permissaoManejo;
+    input.checked = Boolean(permissoes.manejo?.[manejo]);
+    input.disabled = usuario.tipo === "admin";
+  });
+
+  document.querySelectorAll("[data-permissao-recurso]").forEach(input => {
+    const recurso = input.dataset.permissaoRecurso;
+    input.checked = Boolean(permissoes.recursos?.[recurso]);
+    input.disabled = usuario.tipo === "admin";
+  });
+
+  painel?.classList.remove("hidden");
+  painel?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  if (usuario.tipo === "admin") {
+    toast("Admin já tem acesso total. As permissões ficam travadas.");
+  }
+}
+
+function fecharPermissoesUsuario() {
+  const form = document.getElementById("formPermissoesUsuario");
+  if (form) form.classList.add("hidden");
+
+  const uidInput = document.getElementById("permissaoUsuarioUid");
+  if (uidInput) uidInput.value = "";
+}
+
+function coletarPermissoesUsuarioForm() {
+  const telas = {};
+  const manejo = {};
+  const recursos = {};
+
+  document.querySelectorAll("[data-permissao-tela]").forEach(input => {
+    telas[input.dataset.permissaoTela] = Boolean(input.checked);
+  });
+
+  document.querySelectorAll("[data-permissao-manejo]").forEach(input => {
+    manejo[input.dataset.permissaoManejo] = Boolean(input.checked);
+  });
+
+  document.querySelectorAll("[data-permissao-recurso]").forEach(input => {
+    recursos[input.dataset.permissaoRecurso] = Boolean(input.checked);
+  });
+
+  // Dashboard fica sempre liberado para evitar usuário sem tela inicial.
+  telas.dashboard = true;
+
+  return { telas, manejo, recursos };
+}
+
+async function salvarPermissoesUsuario(event) {
+  event.preventDefault();
+
+  if (!ehAdmin()) {
+    toast("Apenas admin pode salvar permissões.");
+    return;
+  }
+
+  const uid = document.getElementById("permissaoUsuarioUid")?.value || "";
+  const usuario = state.usuarios.find(item => item.uid === uid);
+
+  if (!usuario) {
+    toast("Selecione um usuário.");
+    return;
+  }
+
+  if (usuario.tipo === "admin") {
+    toast("Admin já tem acesso total.");
+    return;
+  }
+
+  const permissoes = coletarPermissoesUsuarioForm();
+
+  if (permissoes.telas.manejo && !permissoes.manejo.sutia && !permissoes.manejo.calcinha) {
+    toast("Para liberar Manejo, marque Sutiã ou Calcinha.");
+    return;
+  }
+
+  try {
+    await setDoc(doc(db, "usuarios", uid), {
+      permissoes,
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+
+    await registrarLog("usuario_permissoes_atualizadas", "usuario", uid, `${usuario.nome || uid} | ${resumoPermissoesUsuario({ ...usuario, permissoes })}`);
+
+    fecharPermissoesUsuario();
+    toast("Permissões salvas.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao salvar permissões.");
+  }
 }
 
 async function alternarUsuario(uid, novoStatus) {
@@ -6990,6 +7339,7 @@ window.editarProduto = editarProduto;
 window.excluirProduto = excluirProduto;
 window.editarOrdem = editarOrdem;
 window.excluirOrdem = excluirOrdem;
+window.abrirPermissoesUsuario = abrirPermissoesUsuario;
 window.alternarUsuario = alternarUsuario;
 window.iniciarCadastroProdutoPelaOrdem = iniciarCadastroProdutoPelaOrdem;
 window.conferirReferenciaPendente = conferirReferenciaPendente;

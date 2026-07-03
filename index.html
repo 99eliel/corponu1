@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-03-manejo-sutia-calcinha-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-03-manejo-sutia-calcinha-1" />
+  <meta name="app-version" content="2026-07-03-permissoes-usuarios-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-03-permissoes-usuarios-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -75,10 +75,10 @@
         <button class="nav-btn" data-page="ordens">Ordens de Produção</button>
         <button class="nav-btn" data-page="manejo">Manejo</button>
         <button class="nav-btn" data-page="processos">Processos</button>
-        <button class="nav-btn admin-only" data-page="faccoes">Facções</button>
-        <button class="nav-btn admin-only" data-page="celulas">Células</button>
+        <button class="nav-btn" data-page="faccoes">Facções</button>
+        <button class="nav-btn" data-page="celulas">Células</button>
         <button class="nav-btn" data-page="rastreamento">Rastreamento</button>
-        <button class="nav-btn admin-only" data-page="pagamentos">Pagamentos</button>
+        <button class="nav-btn" data-page="pagamentos">Pagamentos</button>
         <button class="nav-btn" data-page="relatorios">Relatórios</button>
         <button class="nav-btn admin-only" data-page="usuarios">Usuários</button>
         <button class="nav-btn admin-only" data-page="logs">Logs / Auditoria</button>
@@ -1082,7 +1082,7 @@
           </div>
         </div>
 
-        <div class="panel admin-only-block valores-manager-panel hidden" id="painelGerenciarValores">
+        <div class="panel valores-manager-panel hidden" id="painelGerenciarValores">
           <div class="panel-header">
             <div>
               <h3>Gerenciar valores por processo</h3>
@@ -1334,12 +1334,12 @@
       </section>
 
       <section id="usuarios" class="page">
-        <div class="grid-2">
+        <div class="usuarios-layout">
           <form class="panel form" id="formUsuario">
             <div class="panel-header">
               <div>
                 <h3>Cadastrar usuário</h3>
-                <p>Somente admin cria logins comuns.</p>
+                <p>Somente admin cria logins. Depois de criar, clique em Gerenciar permissões.</p>
               </div>
             </div>
 
@@ -1374,7 +1374,7 @@
             </div>
 
             <div class="notice small">
-              O usuário será criado no Firebase Authentication e também na coleção <strong>usuarios</strong>.
+              Usuário comum pode receber permissões por tela, setor de manejo e ferramenta. Admin vê tudo.
             </div>
           </form>
 
@@ -1382,17 +1382,18 @@
             <div class="panel-header">
               <div>
                 <h3>Usuários cadastrados</h3>
-                <p>Controle de acesso por tipo e status.</p>
+                <p>Controle acesso por tela, setor e função.</p>
               </div>
             </div>
 
             <div class="table-wrap">
-              <table>
+              <table class="usuarios-table">
                 <thead>
                   <tr>
                     <th>Nome</th>
                     <th>E-mail</th>
                     <th>Tipo</th>
+                    <th>Acessos</th>
                     <th>Status</th>
                     <th>Ações</th>
                   </tr>
@@ -1401,6 +1402,59 @@
               </table>
             </div>
           </div>
+
+          <form class="panel form permissoes-panel hidden" id="formPermissoesUsuario">
+            <input type="hidden" id="permissaoUsuarioUid" />
+
+            <div class="panel-header">
+              <div>
+                <h3>Gerenciar permissões</h3>
+                <p id="permissaoUsuarioResumo">Selecione um usuário para ajustar o acesso.</p>
+              </div>
+            </div>
+
+            <div class="permissoes-grid">
+              <div class="permissoes-group">
+                <h4>Telas que pode ver</h4>
+
+                <label><input type="checkbox" data-permissao-tela="dashboard" /> Dashboard</label>
+                <label><input type="checkbox" data-permissao-tela="produtos" /> Produtos / Referências</label>
+                <label><input type="checkbox" data-permissao-tela="ordens" /> Ordens de Produção</label>
+                <label><input type="checkbox" data-permissao-tela="manejo" /> Manejo</label>
+                <label><input type="checkbox" data-permissao-tela="processos" /> Processos</label>
+                <label><input type="checkbox" data-permissao-tela="faccoes" /> Facções</label>
+                <label><input type="checkbox" data-permissao-tela="celulas" /> Células</label>
+                <label><input type="checkbox" data-permissao-tela="rastreamento" /> Rastreamento</label>
+                <label><input type="checkbox" data-permissao-tela="pagamentos" /> Pagamentos</label>
+                <label><input type="checkbox" data-permissao-tela="relatorios" /> Relatórios</label>
+              </div>
+
+              <div class="permissoes-group">
+                <h4>Setores do manejo</h4>
+
+                <label><input type="checkbox" data-permissao-manejo="sutia" /> Manejo Sutiã</label>
+                <label><input type="checkbox" data-permissao-manejo="calcinha" /> Manejo Calcinha</label>
+
+                <div class="notice small">
+                  Exemplo: quem gerencia calcinha fica marcado só em <strong>Manejo Calcinha</strong>.
+                </div>
+              </div>
+
+              <div class="permissoes-group">
+                <h4>Ferramentas que pode usar</h4>
+
+                <label><input type="checkbox" data-permissao-recurso="gerenciarValores" /> Gerenciar valores</label>
+                <label><input type="checkbox" data-permissao-recurso="marcarPagamentos" /> Marcar pagamentos como pagos</label>
+                <label><input type="checkbox" data-permissao-recurso="gerenciarFaccoes" /> Gerenciar facções</label>
+                <label><input type="checkbox" data-permissao-recurso="gerenciarCelulas" /> Gerenciar células</label>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="btn btn-primary" type="submit">Salvar permissões</button>
+              <button class="btn" type="button" id="btnCancelarPermissoesUsuario">Cancelar</button>
+            </div>
+          </form>
         </div>
       </section>
 
@@ -1581,8 +1635,8 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="update.js?v=2026-07-03-manejo-sutia-calcinha-1"></script>
-  <script type="module" src="app.js?v=2026-07-03-manejo-sutia-calcinha-1"></script>
+  <script src="update.js?v=2026-07-03-permissoes-usuarios-1"></script>
+  <script type="module" src="app.js?v=2026-07-03-permissoes-usuarios-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">

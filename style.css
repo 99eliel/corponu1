@@ -3462,3 +3462,81 @@ table td {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Gestão de usuários com permissões */
+.usuarios-layout {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.permissoes-panel {
+  grid-column: 1 / -1;
+}
+
+.permissoes-panel.hidden {
+  display: none !important;
+}
+
+.permissoes-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1.1fr;
+  gap: 14px;
+}
+
+.permissoes-group {
+  border: 1px solid #dbe4f0;
+  border-radius: 18px;
+  background: #f8fafc;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.permissoes-group h4 {
+  margin: 0 0 4px;
+  color: #0f172a;
+}
+
+.permissoes-group label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.permissoes-group input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
+.usuarios-table {
+  min-width: 980px;
+}
+
+.usuario-acessos {
+  max-width: 360px;
+  white-space: normal !important;
+  color: #475569;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.nav-btn.hidden,
+.manejo-setor-btn.hidden,
+#btnToggleGerenciarValores.hidden,
+#btnMarcarPagamentosFiltrados.hidden,
+#btnToggleGerenciarFaccoes.hidden,
+#btnToggleGerenciarCelulas.hidden {
+  display: none !important;
+}
+
+@media (max-width: 1100px) {
+  .usuarios-layout,
+  .permissoes-grid {
+    grid-template-columns: 1fr;
+  }
+}

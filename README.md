@@ -2172,3 +2172,60 @@ Referência + Processo
 ```
 
 Assim os valores cadastrados por processo continuam funcionando mesmo com o Manejo dividido por Sutiã/Calcinha.
+
+
+## Atualização: Gestão de usuários por permissões
+
+A tela **Usuários** agora tem gerenciamento de acesso por usuário.
+
+O admin pode clicar em:
+
+```txt
+Gerenciar permissões
+```
+
+E marcar exatamente o que o usuário pode ver ou usar.
+
+Permissões por tela:
+
+```txt
+Dashboard
+Produtos / Referências
+Ordens de Produção
+Manejo
+Processos
+Facções
+Células
+Rastreamento
+Pagamentos
+Relatórios
+```
+
+Permissões por setor do manejo:
+
+```txt
+Manejo Sutiã
+Manejo Calcinha
+```
+
+Exemplo:
+
+```txt
+Usuário da Calcinha:
+- Manejo: marcado
+- Manejo Calcinha: marcado
+- Manejo Sutiã: desmarcado
+```
+
+Ferramentas separadas:
+
+```txt
+Gerenciar valores
+Marcar pagamentos como pagos
+Gerenciar facções
+Gerenciar células
+```
+
+Assim uma pessoa pode ver **Pagamentos**, mas não necessariamente pode **Gerenciar valores**.
+
+Atenção: isso controla o acesso visual e operacional dentro do sistema. Para segurança máxima, as regras do Firebase podem ser refinadas depois por tipo/permissão.
