@@ -2272,3 +2272,56 @@ Sobre excluir:
 A exclusão remove o documento do usuário na coleção usuarios.
 Se o login ainda existir no Firebase Authentication, ele não conseguirá entrar porque ficará sem perfil no sistema.
 ```
+
+
+## Atualização: otimização de leituras do Firebase
+
+Esta versão reduz leituras no Firestore carregando dados por demanda.
+
+Antes, ao abrir o sistema, várias coleções eram carregadas imediatamente:
+
+```txt
+faccoes
+celulas
+movimentacoesProducao
+precosReferencia
+entregasPagamento
+usuarios
+logsAlteracoes
+```
+
+Agora o sistema faz assim:
+
+```txt
+Ao abrir:
+- produtos
+- ordensProducao
+- faccoes/celulas pequenas para operação do manejo
+
+Só quando abrir a tela:
+- movimentações
+- pagamentos
+- valores
+- usuários
+- logs
+```
+
+Exemplos:
+
+```txt
+Pagamentos só carrega entregasPagamento quando entrar em Pagamentos.
+Usuários só carrega usuarios quando entrar em Usuários.
+Logs só carrega logsAlteracoes quando entrar em Logs.
+Valores só carrega precosReferencia quando entrar em Pagamentos/Gerenciar valores ou quando gerar pagamento.
+```
+
+Isso não zera as leituras, mas evita gastar leitura em telas que o usuário nem abriu.
+
+Próxima otimização recomendada para planilha gigante:
+
+```txt
+- carregar OPs por período
+- limitar resultados por tela
+- buscar relatórios por data/filtro
+- trocar algumas telas de tempo real por botão Procurar
+```

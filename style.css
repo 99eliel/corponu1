@@ -3591,3 +3591,14 @@ table td {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Otimização de leituras */
+.leitura-info {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  border-radius: 14px;
+  padding: 10px 12px;
+  color: #1e3a8a;
+  font-weight: 800;
+}

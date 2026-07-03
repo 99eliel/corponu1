@@ -65,6 +65,9 @@ const state = {
   pdfImportacaoPendente: [],
   relatorioAtual: "enfesto",
   manejoSetorAtual: "sutia",
+  dadosCarregados: {},
+  carregandoDados: {},
+  listenersPorChave: {},
   unsubscribers: []
 };
 
@@ -387,119 +390,249 @@ function limparListeners() {
     }
   });
 
+  Object.values(state.listenersPorChave || {}).forEach(unsub => {
+    try {
+      if (typeof unsub === "function") unsub();
+    } catch (error) {
+      console.warn(error);
+    }
+  });
+
   state.unsubscribers = [];
+  state.listenersPorChave = {};
+  state.dadosCarregados = {};
+  state.carregandoDados = {};
+}
+
+function registrarListenerChave(chave, unsubscribe) {
+  if (!chave || typeof unsubscribe !== "function") return;
+
+  if (state.listenersPorChave[chave]) {
+    try {
+      state.listenersPorChave[chave]();
+    } catch (error) {
+      console.warn(error);
+    }
+  }
+
+  state.listenersPorChave[chave] = unsubscribe;
+  state.unsubscribers.push(unsubscribe);
+}
+
+function marcarCarregado(chave) {
+  state.dadosCarregados[chave] = true;
+  state.carregandoDados[chave] = false;
 }
 
 function iniciarListenersFirestore() {
+  iniciarDadosEssenciais();
+}
+
+function iniciarDadosEssenciais() {
   const produtosQuery = query(collection(db, "produtos"), orderBy("referencia", "asc"));
   const ordensQuery = query(collection(db, "ordensProducao"), orderBy("criadoEm", "desc"));
-  // Manejo agora fica salvo dentro da própria OP em ordensProducao.manejo
 
-  state.unsubscribers.push(onSnapshot(produtosQuery, snapshot => {
+  registrarListenerChave("produtos", onSnapshot(produtosQuery, snapshot => {
     state.produtos = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    marcarCarregado("produtos");
     renderTudo();
   }, error => {
     console.error(error);
     toast("Erro ao carregar produtos. Verifique as permissões.");
   }));
 
-  state.unsubscribers.push(onSnapshot(ordensQuery, snapshot => {
+  registrarListenerChave("ordens", onSnapshot(ordensQuery, snapshot => {
     state.ordens = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    marcarCarregado("ordens");
     renderTudo();
   }, error => {
     console.error(error);
     toast("Erro ao carregar ordens. Verifique as permissões.");
   }));
 
+  // Dados pequenos/operacionais usados no Manejo para envio.
+  carregarFaccoesSeNecessario();
+  carregarCelulasSeNecessario();
+}
+
+function carregarFaccoesSeNecessario() {
+  if (state.dadosCarregados.faccoes || state.carregandoDados.faccoes || state.listenersPorChave.faccoes) return;
+  state.carregandoDados.faccoes = true;
 
   const faccoesQuery = query(collection(db, "faccoes"), orderBy("nome", "asc"));
 
-  state.unsubscribers.push(onSnapshot(faccoesQuery, snapshot => {
+  registrarListenerChave("faccoes", onSnapshot(faccoesQuery, snapshot => {
     state.faccoes = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    marcarCarregado("faccoes");
     renderFaccoes();
     renderFaccoesMovimentacoes();
     renderDatalistManejo();
-    renderPagamentos();
+    if (document.getElementById("pagamentos")?.classList.contains("active")) renderPagamentos();
   }, error => {
+    state.carregandoDados.faccoes = false;
     console.error(error);
     toast("Erro ao carregar facções. Verifique as permissões.");
   }));
+}
 
-
+function carregarCelulasSeNecessario() {
+  if (state.dadosCarregados.celulas || state.carregandoDados.celulas || state.listenersPorChave.celulas) return;
+  state.carregandoDados.celulas = true;
 
   const celulasQuery = query(collection(db, "celulas"), orderBy("nome", "asc"));
 
-  state.unsubscribers.push(onSnapshot(celulasQuery, snapshot => {
+  registrarListenerChave("celulas", onSnapshot(celulasQuery, snapshot => {
     state.celulas = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    marcarCarregado("celulas");
     renderCelulas();
     renderCelulasMovimentacoes();
-    renderRastreamento();
+    if (document.getElementById("rastreamento")?.classList.contains("active")) renderRastreamento();
   }, error => {
+    state.carregandoDados.celulas = false;
     console.error(error);
     toast("Erro ao carregar células. Verifique as permissões.");
   }));
+}
+
+function carregarMovimentacoesSeNecessario() {
+  if (state.dadosCarregados.movimentacoes || state.carregandoDados.movimentacoes || state.listenersPorChave.movimentacoes) return;
+  state.carregandoDados.movimentacoes = true;
 
   const movimentacoesQuery = query(collection(db, "movimentacoesProducao"), orderBy("criadoEm", "desc"));
 
-  state.unsubscribers.push(onSnapshot(movimentacoesQuery, snapshot => {
+  registrarListenerChave("movimentacoes", onSnapshot(movimentacoesQuery, snapshot => {
     state.movimentacoesProducao = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    marcarCarregado("movimentacoes");
     renderRastreamento();
     renderFaccoesMovimentacoes();
     renderCelulasMovimentacoes();
-    renderPagamentos();
+    if (document.getElementById("pagamentos")?.classList.contains("active")) renderPagamentos();
   }, error => {
+    state.carregandoDados.movimentacoes = false;
     console.error(error);
     toast("Erro ao carregar movimentações. Verifique as permissões.");
   }));
+}
 
+function carregarPrecosReferenciaSeNecessario() {
+  if (state.dadosCarregados.precosReferencia || state.carregandoDados.precosReferencia || state.listenersPorChave.precosReferencia) return;
+  state.carregandoDados.precosReferencia = true;
 
   const precosReferenciaQuery = query(collection(db, "precosReferencia"), orderBy("referencia", "asc"));
 
-  state.unsubscribers.push(onSnapshot(precosReferenciaQuery, snapshot => {
+  registrarListenerChave("precosReferencia", onSnapshot(precosReferenciaQuery, snapshot => {
     state.precosReferencia = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    marcarCarregado("precosReferencia");
     preencherProcessosValores();
     renderProcessosValores();
     renderPrecosReferencia();
-    renderManejoInline();
-    renderPagamentos();
+
+    if (document.getElementById("manejo")?.classList.contains("active")) renderManejoInline();
+    if (document.getElementById("pagamentos")?.classList.contains("active")) renderPagamentos();
   }, error => {
+    state.carregandoDados.precosReferencia = false;
     console.error(error);
     toast("Erro ao carregar tabela de preços. Verifique as permissões.");
   }));
+}
+
+function carregarEntregasPagamentoSeNecessario() {
+  if (!podeAcessarTela("pagamentos")) return;
+  if (state.dadosCarregados.entregasPagamento || state.carregandoDados.entregasPagamento || state.listenersPorChave.entregasPagamento) return;
+  state.carregandoDados.entregasPagamento = true;
 
   const entregasPagamentoQuery = query(collection(db, "entregasPagamento"), orderBy("dataEntrega", "desc"));
 
-  state.unsubscribers.push(onSnapshot(entregasPagamentoQuery, snapshot => {
+  registrarListenerChave("entregasPagamento", onSnapshot(entregasPagamentoQuery, snapshot => {
     state.entregasPagamento = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    marcarCarregado("entregasPagamento");
     renderPagamentos();
   }, error => {
+    state.carregandoDados.entregasPagamento = false;
     console.error(error);
     toast("Erro ao carregar entregas de pagamento. Verifique as permissões.");
   }));
+}
 
+function carregarUsuariosSeNecessario() {
+  if (!ehAdmin()) return;
+  if (state.dadosCarregados.usuarios || state.carregandoDados.usuarios || state.listenersPorChave.usuarios) return;
+  state.carregandoDados.usuarios = true;
 
-  if (ehAdmin()) {
-    const usuariosQuery = query(collection(db, "usuarios"), orderBy("nome", "asc"));
-    const logsQuery = query(collection(db, "logsAlteracoes"), orderBy("criadoEm", "desc"));
+  const usuariosQuery = query(collection(db, "usuarios"), orderBy("nome", "asc"));
 
-    state.unsubscribers.push(onSnapshot(usuariosQuery, snapshot => {
-      state.usuarios = snapshot.docs.map(item => ({ uid: item.id, ...item.data() }));
-      renderUsuarios();
-    }, error => {
-      console.error(error);
-      toast("Erro ao carregar usuários.");
-    }));
+  registrarListenerChave("usuarios", onSnapshot(usuariosQuery, snapshot => {
+    state.usuarios = snapshot.docs.map(item => ({ uid: item.id, ...item.data() }));
+    marcarCarregado("usuarios");
+    renderUsuarios();
+  }, error => {
+    state.carregandoDados.usuarios = false;
+    console.error(error);
+    toast("Erro ao carregar usuários.");
+  }));
+}
 
-    state.unsubscribers.push(onSnapshot(logsQuery, snapshot => {
-      state.logs = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
-      renderLogs();
-  renderFaccoes();
-    }, error => {
-      console.error(error);
-      toast("Erro ao carregar logs.");
-    }));
+function carregarLogsSeNecessario() {
+  if (!ehAdmin()) return;
+  if (state.dadosCarregados.logs || state.carregandoDados.logs || state.listenersPorChave.logs) return;
+  state.carregandoDados.logs = true;
+
+  const logsQuery = query(collection(db, "logsAlteracoes"), orderBy("criadoEm", "desc"));
+
+  registrarListenerChave("logs", onSnapshot(logsQuery, snapshot => {
+    state.logs = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    marcarCarregado("logs");
+    renderLogs();
+  }, error => {
+    state.carregandoDados.logs = false;
+    console.error(error);
+    toast("Erro ao carregar logs.");
+  }));
+}
+
+function carregarDadosDaPagina(page) {
+  if (page === "manejo") {
+    carregarPrecosReferenciaSeNecessario();
+    carregarMovimentacoesSeNecessario();
+    carregarFaccoesSeNecessario();
+    carregarCelulasSeNecessario();
+  }
+
+  if (page === "processos" || page === "rastreamento") {
+    carregarMovimentacoesSeNecessario();
+    carregarFaccoesSeNecessario();
+    carregarCelulasSeNecessario();
+  }
+
+  if (page === "faccoes") {
+    carregarFaccoesSeNecessario();
+    carregarMovimentacoesSeNecessario();
+  }
+
+  if (page === "celulas") {
+    carregarCelulasSeNecessario();
+    carregarMovimentacoesSeNecessario();
+  }
+
+  if (page === "pagamentos") {
+    carregarEntregasPagamentoSeNecessario();
+    carregarPrecosReferenciaSeNecessario();
+    carregarFaccoesSeNecessario();
+  }
+
+  if (page === "usuarios") {
+    carregarUsuariosSeNecessario();
+  }
+
+  if (page === "logs") {
+    carregarLogsSeNecessario();
+  }
+
+  if (page === "relatorios") {
+    // Relatórios só usam o que já estiver carregado. Consultas maiores devem ser feitas por filtro/período em versões futuras.
   }
 }
+
 
 function aplicarPermissoesTela() {
   const admin = ehAdmin();
@@ -583,10 +716,26 @@ function abrirPagina(page) {
     document.getElementById("pageSubtitle").textContent = pageInfo[page].subtitle;
   }
 
+  carregarDadosDaPagina(page);
+
+  if (page === "dashboard") renderDashboard();
+  if (page === "produtos") {
+    renderProdutos();
+    renderProdutosPendentes();
+  }
+  if (page === "ordens") renderOrdens();
   if (page === "manejo") {
     atualizarBotoesManejoSetor();
     atualizarManejoComSoma();
   }
+  if (page === "processos") renderProcessos();
+  if (page === "faccoes") renderFaccoesMovimentacoes();
+  if (page === "celulas") renderCelulasMovimentacoes();
+  if (page === "rastreamento") renderRastreamento();
+  if (page === "pagamentos") renderPagamentos();
+  if (page === "relatorios") renderRelatorio();
+  if (page === "usuarios") renderUsuarios();
+  if (page === "logs") renderLogs();
 }
 
 function configurarProduto() {
@@ -3974,11 +4123,27 @@ async function confirmarMovimentacaoProducao(event) {
 
 
 function mandarParaFaccao(ordemId) {
+  carregarPrecosReferenciaSeNecessario();
   abrirModalMovimentacao(ordemId, "faccao");
 }
 
 function mandarParaCelula(ordemId) {
   abrirModalMovimentacao(ordemId, "celula");
+}
+
+async function garantirPrecosReferenciaCarregados() {
+  if (state.dadosCarregados.precosReferencia && state.precosReferencia.length) return;
+
+  try {
+    const snap = await getDocs(query(collection(db, "precosReferencia"), orderBy("referencia", "asc")));
+    state.precosReferencia = snap.docs.map(item => ({ id: item.id, ...item.data() }));
+    marcarCarregado("precosReferencia");
+    preencherProcessosValores();
+    renderProcessosValores();
+    renderPrecosReferencia();
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 function getPrecoReferenciaPorMovimento(mov) {
@@ -3993,6 +4158,8 @@ function getPrecoReferenciaPorMovimento(mov) {
 }
 
 async function gerarPagamentoPorMovimentacao(mov) {
+  await garantirPrecosReferenciaCarregados();
+
   if (!mov || mov.tipoDestino !== "faccao" || !mov.dataChegada) {
     return { ok: false, motivo: "Pagamento só é gerado para facção com data de chegada." };
   }
@@ -4549,6 +4716,8 @@ function aplicarProcessoValorSelecionado(chave) {
 }
 
 function abrirGerenciarValores() {
+  carregarPrecosReferenciaSeNecessario();
+
   if (!podeUsarRecurso("gerenciarValores")) {
     toast("Seu usuário não tem permissão para gerenciar valores.");
     return;
