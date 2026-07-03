@@ -2457,3 +2457,31 @@ Foi corrigido o clique dos botões na tela **Facções**:
 As funções agora ficam expostas corretamente para o HTML, então o clique abre o modal de reenvio.
 
 Também foi adicionado um tratamento para quando a lista de células/facções ainda estiver carregando.
+
+
+## Atualização: movimentação sai da facção ao ir para célula/facção
+
+Quando uma OP que voltou da facção é enviada para outra etapa:
+
+```txt
+Mandar célula
+ou
+Reenviar facção
+```
+
+o sistema agora faz duas coisas:
+
+```txt
+1. Cria uma nova movimentação na etapa escolhida
+2. Marca a movimentação anterior como Encaminhado
+```
+
+Assim a OP deixa de estar ativa na fase de facção e passa a andar pelo sistema.
+
+Na linha antiga da facção, aparece:
+
+```txt
+Saiu da facção
+```
+
+E os botões de Chegada/Bipar/Reenviar somem daquela etapa antiga.

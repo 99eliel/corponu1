@@ -3653,3 +3653,15 @@ table td {
   color: #1e3a8a;
   font-weight: 800;
 }
+
+
+/* Movimentação que saiu de uma etapa e foi para outra */
+.badge.info,
+.status-dot.info {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.mov-encaminhado {
+  opacity: 0.82;
+}

@@ -3468,10 +3468,11 @@ function renderFaccoesMovimentacoes() {
         </span>
       </td>
       <td>
-        ${mov.status !== "finalizado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
+        ${mov.status === "encaminhado" ? `<span class="badge info">Saiu da facção</span>` : ""}
+        ${mov.status !== "finalizado" && mov.status !== "encaminhado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
         ${podeEncaminharMovimentacao(mov) ? `<button class="btn btn-sm" onclick="enviarMovimentacaoParaCelula('${mov.id}')">Mandar célula</button>` : ""}
         ${podeEncaminharMovimentacao(mov) ? `<button class="btn btn-sm" onclick="reenviarMovimentacaoParaFaccao('${mov.id}')">Reenviar facção</button>` : ""}
-        ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
+        ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : mov.status === "encaminhado" ? "" : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
         ${ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="excluirMovimentacao('${mov.id}')">Excluir</button>` : ""}
       </td>
     </tr>
@@ -3743,8 +3744,9 @@ function renderCelulasMovimentacoes() {
         </span>
       </td>
       <td>
-        ${mov.status !== "finalizado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
-        ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
+        ${mov.status === "encaminhado" ? `<span class="badge info">Encaminhado</span>` : ""}
+        ${mov.status !== "finalizado" && mov.status !== "encaminhado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
+        ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : mov.status === "encaminhado" ? "" : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
         ${ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="excluirMovimentacao('${mov.id}')">Excluir</button>` : ""}
       </td>
     </tr>
@@ -3836,6 +3838,7 @@ function labelStatusMovimento(status) {
   const mapa = {
     em_andamento: "Em andamento",
     retornou: "Retornou",
+    encaminhado: "Encaminhado",
     finalizado: "Bipado"
   };
 
@@ -3844,6 +3847,7 @@ function labelStatusMovimento(status) {
 
 function classeStatusMovimento(status) {
   if (status === "finalizado") return "ok";
+  if (status === "encaminhado") return "info";
   if (status === "retornou") return "bipado";
   return "pending";
 }
@@ -4105,13 +4109,40 @@ async function confirmarMovimentacaoProducao(event) {
 
   try {
     const ref = await addDoc(collection(db, "movimentacoesProducao"), dados);
+    const veioDeMovimentacao = Boolean(dados.movimentacaoOrigemId);
+
+    if (veioDeMovimentacao) {
+      await setDoc(doc(db, "movimentacoesProducao", dados.movimentacaoOrigemId), {
+        status: "encaminhado",
+        encaminhado: true,
+        encaminhadoParaTipo: tipoDestino,
+        encaminhadoParaLabel: label,
+        encaminhadoParaDestino: destino,
+        encaminhadoParaProcesso: processo,
+        movimentacaoDestinoId: ref.id,
+        encaminhadoPor: state.currentUser.uid,
+        encaminhadoEm: serverTimestamp(),
+        atualizadoPor: state.currentUser.uid,
+        atualizadoEm: serverTimestamp()
+      }, { merge: true });
+    }
+
     await registrarLog(
       dados.reenvio ? "movimentacao_reenvio_criado" : "movimentacao_criada",
       "movimentacaoProducao",
       ref.id,
       `OP ${dados.numeroOP} | ${label} ${destino} | ${processo} | ${quantidadeEnviada} peças${dados.movimentacaoOrigemId ? ` | origem ${dados.movimentacaoOrigemId}` : ""}`
     );
-    const veioDeMovimentacao = Boolean(dados.movimentacaoOrigemId);
+
+    if (veioDeMovimentacao) {
+      await registrarLog(
+        "movimentacao_encaminhada",
+        "movimentacaoProducao",
+        dados.movimentacaoOrigemId,
+        `OP ${dados.numeroOP} | saiu da etapa anterior e foi para ${label}: ${destino}`
+      );
+    }
+
     fecharModalMovimentacao();
 
     if (veioDeMovimentacao) {
@@ -4119,7 +4150,7 @@ async function confirmarMovimentacaoProducao(event) {
     }
 
     toast(veioDeMovimentacao
-      ? `OP encaminhada para ${label}: ${destino}.`
+      ? `OP saiu da etapa anterior e foi para ${label}: ${destino}.`
       : `OP enviada para ${label}: ${destino}.`);
   } catch (error) {
     console.error(error);
@@ -4139,7 +4170,7 @@ function quantidadeDisponivelMovimentacao(mov) {
 
 function podeEncaminharMovimentacao(mov) {
   if (!mov) return false;
-  if (mov.status === "finalizado") return false;
+  if (mov.status === "finalizado" || mov.status === "encaminhado") return false;
   if (!mov.dataChegada) return false;
   return quantidadeDisponivelMovimentacao(mov) > 0;
 }
@@ -4445,6 +4476,11 @@ async function biparMovimentacao(id) {
     return;
   }
 
+  if (mov.status === "encaminhado") {
+    toast("Essa etapa já foi encaminhada para outra fase.");
+    return;
+  }
+
   if (!mov.dataChegada) {
     toast("Registre a chegada antes de bipar.");
     return;
@@ -4512,7 +4548,7 @@ function renderRastreamento() {
 
   const total = movimentos.length;
   const emAndamento = movimentos.filter(mov => mov.status === "em_andamento" || !mov.status).length;
-  const retornaram = movimentos.filter(mov => mov.status === "retornou").length;
+  const retornaram = movimentos.filter(mov => mov.status === "retornou" || mov.status === "encaminhado").length;
   const finalizadas = movimentos.filter(mov => mov.status === "finalizado").length;
 
   const setText = (id, valor) => {
@@ -4548,8 +4584,9 @@ function renderRastreamento() {
         </span>
       </td>
       <td>
-        ${mov.status !== "finalizado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
-        ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
+        ${mov.status === "encaminhado" ? `<span class="badge info">Encaminhado</span>` : ""}
+        ${mov.status !== "finalizado" && mov.status !== "encaminhado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
+        ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : mov.status === "encaminhado" ? "" : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
         ${ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="excluirMovimentacao('${mov.id}')">Excluir</button>` : ""}
       </td>
     </tr>
