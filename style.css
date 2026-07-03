@@ -3641,3 +3641,15 @@ table td {
 .faccoes-mov-table td:last-child .btn {
   margin: 2px;
 }
+
+
+/* Modal de reenvio entre etapas */
+.origem-mov-info {
+  display: block;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-weight: 800;
+}

@@ -3991,14 +3991,18 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
 
   const processos = getProcessosSugeridosMovimentacao(ordem, setor, tipoDestino);
 
+  const processoInicial = exigeProcesso
+    ? (opcoes.forcarEscolhaProcesso ? "" : (opcoes.processoPadrao || processos[0] || ""))
+    : "";
+
   if (processoSelect) {
     processoSelect.innerHTML = `<option value="">Selecione ou digite abaixo</option>` + processos.map(processo => {
       return `<option value="${escapeHtml(processo)}">${escapeHtml(processo)}</option>`;
     }).join("");
-    processoSelect.value = exigeProcesso ? (opcoes.processoPadrao || processos[0] || "") : "";
+    processoSelect.value = processoInicial;
   }
 
-  if (processoInput) processoInput.value = exigeProcesso ? (opcoes.processoPadrao || processos[0] || "") : "CÉLULA INTERNA";
+  if (processoInput) processoInput.value = exigeProcesso ? processoInicial : "CÉLULA INTERNA";
   if (quantidadeInput) {
     quantidadeInput.value = quantidadePadrao || "";
     quantidadeInput.max = quantidadeMaxima || "";
@@ -4037,12 +4041,12 @@ async function confirmarMovimentacaoProducao(event) {
   const dataEnvio = document.getElementById("movimentacaoDataEnvio")?.value || "";
 
   if (!destino) {
-    toast(`Selecione a ${label.toLowerCase()}.`);
+    toast(`Selecione para qual ${label.toLowerCase()} será enviado.`);
     return;
   }
 
   if (tipoDestino === "faccao" && !processo) {
-    toast("Informe o processo/etapa.");
+    toast("Informe para qual processo a peça será reenviada.");
     return;
   }
 
@@ -4102,8 +4106,16 @@ async function confirmarMovimentacaoProducao(event) {
       ref.id,
       `OP ${dados.numeroOP} | ${label} ${destino} | ${processo} | ${quantidadeEnviada} peças${dados.movimentacaoOrigemId ? ` | origem ${dados.movimentacaoOrigemId}` : ""}`
     );
+    const veioDeMovimentacao = Boolean(dados.movimentacaoOrigemId);
     fecharModalMovimentacao();
-    toast(`OP enviada para ${label}: ${destino}.`);
+
+    if (veioDeMovimentacao) {
+      abrirPagina(tipoDestino === "celula" ? "celulas" : "faccoes");
+    }
+
+    toast(veioDeMovimentacao
+      ? `OP encaminhada para ${label}: ${destino}.`
+      : `OP enviada para ${label}: ${destino}.`);
   } catch (error) {
     console.error(error);
     toast("Erro ao criar movimentação.");
@@ -4153,11 +4165,14 @@ function encaminharMovimentacao(id, tipoDestino) {
     setor: mov.setor || getManejoSetorAtual(),
     quantidadePadrao: quantidadeDisponivel,
     quantidadeMaxima: quantidadeDisponivel,
-    processoPadrao: tipoDestino === "faccao" ? mov.processo || "" : "",
+    processoPadrao: "",
     destinoPadrao: "",
+    forcarEscolhaProcesso: tipoDestino === "faccao",
     origemResumo: `${mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino)} anterior: ${mov.destino || "-"}`,
     titulo: tipoDestino === "faccao" ? "Reenviar para facção" : "Mandar para célula",
-    resumo: `Essa OP já voltou da etapa anterior. Envie a quantidade disponível para ${label.toLowerCase()}.`
+    resumo: tipoDestino === "faccao"
+      ? "Escolha para qual facção será reenviado e informe qual processo será feito agora."
+      : "Escolha para qual célula será enviado. Ao confirmar, a OP já aparecerá na aba Células."
   });
 }
 

@@ -2415,3 +2415,31 @@ Quantidade disponível = Quantidade enviada - Falta
 ```
 
 O sistema também impede enviar uma quantidade maior que a disponível nessa etapa.
+
+
+## Ajuste: Reenvio perguntando destino e processo
+
+Ao clicar em **Reenviar facção**, o sistema abre o modal perguntando:
+
+```txt
+- para qual facção reenviar
+- qual processo será feito agora
+- quantidade enviada
+- data de envio
+```
+
+Ao clicar em **Mandar célula**, o sistema abre o modal perguntando:
+
+```txt
+- para qual célula enviar
+- quantidade enviada
+- data de envio
+```
+
+Depois de confirmar o envio para célula, o sistema já abre automaticamente a aba:
+
+```txt
+Células
+```
+
+Também foi ajustado para o reenvio de facção não vir com processo preenchido automaticamente. O usuário precisa escolher ou digitar o processo.
