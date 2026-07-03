@@ -3608,3 +3608,36 @@ table td {
 .manejo-limpo-table {
   min-width: 1180px;
 }
+
+
+/* Bipar somente em facções e células */
+.manejo-bipado-cell {
+  display: none !important;
+}
+
+.btn-bipado {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.btn-bipado:hover {
+  filter: brightness(0.95);
+}
+
+
+/* Reenvio de facção para nova etapa */
+.origem-mov-info {
+  display: block;
+  margin-top: 4px;
+  color: #475569;
+  font-weight: 800;
+}
+
+.faccoes-mov-table td:last-child {
+  min-width: 300px;
+}
+
+.faccoes-mov-table td:last-child .btn {
+  margin: 2px;
+}

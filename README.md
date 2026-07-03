@@ -2355,3 +2355,63 @@ AÇÕES
 ```
 
 Os campos de data e produção ficam livres para serem gerenciados em outra tela do sistema.
+
+
+## Atualização: Bipar em Facções e Células
+
+A função **Bipar** saiu do Manejo.
+
+O Manejo agora fica apenas para preparar e encaminhar a OP.
+
+O processo termina em:
+
+```txt
+- Facções
+- Células
+```
+
+Nas tabelas de **Facções** e **Células**, o botão agora é:
+
+```txt
+Bipar
+```
+
+Fluxo correto:
+
+```txt
+1. Manejo prepara a OP
+2. Envia para Facção ou Célula
+3. Registra Chegada
+4. Bipa a movimentação
+```
+
+O sistema não deixa bipar antes de registrar a chegada.
+
+
+## Atualização: Reenvio da facção para outra etapa
+
+Na tela **Facções**, quando a movimentação já tiver **Chegada** registrada, aparecem novas opções:
+
+```txt
+- Mandar célula
+- Reenviar facção
+```
+
+Uso:
+
+```txt
+1. A OP vai para a facção
+2. Registra a chegada
+3. Se ainda precisar continuar, pode:
+   - mandar para célula
+   - reenviar para outra facção ou para a mesma facção
+4. Depois da última etapa, usa Bipar
+```
+
+A quantidade enviada na nova etapa usa como padrão a quantidade que voltou:
+
+```txt
+Quantidade disponível = Quantidade enviada - Falta
+```
+
+O sistema também impede enviar uma quantidade maior que a disponível nessa etapa.

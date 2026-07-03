@@ -1925,7 +1925,7 @@ function renderManejoInline() {
   const setor = getManejoSetorAtual();
 
   if (!podeVerManejo(setor)) {
-    tbody.innerHTML = `<tr><td colspan="11" class="empty">Seu usuário não tem acesso a este manejo.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">Seu usuário não tem acesso a este manejo.</td></tr>`;
     renderResumoSomasManejo([]);
     return;
   }
@@ -1935,7 +1935,7 @@ function renderManejoInline() {
   renderResumoSomasManejo(ordens);
 
   if (!ordens.length) {
-    tbody.innerHTML = `<tr><td colspan="11" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
     return;
   }
 
@@ -1973,11 +1973,6 @@ function renderManejoInline() {
         <td><input class="manejo-readonly" type="number" value="${escapeHtml(op.quantidade ?? 0)}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(op.cor || "")}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(getNecessidadeDaOrdem(op))}" readonly /></td>
-        <td class="manejo-bipado-cell">
-          <button class="btn btn-sm btn-bipado" onclick="biparManejoLinha('${op.id}')">
-            ${status === "bipado" ? "Bipado ✓" : "Bipar"}
-          </button>
-        </td>
         <td>
           ${manejoStatusBadge(manejo, op, setor)}
           ${movimentosAbertos ? `<small class="mov-aberto">${movimentosAbertos} mov.</small>` : ""}
@@ -2017,15 +2012,13 @@ function getStatusManejo(op, setor = "sutia") {
   const manejo = getManejoDaOrdem(op, setor);
 
   if (setor === "bojo") {
-    if (op?.bipado || op?.manejoStatus === "bipado" || manejo?.bipado || manejo?.status === "bipado") return "bipado";
-    if (op?.manejoStatus) return op.manejoStatus;
+    if (op?.manejoStatus && op.manejoStatus !== "bipado") return op.manejoStatus;
     return manejo ? "organizada" : "pendente";
   }
 
   const statusSetor = op?.manejoStatusSetores?.[setor];
 
-  if (op?.bipadoSetores?.[setor] || statusSetor === "bipado" || manejo?.bipado || manejo?.status === "bipado") return "bipado";
-  if (statusSetor) return statusSetor;
+  if (statusSetor && statusSetor !== "bipado") return statusSetor;
 
   return manejo ? "organizada" : "pendente";
 }
@@ -2290,8 +2283,7 @@ function renderResumoSomasManejo(ordens) {
   const totalOps = ordens.length;
   const totalPecas = ordens.reduce((soma, op) => soma + numeroQuantidadeOP(op), 0);
   const totalFalta = ordens.reduce((soma, op) => soma + numeroFaltaManejo(op, setor), 0);
-  const bipadas = ordens.filter(op => getStatusManejo(op, setor) === "bipado").length;
-  const organizadas = ordens.filter(op => getStatusManejo(op, setor) === "organizada").length;
+  const organizadas = ordens.filter(op => getStatusManejo(op, setor) === "organizada" || getStatusManejo(op, setor) === "bipado").length;
   const pendentes = ordens.filter(op => getStatusManejo(op, setor) === "pendente").length;
 
   const setText = (id, valor) => {
@@ -2302,12 +2294,12 @@ function renderResumoSomasManejo(ordens) {
   setText("somaManejoOps", formatarNumeroInteiro(totalOps));
   setText("somaManejoPecas", formatarNumeroInteiro(totalPecas));
   setText("somaManejoFalta", formatarNumeroInteiro(totalFalta));
-  setText("somaManejoStatus", `${formatarNumeroInteiro(bipadas)} bipadas | ${formatarNumeroInteiro(organizadas)} org. | ${formatarNumeroInteiro(pendentes)} pend.`);
+  setText("somaManejoStatus", `${formatarNumeroInteiro(organizadas)} org. | ${formatarNumeroInteiro(pendentes)} pend.`);
   setText("somaManejoPecasCompacto", `${formatarNumeroInteiro(totalPecas)} peças`);
   setText("somaManejoFiltroAtivo", getFiltrosManejoAtivosTexto());
   setText(
     "somaManejoResumoCompacto",
-    `${formatarNumeroInteiro(totalOps)} OPs | ${formatarNumeroInteiro(totalFalta)} falta | ${formatarNumeroInteiro(bipadas)} bipadas | ${formatarNumeroInteiro(organizadas)} org. | ${formatarNumeroInteiro(pendentes)} pend.`
+    `${formatarNumeroInteiro(totalOps)} OPs | ${formatarNumeroInteiro(totalFalta)} falta | ${formatarNumeroInteiro(organizadas)} org. | ${formatarNumeroInteiro(pendentes)} pend.`
   );
 
   renderTabelaSomaManejo("somaManejoFases", agruparSomaManejo(ordens, op => op.manejo?.fase || getManejoDaOrdem(op)?.fase || "Sem fase"));
@@ -2703,11 +2695,7 @@ async function limparManejoLinha(ordemId) {
 function manejoStatusBadge(manejo, op = null, setor = "bojo") {
   const status = op ? getStatusManejo(op, setor) : (manejo?.bipado || manejo?.status === "bipado" ? "bipado" : manejo ? "organizada" : "pendente");
 
-  if (status === "bipado") {
-    return `<span class="badge bipado">Bipado</span>`;
-  }
-
-  if (status === "organizada") {
+  if (status === "organizada" || status === "bipado") {
     return `<span class="badge ok">Organizada</span>`;
   }
 
@@ -3480,8 +3468,10 @@ function renderFaccoesMovimentacoes() {
         </span>
       </td>
       <td>
-        <button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>
-        <button class="btn btn-sm" onclick="finalizarMovimentacao('${mov.id}')">Finalizar</button>
+        ${mov.status !== "finalizado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
+        ${podeEncaminharMovimentacao(mov) ? `<button class="btn btn-sm" onclick="enviarMovimentacaoParaCelula('${mov.id}')">Mandar célula</button>` : ""}
+        ${podeEncaminharMovimentacao(mov) ? `<button class="btn btn-sm" onclick="reenviarMovimentacaoParaFaccao('${mov.id}')">Reenviar facção</button>` : ""}
+        ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
         ${ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="excluirMovimentacao('${mov.id}')">Excluir</button>` : ""}
       </td>
     </tr>
@@ -3732,7 +3722,7 @@ function renderCelulasMovimentacoes() {
   setText("celulasPecasRecebidas", pecasRecebidas);
 
   if (!movimentos.length) {
-    tbody.innerHTML = `<tr><td colspan="11" class="empty">Nenhuma OP enviada para célula ainda.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma OP enviada para célula ainda.</td></tr>`;
     return;
   }
 
@@ -3753,8 +3743,8 @@ function renderCelulasMovimentacoes() {
         </span>
       </td>
       <td>
-        <button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>
-        <button class="btn btn-sm" onclick="finalizarMovimentacao('${mov.id}')">Finalizar</button>
+        ${mov.status !== "finalizado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
+        ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
         ${ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="excluirMovimentacao('${mov.id}')">Excluir</button>` : ""}
       </td>
     </tr>
@@ -3846,7 +3836,7 @@ function labelStatusMovimento(status) {
   const mapa = {
     em_andamento: "Em andamento",
     retornou: "Retornou",
-    finalizado: "Finalizado"
+    finalizado: "Bipado"
   };
 
   return mapa[status] || status || "Em andamento";
@@ -3914,14 +3904,14 @@ function getProcessosSugeridosMovimentacao(op, setor, tipoDestino) {
     .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
 }
 
-function abrirModalMovimentacao(ordemId, tipoDestino) {
+function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
   const ordem = state.ordens.find(op => op.id === ordemId);
   if (!ordem) {
     toast("OP não encontrada.");
     return;
   }
 
-  const setor = getManejoSetorAtual();
+  const setor = opcoes.setor || getManejoSetorAtual();
   const label = labelTipoMovimento(tipoDestino);
   const destinos = tipoDestino === "faccao"
     ? state.faccoes.filter(item => item.ativo !== false)
@@ -3944,10 +3934,17 @@ function abrirModalMovimentacao(ordemId, tipoDestino) {
     return;
   }
 
+  const quantidadePadrao = Math.max(0, Number(opcoes.quantidadePadrao ?? numeroQuantidadeOP(ordem)));
+  const quantidadeMaxima = Math.max(0, Number(opcoes.quantidadeMaxima ?? numeroQuantidadeOP(ordem)));
+
   movimentacaoModalContexto = {
     ordemId,
     tipoDestino,
-    setor
+    setor,
+    origem: opcoes.origem || "manejo",
+    movimentacaoOrigemId: opcoes.movimentacaoOrigemId || "",
+    quantidadeMaxima,
+    origemResumo: opcoes.origemResumo || ""
   };
 
   const titulo = document.getElementById("modalMovimentacaoTitulo");
@@ -3961,12 +3958,13 @@ function abrirModalMovimentacao(ordemId, tipoDestino) {
   const ordemInput = document.getElementById("movimentacaoOrdemId");
   const tipoInput = document.getElementById("movimentacaoTipoDestino");
 
-  if (titulo) titulo.textContent = `Mandar para ${label}`;
-  if (resumo) resumo.textContent = `Escolha uma ${label.toLowerCase()} já cadastrada e confirme os dados do envio.`;
+  if (titulo) titulo.textContent = opcoes.titulo || `Mandar para ${label}`;
+  if (resumo) resumo.textContent = opcoes.resumo || `Escolha uma ${label.toLowerCase()} já cadastrada e confirme os dados do envio.`;
   if (info) {
     info.innerHTML = `
       <strong>OP ${escapeHtml(ordem.numeroOP || "-")}</strong>
       <span>Ref. ${escapeHtml(ordem.referencia || "-")} | Cor ${escapeHtml(ordem.cor || "-")} | QTI ${escapeHtml(numeroQuantidadeOP(ordem))}</span>
+      ${opcoes.origemResumo ? `<span class="origem-mov-info">${escapeHtml(opcoes.origemResumo)} | Disponível: ${escapeHtml(quantidadeMaxima.toLocaleString("pt-BR"))} peças</span>` : ""}
     `;
   }
 
@@ -3977,7 +3975,7 @@ function abrirModalMovimentacao(ordemId, tipoDestino) {
     destinoSelect.innerHTML = `<option value="">Selecione ${escapeHtml(label.toLowerCase())}</option>` + destinos.map(destino => {
       return `<option value="${escapeHtml(destino.nome || "")}">${escapeHtml(destino.nome || "")}</option>`;
     }).join("");
-    destinoSelect.value = "";
+    destinoSelect.value = opcoes.destinoPadrao || "";
   }
 
   const grupoProcesso = document.getElementById("grupoMovimentacaoProcesso");
@@ -3997,11 +3995,15 @@ function abrirModalMovimentacao(ordemId, tipoDestino) {
     processoSelect.innerHTML = `<option value="">Selecione ou digite abaixo</option>` + processos.map(processo => {
       return `<option value="${escapeHtml(processo)}">${escapeHtml(processo)}</option>`;
     }).join("");
-    processoSelect.value = exigeProcesso ? (processos[0] || "") : "";
+    processoSelect.value = exigeProcesso ? (opcoes.processoPadrao || processos[0] || "") : "";
   }
 
-  if (processoInput) processoInput.value = exigeProcesso ? (processos[0] || "") : "CÉLULA INTERNA";
-  if (quantidadeInput) quantidadeInput.value = numeroQuantidadeOP(ordem);
+  if (processoInput) processoInput.value = exigeProcesso ? (opcoes.processoPadrao || processos[0] || "") : "CÉLULA INTERNA";
+  if (quantidadeInput) {
+    quantidadeInput.value = quantidadePadrao || "";
+    quantidadeInput.max = quantidadeMaxima || "";
+    quantidadeInput.title = quantidadeMaxima ? `Máximo disponível: ${quantidadeMaxima}` : "";
+  }
   if (dataInput) dataInput.value = getDataHojeISO();
 
   document.getElementById("modalMovimentacao")?.classList.remove("hidden");
@@ -4054,16 +4056,19 @@ async function confirmarMovimentacaoProducao(event) {
     return;
   }
 
-  if (quantidadeEnviada > numeroQuantidadeOP(ordem)) {
-    const continuar = confirm("A quantidade enviada é maior que a QTI da OP. Deseja continuar mesmo assim?");
-    if (!continuar) return;
+  const quantidadeMaxima = Number(movimentacaoModalContexto?.quantidadeMaxima || numeroQuantidadeOP(ordem));
+
+  if (quantidadeMaxima > 0 && quantidadeEnviada > quantidadeMaxima) {
+    toast(`Quantidade maior que o disponível: ${quantidadeMaxima.toLocaleString("pt-BR")} peças.`);
+    return;
   }
 
   const infoSetor = getInfoManejoSetor(setor);
   const destinoCadastrado = getDestinoMovimento(tipoDestino, destino);
 
   const dados = {
-    origem: "manejo",
+    origem: movimentacaoModalContexto?.origem || "manejo",
+    movimentacaoOrigemId: movimentacaoModalContexto?.movimentacaoOrigemId || "",
     opId: ordem.id,
     numeroOP: ordem.numeroOP || "",
     referencia: ordem.referencia || "",
@@ -4082,6 +4087,7 @@ async function confirmarMovimentacaoProducao(event) {
     falta: 0,
     quantidadeRecebida: 0,
     status: "em_andamento",
+    reenvio: Boolean(movimentacaoModalContexto?.movimentacaoOrigemId),
     criadoPor: state.currentUser.uid,
     criadoEm: serverTimestamp(),
     atualizadoPor: state.currentUser.uid,
@@ -4090,7 +4096,12 @@ async function confirmarMovimentacaoProducao(event) {
 
   try {
     const ref = await addDoc(collection(db, "movimentacoesProducao"), dados);
-    await registrarLog("movimentacao_criada", "movimentacaoProducao", ref.id, `OP ${dados.numeroOP} | ${label} ${destino} | ${processo} | ${quantidadeEnviada} peças`);
+    await registrarLog(
+      dados.reenvio ? "movimentacao_reenvio_criado" : "movimentacao_criada",
+      "movimentacaoProducao",
+      ref.id,
+      `OP ${dados.numeroOP} | ${label} ${destino} | ${processo} | ${quantidadeEnviada} peças${dados.movimentacaoOrigemId ? ` | origem ${dados.movimentacaoOrigemId}` : ""}`
+    );
     fecharModalMovimentacao();
     toast(`OP enviada para ${label}: ${destino}.`);
   } catch (error) {
@@ -4099,6 +4110,64 @@ async function confirmarMovimentacaoProducao(event) {
   }
 }
 
+
+function quantidadeDisponivelMovimentacao(mov) {
+  if (!mov) return 0;
+
+  const recebida = Number(mov.quantidadeRecebida || 0);
+  if (recebida > 0) return recebida;
+
+  return Math.max(Number(mov.quantidadeEnviada || 0) - Number(mov.falta || 0), 0);
+}
+
+function podeEncaminharMovimentacao(mov) {
+  if (!mov) return false;
+  if (mov.status === "finalizado") return false;
+  if (!mov.dataChegada) return false;
+  return quantidadeDisponivelMovimentacao(mov) > 0;
+}
+
+function encaminharMovimentacao(id, tipoDestino) {
+  const mov = state.movimentacoesProducao.find(item => item.id === id);
+
+  if (!mov) {
+    toast("Movimentação não encontrada.");
+    return;
+  }
+
+  if (!podeEncaminharMovimentacao(mov)) {
+    toast("Registre a chegada antes de encaminhar para outra etapa.");
+    return;
+  }
+
+  const quantidadeDisponivel = quantidadeDisponivelMovimentacao(mov);
+  const label = labelTipoMovimento(tipoDestino);
+
+  if (tipoDestino === "faccao") {
+    carregarPrecosReferenciaSeNecessario();
+  }
+
+  abrirModalMovimentacao(mov.opId, tipoDestino, {
+    origem: "movimentacao",
+    movimentacaoOrigemId: mov.id,
+    setor: mov.setor || getManejoSetorAtual(),
+    quantidadePadrao: quantidadeDisponivel,
+    quantidadeMaxima: quantidadeDisponivel,
+    processoPadrao: tipoDestino === "faccao" ? mov.processo || "" : "",
+    destinoPadrao: "",
+    origemResumo: `${mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino)} anterior: ${mov.destino || "-"}`,
+    titulo: tipoDestino === "faccao" ? "Reenviar para facção" : "Mandar para célula",
+    resumo: `Essa OP já voltou da etapa anterior. Envie a quantidade disponível para ${label.toLowerCase()}.`
+  });
+}
+
+function reenviarMovimentacaoParaFaccao(id) {
+  encaminharMovimentacao(id, "faccao");
+}
+
+function enviarMovimentacaoParaCelula(id) {
+  encaminharMovimentacao(id, "celula");
+}
 
 function mandarParaFaccao(ordemId) {
   carregarPrecosReferenciaSeNecessario();
@@ -4338,25 +4407,40 @@ async function confirmarChegadaMovimentacao(event) {
 }
 
 
-async function finalizarMovimentacao(id) {
+async function biparMovimentacao(id) {
   const mov = state.movimentacoesProducao.find(item => item.id === id);
   if (!mov) return;
 
-  if (!confirm(`Finalizar movimentação da OP ${mov.numeroOP}?`)) return;
+  if (mov.status === "finalizado") {
+    toast("Essa movimentação já está bipada.");
+    return;
+  }
+
+  if (!mov.dataChegada) {
+    toast("Registre a chegada antes de bipar.");
+    return;
+  }
 
   try {
     await setDoc(doc(db, "movimentacoesProducao", id), {
       status: "finalizado",
+      bipado: true,
+      bipadoPor: state.currentUser.uid,
+      bipadoEm: serverTimestamp(),
       atualizadoPor: state.currentUser.uid,
       atualizadoEm: serverTimestamp()
     }, { merge: true });
 
-    await registrarLog("movimentacao_finalizada", "movimentacaoProducao", id, `OP ${mov.numeroOP} | ${mov.destino}`);
-    toast("Movimentação finalizada.");
+    await registrarLog("movimentacao_bipada", "movimentacaoProducao", id, `OP ${mov.numeroOP} | ${mov.destino}`);
+    toast("Movimentação bipada.");
   } catch (error) {
     console.error(error);
-    toast("Erro ao finalizar movimentação.");
+    toast("Erro ao bipar movimentação.");
   }
+}
+
+async function finalizarMovimentacao(id) {
+  return biparMovimentacao(id);
 }
 
 async function excluirMovimentacao(id) {
@@ -4435,8 +4519,8 @@ function renderRastreamento() {
         </span>
       </td>
       <td>
-        <button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>
-        <button class="btn btn-sm" onclick="finalizarMovimentacao('${mov.id}')">Finalizar</button>
+        ${mov.status !== "finalizado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
+        ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
         ${ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="excluirMovimentacao('${mov.id}')">Excluir</button>` : ""}
       </td>
     </tr>
@@ -5933,7 +6017,7 @@ function renderRelatorio() {
     `;
 
     if (!ordens.length) {
-      tbody.innerHTML = `<tr><td colspan="11" class="empty">Nenhuma OP bipada encontrada.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma OP bipada encontrada.</td></tr>`;
       return;
     }
 
@@ -7424,7 +7508,7 @@ function renderOrdens() {
   const tbody = document.getElementById("listaOrdens");
 
   if (!ordens.length) {
-    tbody.innerHTML = `<tr><td colspan="11" class="empty">Nenhuma ordem cadastrada.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma ordem cadastrada.</td></tr>`;
     return;
   }
 
@@ -7663,7 +7747,6 @@ window.iniciarManejoParaOrdem = iniciarManejoParaOrdem;
 window.filtrarManejosPorOP = filtrarManejosPorOP;
 window.salvarManejoLinha = salvarManejoLinha;
 window.limparManejoLinha = limparManejoLinha;
-window.biparManejoLinha = biparManejoLinha;
 window.adicionarFaseSugestao = adicionarFaseSugestao;
 window.adicionarFaccaoSugestao = adicionarFaccaoSugestao;
 window.adicionarCeluSugestao = adicionarCeluSugestao;
@@ -7691,5 +7774,6 @@ window.excluirCelula = excluirCelula;
 window.mandarParaFaccao = mandarParaFaccao;
 window.mandarParaCelula = mandarParaCelula;
 window.registrarChegadaMovimentacao = registrarChegadaMovimentacao;
+window.biparMovimentacao = biparMovimentacao;
 window.finalizarMovimentacao = finalizarMovimentacao;
 window.excluirMovimentacao = excluirMovimentacao;
