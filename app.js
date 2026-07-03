@@ -5964,6 +5964,33 @@ function configurarUsuarios() {
   if (cancelarPermissoes) {
     cancelarPermissoes.addEventListener("click", fecharPermissoesUsuario);
   }
+
+  const tipoPermissao = document.getElementById("permissaoUsuarioTipo");
+  if (tipoPermissao) {
+    tipoPermissao.addEventListener("change", atualizarEstadoCamposPermissaoPeloTipo);
+  }
+
+  const fecharExcluir = document.getElementById("btnFecharModalExcluirUsuario");
+  if (fecharExcluir) {
+    fecharExcluir.addEventListener("click", fecharModalExcluirUsuario);
+  }
+
+  const cancelarExcluir = document.getElementById("btnCancelarExcluirUsuario");
+  if (cancelarExcluir) {
+    cancelarExcluir.addEventListener("click", fecharModalExcluirUsuario);
+  }
+
+  const confirmarExcluir = document.getElementById("btnConfirmarExcluirUsuario");
+  if (confirmarExcluir) {
+    confirmarExcluir.addEventListener("click", confirmarExcluirUsuario);
+  }
+
+  const modalExcluir = document.getElementById("modalExcluirUsuario");
+  if (modalExcluir) {
+    modalExcluir.addEventListener("click", event => {
+      if (event.target === modalExcluir) fecharModalExcluirUsuario();
+    });
+  }
 }
 
 function renderUsuarios() {
@@ -5986,11 +6013,15 @@ function renderUsuarios() {
           ${usuario.ativo ? "Ativo" : "Inativo"}
         </span>
       </td>
-      <td>
-        <button class="btn btn-sm" onclick="abrirPermissoesUsuario('${usuario.uid}')">Gerenciar permissões</button>
+      <td class="usuario-actions">
+        <button class="btn btn-sm" onclick="abrirPermissoesUsuario('${usuario.uid}')">Gerenciar</button>
+        <button class="btn btn-sm" onclick="alternarTipoUsuario('${usuario.uid}')">
+          ${usuario.tipo === "admin" ? "Virar usuário" : "Virar admin"}
+        </button>
         <button class="btn btn-sm ${usuario.ativo ? "btn-warning" : "btn-success"}" onclick="alternarUsuario('${usuario.uid}', ${usuario.ativo ? "false" : "true"})">
           ${usuario.ativo ? "Desativar" : "Ativar"}
         </button>
+        <button class="btn btn-sm btn-danger" onclick="abrirModalExcluirUsuario('${usuario.uid}')">Excluir</button>
       </td>
     </tr>
   `).join("");
@@ -6015,31 +6046,60 @@ function abrirPermissoesUsuario(uid) {
     resumo.innerHTML = `<strong>${escapeHtml(usuario.nome || "-")}</strong><br><small>${escapeHtml(usuario.email || "-")}</small>`;
   }
 
-  const permissoes = getPermissoesUsuario(usuario);
+  const tipoSelect = document.getElementById("permissaoUsuarioTipo");
+  if (tipoSelect) {
+    tipoSelect.value = usuario.tipo === "admin" ? "admin" : "usuario";
+    tipoSelect.disabled = usuario.uid === state.currentUser.uid;
+  }
 
-  document.querySelectorAll("[data-permissao-tela]").forEach(input => {
-    const tela = input.dataset.permissaoTela;
-    input.checked = Boolean(permissoes.telas?.[tela]);
-    input.disabled = usuario.tipo === "admin";
-  });
-
-  document.querySelectorAll("[data-permissao-manejo]").forEach(input => {
-    const manejo = input.dataset.permissaoManejo;
-    input.checked = Boolean(permissoes.manejo?.[manejo]);
-    input.disabled = usuario.tipo === "admin";
-  });
-
-  document.querySelectorAll("[data-permissao-recurso]").forEach(input => {
-    const recurso = input.dataset.permissaoRecurso;
-    input.checked = Boolean(permissoes.recursos?.[recurso]);
-    input.disabled = usuario.tipo === "admin";
-  });
+  preencherCamposPermissaoUsuario(usuario);
 
   painel?.classList.remove("hidden");
   painel?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   if (usuario.tipo === "admin") {
     toast("Admin já tem acesso total. As permissões ficam travadas.");
+  }
+}
+
+function preencherCamposPermissaoUsuario(usuario) {
+  const tipoAtual = document.getElementById("permissaoUsuarioTipo")?.value || usuario?.tipo || "usuario";
+  const usuarioParaPermissao = {
+    ...usuario,
+    tipo: tipoAtual
+  };
+  const permissoes = getPermissoesUsuario(usuarioParaPermissao);
+  const travar = tipoAtual === "admin";
+
+  document.querySelectorAll("[data-permissao-tela]").forEach(input => {
+    const tela = input.dataset.permissaoTela;
+    input.checked = Boolean(permissoes.telas?.[tela]);
+    input.disabled = travar;
+  });
+
+  document.querySelectorAll("[data-permissao-manejo]").forEach(input => {
+    const manejo = input.dataset.permissaoManejo;
+    input.checked = Boolean(permissoes.manejo?.[manejo]);
+    input.disabled = travar;
+  });
+
+  document.querySelectorAll("[data-permissao-recurso]").forEach(input => {
+    const recurso = input.dataset.permissaoRecurso;
+    input.checked = Boolean(permissoes.recursos?.[recurso]);
+    input.disabled = travar;
+  });
+}
+
+function atualizarEstadoCamposPermissaoPeloTipo() {
+  const uid = document.getElementById("permissaoUsuarioUid")?.value || "";
+  const usuario = state.usuarios.find(item => item.uid === uid);
+  if (!usuario) return;
+
+  preencherCamposPermissaoUsuario(usuario);
+
+  const tipo = document.getElementById("permissaoUsuarioTipo")?.value || "usuario";
+  if (tipo === "admin") {
+    toast("Admin terá acesso total.");
   }
 }
 
@@ -6090,32 +6150,135 @@ async function salvarPermissoesUsuario(event) {
     return;
   }
 
-  if (usuario.tipo === "admin") {
-    toast("Admin já tem acesso total.");
+  const novoTipo = document.getElementById("permissaoUsuarioTipo")?.value || usuario.tipo || "usuario";
+
+  if (uid === state.currentUser.uid && novoTipo !== "admin") {
+    toast("Você não pode rebaixar seu próprio usuário.");
     return;
   }
 
-  const permissoes = coletarPermissoesUsuarioForm();
+  const permissoes = novoTipo === "admin" ? getPermissoesPadrao("admin") : coletarPermissoesUsuarioForm();
 
-  if (permissoes.telas.manejo && !permissoes.manejo.sutia && !permissoes.manejo.calcinha) {
+  if (novoTipo !== "admin" && permissoes.telas.manejo && !permissoes.manejo.sutia && !permissoes.manejo.calcinha) {
     toast("Para liberar Manejo, marque Sutiã ou Calcinha.");
     return;
   }
 
   try {
     await setDoc(doc(db, "usuarios", uid), {
+      tipo: novoTipo,
       permissoes,
       atualizadoPor: state.currentUser.uid,
       atualizadoEm: serverTimestamp()
     }, { merge: true });
 
-    await registrarLog("usuario_permissoes_atualizadas", "usuario", uid, `${usuario.nome || uid} | ${resumoPermissoesUsuario({ ...usuario, permissoes })}`);
+    await registrarLog("usuario_permissoes_atualizadas", "usuario", uid, `${usuario.nome || uid} | tipo: ${novoTipo} | ${resumoPermissoesUsuario({ ...usuario, tipo: novoTipo, permissoes })}`);
 
     fecharPermissoesUsuario();
     toast("Permissões salvas.");
   } catch (error) {
     console.error(error);
     toast("Erro ao salvar permissões.");
+  }
+}
+
+async function alternarTipoUsuario(uid) {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode alterar tipo de usuário.");
+    return;
+  }
+
+  const usuario = state.usuarios.find(item => item.uid === uid);
+  if (!usuario) return;
+
+  if (uid === state.currentUser.uid) {
+    toast("Você não pode alterar o tipo do próprio usuário.");
+    return;
+  }
+
+  const novoTipo = usuario.tipo === "admin" ? "usuario" : "admin";
+  const permissoes = getPermissoesPadrao(novoTipo);
+
+  try {
+    await setDoc(doc(db, "usuarios", uid), {
+      tipo: novoTipo,
+      permissoes,
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+
+    await registrarLog("usuario_tipo_alterado", "usuario", uid, `${usuario.nome || uid} | ${usuario.tipo || "usuario"} -> ${novoTipo}`);
+    toast(novoTipo === "admin" ? "Usuário virou Admin." : "Admin virou Usuário comum.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao alterar tipo do usuário.");
+  }
+}
+
+function abrirModalExcluirUsuario(uid) {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode excluir usuários.");
+    return;
+  }
+
+  const usuario = state.usuarios.find(item => item.uid === uid);
+  if (!usuario) return;
+
+  if (uid === state.currentUser.uid) {
+    toast("Você não pode excluir seu próprio usuário.");
+    return;
+  }
+
+  const modal = document.getElementById("modalExcluirUsuario");
+  const input = document.getElementById("excluirUsuarioUid");
+  const info = document.getElementById("excluirUsuarioInfo");
+
+  if (input) input.value = uid;
+
+  if (info) {
+    info.innerHTML = `
+      <strong>${escapeHtml(usuario.nome || "-")}</strong>
+      <span>${escapeHtml(usuario.email || "-")} | ${usuario.tipo === "admin" ? "Admin" : "Usuário comum"}</span>
+    `;
+  }
+
+  modal?.classList.remove("hidden");
+}
+
+function fecharModalExcluirUsuario() {
+  document.getElementById("modalExcluirUsuario")?.classList.add("hidden");
+  const input = document.getElementById("excluirUsuarioUid");
+  if (input) input.value = "";
+}
+
+async function confirmarExcluirUsuario() {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode excluir usuários.");
+    return;
+  }
+
+  const uid = document.getElementById("excluirUsuarioUid")?.value || "";
+  const usuario = state.usuarios.find(item => item.uid === uid);
+
+  if (!usuario) {
+    toast("Usuário não encontrado.");
+    return;
+  }
+
+  if (uid === state.currentUser.uid) {
+    toast("Você não pode excluir seu próprio usuário.");
+    return;
+  }
+
+  try {
+    await deleteDoc(doc(db, "usuarios", uid));
+    await registrarLog("usuario_excluido", "usuario", uid, `${usuario.nome || uid} | ${usuario.email || "-"}`);
+    fecharModalExcluirUsuario();
+    fecharPermissoesUsuario();
+    toast("Acesso do usuário excluído.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao excluir usuário.");
   }
 }
 
@@ -7340,6 +7503,8 @@ window.excluirProduto = excluirProduto;
 window.editarOrdem = editarOrdem;
 window.excluirOrdem = excluirOrdem;
 window.abrirPermissoesUsuario = abrirPermissoesUsuario;
+window.alternarTipoUsuario = alternarTipoUsuario;
+window.abrirModalExcluirUsuario = abrirModalExcluirUsuario;
 window.alternarUsuario = alternarUsuario;
 window.iniciarCadastroProdutoPelaOrdem = iniciarCadastroProdutoPelaOrdem;
 window.conferirReferenciaPendente = conferirReferenciaPendente;

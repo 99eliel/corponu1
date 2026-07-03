@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-03-permissoes-usuarios-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-03-permissoes-usuarios-1" />
+  <meta name="app-version" content="2026-07-03-usuarios-tipo-excluir-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-03-usuarios-tipo-excluir-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -1413,6 +1413,19 @@
               </div>
             </div>
 
+            <div class="permissao-tipo-box">
+              <label>
+                Tipo do usuário
+                <select id="permissaoUsuarioTipo">
+                  <option value="usuario">Usuário comum</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </label>
+              <div class="notice small">
+                Admin tem acesso total. Usuário comum usa as permissões marcadas abaixo.
+              </div>
+            </div>
+
             <div class="permissoes-grid">
               <div class="permissoes-group">
                 <h4>Telas que pode ver</h4>
@@ -1635,8 +1648,8 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="update.js?v=2026-07-03-permissoes-usuarios-1"></script>
-  <script type="module" src="app.js?v=2026-07-03-permissoes-usuarios-1"></script>
+  <script src="update.js?v=2026-07-03-usuarios-tipo-excluir-1"></script>
+  <script type="module" src="app.js?v=2026-07-03-usuarios-tipo-excluir-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
@@ -1725,6 +1738,35 @@
           <button class="btn" id="btnCancelarModalChegada" type="button">Cancelar</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="modalExcluirUsuario">
+    <div class="modal-card usuario-delete-modal-card">
+      <div class="modal-header">
+        <div>
+          <h3>Excluir acesso do usuário</h3>
+          <p>Essa ação remove o perfil do usuário no sistema.</p>
+        </div>
+        <button class="modal-close" id="btnFecharModalExcluirUsuario" type="button">×</button>
+      </div>
+
+      <div class="movimentacao-form">
+        <input type="hidden" id="excluirUsuarioUid" />
+
+        <div class="movimentacao-op-info" id="excluirUsuarioInfo">
+          Usuário selecionado
+        </div>
+
+        <div class="notice danger-notice small">
+          O login do Firebase Authentication pode continuar existindo, mas sem perfil na coleção <strong>usuarios</strong> ele não conseguirá acessar o sistema.
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-danger" id="btnConfirmarExcluirUsuario" type="button">Excluir acesso</button>
+          <button class="btn" id="btnCancelarExcluirUsuario" type="button">Cancelar</button>
+        </div>
+      </div>
     </div>
   </div>
 

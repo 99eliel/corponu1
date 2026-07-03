@@ -2229,3 +2229,46 @@ Gerenciar células
 Assim uma pessoa pode ver **Pagamentos**, mas não necessariamente pode **Gerenciar valores**.
 
 Atenção: isso controla o acesso visual e operacional dentro do sistema. Para segurança máxima, as regras do Firebase podem ser refinadas depois por tipo/permissão.
+
+
+## Atualização: mudar tipo e excluir usuários
+
+A gestão de usuários agora permite:
+
+```txt
+- Transformar Usuário comum em Admin
+- Transformar Admin em Usuário comum
+- Excluir acesso do usuário
+```
+
+Na lista de usuários foram adicionados botões:
+
+```txt
+Gerenciar
+Virar admin / Virar usuário
+Desativar / Ativar
+Excluir
+```
+
+Na tela **Gerenciar permissões**, também foi adicionado:
+
+```txt
+Tipo do usuário
+```
+
+Assim o admin pode alterar o tipo enquanto ajusta as permissões.
+
+Proteções adicionadas:
+
+```txt
+- O admin não consegue rebaixar o próprio usuário
+- O admin não consegue excluir o próprio usuário
+- Admin sempre tem acesso total
+```
+
+Sobre excluir:
+
+```txt
+A exclusão remove o documento do usuário na coleção usuarios.
+Se o login ainda existir no Firebase Authentication, ele não conseguirá entrar porque ficará sem perfil no sistema.
+```

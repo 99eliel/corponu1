@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-03-permissoes-usuarios-1";
+  const APP_VERSION = "2026-07-03-usuarios-tipo-excluir-1";
   const STORAGE_KEY = "op_confeccao_app_version";
   let refreshing = false;
 

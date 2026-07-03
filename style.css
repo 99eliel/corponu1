@@ -3540,3 +3540,54 @@ table td {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Tipo e exclusão de usuário */
+.permissao-tipo-box {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) 1fr;
+  gap: 12px;
+  align-items: end;
+  border: 1px solid #dbe4f0;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.permissao-tipo-box label {
+  display: grid;
+  gap: 6px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.permissao-tipo-box select {
+  min-height: 40px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 9px 11px;
+  font-weight: 700;
+}
+
+.usuario-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.usuario-delete-modal-card {
+  width: min(540px, 100%);
+}
+
+.danger-notice {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+@media (max-width: 760px) {
+  .permissao-tipo-box {
+    grid-template-columns: 1fr;
+  }
+}
