@@ -1401,7 +1401,7 @@ function optionsPrecosReferenciaManejo(op, setor, selecionado = "") {
 
   return `<option value="">Processo / preço</option>` + precos.map(preco => {
     const selected = preco.id === selecionado ? " selected" : "";
-    return `<option value="${escapeHtml(preco.id)}"${selected}>${escapeHtml(preco.processo)} - ${escapeHtml(formatarMoedaBR(preco.valor))}</option>`;
+    return `<option value="${escapeHtml(preco.id)}"${selected}>${escapeHtml(preco.processo)} - ${escapeHtml(formatarValorUnitarioBR(preco.valor))}</option>`;
   }).join("");
 }
 
@@ -4136,6 +4136,11 @@ function configurarPagamentos() {
     });
   }
 
+  const carregarBojo = document.getElementById("btnCarregarBojoEncapado");
+  if (carregarBojo) {
+    carregarBojo.addEventListener("click", carregarModeloBojoEncapado);
+  }
+
   const formEntrega = document.getElementById("formEntregaPagamento");
   if (formEntrega) {
     formEntrega.addEventListener("submit", salvarEntregaPagamento);
@@ -4201,6 +4206,13 @@ function formatarMoedaBR(valor) {
     style: "currency",
     currency: "BRL"
   });
+}
+
+function formatarValorUnitarioBR(valor) {
+  return `R$ ${Number(valor || 0).toLocaleString("pt-BR", {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4
+  })}`;
 }
 
 function getLabelSetorPagamento(setor) {
@@ -4545,7 +4557,7 @@ function renderPrecosReferencia() {
       <td><strong>${escapeHtml(preco.processo || "-")}</strong></td>
       <td>${escapeHtml(getLabelSetorPagamento(preco.setor))}</td>
       <td><strong>${escapeHtml(preco.referencia || "-")}</strong></td>
-      <td><strong>${escapeHtml(formatarMoedaBR(preco.valor))}</strong></td>
+      <td><strong>${escapeHtml(formatarValorUnitarioBR(preco.valor))}</strong></td>
       <td>
         <span class="status-dot ${preco.ativo !== false ? "active" : "inactive"}">
           ${preco.ativo !== false ? "Ativo" : "Inativo"}
@@ -4558,6 +4570,115 @@ function renderPrecosReferencia() {
       </td>
     </tr>
   `).join("");
+}
+
+const MODELO_BOJO_ENCAPADO_CN = [
+  ["400", "0,2943"],
+  ["407", "0,2943"],
+  ["409", "0,2943"],
+  ["411", "0,2943"],
+  ["412", "0,2943"],
+  ["414", "0,2943"],
+  ["416", "0,2943"],
+  ["425", "0,5249"],
+  ["429", "0,2943"],
+  ["438", "0,4029"],
+  ["440", "0,4029"],
+  ["441", "0,4029"],
+  ["442", "0,4360"],
+  ["450", "0,6540"],
+  ["460", "0,2943"],
+  ["465", "0,2943"],
+  ["480", "0,2943"],
+  ["481", "0,2943"],
+  ["482", "0,2943"],
+  ["486", "0,3500"],
+  ["488", "0,2943"],
+  ["495", "0,2943"],
+  ["500", "0,2943"],
+  ["502", "0,2943"],
+  ["504", "0,2943"],
+  ["505", "0,2943"],
+  ["508", "0,2943"],
+  ["509", "0,2943"],
+  ["515", "0,4029"],
+  ["518", "0,2943"],
+  ["520", "0,4029"],
+  ["526", "0,2943"],
+  ["534", "0,2943"],
+  ["535", "0,5249"],
+  ["540", "0,2943"],
+  ["549", "0,2943"],
+  ["550", "0,2943"],
+  ["552", "0,2943"],
+  ["555", "0,2943"],
+  ["557", "0,2943"],
+  ["558", "0,6540"],
+  ["568", "0,2943"],
+  ["580", "0,5249"],
+  ["582", "0,5249"],
+  ["751", "0,6540"],
+  ["752", "0,7085"],
+  ["754", "0,6540"],
+  ["755", "0,6540"],
+  ["762", "0,6540"],
+  ["770", "0,2943"],
+  ["777", "0,4029"],
+  ["900", "0,5249"],
+  ["902", "0,5249"],
+  ["903", "0,2943"],
+  ["906", "0,5249"],
+  ["908", "0,2943"],
+  ["910", "0,2943"],
+  ["920", "0,5249"],
+  ["1001", "0,2943"],
+  ["1002", "0,2943"],
+  ["2000", "0,4029"],
+  ["5051", "0,4029"],
+  ["5151", "0,4029"]
+];
+
+function carregarModeloBojoEncapado() {
+  processoValorAtivo = chaveProcessoValor("ENCAPAR BOJO", "bojo");
+
+  const novoProcesso = document.getElementById("valorNovoProcesso");
+  const novoSetor = document.getElementById("valorNovoSetor");
+  const processoInput = document.getElementById("precoReferenciaProcesso");
+  const setorInput = document.getElementById("precoReferenciaSetor");
+  const select = document.getElementById("valorProcessoAtivo");
+  const textarea = document.getElementById("valoresImportacaoTexto");
+
+  if (novoProcesso) novoProcesso.value = "ENCAPAR BOJO";
+  if (novoSetor) novoSetor.value = "bojo";
+  if (processoInput) processoInput.value = "ENCAPAR BOJO";
+  if (setorInput) setorInput.value = "bojo";
+
+  preencherProcessosValores();
+
+  if (select) {
+    const existe = [...select.options].some(option => option.value === processoValorAtivo);
+
+    if (!existe) {
+      const option = document.createElement("option");
+      option.value = processoValorAtivo;
+      option.textContent = "ENCAPAR BOJO | Bojo (modelo)";
+      select.appendChild(option);
+    }
+
+    select.value = processoValorAtivo;
+  }
+
+  if (textarea) {
+    textarea.value = MODELO_BOJO_ENCAPADO_CN
+      .map(([referencia, valor]) => `${referencia}\t${valor}`)
+      .join("\n");
+
+    textarea.focus();
+  }
+
+  renderProcessosValores();
+  renderPrecosReferencia();
+  toast("Modelo BOJO ENCAPADO carregado. Agora clique em Importar valores colados.");
 }
 
 function parseValorMonetario(texto) {
@@ -4700,7 +4821,7 @@ function editarPrecoReferencia(id) {
   document.getElementById("precoReferenciaRef").value = preco.referencia || "";
   document.getElementById("precoReferenciaProcesso").value = preco.processo || "";
   document.getElementById("precoReferenciaSetor").value = preco.setor || "";
-  document.getElementById("precoReferenciaValor").value = Number(preco.valor || 0).toFixed(2);
+  document.getElementById("precoReferenciaValor").value = Number(preco.valor || 0).toFixed(4);
   document.getElementById("precoReferenciaRef")?.focus();
 }
 
@@ -5021,7 +5142,7 @@ function preencherFiltrosPagamento() {
     const atual = selectPreco.value;
 
     selectPreco.innerHTML = `<option value="">Todos</option>` + precos.map(preco => {
-      return `<option value="${escapeHtml(preco.id)}">${escapeHtml(preco.referencia)} - ${escapeHtml(preco.processo)} - ${escapeHtml(formatarMoedaBR(preco.valor))}</option>`;
+      return `<option value="${escapeHtml(preco.id)}">${escapeHtml(preco.referencia)} - ${escapeHtml(preco.processo)} - ${escapeHtml(formatarValorUnitarioBR(preco.valor))}</option>`;
     }).join("");
 
     if (precos.some(preco => preco.id === atual)) selectPreco.value = atual;
@@ -5031,7 +5152,7 @@ function preencherFiltrosPagamento() {
     const atual = entregaPreco.value;
 
     entregaPreco.innerHTML = `<option value="">Selecione</option>` + precosEntrega.map(preco => {
-      return `<option value="${escapeHtml(preco.id)}">${escapeHtml(preco.referencia)} - ${escapeHtml(preco.processo)} - ${escapeHtml(formatarMoedaBR(preco.valor))}</option>`;
+      return `<option value="${escapeHtml(preco.id)}">${escapeHtml(preco.referencia)} - ${escapeHtml(preco.processo)} - ${escapeHtml(formatarValorUnitarioBR(preco.valor))}</option>`;
     }).join("");
 
     if (precosEntrega.some(preco => preco.id === atual)) entregaPreco.value = atual;
@@ -5134,7 +5255,7 @@ function renderPagamentos() {
         <td>${escapeHtml(grupo.setorLabel)}</td>
         <td>${escapeHtml(grupo.entregas.toLocaleString("pt-BR"))}</td>
         <td><strong>${escapeHtml(grupo.quantidade.toLocaleString("pt-BR"))}</strong></td>
-        <td>${escapeHtml(formatarMoedaBR(grupo.valorUnitario))}</td>
+        <td>${escapeHtml(formatarValorUnitarioBR(grupo.valorUnitario))}</td>
         <td><strong>${escapeHtml(formatarMoedaBR(grupo.total))}</strong></td>
       </tr>
     `).join("");
@@ -5260,7 +5381,7 @@ function imprimirRelatorioPagamento() {
       <td>${escapeHtml(grupo.setorLabel)}</td>
       <td class="num">${escapeHtml(grupo.entregas.toLocaleString("pt-BR"))}</td>
       <td class="num">${escapeHtml(grupo.quantidade.toLocaleString("pt-BR"))}</td>
-      <td class="num">${escapeHtml(formatarMoedaBR(grupo.valorUnitario))}</td>
+      <td class="num">${escapeHtml(formatarValorUnitarioBR(grupo.valorUnitario))}</td>
       <td class="num">${escapeHtml(formatarMoedaBR(grupo.total))}</td>
     </tr>
   `).join("");

@@ -2038,3 +2038,99 @@ Ocultar gerenciamento
 ```
 
 Clicando novamente, a área de valores é escondida.
+
+
+## Valores adicionados: BOJO ENCAPADO CN - 28/08/25
+
+Foi adicionado um modelo rápido na área **Gerenciar valores**:
+
+```txt
+Carregar BOJO ENCAPADO CN
+```
+
+Ele preenche automaticamente:
+
+```txt
+Processo: ENCAPAR BOJO
+Setor: Bojo
+```
+
+E coloca os valores transcritos da tabela enviada na área de importação.
+
+Total de referências transcritas: 63.
+
+Os valores usam 4 casas decimais, por exemplo:
+
+```txt
+400    0,2943
+425    0,5249
+752    0,7085
+```
+
+Lista completa para conferência:
+
+```txt
+400	0,2943
+407	0,2943
+409	0,2943
+411	0,2943
+412	0,2943
+414	0,2943
+416	0,2943
+425	0,5249
+429	0,2943
+438	0,4029
+440	0,4029
+441	0,4029
+442	0,4360
+450	0,6540
+460	0,2943
+465	0,2943
+480	0,2943
+481	0,2943
+482	0,2943
+486	0,3500
+488	0,2943
+495	0,2943
+500	0,2943
+502	0,2943
+504	0,2943
+505	0,2943
+508	0,2943
+509	0,2943
+515	0,4029
+518	0,2943
+520	0,4029
+526	0,2943
+534	0,2943
+535	0,5249
+540	0,2943
+549	0,2943
+550	0,2943
+552	0,2943
+555	0,2943
+557	0,2943
+558	0,6540
+568	0,2943
+580	0,5249
+582	0,5249
+751	0,6540
+752	0,7085
+754	0,6540
+755	0,6540
+762	0,6540
+770	0,2943
+777	0,4029
+900	0,5249
+902	0,5249
+903	0,2943
+906	0,5249
+908	0,2943
+910	0,2943
+920	0,5249
+1001	0,2943
+1002	0,2943
+2000	0,4029
+5051	0,4029
+5151	0,4029
+```

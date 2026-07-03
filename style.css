@@ -3416,3 +3416,37 @@ table td {
 #painelGerenciarValores {
   margin-top: 16px;
 }
+
+
+/* Modelo rápido de valores */
+.modelos-valores-rapidos {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.modelos-valores-rapidos div {
+  display: grid;
+  gap: 2px;
+}
+
+.modelos-valores-rapidos strong {
+  color: #0f172a;
+}
+
+.modelos-valores-rapidos span {
+  color: #475569;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .modelos-valores-rapidos {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

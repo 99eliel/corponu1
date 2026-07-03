@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-03-gerenciar-valores-oculto-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-03-gerenciar-valores-oculto-1" />
+  <meta name="app-version" content="2026-07-03-bojo-encapado-valores-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-03-bojo-encapado-valores-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -1178,7 +1178,7 @@
 
                 <label>
                   Valor por peça
-                  <input id="precoReferenciaValor" type="number" min="0" step="0.01" placeholder="Ex: 0.39" required />
+                  <input id="precoReferenciaValor" type="number" min="0" step="0.0001" placeholder="Ex: 0.39" required />
                 </label>
 
                 <div class="actions">
@@ -1193,6 +1193,14 @@
                     <h3>Importar valores da planilha</h3>
                     <p>Copie as linhas da planilha e cole aqui. Aceita: Referência + Valor, ou Referência + Processo + Valor.</p>
                   </div>
+                </div>
+
+                <div class="modelos-valores-rapidos">
+                  <div>
+                    <strong>Modelo rápido disponível</strong>
+                    <span>Preço BOJO ENCAPADO CN - 28/08/25</span>
+                  </div>
+                  <button class="btn btn-primary" id="btnCarregarBojoEncapado" type="button">Carregar BOJO ENCAPADO CN</button>
                 </div>
 
                 <textarea id="valoresImportacaoTexto" rows="6" placeholder="Ex:
@@ -1576,8 +1584,8 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="update.js?v=2026-07-03-gerenciar-valores-oculto-1"></script>
-  <script type="module" src="app.js?v=2026-07-03-gerenciar-valores-oculto-1"></script>
+  <script src="update.js?v=2026-07-03-bojo-encapado-valores-1"></script>
+  <script type="module" src="app.js?v=2026-07-03-bojo-encapado-valores-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
