@@ -3206,17 +3206,16 @@ table td {
 }
 
 
-/* Modal de chegada/retorno */
+/* Modal de chegada/retorno corrigido */
 .chegada-modal-card {
   width: min(560px, 100%);
 }
 
-
-/* Defeito na chegada da facção */
 #grupoChegadaDefeito.hidden {
   display: none !important;
 }
 
+/* Desconto por defeito na facção */
 .faccoes-cards {
   grid-template-columns: repeat(5, minmax(130px, 1fr));
 }
