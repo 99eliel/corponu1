@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-03-faccoes-gerenciar-oculto-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-03-faccoes-gerenciar-oculto-1" />
+  <meta name="app-version" content="2026-07-03-celulas-gerenciar-oculto-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-03-celulas-gerenciar-oculto-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -787,33 +787,92 @@
 
 
       <section id="celulas" class="page">
-        <div class="grid-2">
-          <form class="panel form admin-only-block" id="formCelula">
-            <div class="panel-header">
-              <div>
-                <h3>Células</h3>
-                <p>Cadastre as células internas da produção. Para teste, só precisa do nome.</p>
-              </div>
+        <div class="panel celulas-operacional-panel">
+          <div class="panel-header">
+            <div>
+              <h3>Células</h3>
+              <p>Acompanhe tudo que está nas células internas. O cadastro fica separado em Gerenciar células.</p>
             </div>
-
-            <input type="hidden" id="celulaId" />
-
-            <label>
-              Nome da célula
-              <input id="celulaNome" type="text" placeholder="Ex: CÉLULA 01" required />
-            </label>
-
             <div class="actions">
-              <button class="btn btn-primary" type="submit">Salvar célula</button>
-              <button class="btn" type="button" id="btnCancelarCelula">Cancelar</button>
+              <button class="btn" id="btnToggleGerenciarCelulas" type="button">Gerenciar células</button>
             </div>
-          </form>
+          </div>
 
-          <div class="panel">
-            <div class="panel-header">
+          <div class="celulas-cards">
+            <div class="processo-card">
+              <span>Células cadastradas</span>
+              <strong id="celulasTotalCadastradas">0</strong>
+            </div>
+            <div class="processo-card pending-card">
+              <span>OPs em célula</span>
+              <strong id="celulasOpsEmAndamento">0</strong>
+            </div>
+            <div class="processo-card">
+              <span>Peças enviadas</span>
+              <strong id="celulasPecasEnviadas">0</strong>
+            </div>
+            <div class="processo-card ok-card">
+              <span>Peças recebidas</span>
+              <strong id="celulasPecasRecebidas">0</strong>
+            </div>
+          </div>
+
+          <div class="panel-subheader">
+            <div>
+              <h3>O que está nas células</h3>
+              <p>Movimentações abertas e retornadas de células internas.</p>
+            </div>
+            <input id="buscaCelulaMovimentacoes" class="search" type="text" placeholder="Buscar OP, ref., célula, processo..." />
+          </div>
+
+          <div class="table-wrap">
+            <table class="celulas-mov-table">
+              <thead>
+                <tr>
+                  <th>OP</th>
+                  <th>REF</th>
+                  <th>Cor</th>
+                  <th>Célula</th>
+                  <th>Processo</th>
+                  <th>Qtd enviada</th>
+                  <th>Envio</th>
+                  <th>Chegada</th>
+                  <th>Falta</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="listaCelulasMovimentacoes"></tbody>
+            </table>
+          </div>
+
+          <div class="gerenciar-celulas-panel hidden" id="painelGerenciarCelulas">
+            <div class="panel-subheader">
+              <div>
+                <h3>Gerenciar células</h3>
+                <p>Cadastre, edite ou inative células. Esta área fica escondida para não poluir a movimentação.</p>
+              </div>
+              <button class="btn btn-primary" id="btnAbrirCadastroCelula" type="button">Cadastrar célula</button>
+            </div>
+
+            <form class="form admin-only-block celula-form-inline hidden" id="formCelula">
+              <input type="hidden" id="celulaId" />
+
+              <label>
+                Nome da célula
+                <input id="celulaNome" type="text" placeholder="Ex: CÉLULA 01" required />
+              </label>
+
+              <div class="actions">
+                <button class="btn btn-primary" type="submit">Salvar célula</button>
+                <button class="btn" type="button" id="btnCancelarCelula">Cancelar</button>
+              </div>
+            </form>
+
+            <div class="panel-subheader celulas-list-header">
               <div>
                 <h3>Células cadastradas</h3>
-                <p>Esses nomes aparecem quando mandar uma OP para célula.</p>
+                <p>Lista de nomes disponíveis para envio no Manejo.</p>
               </div>
               <input id="buscaCelula" class="search" type="text" placeholder="Buscar célula..." />
             </div>
@@ -1423,7 +1482,7 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="update.js?v=2026-07-03-faccoes-gerenciar-oculto-1"></script>
-  <script type="module" src="app.js?v=2026-07-03-faccoes-gerenciar-oculto-1"></script>
+  <script src="update.js?v=2026-07-03-celulas-gerenciar-oculto-1"></script>
+  <script type="module" src="app.js?v=2026-07-03-celulas-gerenciar-oculto-1"></script>
 </body>
 </html>

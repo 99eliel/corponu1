@@ -1863,3 +1863,31 @@ Gerenciar facções
 ```
 
 Assim quem está acompanhando a movimentação não precisa ver os dados cadastrais o tempo todo.
+
+
+## Ajuste: Células operacional com gerenciamento oculto
+
+A aba **Células** agora segue a mesma lógica da aba Facções.
+
+Ela abre diretamente mostrando:
+
+```txt
+O que está nas células
+```
+
+Com resumo:
+
+```txt
+- Células cadastradas
+- OPs em célula
+- Peças enviadas
+- Peças recebidas
+```
+
+O cadastro e a lista de células cadastradas ficam escondidos no botão:
+
+```txt
+Gerenciar células
+```
+
+Assim quem acompanha a produção interna vê primeiro as movimentações, e não os dados de cadastro.

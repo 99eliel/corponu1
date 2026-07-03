@@ -430,6 +430,7 @@ function iniciarListenersFirestore() {
   state.unsubscribers.push(onSnapshot(celulasQuery, snapshot => {
     state.celulas = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     renderCelulas();
+    renderCelulasMovimentacoes();
     renderRastreamento();
   }, error => {
     console.error(error);
@@ -442,6 +443,7 @@ function iniciarListenersFirestore() {
     state.movimentacoesProducao = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     renderRastreamento();
     renderFaccoesMovimentacoes();
+    renderCelulasMovimentacoes();
     renderPagamentos();
   }, error => {
     console.error(error);
@@ -3215,6 +3217,38 @@ function configurarCelulas() {
     busca.addEventListener("input", renderCelulas);
   }
 
+  const buscaMovimentacoes = document.getElementById("buscaCelulaMovimentacoes");
+  if (buscaMovimentacoes) {
+    buscaMovimentacoes.addEventListener("input", renderCelulasMovimentacoes);
+  }
+
+  const toggleGerenciar = document.getElementById("btnToggleGerenciarCelulas");
+  if (toggleGerenciar) {
+    toggleGerenciar.addEventListener("click", () => {
+      const painel = document.getElementById("painelGerenciarCelulas");
+      if (!painel) return;
+
+      const abrindo = painel.classList.contains("hidden");
+      painel.classList.toggle("hidden");
+      toggleGerenciar.textContent = abrindo ? "Ocultar gerenciamento" : "Gerenciar células";
+    });
+  }
+
+  const abrirCadastro = document.getElementById("btnAbrirCadastroCelula");
+  if (abrirCadastro) {
+    abrirCadastro.addEventListener("click", () => {
+      const painel = document.getElementById("painelGerenciarCelulas");
+      const formCelula = document.getElementById("formCelula");
+
+      if (painel) painel.classList.remove("hidden");
+
+      if (formCelula) {
+        formCelula.classList.remove("hidden");
+        document.getElementById("celulaNome")?.focus();
+      }
+    });
+  }
+
   const cancelar = document.getElementById("btnCancelarCelula");
   if (cancelar) {
     cancelar.addEventListener("click", limparFormCelula);
@@ -3223,7 +3257,10 @@ function configurarCelulas() {
 
 function limparFormCelula() {
   const form = document.getElementById("formCelula");
-  if (form) form.reset();
+  if (form) {
+    form.reset();
+    form.classList.add("hidden");
+  }
 
   const id = document.getElementById("celulaId");
   if (id) id.value = "";
@@ -3307,9 +3344,82 @@ function renderCelulas() {
   `).join("");
 }
 
+
+function renderCelulasMovimentacoes() {
+  const tbody = document.getElementById("listaCelulasMovimentacoes");
+  if (!tbody) return;
+
+  const busca = normalizarTexto(document.getElementById("buscaCelulaMovimentacoes")?.value || "");
+  let movimentos = state.movimentacoesProducao.filter(mov => mov.tipoDestino === "celula");
+
+  if (busca) {
+    movimentos = movimentos.filter(mov => {
+      const texto = normalizarTexto([
+        mov.numeroOP,
+        mov.referencia,
+        mov.cor,
+        mov.destino,
+        mov.processo,
+        mov.status
+      ].join(" "));
+      return texto.includes(busca);
+    });
+  }
+
+  const emCelulas = movimentos.filter(mov => mov.status === "em_andamento" || !mov.status);
+  const pecasEnviadas = movimentos.reduce((soma, mov) => soma + Number(mov.quantidadeEnviada || 0), 0);
+  const pecasRecebidas = movimentos.reduce((soma, mov) => soma + Number(mov.quantidadeRecebida || 0), 0);
+
+  const setText = (id, valor) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = Number(valor || 0).toLocaleString("pt-BR");
+  };
+
+  setText("celulasTotalCadastradas", state.celulas.length);
+  setText("celulasOpsEmAndamento", emCelulas.length);
+  setText("celulasPecasEnviadas", pecasEnviadas);
+  setText("celulasPecasRecebidas", pecasRecebidas);
+
+  if (!movimentos.length) {
+    tbody.innerHTML = `<tr><td colspan="11" class="empty">Nenhuma OP enviada para célula ainda.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = movimentos.map(mov => `
+    <tr class="${mov.status === "em_andamento" || !mov.status ? "mov-em-celula" : ""}">
+      <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
+      <td><strong>${escapeHtml(mov.referencia || "-")}</strong></td>
+      <td>${escapeHtml(mov.cor || "-")}</td>
+      <td><strong>${escapeHtml(mov.destino || "-")}</strong></td>
+      <td>${escapeHtml(mov.processo || "-")}</td>
+      <td><strong>${escapeHtml(Number(mov.quantidadeEnviada || 0).toLocaleString("pt-BR"))}</strong></td>
+      <td>${escapeHtml(dataISOParaBR(mov.dataEnvio) || mov.dataEnvio || "-")}</td>
+      <td>${escapeHtml(dataISOParaBR(mov.dataChegada) || mov.dataChegada || "-")}</td>
+      <td>${escapeHtml(Number(mov.falta || 0).toLocaleString("pt-BR"))}</td>
+      <td>
+        <span class="badge ${classeStatusMovimento(mov.status)}">
+          ${escapeHtml(labelStatusMovimento(mov.status))}
+        </span>
+      </td>
+      <td>
+        <button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>
+        <button class="btn btn-sm" onclick="finalizarMovimentacao('${mov.id}')">Finalizar</button>
+        ${ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="excluirMovimentacao('${mov.id}')">Excluir</button>` : ""}
+      </td>
+    </tr>
+  `).join("");
+}
+
+
 function editarCelula(id) {
   const celula = state.celulas.find(item => item.id === id);
   if (!celula) return;
+
+  abrirPagina("celulas");
+  document.getElementById("painelGerenciarCelulas")?.classList.remove("hidden");
+  const toggleGerenciar = document.getElementById("btnToggleGerenciarCelulas");
+  if (toggleGerenciar) toggleGerenciar.textContent = "Ocultar gerenciamento";
+  document.getElementById("formCelula")?.classList.remove("hidden");
 
   document.getElementById("celulaId").value = celula.id;
   document.getElementById("celulaNome").value = celula.nome || "";
@@ -5663,6 +5773,7 @@ function renderTudo() {
   renderFaccoes();
   renderFaccoesMovimentacoes();
   renderCelulas();
+  renderCelulasMovimentacoes();
   renderRastreamento();
   renderPagamentos();
   renderRelatorio();

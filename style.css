@@ -3019,3 +3019,81 @@ table td {
   border-top: 0;
   padding-top: 0;
 }
+
+
+/* Células operacional com gerenciamento oculto */
+.celulas-operacional-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.celulas-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.gerenciar-celulas-panel {
+  border: 1px solid #dbe4f0;
+  border-radius: 18px;
+  padding: 14px;
+  background: #f8fafc;
+  margin-top: 14px;
+}
+
+.gerenciar-celulas-panel.hidden {
+  display: none !important;
+}
+
+.gerenciar-celulas-panel .panel-subheader:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.celula-form-inline {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 12px;
+  border: 1px solid #dbe4f0;
+  border-radius: 16px;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.celula-form-inline.hidden {
+  display: none !important;
+}
+
+.celula-form-inline .actions {
+  align-self: end;
+}
+
+.celulas-list-header {
+  margin-top: 18px;
+}
+
+.celulas-mov-table {
+  min-width: 1220px;
+}
+
+.celulas-mov-table th,
+.celulas-mov-table td {
+  white-space: nowrap;
+}
+
+.celulas-mov-table td:nth-child(6),
+.celulas-mov-table td:nth-child(9) {
+  text-align: right;
+}
+
+.mov-em-celula {
+  background: #eff6ff;
+}
+
+@media (max-width: 900px) {
+  .celulas-cards,
+  .celula-form-inline {
+    grid-template-columns: 1fr;
+  }
+}
