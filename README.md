@@ -1935,3 +1935,83 @@ CÉLULA INTERNA
 ```
 
 Para **Mandar facção**, o processo continua aparecendo normalmente, porque ele influencia a tabela de preço e o pagamento.
+
+
+## Correção: chegada sem prompt do navegador
+
+A ação **Chegada** não usa mais a caixa padrão do navegador.
+
+Agora abre uma janela do próprio sistema com:
+
+```txt
+- Data de chegada/retorno
+- Falta / quantidade que não voltou
+- Confirmar chegada
+```
+
+Esse ajuste vale para chegadas de **Facção** e de **Célula**.
+
+
+## Atualização: defeito na chegada da facção
+
+Na ação **Chegada** das movimentações de **Facção**, agora existe o campo:
+
+```txt
+Defeito / quantidade que voltou com problema
+```
+
+O cálculo do pagamento da facção agora desconta:
+
+```txt
+Quantidade para pagar = Quantidade enviada - Falta - Defeito
+```
+
+Exemplo:
+
+```txt
+Quantidade enviada: 100
+Falta: 5
+Defeito: 3
+Quantidade paga: 92
+```
+
+A aba **Facções** também mostra:
+
+```txt
+- Peças com defeito
+- Coluna Defeito na tabela
+```
+
+Para movimentações de **Célula**, o campo defeito fica oculto.
+
+
+## Ajuste: defeito como desconto em reais
+
+O campo **Defeito** da chegada da facção agora é um valor financeiro, não quantidade de peças.
+
+Novo campo:
+
+```txt
+Desconto por defeito (R$)
+```
+
+Cálculo atualizado:
+
+```txt
+Quantidade para pagar = Quantidade enviada - Falta
+Subtotal = Quantidade para pagar × Valor da referência/processo
+Total final = Subtotal - Desconto por defeito
+```
+
+Exemplo:
+
+```txt
+Quantidade enviada: 100
+Falta: 5
+Valor por peça: R$ 0,50
+Subtotal: 95 × R$ 0,50 = R$ 47,50
+Desconto por defeito: R$ 10,00
+Total final: R$ 37,50
+```
+
+A aba **Facções** também mostra o desconto por defeito em formato de moeda.

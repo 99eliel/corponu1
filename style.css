@@ -3204,3 +3204,42 @@ table td {
 #grupoMovimentacaoProcesso.hidden {
   display: none !important;
 }
+
+
+/* Modal de chegada/retorno */
+.chegada-modal-card {
+  width: min(560px, 100%);
+}
+
+
+/* Defeito na chegada da facção */
+#grupoChegadaDefeito.hidden {
+  display: none !important;
+}
+
+.faccoes-cards {
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+}
+
+.danger-card {
+  border-color: #fecaca !important;
+  background: #fef2f2 !important;
+}
+
+.danger-card strong {
+  color: #b91c1c;
+}
+
+.faccoes-mov-table {
+  min-width: 1300px;
+}
+
+.faccoes-mov-table td:nth-child(10) {
+  text-align: right;
+}
+
+@media (max-width: 1100px) {
+  .faccoes-cards {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+}
