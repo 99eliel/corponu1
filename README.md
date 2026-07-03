@@ -2017,3 +2017,24 @@ Referência + Setor + Processo
 ```
 
 Assim ele evita duplicar valores.
+
+
+## Ajuste: Gerenciar valores oculto
+
+A área **Gerenciar valores** agora fica escondida igual **Gerenciar facções**.
+
+Na tela de **Pagamentos**, aparece primeiro somente o relatório.
+
+O painel de valores só aparece ao clicar em:
+
+```txt
+Gerenciar valores
+```
+
+Ao abrir, o botão muda para:
+
+```txt
+Ocultar gerenciamento
+```
+
+Clicando novamente, a área de valores é escondida.

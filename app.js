@@ -4319,16 +4319,24 @@ function abrirGerenciarValores() {
   const painel = document.getElementById("painelGerenciarValores");
   const botao = document.getElementById("btnToggleGerenciarValores");
 
-  if (painel) painel.classList.remove("hidden");
-  if (botao) botao.textContent = "Gerenciar valores aberto";
+  if (!painel) return;
 
-  preencherProcessosValores();
-  renderProcessosValores();
-  renderPrecosReferencia();
+  const abrindo = painel.classList.contains("hidden");
+  painel.classList.toggle("hidden");
 
-  setTimeout(() => {
-    document.getElementById("painelGerenciarValores")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, 80);
+  if (botao) {
+    botao.textContent = abrindo ? "Ocultar gerenciamento" : "Gerenciar valores";
+  }
+
+  if (abrindo) {
+    preencherProcessosValores();
+    renderProcessosValores();
+    renderPrecosReferencia();
+
+    setTimeout(() => {
+      painel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  }
 }
 
 function fecharGerenciarValores() {
@@ -4680,7 +4688,11 @@ function editarPrecoReferencia(id) {
   const preco = getPrecoReferencia(id);
   if (!preco) return;
 
-  abrirGerenciarValores();
+  const painel = document.getElementById("painelGerenciarValores");
+  if (painel) painel.classList.remove("hidden");
+  const botao = document.getElementById("btnToggleGerenciarValores");
+  if (botao) botao.textContent = "Ocultar gerenciamento";
+
   processoValorAtivo = chaveProcessoValor(preco.processo, preco.setor);
   preencherProcessosValores();
 

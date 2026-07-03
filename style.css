@@ -3405,3 +3405,14 @@ table td {
     max-height: none;
   }
 }
+
+
+/* Gerenciar valores oculto igual Gerenciar facções */
+#painelGerenciarValores.hidden,
+.valores-manager-panel.hidden {
+  display: none !important;
+}
+
+#painelGerenciarValores {
+  margin-top: 16px;
+}
