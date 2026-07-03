@@ -3918,6 +3918,11 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
     : state.celulas.filter(item => item.ativo !== false);
 
   if (!destinos.length) {
+    if (state.carregandoDados?.[tipoDestino === "faccao" ? "faccoes" : "celulas"]) {
+      toast(`Carregando ${label.toLowerCase()}s. Tente novamente em alguns segundos.`);
+      return;
+    }
+
     toast(`Cadastre pelo menos uma ${label.toLowerCase()} antes de enviar a OP.`);
     abrirPagina(tipoDestino === "faccao" ? "faccoes" : "celulas");
 
@@ -4140,6 +4145,15 @@ function podeEncaminharMovimentacao(mov) {
 }
 
 function encaminharMovimentacao(id, tipoDestino) {
+  if (tipoDestino === "faccao") {
+    carregarFaccoesSeNecessario();
+    carregarPrecosReferenciaSeNecessario();
+  }
+
+  if (tipoDestino === "celula") {
+    carregarCelulasSeNecessario();
+  }
+
   const mov = state.movimentacoesProducao.find(item => item.id === id);
 
   if (!mov) {
@@ -7789,6 +7803,9 @@ window.excluirCelula = excluirCelula;
 window.mandarParaFaccao = mandarParaFaccao;
 window.mandarParaCelula = mandarParaCelula;
 window.registrarChegadaMovimentacao = registrarChegadaMovimentacao;
+window.encaminharMovimentacao = encaminharMovimentacao;
+window.reenviarMovimentacaoParaFaccao = reenviarMovimentacaoParaFaccao;
+window.enviarMovimentacaoParaCelula = enviarMovimentacaoParaCelula;
 window.biparMovimentacao = biparMovimentacao;
 window.finalizarMovimentacao = finalizarMovimentacao;
 window.excluirMovimentacao = excluirMovimentacao;

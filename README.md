@@ -2443,3 +2443,17 @@ Células
 ```
 
 Também foi ajustado para o reenvio de facção não vir com processo preenchido automaticamente. O usuário precisa escolher ou digitar o processo.
+
+
+## Correção: botões Mandar célula e Reenviar facção
+
+Foi corrigido o clique dos botões na tela **Facções**:
+
+```txt
+- Mandar célula
+- Reenviar facção
+```
+
+As funções agora ficam expostas corretamente para o HTML, então o clique abre o modal de reenvio.
+
+Também foi adicionado um tratamento para quando a lista de células/facções ainda estiver carregando.
