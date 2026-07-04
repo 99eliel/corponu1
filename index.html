@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-03-fluxo-organizado-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-03-fluxo-organizado-1" />
+  <meta name="app-version" content="2026-07-03-gestao-valores-organizada-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-03-gestao-valores-organizada-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -1071,8 +1071,13 @@
           </div>
 
           <div class="valores-workspace">
-            <aside class="valores-sidebar">
-              <div class="valores-toolbox">
+            <aside class="valores-sidebar valores-sidebar-organizada">
+              <div class="valores-step-card">
+                <strong>1. Escolha o processo</strong>
+                <span>Exemplo: MONTAR BOJO, MONTAR CALCINHA, ENCAPAR BOJO.</span>
+              </div>
+
+              <div class="valores-toolbox valores-toolbox-organizada">
                 <label>
                   Processo ativo
                   <select id="valorProcessoAtivo">
@@ -1082,22 +1087,29 @@
 
                 <label>
                   Buscar processo
-                  <input id="buscaProcessoValor" type="text" placeholder="Ex: ENCAPAR BOJO" />
+                  <input id="buscaProcessoValor" type="text" placeholder="Buscar processo..." />
                 </label>
-
-                <div class="valores-novo-processo">
-                  <label>
-                    Novo processo
-                    <input id="valorNovoProcesso" type="text" placeholder="Ex: ENCAPAR BOJO" />
-                  </label>
-                  <select id="valorNovoSetor" class="hidden" aria-hidden="true">
-                    <option value="bojo" selected>Bojo</option>
-                  </select>
-
-                  <button class="btn btn-primary" id="btnUsarNovoProcesso" type="button">Usar processo</button>
-                </div>
               </div>
 
+              <div class="valores-novo-processo valores-box-destaque">
+                <h4>Criar novo processo</h4>
+                <p>Digite o nome e use para cadastrar valores.</p>
+
+                <label>
+                  Nome do novo processo
+                  <input id="valorNovoProcesso" type="text" placeholder="Ex: MONTAR BOJO" />
+                </label>
+                <select id="valorNovoSetor" class="hidden" aria-hidden="true">
+                  <option value="bojo" selected>Bojo</option>
+                </select>
+
+                <button class="btn btn-primary full-width" id="btnUsarNovoProcesso" type="button">Criar / usar processo</button>
+              </div>
+
+              <div class="processos-valores-title">
+                <strong>Processos cadastrados</strong>
+                <span>Clique para selecionar.</span>
+              </div>
               <div class="processos-valores-list" id="listaProcessosValores"></div>
             </aside>
 
@@ -1121,7 +1133,24 @@
                 </div>
               </div>
 
-              <form id="formPrecoReferencia" class="form compact-form valores-form">
+              <div class="valor-processo-editor">
+                <div>
+                  <strong>2. Renomear processo selecionado</strong>
+                  <p>Altere o nome em todos os valores cadastrados deste processo.</p>
+                </div>
+                <label>
+                  Novo nome do processo
+                  <input id="valorRenomearProcesso" type="text" placeholder="Ex: MONTAR BOJO" />
+                </label>
+                <button class="btn btn-warning" id="btnRenomearProcesso" type="button">Renomear processo</button>
+              </div>
+
+              <div class="valores-step-card horizontal">
+                <strong>3. Cadastrar valor por referência</strong>
+                <span>Escolha o processo, informe a referência e o valor por peça.</span>
+              </div>
+
+              <form id="formPrecoReferencia" class="form compact-form valores-form valores-form-organizado">
                 <input type="hidden" id="precoReferenciaId" />
 
                 <label>
@@ -1151,7 +1180,7 @@
               <div class="importar-valores-box">
                 <div class="panel-subheader">
                   <div>
-                    <h3>Importar valores da planilha</h3>
+                    <h3>4. Importar valores da planilha</h3>
                     <p>Copie as linhas da planilha e cole aqui. Aceita: Referência + Valor, ou Referência + Processo + Valor.</p>
                   </div>
                 </div>
@@ -1181,8 +1210,8 @@
 
               <div class="panel-subheader">
                 <div>
-                  <h3 id="tituloTabelaValores">Valores cadastrados</h3>
-                  <p>Lista filtrada pelo processo selecionado.</p>
+                  <h3 id="tituloTabelaValores">5. Valores cadastrados</h3>
+                  <p>Lista filtrada pelo processo selecionado. Use Editar para alterar referência ou valor individual.</p>
                 </div>
                 <input id="buscaPrecosReferencia" class="search" type="text" placeholder="Buscar referência, processo ou valor..." />
               </div>
@@ -1611,8 +1640,8 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="update.js?v=2026-07-03-fluxo-organizado-1"></script>
-  <script type="module" src="app.js?v=2026-07-03-fluxo-organizado-1"></script>
+  <script src="update.js?v=2026-07-03-gestao-valores-organizada-1"></script>
+  <script type="module" src="app.js?v=2026-07-03-gestao-valores-organizada-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">

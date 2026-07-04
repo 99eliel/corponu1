@@ -3716,3 +3716,131 @@ table td {
 .processos-table td {
   vertical-align: middle;
 }
+
+
+/* Gestão de valores organizada */
+.valores-sidebar-organizada {
+  gap: 14px;
+}
+
+.valores-step-card,
+.valor-processo-editor {
+  border: 1px solid #dbe3ef;
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.valores-step-card strong,
+.valor-processo-editor strong {
+  display: block;
+  color: #0f172a;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.valores-step-card span,
+.valor-processo-editor p,
+.valores-box-destaque p,
+.processos-valores-title span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  margin: 0;
+}
+
+.valores-step-card.horizontal {
+  margin: 16px 0 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.valores-toolbox-organizada {
+  display: grid;
+  gap: 10px;
+}
+
+.valores-box-destaque {
+  border: 1px solid #f4c430;
+  background: #fffbeb;
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.valores-box-destaque h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: #111827;
+}
+
+.full-width {
+  width: 100%;
+  justify-content: center;
+}
+
+.processos-valores-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: end;
+  padding: 0 2px;
+}
+
+.processos-valores-title strong {
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.processo-valor-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.processo-valor-item div {
+  display: grid;
+  gap: 3px;
+}
+
+.processo-valor-item span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.valor-processo-editor {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr auto;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.valor-processo-editor label {
+  margin: 0;
+}
+
+.valores-form-organizado {
+  border: 1px solid #dbe3ef;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.importar-valores-box {
+  border-radius: 16px;
+}
+
+@media (max-width: 920px) {
+  .valor-processo-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .valores-step-card.horizontal {
+    display: block;
+  }
+}

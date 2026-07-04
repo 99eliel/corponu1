@@ -2593,3 +2593,40 @@ Mantido funcionando:
 - Novo pagamento em reenvio para facção
 - Pagamento sem setor visual
 ```
+
+
+## Atualização: Gestão de Valores organizada
+
+A tela **Gerenciar valores** foi reorganizada para ficar mais intuitiva.
+
+Novo fluxo visual:
+
+```txt
+1. Escolher processo
+2. Renomear processo selecionado
+3. Cadastrar valor por referência
+4. Importar valores da planilha
+5. Conferir valores cadastrados
+```
+
+Também foi adicionada a função:
+
+```txt
+Renomear processo
+```
+
+Ela altera o nome do processo em todos os valores já cadastrados daquele processo.
+
+Exemplo:
+
+```txt
+MONTAR BOJO
+```
+
+pode virar:
+
+```txt
+MONTAGEM DE BOJO
+```
+
+sem precisar editar referência por referência.

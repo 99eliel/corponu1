@@ -4647,6 +4647,11 @@ function configurarPagamentos() {
     usarNovoProcesso.addEventListener("click", usarNovoProcessoValor);
   }
 
+  const renomearProcesso = document.getElementById("btnRenomearProcesso");
+  if (renomearProcesso) {
+    renomearProcesso.addEventListener("click", renomearProcessoSelecionado);
+  }
+
   const importarValores = document.getElementById("btnImportarValoresColados");
   if (importarValores) {
     importarValores.addEventListener("click", importarValoresColados);
@@ -4849,7 +4854,10 @@ function aplicarProcessoValorSelecionado(chave) {
   const setorInput = document.getElementById("precoReferenciaSetor");
 
   if (processoInput && processo) processoInput.value = processo;
-  if (setorInput && setor) setorInput.value = setor;
+  if (setorInput && setor) setorInput.value = setor || "bojo";
+
+  const renomearInput = document.getElementById("valorRenomearProcesso");
+  if (renomearInput) renomearInput.value = processo || "";
 }
 
 function abrirGerenciarValores() {
@@ -4924,6 +4932,80 @@ function usarNovoProcessoValor() {
   toast("Processo selecionado. Agora cadastre as referências e valores.");
 }
 
+
+async function renomearProcessoSelecionado() {
+  if (!podeUsarRecurso("gerenciarValores")) {
+    toast("Seu usuário não tem permissão para gerenciar valores.");
+    return;
+  }
+
+  const { processo, setor } = getProcessoValorDeChave(processoValorAtivo);
+  const novoProcesso = limparTexto(document.getElementById("valorRenomearProcesso")?.value || "").toUpperCase();
+
+  if (!processo) {
+    toast("Selecione um processo antes de renomear.");
+    return;
+  }
+
+  if (!novoProcesso) {
+    toast("Digite o novo nome do processo.");
+    return;
+  }
+
+  if (novoProcesso === processo) {
+    toast("O processo já está com esse nome.");
+    return;
+  }
+
+  const valores = state.precosReferencia.filter(preco => {
+    return limparTexto(preco.processo || "").toUpperCase() === processo &&
+      (!setor || preco.setor === setor);
+  });
+
+  if (!valores.length) {
+    toast("Nenhum valor encontrado para esse processo.");
+    return;
+  }
+
+  try {
+    let batch = writeBatch(db);
+    let contador = 0;
+    let total = 0;
+
+    for (const preco of valores) {
+      batch.set(doc(db, "precosReferencia", preco.id), {
+        processo: novoProcesso,
+        atualizadoPor: state.currentUser.uid,
+        atualizadoEm: serverTimestamp()
+      }, { merge: true });
+
+      contador++;
+      total++;
+
+      if (contador === 450) {
+        await batch.commit();
+        batch = writeBatch(db);
+        contador = 0;
+      }
+    }
+
+    if (contador > 0) {
+      await batch.commit();
+    }
+
+    processoValorAtivo = chaveProcessoValor(novoProcesso, setor || "bojo");
+    await registrarLog("processo_valor_renomeado", "precosReferencia", "processo", `${processo} -> ${novoProcesso} | ${total} valores`);
+
+    preencherProcessosValores();
+    renderProcessosValores();
+    renderPrecosReferencia();
+    toast(`Processo renomeado em ${total} valor(es).`);
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao renomear processo.");
+  }
+}
+
 function renderProcessosValores() {
   const container = document.getElementById("listaProcessosValores");
   if (!container) return;
@@ -4942,8 +5024,10 @@ function renderProcessosValores() {
 
   container.innerHTML = processos.map(item => `
     <button class="processo-valor-item ${item.chave === processoValorAtivo ? "active" : ""}" type="button" onclick="selecionarProcessoValor('${escapeHtml(item.chave)}')">
-      <strong>${escapeHtml(item.processo)}</strong>
-      <span>${item.total} referências</span>
+      <div>
+        <strong>${escapeHtml(item.processo)}</strong>
+        <span>${item.total} referências</span>
+      </div>
       <small>${item.ativos} ativos / ${item.inativos} inativos</small>
     </button>
   `).join("");
@@ -5077,7 +5161,7 @@ function renderPrecosReferencia() {
   setText("valorTotalInativos", Number(inativos).toLocaleString("pt-BR"));
 
   const titulo = document.getElementById("tituloTabelaValores");
-  if (titulo) titulo.textContent = processo ? `Valores: ${processo}` : "Todos os valores cadastrados";
+  if (titulo) titulo.textContent = processo ? `5. Valores cadastrados — ${processo}` : "5. Todos os valores cadastrados";
 
   if (!precos.length) {
     tbody.innerHTML = `<tr><td colspan="5" class="empty">Nenhum valor cadastrado para esse processo.</td></tr>`;
