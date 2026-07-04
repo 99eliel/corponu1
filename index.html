@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-03-pagamento-sem-setor-corrigido-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-03-pagamento-sem-setor-corrigido-1" />
+  <meta name="app-version" content="2026-07-03-fluxo-organizado-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-03-fluxo-organizado-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -105,23 +105,23 @@
       <section id="dashboard" class="page active">
         <div class="cards">
           <div class="card">
-            <span>Produtos cadastrados</span>
+            <span>Referências</span>
             <strong id="totalProdutos">0</strong>
           </div>
           <div class="card">
-            <span>Ordens cadastradas</span>
+            <span>OPs cadastradas</span>
             <strong id="totalOrdens">0</strong>
           </div>
           <div class="card">
-            <span>Ordens com renda</span>
+            <span>Facções em andamento</span>
             <strong id="totalRenda">0</strong>
           </div>
           <div class="card">
-            <span>Ordens com alça</span>
+            <span>Células em andamento</span>
             <strong id="totalAlca">0</strong>
           </div>
           <div class="card">
-            <span>Ordens com bojo</span>
+            <span>Pagamentos pendentes</span>
             <strong id="totalBojo">0</strong>
           </div>
         </div>
@@ -129,8 +129,8 @@
         <div class="panel">
           <div class="panel-header">
             <div>
-              <h3>Últimas ordens</h3>
-              <p>As ordens mais recentes aparecem aqui.</p>
+              <h3>Últimas movimentações</h3>
+              <p>As etapas mais recentes do fluxo aparecem aqui.</p>
             </div>
           </div>
           <div class="table-wrap">
@@ -138,15 +138,15 @@
               <thead>
                 <tr>
                   <th>OP</th>
-                  <th>Necessidade</th>
-                  <th>Referência</th>
+                  <th>REF</th>
                   <th>Cor</th>
-                  <th>Produto</th>
+                  <th>Etapa</th>
+                  <th>Destino</th>
+                  <th>Processo</th>
                   <th>Qtd.</th>
-                  <th>Alça</th>
-                  <th>Bojo</th>
-                  <th>Renda</th>
                   <th>Status</th>
+                  <th>Envio</th>
+                  <th>Chegada</th>
                 </tr>
               </thead>
               <tbody id="ultimasOrdens"></tbody>
@@ -520,18 +520,18 @@
           <div class="panel-header">
             <div>
               <h3>Visualizar processos</h3>
-              <p>Tela de acompanhamento em tempo real do manejo. Use os filtros para acompanhar cor, fase, facção, CELU e status.</p>
+              <p>Tela de acompanhamento em tempo real das movimentações. Use os filtros para acompanhar etapa, destino, processo e status.</p>
             </div>
-            <input id="buscaProcessos" class="search" type="text" placeholder="Buscar OP, ref., cor, fase..." />
+            <input id="buscaProcessos" class="search" type="text" placeholder="Buscar OP, ref., cor, destino, processo..." />
           </div>
 
           <div class="processos-cards">
             <div class="processo-card">
-              <span>OPs na tela</span>
+              <span>Etapas na tela</span>
               <strong id="processosTotalOps">0</strong>
             </div>
             <div class="processo-card">
-              <span>Total de peças</span>
+              <span>Peças enviadas</span>
               <strong id="processosTotalPecas">0</strong>
             </div>
             <div class="processo-card">
@@ -539,7 +539,7 @@
               <strong id="processosTotalFalta">0</strong>
             </div>
             <div class="processo-card ok-card">
-              <span>Organizadas</span>
+              <span>Em andamento</span>
               <strong id="processosOrganizadas">0</strong>
             </div>
             <div class="processo-card bipado-card">
@@ -547,7 +547,7 @@
               <strong id="processosBipadas">0</strong>
             </div>
             <div class="processo-card pending-card">
-              <span>Pendentes</span>
+              <span>Encaminhadas</span>
               <strong id="processosPendentes">0</strong>
             </div>
           </div>
@@ -557,9 +557,10 @@
               Status
               <select id="processoFiltroStatus">
                 <option value="">Todos</option>
-                <option value="organizada">Organizadas</option>
-                <option value="pendente">Pendentes</option>
-                <option value="bipado">Bipadas</option>
+                <option value="em_andamento">Em andamento</option>
+                <option value="retornou">Retornou</option>
+                <option value="encaminhado">Encaminhado</option>
+                <option value="finalizado">Bipado</option>
               </select>
             </label>
 
@@ -578,21 +579,21 @@
             </label>
 
             <label>
-              Fase
+              Processo
               <select id="processoFiltroFase">
                 <option value="">Todas</option>
               </select>
             </label>
 
             <label>
-              Facção
+              Destino
               <select id="processoFiltroFaccao">
                 <option value="">Todas</option>
               </select>
             </label>
 
             <label>
-              CELU
+              Tipo
               <select id="processoFiltroCelu">
                 <option value="">Todos</option>
               </select>
@@ -616,15 +617,15 @@
                   <th>OP</th>
                   <th>REF</th>
                   <th>Cor</th>
-                  <th>QTI</th>
-                  <th>Necessidade</th>
-                  <th>Fase</th>
-                  <th>Facção</th>
+                  <th>Qtd enviada</th>
+                  <th>Etapa</th>
+                  <th>Destino</th>
+                  <th>Processo</th>
+                  <th>Envio</th>
                   <th>Chegada</th>
                   <th>Falta</th>
-                  <th>Produção</th>
-                  <th>CELU</th>
-                  <th>Silk</th>
+                  <th>Recebida</th>
+                  <th>Origem</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -1211,7 +1212,7 @@
           <div class="panel-header">
             <div>
               <h3>Relatórios de produção</h3>
-              <p>Enfesto, corte, silk e separação são gerais. Renda, alça e bojo mostram somente o setor selecionado.</p>
+              <p>Relatórios gerais usam OPs. O relatório Bipadas usa as movimentações finalizadas em Facções/Células.</p>
             </div>
           </div>
 
@@ -1610,8 +1611,8 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="update.js?v=2026-07-03-pagamento-sem-setor-corrigido-1"></script>
-  <script type="module" src="app.js?v=2026-07-03-pagamento-sem-setor-corrigido-1"></script>
+  <script src="update.js?v=2026-07-03-fluxo-organizado-1"></script>
+  <script type="module" src="app.js?v=2026-07-03-fluxo-organizado-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">

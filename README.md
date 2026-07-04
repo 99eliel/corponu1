@@ -2550,3 +2550,46 @@ Mantido funcionando:
 - Importação de valores
 - Pagamentos por referência + processo
 ```
+
+
+## Atualização: Fluxo organizado antes da planilha
+
+Esta versão organiza o sistema para o fluxo real antes da importação da planilha.
+
+Ajustes aplicados:
+
+```txt
+Dashboard
+- Agora mostra referências, OPs, facções em andamento, células em andamento e pagamentos pendentes
+- A tabela inicial mostra as últimas movimentações, não mais apenas as últimas OPs
+```
+
+```txt
+Processos
+- Agora usa movimentacoesProducao como fonte principal
+- Mostra etapa, destino, processo, envio, chegada, falta, quantidade recebida, origem e status
+- Filtros agora trabalham em cima das movimentações reais
+```
+
+```txt
+Relatório Bipadas
+- Agora usa movimentações com status finalizado
+- Bipada não vem mais do Manejo
+- Mostra Facção/Célula, destino, processo, quantidade recebida e origem
+```
+
+```txt
+Pagamentos
+- Removido o botão Editar da tabela de pagamentos gerados
+- Mantidos Pagar/Reabrir e Excluir
+```
+
+Mantido funcionando:
+
+```txt
+- Reenvio para facção
+- Mandar para célula
+- Etapa antiga ficando como encaminhada
+- Novo pagamento em reenvio para facção
+- Pagamento sem setor visual
+```

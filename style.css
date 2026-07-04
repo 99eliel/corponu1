@@ -3697,3 +3697,22 @@ table td {
 .precos-referencia-table {
   min-width: 860px;
 }
+
+
+/* Fluxo organizado */
+.processo-status-finalizado {
+  background: #f0fdf4;
+}
+
+.processo-status-encaminhado {
+  background: #eff6ff;
+}
+
+.processo-status-em_andamento {
+  background: #fff7ed;
+}
+
+#ultimasOrdens td,
+.processos-table td {
+  vertical-align: middle;
+}

@@ -170,7 +170,7 @@ const reportInfo = {
   },
   bipadas: {
     title: "Relatório de Peças Bipadas",
-    subtitle: "Mostra somente OPs cujo processo de produção foi finalizado/bipado no Manejo.",
+    subtitle: "Mostra movimentações finalizadas/bipadas em Facções e Células.",
     tipo: "bipado",
     coluna: "Bipado"
   }
@@ -2951,24 +2951,43 @@ function preencherSelectProcessos(id, valores, labelTodos = "Todos") {
   if (limpos.includes(atual)) select.value = atual;
 }
 
-function renderFiltrosProcessos() {
-  const ordens = [...state.ordens];
+function getMovTimestamp(mov) {
+  const valor = mov?.atualizadoEm || mov?.criadoEm || mov?.bipadoEm || mov?.encaminhadoEm;
+  if (valor && typeof valor.toDate === "function") return valor.toDate().getTime();
+  if (valor instanceof Date) return valor.getTime();
+  const data = mov?.dataChegada || mov?.dataEnvio || "";
+  const parsed = data ? Date.parse(data) : 0;
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
-  preencherSelectProcessos("processoFiltroReferencia", ordens.map(op => op.referencia), "Todas");
-  preencherSelectProcessos("processoFiltroCor", ordens.map(op => op.cor), "Todas");
-  preencherSelectProcessos("processoFiltroFase", [
-    ...ordens.map(op => getManejoDaOrdem(op)?.fase || ""),
-    ...(state.fasesManejoExtras || [])
-  ], "Todas");
-  preencherSelectProcessos("processoFiltroFaccao", [
-    ...ordens.map(op => getManejoDaOrdem(op)?.faccao || ""),
-    ...(state.faccoesManejoExtras || [])
-  ], "Todas");
-  preencherSelectProcessos("processoFiltroCelu", [
-    ...ordens.map(op => getManejoDaOrdem(op)?.celu || ""),
-    ...(state.celusManejoExtras || [])
-  ], "Todos");
-  preencherSelectProcessos("processoFiltroNecessidade", ordens.map(op => getNecessidadeDaOrdem(op)), "Todas");
+function getOrdemDaMovimentacao(mov) {
+  if (!mov) return null;
+  return state.ordens.find(op => op.id === mov.opId || op.numeroOP === mov.numeroOP) || null;
+}
+
+function quantidadeRecebidaMovimentacao(mov) {
+  const recebida = Number(mov?.quantidadeRecebida || 0);
+  if (recebida > 0) return recebida;
+  return Math.max(Number(mov?.quantidadeEnviada || 0) - Number(mov?.falta || 0), 0);
+}
+
+function getMovimentacoesProcessos() {
+  return [...state.movimentacoesProducao].sort((a, b) => {
+    const tempo = getMovTimestamp(b) - getMovTimestamp(a);
+    if (tempo !== 0) return tempo;
+    return String(a.numeroOP || "").localeCompare(String(b.numeroOP || ""), "pt-BR", { numeric: true });
+  });
+}
+
+function renderFiltrosProcessos() {
+  const movimentos = getMovimentacoesProcessos();
+
+  preencherSelectProcessos("processoFiltroReferencia", movimentos.map(mov => mov.referencia), "Todas");
+  preencherSelectProcessos("processoFiltroCor", movimentos.map(mov => mov.cor), "Todas");
+  preencherSelectProcessos("processoFiltroFase", movimentos.map(mov => mov.processo), "Todas");
+  preencherSelectProcessos("processoFiltroFaccao", movimentos.map(mov => mov.destino), "Todas");
+  preencherSelectProcessos("processoFiltroCelu", movimentos.map(mov => mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino)), "Todos");
+  preencherSelectProcessos("processoFiltroNecessidade", movimentos.map(mov => getNecessidadeDaOrdem(getOrdemDaMovimentacao(mov))), "Todas");
 }
 
 function getFiltrosProcessos() {
@@ -2977,9 +2996,9 @@ function getFiltrosProcessos() {
     status: document.getElementById("processoFiltroStatus")?.value || "",
     referencia: document.getElementById("processoFiltroReferencia")?.value || "",
     cor: document.getElementById("processoFiltroCor")?.value || "",
-    fase: document.getElementById("processoFiltroFase")?.value || "",
-    faccao: document.getElementById("processoFiltroFaccao")?.value || "",
-    celu: document.getElementById("processoFiltroCelu")?.value || "",
+    processo: document.getElementById("processoFiltroFase")?.value || "",
+    destino: document.getElementById("processoFiltroFaccao")?.value || "",
+    tipo: document.getElementById("processoFiltroCelu")?.value || "",
     necessidade: document.getElementById("processoFiltroNecessidade")?.value || ""
   };
 }
@@ -2987,34 +3006,34 @@ function getFiltrosProcessos() {
 function filtrarOrdensProcessos() {
   const filtros = getFiltrosProcessos();
 
-  return [...state.ordens].filter(op => {
-    const manejo = getManejoDaOrdem(op);
-    const status = getStatusManejo(op);
-    const necessidade = getNecessidadeDaOrdem(op);
+  return getMovimentacoesProcessos().filter(mov => {
+    const ordem = getOrdemDaMovimentacao(mov);
+    const status = mov.status || "em_andamento";
+    const tipoLabel = mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino);
+    const necessidade = getNecessidadeDaOrdem(ordem);
 
     const texto = normalizarTexto([
-      op.numeroOP,
-      op.numeroOPExterno,
-      op.referencia,
-      op.cor,
-      op.produtoNome,
-      op.quantidade,
-      necessidade,
-      manejo?.fase,
-      manejo?.faccao,
-      manejo?.celu,
-      manejo?.silkNome,
-      manejo?.silk,
-      status
+      mov.numeroOP,
+      mov.referencia,
+      mov.cor,
+      mov.destino,
+      mov.processo,
+      tipoLabel,
+      mov.quantidadeEnviada,
+      mov.quantidadeRecebida,
+      mov.falta,
+      labelStatusMovimento(status),
+      status,
+      necessidade
     ].join(" "));
 
     if (filtros.busca && !texto.includes(filtros.busca)) return false;
     if (filtros.status && status !== filtros.status) return false;
-    if (filtros.referencia && String(op.referencia || "") !== filtros.referencia) return false;
-    if (filtros.cor && String(op.cor || "") !== filtros.cor) return false;
-    if (filtros.fase && String(manejo?.fase || "") !== filtros.fase) return false;
-    if (filtros.faccao && String(manejo?.faccao || "") !== filtros.faccao) return false;
-    if (filtros.celu && String(manejo?.celu || "") !== filtros.celu) return false;
+    if (filtros.referencia && String(mov.referencia || "") !== filtros.referencia) return false;
+    if (filtros.cor && String(mov.cor || "") !== filtros.cor) return false;
+    if (filtros.processo && String(mov.processo || "") !== filtros.processo) return false;
+    if (filtros.destino && String(mov.destino || "") !== filtros.destino) return false;
+    if (filtros.tipo && String(tipoLabel || "") !== filtros.tipo) return false;
     if (filtros.necessidade && String(necessidade || "") !== filtros.necessidade) return false;
 
     return true;
@@ -3037,36 +3056,35 @@ function limparFiltrosProcessos() {
   });
 }
 
-function renderResumoProcessos(ordens) {
-  const totalOps = ordens.length;
-  const totalPecas = ordens.reduce((soma, op) => soma + numeroQuantidadeOP(op), 0);
-  const totalFalta = ordens.reduce((soma, op) => soma + numeroFaltaManejo(op), 0);
-  const bipadas = ordens.filter(op => getStatusManejo(op) === "bipado").length;
-  const organizadas = ordens.filter(op => getStatusManejo(op) === "organizada").length;
-  const pendentes = ordens.filter(op => getStatusManejo(op) === "pendente").length;
+function renderResumoProcessos(movimentos) {
+  const totalEtapas = movimentos.length;
+  const totalPecas = movimentos.reduce((soma, mov) => soma + Number(mov.quantidadeEnviada || 0), 0);
+  const totalFalta = movimentos.reduce((soma, mov) => soma + Number(mov.falta || 0), 0);
+  const emAndamento = movimentos.filter(mov => mov.status === "em_andamento" || !mov.status).length;
+  const bipadas = movimentos.filter(mov => mov.status === "finalizado").length;
+  const encaminhadas = movimentos.filter(mov => mov.status === "encaminhado").length;
 
   const setText = (id, valor) => {
     const el = document.getElementById(id);
     if (el) el.textContent = valor;
   };
 
-  setText("processosTotalOps", totalOps.toLocaleString("pt-BR"));
+  setText("processosTotalOps", totalEtapas.toLocaleString("pt-BR"));
   setText("processosTotalPecas", totalPecas.toLocaleString("pt-BR"));
   setText("processosTotalFalta", totalFalta.toLocaleString("pt-BR"));
-  setText("processosOrganizadas", organizadas.toLocaleString("pt-BR"));
+  setText("processosOrganizadas", emAndamento.toLocaleString("pt-BR"));
   setText("processosBipadas", bipadas.toLocaleString("pt-BR"));
-  setText("processosPendentes", pendentes.toLocaleString("pt-BR"));
+  setText("processosPendentes", encaminhadas.toLocaleString("pt-BR"));
 }
-
 
 function getTextoFiltrosProcessosAtivos() {
   const filtros = [
     ["Status", "processoFiltroStatus"],
     ["Referência", "processoFiltroReferencia"],
     ["Cor", "processoFiltroCor"],
-    ["Fase", "processoFiltroFase"],
-    ["Facção", "processoFiltroFaccao"],
-    ["CELU", "processoFiltroCelu"],
+    ["Processo", "processoFiltroFase"],
+    ["Destino", "processoFiltroFaccao"],
+    ["Tipo", "processoFiltroCelu"],
     ["Necessidade", "processoFiltroNecessidade"]
   ];
 
@@ -3080,38 +3098,39 @@ function getTextoFiltrosProcessosAtivos() {
 
   if (busca) ativos.unshift(`Busca: ${busca}`);
 
-  return ativos.length ? `Filtro: ${ativos.join(" + ")}` : "Filtro: todos os processos";
+  return ativos.length ? `Filtro: ${ativos.join(" + ")}` : "Filtro: todas as movimentações";
 }
 
 function imprimirProcessosFiltrados() {
-  const ordens = filtrarOrdensProcessos();
+  const movimentos = filtrarOrdensProcessos();
 
-  if (!ordens.length) {
+  if (!movimentos.length) {
     toast("Nenhum processo filtrado para imprimir.");
     return;
   }
 
-  const totalPecas = ordens.reduce((soma, op) => soma + numeroQuantidadeOP(op), 0);
-  const totalFalta = ordens.reduce((soma, op) => soma + numeroFaltaManejo(op), 0);
+  const totalPecas = movimentos.reduce((soma, mov) => soma + Number(mov.quantidadeEnviada || 0), 0);
+  const totalFalta = movimentos.reduce((soma, mov) => soma + Number(mov.falta || 0), 0);
   const filtroAtivo = getTextoFiltrosProcessosAtivos();
   const dataImpressao = new Date().toLocaleString("pt-BR");
 
-  const linhasTabela = ordens.map(op => {
-    const manejo = getManejoDaOrdem(op);
+  const linhasTabela = movimentos.map(mov => {
+    const tipoLabel = mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino);
     return `
       <tr>
-        <td>${escapeHtml(op.numeroOP || "-")}</td>
-        <td>${escapeHtml(op.referencia || "-")}</td>
-        <td>${escapeHtml(op.cor || "-")}</td>
-        <td class="num">${escapeHtml(op.quantidade ?? 0)}</td>
-        <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
-        <td>${escapeHtml(manejo?.fase || "-")}</td>
-        <td>${escapeHtml(manejo?.faccao || "-")}</td>
-        <td>${escapeHtml(formatarDataSimples(manejo?.chegada || ""))}</td>
-        <td class="num">${escapeHtml(manejo?.falta ?? 0)}</td>
-        <td>${escapeHtml(formatarDataSimples(manejo?.producao || ""))}</td>
-        <td>${escapeHtml(manejo?.celu || "-")}</td>
-        <td>${escapeHtml(getStatusManejo(op) === "bipado" ? "Bipado" : getStatusManejo(op) === "organizada" ? "Organizada" : "Pendente")}</td>
+        <td>${escapeHtml(mov.numeroOP || "-")}</td>
+        <td>${escapeHtml(mov.referencia || "-")}</td>
+        <td>${escapeHtml(mov.cor || "-")}</td>
+        <td class="num">${escapeHtml(Number(mov.quantidadeEnviada || 0).toLocaleString("pt-BR"))}</td>
+        <td>${escapeHtml(tipoLabel)}</td>
+        <td>${escapeHtml(mov.destino || "-")}</td>
+        <td>${escapeHtml(mov.processo || "-")}</td>
+        <td>${escapeHtml(dataISOParaBR(mov.dataEnvio) || mov.dataEnvio || "-")}</td>
+        <td>${escapeHtml(dataISOParaBR(mov.dataChegada) || mov.dataChegada || "-")}</td>
+        <td class="num">${escapeHtml(Number(mov.falta || 0).toLocaleString("pt-BR"))}</td>
+        <td class="num">${escapeHtml(quantidadeRecebidaMovimentacao(mov).toLocaleString("pt-BR"))}</td>
+        <td>${escapeHtml(mov.movimentacaoOrigemId ? "Reenvio" : "Manejo")}</td>
+        <td>${escapeHtml(labelStatusMovimento(mov.status))}</td>
       </tr>
     `;
   }).join("");
@@ -3134,46 +3153,34 @@ function imprimirProcessosFiltrados() {
           .summary strong { display: block; font-size: 15px; margin-top: 3px; }
           .filter-box { border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; margin-bottom: 12px; background: #f8fafc; }
           table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #cbd5e1; padding: 5px 4px; vertical-align: top; }
-          th { background: #eef2ff; font-size: 10px; text-align: left; }
-          td.num { text-align: right; font-weight: bold; }
-          tr:nth-child(even) td { background: #f8fafc; }
-          @page { size: landscape; margin: 10mm; }
-          @media print { body { margin: 0; } }
+          th, td { border: 1px solid #cbd5e1; padding: 5px; }
+          th { background: #eef2ff; text-align: left; }
+          .num { text-align: right; font-weight: bold; }
+          @page { size: landscape; margin: 8mm; }
         </style>
       </head>
       <body>
         <div class="print-header">
           <div>
-            <h1>Processos - Itens filtrados</h1>
+            <h1>Processos / Movimentações</h1>
             <div class="muted">Sistema OP Confecção</div>
           </div>
           <div class="muted">Impresso em:<br><strong>${escapeHtml(dataImpressao)}</strong></div>
         </div>
 
-        <div class="filter-box"><strong>${escapeHtml(filtroAtivo)}</strong></div>
+        <div class="filter-box">${escapeHtml(filtroAtivo)}</div>
 
         <div class="summary">
-          <div><span>OPs</span><strong>${ordens.length.toLocaleString("pt-BR")}</strong></div>
-          <div><span>Total de peças</span><strong>${totalPecas.toLocaleString("pt-BR")}</strong></div>
-          <div><span>Total em falta</span><strong>${totalFalta.toLocaleString("pt-BR")}</strong></div>
+          <div><span>Etapas</span><strong>${movimentos.length.toLocaleString("pt-BR")}</strong></div>
+          <div><span>Peças enviadas</span><strong>${totalPecas.toLocaleString("pt-BR")}</strong></div>
+          <div><span>Falta</span><strong>${totalFalta.toLocaleString("pt-BR")}</strong></div>
         </div>
 
         <table>
           <thead>
             <tr>
-              <th>OP</th>
-              <th>REF</th>
-              <th>Cor</th>
-              <th>QTI</th>
-              <th>Necessidade</th>
-              <th>Fase</th>
-              <th>Facção</th>
-              <th>Chegada</th>
-              <th>Falta</th>
-              
-              <th>CELU</th>
-              <th>Status</th>
+              <th>OP</th><th>REF</th><th>Cor</th><th>Qtd</th><th>Etapa</th><th>Destino</th><th>Processo</th>
+              <th>Envio</th><th>Chegada</th><th>Falta</th><th>Recebida</th><th>Origem</th><th>Status</th>
             </tr>
           </thead>
           <tbody>${linhasTabela}</tbody>
@@ -3200,48 +3207,43 @@ function imprimirProcessosFiltrados() {
   janela.document.close();
 }
 
-
 function renderProcessos() {
   const tbody = document.getElementById("listaProcessos");
   if (!tbody) return;
 
   renderFiltrosProcessos();
 
-  const ordens = filtrarOrdensProcessos();
-  renderResumoProcessos(ordens);
+  const movimentos = filtrarOrdensProcessos();
+  renderResumoProcessos(movimentos);
 
-  if (!ordens.length) {
-    tbody.innerHTML = `<tr><td colspan="13" class="empty">Nenhum processo encontrado com os filtros selecionados.</td></tr>`;
+  if (!movimentos.length) {
+    tbody.innerHTML = `<tr><td colspan="13" class="empty">Nenhuma movimentação encontrada com os filtros selecionados.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = ordens.map(op => {
-    const manejo = getManejoDaOrdem(op);
-    const silkNome = getSilkNomeManejo(manejo);
-    const silkTexto = silkNome || manejo?.silkData
-      ? `${silkNome || "-"}${manejo?.silkData ? ` | ${formatarDataSimples(manejo.silkData)}` : ""}`
-      : "-";
+  tbody.innerHTML = movimentos.map(mov => {
+    const tipoLabel = mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino);
+    const status = mov.status || "em_andamento";
 
     return `
-      <tr class="${getStatusManejo(op) === "bipado" ? "processo-bipado" : manejo ? "processo-organizado" : "processo-pendente"}">
-        <td><strong>${escapeHtml(op.numeroOP || "-")}</strong></td>
-        <td>${escapeHtml(op.referencia || "-")}</td>
-        <td><strong>${escapeHtml(op.cor || "-")}</strong></td>
-        <td class="num">${escapeHtml(op.quantidade ?? 0)}</td>
-        <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
-        <td>${escapeHtml(manejo?.fase || "-")}</td>
-        <td>${escapeHtml(manejo?.faccao || "-")}</td>
-        <td>${escapeHtml(formatarDataSimples(manejo?.chegada || ""))}</td>
-        <td class="num">${escapeHtml(manejo?.falta ?? 0)}</td>
-        <td>${escapeHtml(formatarDataSimples(manejo?.producao || ""))}</td>
-        <td>${escapeHtml(manejo?.celu || "-")}</td>
-        <td>${escapeHtml(silkTexto)}</td>
-        <td>${manejoStatusBadge(manejo, op)}</td>
+      <tr class="processo-mov-row processo-status-${escapeHtml(status)}">
+        <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
+        <td>${escapeHtml(mov.referencia || "-")}</td>
+        <td><strong>${escapeHtml(mov.cor || "-")}</strong></td>
+        <td class="num">${escapeHtml(Number(mov.quantidadeEnviada || 0).toLocaleString("pt-BR"))}</td>
+        <td>${escapeHtml(tipoLabel)}</td>
+        <td><strong>${escapeHtml(mov.destino || "-")}</strong></td>
+        <td>${escapeHtml(mov.processo || "-")}</td>
+        <td>${escapeHtml(dataISOParaBR(mov.dataEnvio) || mov.dataEnvio || "-")}</td>
+        <td>${escapeHtml(dataISOParaBR(mov.dataChegada) || mov.dataChegada || "-")}</td>
+        <td class="num">${escapeHtml(Number(mov.falta || 0).toLocaleString("pt-BR"))}</td>
+        <td class="num">${escapeHtml(quantidadeRecebidaMovimentacao(mov).toLocaleString("pt-BR"))}</td>
+        <td>${escapeHtml(mov.movimentacaoOrigemId ? "Reenvio" : "Manejo")}</td>
+        <td><span class="badge ${classeStatusMovimento(status)}">${escapeHtml(labelStatusMovimento(status))}</span></td>
       </tr>
     `;
   }).join("");
 }
-
 
 
 function configurarFaccoes() {
@@ -5821,7 +5823,6 @@ function renderEntregasPagamento(entregas = getEntregasPagamentoFiltradas()) {
         </span>
       </td>
       <td>
-        <button class="btn btn-sm" onclick="editarEntregaPagamento('${entrega.id}')">Editar</button>
         <button class="btn btn-sm ${entrega.statusPagamento === "pago" ? "btn-warning" : "btn-success"}" onclick="alternarStatusEntregaPagamento('${entrega.id}')">
           ${entrega.statusPagamento === "pago" ? "Reabrir" : "Pagar"}
         </button>
@@ -6052,6 +6053,31 @@ function getOrdensRelatorio() {
   });
 }
 
+function getMovimentacoesRelatorioBipadas() {
+  let movimentos = state.movimentacoesProducao.filter(mov => mov.status === "finalizado");
+
+  const semana = document.getElementById("filtroSemana").value;
+  const mes = document.getElementById("filtroMes").value;
+  const ano = document.getElementById("filtroAno").value;
+  const referencia = normalizarReferencia(document.getElementById("filtroReferencia").value);
+  const cor = normalizarCor(document.getElementById("filtroCor").value);
+
+  movimentos = movimentos.filter(mov => {
+    const ordem = getOrdemDaMovimentacao(mov);
+
+    if (semana && String(ordem?.semana || "") !== String(semana)) return false;
+    if (mes && ordem?.mes !== mes) return false;
+    if (ano && String(ordem?.ano || "") !== String(ano)) return false;
+    if (referencia && !String(mov.referencia || "").includes(referencia)) return false;
+    if (cor && !normalizarCor(mov.cor || "").includes(cor)) return false;
+
+    return true;
+  });
+
+  return movimentos.sort((a, b) => getMovTimestamp(b) - getMovTimestamp(a));
+}
+
+
 function ordemMes(mes) {
   const meses = [
     "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -6072,73 +6098,44 @@ function renderRelatorio() {
 
 
   if (info.tipo === "bipado") {
+    const movimentos = getMovimentacoesRelatorioBipadas();
+
     thead.innerHTML = `
       <tr>
         <th>OP</th>
-        <th>Necessidade</th>
         <th>Referência</th>
         <th>Cor</th>
-        <th>Produto</th>
-        <th>Qtd.</th>
-        <th>Fase</th>
-        <th>Facção</th>
-        
-        <th>CELU</th>
+        <th>Etapa</th>
+        <th>Destino</th>
+        <th>Processo</th>
+        <th>Qtd. recebida</th>
+        <th>Chegada</th>
+        <th>Origem</th>
         <th>Status</th>
       </tr>
     `;
 
-    if (!ordens.length) {
-      tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma OP bipada encontrada.</td></tr>`;
+    if (!movimentos.length) {
+      tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma movimentação bipada encontrada.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = ordens.map(op => {
-      const manejo = getManejoDaOrdem(op);
-      return `
-        <tr>
-          <td><strong>${escapeHtml(op.numeroOP)}</strong></td>
-          <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
-          <td>${escapeHtml(op.referencia)}</td>
-          <td><strong>${escapeHtml(op.cor || "-")}</strong></td>
-          <td>${escapeHtml(op.produtoNome || "-")}</td>
-          <td>${escapeHtml(op.quantidade ?? 0)}</td>
-          <td>${escapeHtml(manejo?.fase || "-")}</td>
-          <td>${escapeHtml(manejo?.faccao || "-")}</td>
-          <td>${escapeHtml(formatarDataSimples(manejo?.producao || ""))}</td>
-          <td>${escapeHtml(manejo?.celu || "-")}</td>
-          <td>${manejoStatusBadge(manejo, op)}</td>
-        </tr>
-      `;
-    }).join("");
+    tbody.innerHTML = movimentos.map(mov => `
+      <tr>
+        <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
+        <td>${escapeHtml(mov.referencia || "-")}</td>
+        <td><strong>${escapeHtml(mov.cor || "-")}</strong></td>
+        <td>${escapeHtml(mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino))}</td>
+        <td><strong>${escapeHtml(mov.destino || "-")}</strong></td>
+        <td>${escapeHtml(mov.processo || "-")}</td>
+        <td>${escapeHtml(quantidadeRecebidaMovimentacao(mov).toLocaleString("pt-BR"))}</td>
+        <td>${escapeHtml(dataISOParaBR(mov.dataChegada) || mov.dataChegada || "-")}</td>
+        <td>${escapeHtml(mov.movimentacaoOrigemId ? "Reenvio" : "Manejo")}</td>
+        <td><span class="badge ok">Bipado</span></td>
+      </tr>
+    `).join("");
 
     return;
-  }
-
-
-  if (info.tipo === "bipado") {
-    const linhas = [
-      ["OP", "Necessidade", "Referência", "Cor", "Produto", "Quantidade", "Fase", "Facção", "Produção", "CELU", "Status"]
-    ];
-
-    ordens.forEach(op => {
-      const manejo = getManejoDaOrdem(op);
-      linhas.push([
-        op.numeroOP,
-        getNecessidadeDaOrdem(op) || "",
-        op.referencia,
-        op.cor || "",
-        op.produtoNome || "",
-        op.quantidade,
-        manejo?.fase || "",
-        manejo?.faccao || "",
-        formatarDataSimples(manejo?.producao || ""),
-        manejo?.celu || "",
-        "Bipado"
-      ]);
-    });
-
-    return linhas;
   }
 
   if (info.tipo === "geral") {
@@ -7437,39 +7434,54 @@ function renderTudo() {
 }
 
 function renderDashboard() {
-  document.getElementById("totalProdutos").textContent = state.produtos.length;
-  document.getElementById("totalOrdens").textContent = state.ordens.length;
-  document.getElementById("totalRenda").textContent = state.ordens.filter(op => op.possuiRenda).length;
-  document.getElementById("totalAlca").textContent = state.ordens.filter(op => op.possuiAlca).length;
-  document.getElementById("totalBojo").textContent = state.ordens.filter(op => op.possuiBojo).length;
+  const setText = (id, valor) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = valor;
+  };
+
+  const faccoesAtivas = state.movimentacoesProducao.filter(mov => mov.tipoDestino === "faccao" && (mov.status === "em_andamento" || !mov.status)).length;
+  const celulasAtivas = state.movimentacoesProducao.filter(mov => mov.tipoDestino === "celula" && (mov.status === "em_andamento" || !mov.status)).length;
+  const pagamentosPendentes = state.entregasPagamento.filter(item => (item.statusPagamento || "pendente") === "pendente").length;
+
+  setText("totalProdutos", state.produtos.length);
+  setText("totalOrdens", state.ordens.length);
+  setText("totalRenda", faccoesAtivas);
+  setText("totalAlca", celulasAtivas);
+  setText("totalBojo", pagamentosPendentes);
+
   const totalPendentesEl = document.getElementById("totalPendentes");
   if (totalPendentesEl) {
     totalPendentesEl.textContent = state.ordens.filter(op => op.referenciaPendente || op.statusReferencia === "pendente").length;
   }
 
-  const ultimas = [...state.ordens].slice(0, 8);
   const tbody = document.getElementById("ultimasOrdens");
+  if (!tbody) return;
 
-  if (!ultimas.length) {
-    tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma ordem cadastrada ainda.</td></tr>`;
+  const ultimasMovimentacoes = [...state.movimentacoesProducao]
+    .sort((a, b) => getMovTimestamp(b) - getMovTimestamp(a))
+    .slice(0, 8);
+
+  if (!ultimasMovimentacoes.length) {
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma movimentação criada ainda.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = ultimas.map(op => `
+  tbody.innerHTML = ultimasMovimentacoes.map(mov => `
     <tr>
-      <td><strong>${escapeHtml(op.numeroOP)}</strong></td>
-      <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
-      <td>${escapeHtml(op.referencia)}</td>
-      <td><strong>${escapeHtml(op.cor || "-")}</strong></td>
-      <td>${escapeHtml(op.produtoNome)}</td>
-      <td>${op.quantidade}</td>
-      <td>${simNaoBadge(op.possuiAlca)}</td>
-      <td>${simNaoBadge(op.possuiBojo)}</td>
-      <td>${simNaoBadge(op.possuiRenda)}</td>
-      <td>${statusReferenciaBadge(op)}</td>
+      <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
+      <td>${escapeHtml(mov.referencia || "-")}</td>
+      <td><strong>${escapeHtml(mov.cor || "-")}</strong></td>
+      <td>${escapeHtml(mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino))}</td>
+      <td><strong>${escapeHtml(mov.destino || "-")}</strong></td>
+      <td>${escapeHtml(mov.processo || "-")}</td>
+      <td>${escapeHtml(Number(mov.quantidadeEnviada || 0).toLocaleString("pt-BR"))}</td>
+      <td><span class="badge ${classeStatusMovimento(mov.status)}">${escapeHtml(labelStatusMovimento(mov.status))}</span></td>
+      <td>${escapeHtml(dataISOParaBR(mov.dataEnvio) || mov.dataEnvio || "-")}</td>
+      <td>${escapeHtml(dataISOParaBR(mov.dataChegada) || mov.dataChegada || "-")}</td>
     </tr>
   `).join("");
 }
+
 
 function renderProdutos() {
   const busca = normalizarReferencia(document.getElementById("buscaProduto")?.value || "");
@@ -7623,6 +7635,29 @@ function renderDatalistCores() {
 function getLinhasCSVRelatorio(ordens) {
   const info = reportInfo[state.relatorioAtual];
 
+  if (info.tipo === "bipado") {
+    const linhas = [
+      ["OP", "Referência", "Cor", "Etapa", "Destino", "Processo", "Qtd. recebida", "Chegada", "Origem", "Status"]
+    ];
+
+    getMovimentacoesRelatorioBipadas().forEach(mov => {
+      linhas.push([
+        mov.numeroOP || "",
+        mov.referencia || "",
+        mov.cor || "",
+        mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino),
+        mov.destino || "",
+        mov.processo || "",
+        quantidadeRecebidaMovimentacao(mov),
+        dataISOParaBR(mov.dataChegada) || mov.dataChegada || "",
+        mov.movimentacaoOrigemId ? "Reenvio" : "Manejo",
+        "Bipado"
+      ]);
+    });
+
+    return linhas;
+  }
+
   if (info.tipo === "geral") {
     const linhas = [
       ["OP", "Necessidade", "Referência", "Cor", "Produto", "Quantidade", "Alça", "Bojo", "Renda", "Observações"]
@@ -7664,10 +7699,13 @@ function getLinhasCSVRelatorio(ordens) {
   return linhas;
 }
 
-function exportarCSV() {
-  const ordens = getOrdensRelatorio();
 
-  if (!ordens.length) {
+function exportarCSV() {
+  const info = reportInfo[state.relatorioAtual];
+  const ordens = getOrdensRelatorio();
+  const temDados = info.tipo === "bipado" ? getMovimentacoesRelatorioBipadas().length : ordens.length;
+
+  if (!temDados) {
     toast("Não há dados para exportar.");
     return;
   }
