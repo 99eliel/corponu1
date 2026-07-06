@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-03-gestao-valores-organizada-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-03-gestao-valores-organizada-1" />
+  <meta name="app-version" content="2026-07-03-importar-faccoes-pendentes-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-03-importar-faccoes-pendentes-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -707,7 +707,18 @@
                 <h3>Gerenciar facções</h3>
                 <p>Cadastre, edite ou inative facções. Esta área fica escondida para não poluir a movimentação.</p>
               </div>
-              <button class="btn btn-primary" id="btnAbrirCadastroFaccao" type="button">Cadastrar facção</button>
+              <div class="actions">
+                <button class="btn btn-success" id="btnImportarFaccoesExtraidas" type="button">Importar facções da planilha</button>
+                <button class="btn btn-primary" id="btnAbrirCadastroFaccao" type="button">Cadastrar facção</button>
+              </div>
+            </div>
+
+            <div class="faccoes-import-box admin-only-block">
+              <div>
+                <strong>Importação preparada</strong>
+                <span>20 facções OK serão importadas como ativas. 15 ficam em pendentes para revisão.</span>
+              </div>
+              <small>Depois de revisar uma pendente, clique em Editar, complete os dados e salve. Ela vira facção normal.</small>
             </div>
 
             <form class="form admin-only-block faccao-form-inline hidden" id="formFaccao">
@@ -743,6 +754,29 @@
                 <button class="btn" type="button" id="btnCancelarFaccao">Cancelar</button>
               </div>
             </form>
+
+            <div class="panel-subheader faccoes-pendentes-header">
+              <div>
+                <h3>Facções pendentes</h3>
+                <p>Dados extraídos da planilha que precisam de conferência antes de usar no envio.</p>
+              </div>
+            </div>
+
+            <div class="table-wrap faccoes-pendentes-wrap">
+              <table class="faccoes-table faccoes-pendentes-table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Cidade</th>
+                    <th>PIX</th>
+                    <th>Pendência</th>
+                    <th>Origem</th>
+                    <th class="admin-only-cell">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="listaFaccoesPendentes"></tbody>
+              </table>
+            </div>
 
             <div class="panel-subheader faccoes-list-header">
               <div>
@@ -1640,8 +1674,8 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="update.js?v=2026-07-03-gestao-valores-organizada-1"></script>
-  <script type="module" src="app.js?v=2026-07-03-gestao-valores-organizada-1"></script>
+  <script src="update.js?v=2026-07-03-importar-faccoes-pendentes-1"></script>
+  <script type="module" src="app.js?v=2026-07-03-importar-faccoes-pendentes-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">

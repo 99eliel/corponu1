@@ -3844,3 +3844,48 @@ table td {
     display: block;
   }
 }
+
+
+/* Importação de facções extraídas da planilha */
+.faccoes-import-box {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  margin: 10px 0 14px;
+  border-radius: 14px;
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #14532d;
+}
+
+.faccoes-import-box strong {
+  display: block;
+  font-size: 14px;
+}
+
+.faccoes-import-box span,
+.faccoes-import-box small {
+  display: block;
+  color: #166534;
+}
+
+.faccoes-pendentes-header {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.faccoes-pendentes-table td {
+  vertical-align: middle;
+}
+
+.faccao-pendente-row {
+  background: #fffbeb;
+}
+
+.faccao-pendente-row .badge.pending {
+  display: inline-block;
+  white-space: normal;
+  max-width: 320px;
+  text-align: left;
+}

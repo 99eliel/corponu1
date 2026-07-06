@@ -2630,3 +2630,50 @@ MONTAGEM DE BOJO
 ```
 
 sem precisar editar referência por referência.
+
+
+## Atualização: Importar facções extraídas da planilha
+
+Foi adicionada a importação dos dados extraídos da planilha de facções.
+
+A importação preparada contém:
+
+```txt
+20 facções OK
+15 facções pendentes para revisar
+```
+
+Ao clicar em:
+
+```txt
+Importar facções da planilha
+```
+
+o sistema faz:
+
+```txt
+Facções OK
+- entram como ativas
+- aparecem na lista normal de facções
+- já podem ser usadas no envio para facção
+
+Facções pendentes
+- entram como inativas
+- aparecem na tabela Facções pendentes
+- não aparecem como destino de envio
+- ao editar e salvar, viram facções normais
+```
+
+Campos importados:
+
+```txt
+Nome
+Cidade
+PIX
+Celular
+Titular PIX
+Confiança PIX
+Origem
+Observações
+Pendência
+```

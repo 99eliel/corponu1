@@ -177,6 +177,429 @@ const reportInfo = {
 };
 
 
+const FACCOES_EXTRAIDAS_PLANILHA = [
+  {
+    "nome": "ANA FLAVIA",
+    "cidade": "PONTALINA",
+    "pix": "64992806322",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "ANA FLAVIA DELFINA DA SILVA TEIXEIRA",
+    "observacoes": "Titular/PIX: ANA FLAVIA DELFINA DA SILVA TEIXEIRA ; Produtos: fac. Calcinha ; Outros PIX encontrados: 705.793.061-51 | 81,90 por ... 12/12/2025",
+    "origem": "ANA FLAVIA",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "ANDREZA",
+    "cidade": "PONTALINA",
+    "pix": "64992499344",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "ANDREZA HELLARY MARÇAL",
+    "observacoes": "Titular/PIX: ANDREZA HELLARY MARÇAL ; Produtos: CALÇINHA",
+    "origem": "ANDREZA",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "BEATRIZ",
+    "cidade": "ABADIA",
+    "pix": "BANCO C6 62994963233",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "BEATRIZ DE JESUS FERREIRA",
+    "observacoes": "Aba: BEATRIZ - ABADIA ; Titular/PIX: BEATRIZ DE JESUS FERREIRA",
+    "origem": "BEATRIZ - ABADIA",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "CORDEIRO",
+    "cidade": "PONTALINA",
+    "pix": "951.242.501-78",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "CORDEIRO GOMES DA SILVA",
+    "observacoes": "Titular/PIX: CORDEIRO GOMES DA SILVA ; Produtos: FACÇÃO CUECA ; Outros PIX encontrados: CAIXA",
+    "origem": "CORDEIRO",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "DAIANA",
+    "cidade": "PONTALINA",
+    "pix": "64992994007",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "NEIDE DAIANA R. JUSTO SANTOS",
+    "observacoes": "Titular/PIX: NEIDE DAIANA R. JUSTO SANTOS ; Produtos: MONT. CALÇINHA ; Outros PIX encontrados: CAIXA",
+    "origem": "DAIANA",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "DANIELA",
+    "cidade": "",
+    "pix": "",
+    "pixConfianca": "Sem PIX",
+    "celular": "",
+    "titularPix": "",
+    "observacoes": "",
+    "origem": "DANIELA",
+    "status": "pendente",
+    "pendencia": "cidade, pix"
+  },
+  {
+    "nome": "DANUBIA",
+    "cidade": "TAQUARAL",
+    "pix": "CAIXA - AG 0859 - C/C 000584389539-0",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "WATTSON MAMEDES DE SOUZA",
+    "observacoes": "Titular/PIX: WATTSON MAMEDES DE SOUZA ; Produtos: SUTIÃ ; Outros PIX encontrados: 015.642.011-20 | 883-776-281-04 | 883.776.281-04",
+    "origem": "DANUBIA, Planilha2",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "DARIA",
+    "cidade": "PONTALINA",
+    "pix": "64992110716",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "",
+    "observacoes": "Produtos: SUTIAN",
+    "origem": "DARIA",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "DARLLEN",
+    "cidade": "ITAGUARI",
+    "pix": "62993236487",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "DAELLEN COUTRIN DA SILVA",
+    "observacoes": "Titular/PIX: DAELLEN COUTRIN DA SILVA ; Produtos: CALÇINHA",
+    "origem": "DARLLEN",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "GISLAINY",
+    "cidade": "PONTALINA",
+    "pix": "JOSE ANTONIO",
+    "pixConfianca": "Baixa",
+    "celular": "",
+    "titularPix": "",
+    "observacoes": "Produtos: SUTIÃ",
+    "origem": "GISLAINY",
+    "status": "pendente",
+    "pendencia": "pix duvidoso"
+  },
+  {
+    "nome": "INACIR",
+    "cidade": "PONTALINA",
+    "pix": "64992663852",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "",
+    "observacoes": "Produtos: MONT.CALC",
+    "origem": "INACIR",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "ITAMAR",
+    "cidade": "APARECIDA DE GOIÂNIA",
+    "pix": "808.300.211-91",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "",
+    "observacoes": "Aba: ITAMAR - AP. GOIÂNIA",
+    "origem": "ITAMAR - AP. GOIÂNIA",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "JEAN",
+    "cidade": "ITAGUARI",
+    "pix": "62992153999",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "NUBIA CRISTINA DIAS",
+    "observacoes": "Titular/PIX: NUBIA CRISTINA DIAS ; Produtos: CALÇINHA",
+    "origem": "JEAN",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "JHAYNNIS",
+    "cidade": "",
+    "pix": "",
+    "pixConfianca": "Sem PIX",
+    "celular": "",
+    "titularPix": "",
+    "observacoes": "",
+    "origem": "JHAYNNIS",
+    "status": "pendente",
+    "pendencia": "cidade, pix"
+  },
+  {
+    "nome": "JHULIA",
+    "cidade": "PONTALINA",
+    "pix": "04443036180",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "",
+    "observacoes": "Produtos: CALCINHA",
+    "origem": "JHULIA",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "JULIANA",
+    "cidade": "PONTALINA",
+    "pix": "754.319.391-49",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "JULIANA MARTINS ALVES",
+    "observacoes": "Titular/PIX: JULIANA MARTINS ALVES ; Produtos: MONT. CALÇINHA",
+    "origem": "JULIANA",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "JUZENI",
+    "cidade": "ITAGUARI",
+    "pix": "juzenisilvapereira@gmail.com",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "JUZENI SILVA PEREIRA",
+    "observacoes": "Titular/PIX: JUZENI SILVA PEREIRA ; Produtos: CALÇINHA",
+    "origem": "JUZENI",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "KAKA",
+    "cidade": "PONTALINA",
+    "pix": "049.222.021.29",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "LARA CRISTINA FERREIRA DA SILVA",
+    "observacoes": "Aba: KAKA - (LARA CRISTINA CATALÃO) ; Titular/PIX: LARA CRISTINA FERREIRA DA SILVA ; Produtos: SUTIÃ ; Outros PIX encontrados: 664.090.711-91 | LARA CRISTINA FERREIRA DA SILVA - 664.090.711-91",
+    "origem": "KAKA - (LARA CRISTINA CATALÃO)",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "KAMILA",
+    "cidade": "",
+    "pix": "62994113911 CAIXA ECONÔMICA",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "KAMILA BORGES BRAGANÇA",
+    "observacoes": "Titular/PIX: KAMILA BORGES BRAGANÇA ; Outros PIX encontrados: 62994113911",
+    "origem": "KAMILA",
+    "status": "pendente",
+    "pendencia": "cidade"
+  },
+  {
+    "nome": "KAUANE",
+    "cidade": "PONTALINA",
+    "pix": "64 992329453",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "KAUANE PARREIRA DA SILVA",
+    "observacoes": "Titular/PIX: KAUANE PARREIRA DA SILVA ; Produtos: CALCINHA",
+    "origem": "KAUANE",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "LEIDIANE",
+    "cidade": "PONTALINA",
+    "pix": "007.760.151-33",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "LEIDIANE LOURENÇO PEIXOTO",
+    "observacoes": "Titular/PIX: LEIDIANE LOURENÇO PEIXOTO ; Produtos: MONT. CALÇINHA",
+    "origem": "LEIDIANE",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "LEONARDO",
+    "cidade": "",
+    "pix": "",
+    "pixConfianca": "Sem PIX",
+    "celular": "",
+    "titularPix": "",
+    "observacoes": "",
+    "origem": "LEONARDO",
+    "status": "pendente",
+    "pendencia": "cidade, pix"
+  },
+  {
+    "nome": "LIANA BADIAS",
+    "cidade": "",
+    "pix": "",
+    "pixConfianca": "Sem PIX",
+    "celular": "",
+    "titularPix": "",
+    "observacoes": "",
+    "origem": "LIANA BADIAS",
+    "status": "pendente",
+    "pendencia": "cidade, pix"
+  },
+  {
+    "nome": "LIANDRA",
+    "cidade": "",
+    "pix": "",
+    "pixConfianca": "Sem PIX",
+    "celular": "",
+    "titularPix": "",
+    "observacoes": "",
+    "origem": "LIANDRA",
+    "status": "pendente",
+    "pendencia": "cidade, pix"
+  },
+  {
+    "nome": "LIVIA",
+    "cidade": "PONTALINA",
+    "pix": "AGENCIA - 2478",
+    "pixConfianca": "Baixa",
+    "celular": "",
+    "titularPix": "LIVIA MARTINS DA SILVA",
+    "observacoes": "Titular/PIX: LIVIA MARTINS DA SILVA ; Produtos: MONTAGEM",
+    "origem": "LIVIA",
+    "status": "pendente",
+    "pendencia": "pix duvidoso"
+  },
+  {
+    "nome": "LORENA",
+    "cidade": "",
+    "pix": "",
+    "pixConfianca": "Sem PIX",
+    "celular": "",
+    "titularPix": "",
+    "observacoes": "",
+    "origem": "LORENA",
+    "status": "pendente",
+    "pendencia": "cidade, pix"
+  },
+  {
+    "nome": "LUCIA",
+    "cidade": "PONTALINA",
+    "pix": "85602876120",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "",
+    "observacoes": "Produtos: SUTIÃ",
+    "origem": "LUCIA",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "MARILIA",
+    "cidade": "",
+    "pix": "028.435.491-08",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "MARILIA DUTRA",
+    "observacoes": "Titular/PIX: MARILIA DUTRA",
+    "origem": "MARILIA",
+    "status": "pendente",
+    "pendencia": "cidade"
+  },
+  {
+    "nome": "MATHEUS",
+    "cidade": "",
+    "pix": "66.928.247/0001-80",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "MATHEUS GERALDO DE SOUSA",
+    "observacoes": "Titular/PIX: MATHEUS GERALDO DE SOUSA ; Produtos: CALÇINHA",
+    "origem": "MATHEUS",
+    "status": "pendente",
+    "pendencia": "cidade"
+  },
+  {
+    "nome": "PHAOLLA",
+    "cidade": "PONTALINA",
+    "pix": "",
+    "pixConfianca": "Sem PIX",
+    "celular": "",
+    "titularPix": "",
+    "observacoes": "Produtos: SUTIAN",
+    "origem": "PHAOLLA",
+    "status": "pendente",
+    "pendencia": "pix"
+  },
+  {
+    "nome": "RONEIDIA",
+    "cidade": "",
+    "pix": "62993112642",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "RONEIDIA MARIA GONÇALVES",
+    "observacoes": "Titular/PIX: RONEIDIA MARIA GONÇALVES",
+    "origem": "RONEIDIA",
+    "status": "pendente",
+    "pendencia": "cidade"
+  },
+  {
+    "nome": "SCHENEIDER",
+    "cidade": "",
+    "pix": "",
+    "pixConfianca": "Sem PIX",
+    "celular": "",
+    "titularPix": "",
+    "observacoes": "",
+    "origem": "SCHENEIDER",
+    "status": "pendente",
+    "pendencia": "cidade, pix"
+  },
+  {
+    "nome": "SILVANY",
+    "cidade": "",
+    "pix": "",
+    "pixConfianca": "Sem PIX",
+    "celular": "",
+    "titularPix": "",
+    "observacoes": "",
+    "origem": "SILVANY",
+    "status": "pendente",
+    "pendencia": "cidade, pix"
+  },
+  {
+    "nome": "THAYS",
+    "cidade": "GOIANIRA",
+    "pix": "62 994589707 NUBANK",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "RAFAELA BRAGA DOS SANTOS",
+    "observacoes": "Aba: GOIANIRA - THAYS ; Titular/PIX: RAFAELA BRAGA DOS SANTOS ; Produtos: SUTIÃ ; Outros PIX encontrados: 41.114.594/0001-49 | 62994589707 | 62994589707 NUBANK | AG 5476 CC 10179-6",
+    "origem": "GOIANIRA - THAYS",
+    "status": "ok",
+    "pendencia": ""
+  },
+  {
+    "nome": "THEILLOR",
+    "cidade": "ITAGUARI",
+    "pix": "062.770.741-64",
+    "pixConfianca": "Alta",
+    "celular": "",
+    "titularPix": "THEILLOR VINICIUS",
+    "observacoes": "Titular/PIX: THEILLOR VINICIUS ; Produtos: CALÇINHA",
+    "origem": "THEILLOR",
+    "status": "ok",
+    "pendencia": ""
+  }
+];
+
 function carregarSugestoesFaccoesCelus() {
   try {
     const faccoes = JSON.parse(localStorage.getItem("faccoesManejoExtras") || "[]");
@@ -465,6 +888,7 @@ function carregarFaccoesSeNecessario() {
     state.faccoes = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     marcarCarregado("faccoes");
     renderFaccoes();
+    renderFaccoesPendentes();
     renderFaccoesMovimentacoes();
     renderDatalistManejo();
     if (document.getElementById("pagamentos")?.classList.contains("active")) renderPagamentos();
@@ -3293,6 +3717,11 @@ function configurarFaccoes() {
   if (cancelar) {
     cancelar.addEventListener("click", limparFormFaccao);
   }
+
+  const importarFaccoes = document.getElementById("btnImportarFaccoesExtraidas");
+  if (importarFaccoes) {
+    importarFaccoes.addEventListener("click", importarFaccoesExtraidasPlanilha);
+  }
 }
 
 function limparFormFaccao() {
@@ -3333,6 +3762,9 @@ async function salvarFaccao(event) {
     celular,
     observacoes,
     ativo: true,
+    cadastroPendente: false,
+    statusImportacao: "ok",
+    pendenciaImportacao: "",
     atualizadoPor: state.currentUser.uid,
     atualizadoEm: serverTimestamp()
   };
@@ -3366,7 +3798,7 @@ function renderFaccoes() {
   if (!tbody) return;
 
   const busca = normalizarTexto(document.getElementById("buscaFaccao")?.value || "");
-  let faccoes = [...state.faccoes];
+  let faccoes = state.faccoes.filter(faccao => !faccao.cadastroPendente);
 
   if (busca) {
     faccoes = faccoes.filter(faccao => {
@@ -3375,7 +3807,9 @@ function renderFaccoes() {
         faccao.cidade,
         faccao.chavePix,
         faccao.celular,
-        faccao.observacoes
+        faccao.observacoes,
+        faccao.origemImportacao,
+        faccao.titularPix
       ].join(" "));
       return texto.includes(busca);
     });
@@ -3407,6 +3841,118 @@ function renderFaccoes() {
     </tr>
   `).join("");
 }
+
+function renderFaccoesPendentes() {
+  const tbody = document.getElementById("listaFaccoesPendentes");
+  if (!tbody) return;
+
+  const pendentes = state.faccoes
+    .filter(faccao => faccao.cadastroPendente)
+    .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true }));
+
+  if (!pendentes.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhuma facção pendente. Tudo pronto.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = pendentes.map(faccao => `
+    <tr class="faccao-pendente-row">
+      <td><strong>${escapeHtml(faccao.nome || "-")}</strong></td>
+      <td>${escapeHtml(faccao.cidade || "-")}</td>
+      <td>${escapeHtml(faccao.chavePix || "-")}</td>
+      <td>
+        <span class="badge pending">${escapeHtml(faccao.pendenciaImportacao || "Revisar dados")}</span>
+      </td>
+      <td>${escapeHtml(faccao.origemImportacao || "-")}</td>
+      <td class="admin-only-cell">
+        <button class="btn btn-sm btn-primary" onclick="editarFaccao('${faccao.id}')">Editar / completar</button>
+        <button class="btn btn-sm btn-danger" onclick="excluirFaccao('${faccao.id}')">Excluir</button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+async function importarFaccoesExtraidasPlanilha() {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode importar facções.");
+    return;
+  }
+
+  if (!Array.isArray(FACCOES_EXTRAIDAS_PLANILHA) || !FACCOES_EXTRAIDAS_PLANILHA.length) {
+    toast("Nenhuma facção preparada para importar.");
+    return;
+  }
+
+  try {
+    let batch = writeBatch(db);
+    let contador = 0;
+    let ok = 0;
+    let pendentes = 0;
+    let puladas = 0;
+
+    for (const item of FACCOES_EXTRAIDAS_PLANILHA) {
+      const nome = limparTexto(item.nome || "").toUpperCase();
+      if (!nome) continue;
+
+      const pendente = item.status !== "ok";
+      const docId = docIdSeguro(nome);
+      const existente = state.faccoes.find(faccao => faccao.id === docId || limparTexto(faccao.nome || "").toUpperCase() === nome);
+
+      if (pendente && existente && existente.cadastroPendente === false) {
+        puladas++;
+        continue;
+      }
+
+      const observacoes = [
+        item.observacoes || "",
+        item.titularPix ? `Titular PIX: ${item.titularPix}` : "",
+        item.pixConfianca ? `Confiança PIX: ${item.pixConfianca}` : "",
+        item.origem ? `Origem: ${item.origem}` : ""
+      ].filter(Boolean).join(" | ");
+
+      batch.set(doc(db, "faccoes", docId), {
+        nome,
+        cidade: limparTexto(item.cidade || "").toUpperCase(),
+        chavePix: item.pix || "",
+        celular: item.celular || "",
+        observacoes,
+        titularPix: item.titularPix || "",
+        pixConfianca: item.pixConfianca || "",
+        origemImportacao: item.origem || "",
+        importadoDaPlanilha: true,
+        cadastroPendente: pendente,
+        statusImportacao: pendente ? "pendente" : "ok",
+        pendenciaImportacao: pendente ? (item.pendencia || "Revisar dados") : "",
+        ativo: !pendente,
+        atualizadoPor: state.currentUser.uid,
+        atualizadoEm: serverTimestamp(),
+        criadoPor: state.currentUser.uid,
+        criadoEm: serverTimestamp()
+      }, { merge: true });
+
+      if (pendente) pendentes++;
+      else ok++;
+
+      contador++;
+      if (contador === 450) {
+        await batch.commit();
+        batch = writeBatch(db);
+        contador = 0;
+      }
+    }
+
+    if (contador > 0) {
+      await batch.commit();
+    }
+
+    await registrarLog("faccoes_importadas_planilha", "faccao", "importacao", `${ok} OK | ${pendentes} pendentes | ${puladas} puladas`);
+    toast(`${ok} facções importadas. ${pendentes} ficaram pendentes para revisar.${puladas ? ` ${puladas} já estavam completas e foram mantidas.` : ""}`);
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao importar facções da planilha.");
+  }
+}
+
 
 
 function renderFaccoesMovimentacoes() {
@@ -3440,7 +3986,7 @@ function renderFaccoesMovimentacoes() {
     if (el) el.textContent = Number(valor || 0).toLocaleString("pt-BR");
   };
 
-  setText("faccoesTotalCadastradas", state.faccoes.length);
+  setText("faccoesTotalCadastradas", state.faccoes.filter(faccao => !faccao.cadastroPendente).length);
   setText("faccoesOpsEmAndamento", emFaccoes.length);
   setText("faccoesPecasEnviadas", pecasEnviadas);
   setText("faccoesPecasRecebidas", pecasRecebidas);
@@ -3498,6 +4044,10 @@ function editarFaccao(id) {
   document.getElementById("faccaoPix").value = faccao.chavePix || "";
   document.getElementById("faccaoCelular").value = faccao.celular || "";
   document.getElementById("faccaoObs").value = faccao.observacoes || "";
+
+  if (faccao.cadastroPendente) {
+    toast("Complete cidade/PIX e salve. A facção sairá dos pendentes.");
+  }
 }
 
 async function alternarFaccao(id) {
@@ -3920,7 +4470,7 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
   const setor = opcoes.setor || getManejoSetorAtual();
   const label = labelTipoMovimento(tipoDestino);
   const destinos = tipoDestino === "faccao"
-    ? state.faccoes.filter(item => item.ativo !== false)
+    ? state.faccoes.filter(item => item.ativo !== false && !item.cadastroPendente)
     : state.celulas.filter(item => item.ativo !== false);
 
   if (!destinos.length) {
@@ -7507,6 +8057,7 @@ function renderTudo() {
   renderDatalistCores();
   renderProcessos();
   renderFaccoes();
+  renderFaccoesPendentes();
   renderFaccoesMovimentacoes();
   renderCelulas();
   renderCelulasMovimentacoes();
