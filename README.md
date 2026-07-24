@@ -1,3 +1,21 @@
+# Sistema OP Confecção — Migração Lígia Nova Lógica
+
+Esta versão foi gerada para testar a migração usando somente a planilha da Lígia.
+
+## O que entrou
+
+- Botão `⋮` no manejo para não poluir a tabela.
+- Menu de ações com envio para facção, célula, edição de localização/status e rastreamento.
+- Modal de ajuste de migração com histórico em `ajustesMigracao`.
+- Importador `Migração Lígia — nova lógica` na aba Importar / Backup.
+- Dados em `dados-ligia-migracao.json`.
+- FASE=PRODUÇÃO vai para relatório separado e não mexe mais no sistema.
+- Pagamento automático: se não existir valor para REF + PROCESSO, cria pagamento em aberto com aviso para adicionar valor.
+
+## Atenção
+
+Este ZIP contém dados reais da planilha da empresa. Use em ambiente privado/teste.
+
 # Sistema OP Confecção com Firebase e Login
 
 Esta versão usa:

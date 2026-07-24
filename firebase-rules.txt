@@ -100,5 +100,26 @@ service cloud.firestore {
       allow read: if admin();
       allow create, update, delete: if admin();
     }
+
+
+    match /ajustesMigracao/{ajusteId} {
+      allow read: if admin();
+      allow create, update, delete: if admin();
+    }
+
+    match /relatoriosMigracaoLigia/{relatorioId} {
+      allow read: if usuarioComum();
+      allow create, update, delete: if admin();
+    }
+
+    match /datasIncoerentesLigia/{dataId} {
+      allow read: if usuarioComum();
+      allow create, update, delete: if admin();
+    }
+
+    match /processosMigracao/{processoId} {
+      allow read: if usuarioComum();
+      allow create, update, delete: if admin();
+    }
   }
 }

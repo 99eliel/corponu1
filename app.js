@@ -177,428 +177,9 @@ const reportInfo = {
 };
 
 
-const FACCOES_EXTRAIDAS_PLANILHA = [
-  {
-    "nome": "ANA FLAVIA",
-    "cidade": "PONTALINA",
-    "pix": "64992806322",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "ANA FLAVIA DELFINA DA SILVA TEIXEIRA",
-    "observacoes": "Titular/PIX: ANA FLAVIA DELFINA DA SILVA TEIXEIRA ; Produtos: fac. Calcinha ; Outros PIX encontrados: 705.793.061-51 | 81,90 por ... 12/12/2025",
-    "origem": "ANA FLAVIA",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "ANDREZA",
-    "cidade": "PONTALINA",
-    "pix": "64992499344",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "ANDREZA HELLARY MARÇAL",
-    "observacoes": "Titular/PIX: ANDREZA HELLARY MARÇAL ; Produtos: CALÇINHA",
-    "origem": "ANDREZA",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "BEATRIZ",
-    "cidade": "ABADIA",
-    "pix": "BANCO C6 62994963233",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "BEATRIZ DE JESUS FERREIRA",
-    "observacoes": "Aba: BEATRIZ - ABADIA ; Titular/PIX: BEATRIZ DE JESUS FERREIRA",
-    "origem": "BEATRIZ - ABADIA",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "CORDEIRO",
-    "cidade": "PONTALINA",
-    "pix": "951.242.501-78",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "CORDEIRO GOMES DA SILVA",
-    "observacoes": "Titular/PIX: CORDEIRO GOMES DA SILVA ; Produtos: FACÇÃO CUECA ; Outros PIX encontrados: CAIXA",
-    "origem": "CORDEIRO",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "DAIANA",
-    "cidade": "PONTALINA",
-    "pix": "64992994007",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "NEIDE DAIANA R. JUSTO SANTOS",
-    "observacoes": "Titular/PIX: NEIDE DAIANA R. JUSTO SANTOS ; Produtos: MONT. CALÇINHA ; Outros PIX encontrados: CAIXA",
-    "origem": "DAIANA",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "DANIELA",
-    "cidade": "",
-    "pix": "",
-    "pixConfianca": "Sem PIX",
-    "celular": "",
-    "titularPix": "",
-    "observacoes": "",
-    "origem": "DANIELA",
-    "status": "pendente",
-    "pendencia": "cidade, pix"
-  },
-  {
-    "nome": "DANUBIA",
-    "cidade": "TAQUARAL",
-    "pix": "CAIXA - AG 0859 - C/C 000584389539-0",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "WATTSON MAMEDES DE SOUZA",
-    "observacoes": "Titular/PIX: WATTSON MAMEDES DE SOUZA ; Produtos: SUTIÃ ; Outros PIX encontrados: 015.642.011-20 | 883-776-281-04 | 883.776.281-04",
-    "origem": "DANUBIA, Planilha2",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "DARIA",
-    "cidade": "PONTALINA",
-    "pix": "64992110716",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "",
-    "observacoes": "Produtos: SUTIAN",
-    "origem": "DARIA",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "DARLLEN",
-    "cidade": "ITAGUARI",
-    "pix": "62993236487",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "DAELLEN COUTRIN DA SILVA",
-    "observacoes": "Titular/PIX: DAELLEN COUTRIN DA SILVA ; Produtos: CALÇINHA",
-    "origem": "DARLLEN",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "GISLAINY",
-    "cidade": "PONTALINA",
-    "pix": "JOSE ANTONIO",
-    "pixConfianca": "Baixa",
-    "celular": "",
-    "titularPix": "",
-    "observacoes": "Produtos: SUTIÃ",
-    "origem": "GISLAINY",
-    "status": "pendente",
-    "pendencia": "pix duvidoso"
-  },
-  {
-    "nome": "INACIR",
-    "cidade": "PONTALINA",
-    "pix": "64992663852",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "",
-    "observacoes": "Produtos: MONT.CALC",
-    "origem": "INACIR",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "ITAMAR",
-    "cidade": "APARECIDA DE GOIÂNIA",
-    "pix": "808.300.211-91",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "",
-    "observacoes": "Aba: ITAMAR - AP. GOIÂNIA",
-    "origem": "ITAMAR - AP. GOIÂNIA",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "JEAN",
-    "cidade": "ITAGUARI",
-    "pix": "62992153999",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "NUBIA CRISTINA DIAS",
-    "observacoes": "Titular/PIX: NUBIA CRISTINA DIAS ; Produtos: CALÇINHA",
-    "origem": "JEAN",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "JHAYNNIS",
-    "cidade": "",
-    "pix": "",
-    "pixConfianca": "Sem PIX",
-    "celular": "",
-    "titularPix": "",
-    "observacoes": "",
-    "origem": "JHAYNNIS",
-    "status": "pendente",
-    "pendencia": "cidade, pix"
-  },
-  {
-    "nome": "JHULIA",
-    "cidade": "PONTALINA",
-    "pix": "04443036180",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "",
-    "observacoes": "Produtos: CALCINHA",
-    "origem": "JHULIA",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "JULIANA",
-    "cidade": "PONTALINA",
-    "pix": "754.319.391-49",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "JULIANA MARTINS ALVES",
-    "observacoes": "Titular/PIX: JULIANA MARTINS ALVES ; Produtos: MONT. CALÇINHA",
-    "origem": "JULIANA",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "JUZENI",
-    "cidade": "ITAGUARI",
-    "pix": "juzenisilvapereira@gmail.com",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "JUZENI SILVA PEREIRA",
-    "observacoes": "Titular/PIX: JUZENI SILVA PEREIRA ; Produtos: CALÇINHA",
-    "origem": "JUZENI",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "KAKA",
-    "cidade": "PONTALINA",
-    "pix": "049.222.021.29",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "LARA CRISTINA FERREIRA DA SILVA",
-    "observacoes": "Aba: KAKA - (LARA CRISTINA CATALÃO) ; Titular/PIX: LARA CRISTINA FERREIRA DA SILVA ; Produtos: SUTIÃ ; Outros PIX encontrados: 664.090.711-91 | LARA CRISTINA FERREIRA DA SILVA - 664.090.711-91",
-    "origem": "KAKA - (LARA CRISTINA CATALÃO)",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "KAMILA",
-    "cidade": "",
-    "pix": "62994113911 CAIXA ECONÔMICA",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "KAMILA BORGES BRAGANÇA",
-    "observacoes": "Titular/PIX: KAMILA BORGES BRAGANÇA ; Outros PIX encontrados: 62994113911",
-    "origem": "KAMILA",
-    "status": "pendente",
-    "pendencia": "cidade"
-  },
-  {
-    "nome": "KAUANE",
-    "cidade": "PONTALINA",
-    "pix": "64 992329453",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "KAUANE PARREIRA DA SILVA",
-    "observacoes": "Titular/PIX: KAUANE PARREIRA DA SILVA ; Produtos: CALCINHA",
-    "origem": "KAUANE",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "LEIDIANE",
-    "cidade": "PONTALINA",
-    "pix": "007.760.151-33",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "LEIDIANE LOURENÇO PEIXOTO",
-    "observacoes": "Titular/PIX: LEIDIANE LOURENÇO PEIXOTO ; Produtos: MONT. CALÇINHA",
-    "origem": "LEIDIANE",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "LEONARDO",
-    "cidade": "",
-    "pix": "",
-    "pixConfianca": "Sem PIX",
-    "celular": "",
-    "titularPix": "",
-    "observacoes": "",
-    "origem": "LEONARDO",
-    "status": "pendente",
-    "pendencia": "cidade, pix"
-  },
-  {
-    "nome": "LIANA BADIAS",
-    "cidade": "",
-    "pix": "",
-    "pixConfianca": "Sem PIX",
-    "celular": "",
-    "titularPix": "",
-    "observacoes": "",
-    "origem": "LIANA BADIAS",
-    "status": "pendente",
-    "pendencia": "cidade, pix"
-  },
-  {
-    "nome": "LIANDRA",
-    "cidade": "",
-    "pix": "",
-    "pixConfianca": "Sem PIX",
-    "celular": "",
-    "titularPix": "",
-    "observacoes": "",
-    "origem": "LIANDRA",
-    "status": "pendente",
-    "pendencia": "cidade, pix"
-  },
-  {
-    "nome": "LIVIA",
-    "cidade": "PONTALINA",
-    "pix": "AGENCIA - 2478",
-    "pixConfianca": "Baixa",
-    "celular": "",
-    "titularPix": "LIVIA MARTINS DA SILVA",
-    "observacoes": "Titular/PIX: LIVIA MARTINS DA SILVA ; Produtos: MONTAGEM",
-    "origem": "LIVIA",
-    "status": "pendente",
-    "pendencia": "pix duvidoso"
-  },
-  {
-    "nome": "LORENA",
-    "cidade": "",
-    "pix": "",
-    "pixConfianca": "Sem PIX",
-    "celular": "",
-    "titularPix": "",
-    "observacoes": "",
-    "origem": "LORENA",
-    "status": "pendente",
-    "pendencia": "cidade, pix"
-  },
-  {
-    "nome": "LUCIA",
-    "cidade": "PONTALINA",
-    "pix": "85602876120",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "",
-    "observacoes": "Produtos: SUTIÃ",
-    "origem": "LUCIA",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "MARILIA",
-    "cidade": "",
-    "pix": "028.435.491-08",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "MARILIA DUTRA",
-    "observacoes": "Titular/PIX: MARILIA DUTRA",
-    "origem": "MARILIA",
-    "status": "pendente",
-    "pendencia": "cidade"
-  },
-  {
-    "nome": "MATHEUS",
-    "cidade": "",
-    "pix": "66.928.247/0001-80",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "MATHEUS GERALDO DE SOUSA",
-    "observacoes": "Titular/PIX: MATHEUS GERALDO DE SOUSA ; Produtos: CALÇINHA",
-    "origem": "MATHEUS",
-    "status": "pendente",
-    "pendencia": "cidade"
-  },
-  {
-    "nome": "PHAOLLA",
-    "cidade": "PONTALINA",
-    "pix": "",
-    "pixConfianca": "Sem PIX",
-    "celular": "",
-    "titularPix": "",
-    "observacoes": "Produtos: SUTIAN",
-    "origem": "PHAOLLA",
-    "status": "pendente",
-    "pendencia": "pix"
-  },
-  {
-    "nome": "RONEIDIA",
-    "cidade": "",
-    "pix": "62993112642",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "RONEIDIA MARIA GONÇALVES",
-    "observacoes": "Titular/PIX: RONEIDIA MARIA GONÇALVES",
-    "origem": "RONEIDIA",
-    "status": "pendente",
-    "pendencia": "cidade"
-  },
-  {
-    "nome": "SCHENEIDER",
-    "cidade": "",
-    "pix": "",
-    "pixConfianca": "Sem PIX",
-    "celular": "",
-    "titularPix": "",
-    "observacoes": "",
-    "origem": "SCHENEIDER",
-    "status": "pendente",
-    "pendencia": "cidade, pix"
-  },
-  {
-    "nome": "SILVANY",
-    "cidade": "",
-    "pix": "",
-    "pixConfianca": "Sem PIX",
-    "celular": "",
-    "titularPix": "",
-    "observacoes": "",
-    "origem": "SILVANY",
-    "status": "pendente",
-    "pendencia": "cidade, pix"
-  },
-  {
-    "nome": "THAYS",
-    "cidade": "GOIANIRA",
-    "pix": "62 994589707 NUBANK",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "RAFAELA BRAGA DOS SANTOS",
-    "observacoes": "Aba: GOIANIRA - THAYS ; Titular/PIX: RAFAELA BRAGA DOS SANTOS ; Produtos: SUTIÃ ; Outros PIX encontrados: 41.114.594/0001-49 | 62994589707 | 62994589707 NUBANK | AG 5476 CC 10179-6",
-    "origem": "GOIANIRA - THAYS",
-    "status": "ok",
-    "pendencia": ""
-  },
-  {
-    "nome": "THEILLOR",
-    "cidade": "ITAGUARI",
-    "pix": "062.770.741-64",
-    "pixConfianca": "Alta",
-    "celular": "",
-    "titularPix": "THEILLOR VINICIUS",
-    "observacoes": "Titular/PIX: THEILLOR VINICIUS ; Produtos: CALÇINHA",
-    "origem": "THEILLOR",
-    "status": "ok",
-    "pendencia": ""
-  }
-];
+const FACCOES_EXTRAIDAS_PLANILHA = [];
+const LIGIA_MIGRACAO_DADOS_URL = 'dados-ligia-migracao.json';
+
 
 function carregarSugestoesFaccoesCelus() {
   try {
@@ -1798,7 +1379,7 @@ function ordemPertenceAoSetorManejo(op, setor = getManejoSetorAtual()) {
 
 function getOrdensDoSetorManejo(setor = getManejoSetorAtual()) {
   if (!podeVerManejo(setor)) return [];
-  return [...state.ordens].filter(op => ordemPertenceAoSetorManejo(op, setor));
+  return [...state.ordens].filter(op => !op.ocultarDoManejo && ordemPertenceAoSetorManejo(op, setor));
 }
 
 function atualizarBotoesManejoSetor() {
@@ -2402,11 +1983,16 @@ function renderManejoInline() {
           ${movimentosAbertos ? `<small class="mov-aberto">${movimentosAbertos} mov.</small>` : ""}
         </td>
         <td>
-          <div class="manejo-actions manejo-actions-fluxo">
-            <button class="btn btn-sm btn-primary" onclick="salvarManejoLinha('${op.id}')">Salvar</button>
-            <button class="btn btn-sm btn-success" onclick="mandarParaFaccao('${op.id}')">Mandar facção</button>
-            <button class="btn btn-sm" onclick="mandarParaCelula('${op.id}')">Mandar célula</button>
-            ${manejo && ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="limparManejoLinha('${op.id}')">Limpar</button>` : ""}
+          <div class="action-menu-wrap">
+            <button class="btn-kebab" type="button" onclick="toggleMenuAcoesManejo(event, '${op.id}')" title="Ações da OP">⋮</button>
+            <div class="action-menu" id="menu-acoes-${op.id}">
+              <button type="button" onclick="salvarManejoLinha('${op.id}')">Salvar edição rápida</button>
+              <button type="button" onclick="mandarParaFaccao('${op.id}')">Enviar para facção</button>
+              <button type="button" onclick="mandarParaCelula('${op.id}')">Enviar para célula</button>
+              <button type="button" onclick="abrirModalAjusteMigracao('${op.id}')">Editar localização/status</button>
+              <button type="button" onclick="abrirRastreamentoOP('${op.id}')">Ver histórico/rastreamento</button>
+              ${manejo && ehAdmin() ? `<button class="danger" type="button" onclick="limparManejoLinha('${op.id}')">Limpar manejo</button>` : ""}
+            </div>
           </div>
         </td>
       </tr>
@@ -3722,6 +3308,18 @@ function configurarFaccoes() {
   if (importarFaccoes) {
     importarFaccoes.addEventListener("click", importarFaccoesExtraidasPlanilha);
   }
+
+  const importarLigia = document.getElementById("btnImportarLigiaNovaLogica");
+  if (importarLigia) {
+    importarLigia.addEventListener("click", importarLigiaNovaLogica);
+  }
+
+  const resumoLigia = document.getElementById("btnResumoLigiaNovaLogica");
+  if (resumoLigia) {
+    resumoLigia.addEventListener("click", mostrarResumoLigiaNovaLogica);
+  }
+
+  configurarModalAjusteMigracao();
 }
 
 function limparFormFaccao() {
@@ -3870,6 +3468,301 @@ function renderFaccoesPendentes() {
       </td>
     </tr>
   `).join("");
+}
+
+
+
+async function carregarDadosLigiaNovaLogica() {
+  const resposta = await fetch(LIGIA_MIGRACAO_DADOS_URL, { cache: "no-store" });
+  if (!resposta.ok) throw new Error("Não foi possível carregar dados-ligia-migracao.json");
+  return await resposta.json();
+}
+
+async function mostrarResumoLigiaNovaLogica() {
+  const box = document.getElementById("resumoLigiaNovaLogica");
+  if (!box) return;
+
+  try {
+    const dados = await carregarDadosLigiaNovaLogica();
+    const resumo = dados.resumo || {};
+    box.classList.remove("hidden");
+    box.innerHTML = `
+      <strong>Resumo da migração Lígia</strong><br>
+      OPs: ${Number(dados.meta?.totalOPs || 0).toLocaleString("pt-BR")}<br>
+      Movimentações ativas: ${Number(resumo.movimentacoes || 0).toLocaleString("pt-BR")}<br>
+      Relatórios separados: ${Number(resumo.relatoriosSeparados || 0).toLocaleString("pt-BR")}<br>
+      Produtos/refs: ${Number(resumo.produtos || 0).toLocaleString("pt-BR")}<br>
+      Facções: ${Number(resumo.faccoes || 0).toLocaleString("pt-BR")}<br>
+      Células: ${Number(resumo.celulas || 0).toLocaleString("pt-BR")}<br>
+      Datas incoerentes para conferência: ${Number(resumo.datasIncoerentes || 0).toLocaleString("pt-BR")}<br>
+      <br><strong>Importante:</strong> esta versão não importa pagamentos históricos.
+    `;
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao carregar o resumo da migração Lígia.");
+  }
+}
+
+function prepararDocumentoImportacaoLigia(item) {
+  const copia = { ...item };
+  delete copia.id;
+  copia.importadoLigiaNovaLogica = true;
+  copia.atualizadoPor = state.currentUser.uid;
+  copia.atualizadoEm = serverTimestamp();
+  if (!copia.criadoPor) copia.criadoPor = state.currentUser.uid;
+  if (!copia.criadoEm) copia.criadoEm = serverTimestamp();
+  return copia;
+}
+
+async function importarColecaoLigia(batch, colecao, itens, contadorRef) {
+  for (const item of itens || []) {
+    const id = item.id || docIdSeguro(item.numeroOP || item.nome || item.referencia || Math.random().toString(36).slice(2));
+    batch.set(doc(db, colecao, id), prepararDocumentoImportacaoLigia(item), { merge: true });
+    contadorRef.total++;
+    contadorRef.batch++;
+    if (contadorRef.batch >= 420) {
+      await batch.commit();
+      contadorRef.batch = 0;
+      batch = writeBatch(db);
+    }
+  }
+  return batch;
+}
+
+async function importarLigiaNovaLogica() {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode importar a migração da Lígia.");
+    return;
+  }
+
+  const confirmar = confirm("Importar a planilha da Lígia com a nova lógica? Esta importação NÃO inclui pagamentos históricos. Use em ambiente de teste/implantação.");
+  if (!confirmar) return;
+
+  try {
+    const dados = await carregarDadosLigiaNovaLogica();
+    let batch = writeBatch(db);
+    const contador = { total: 0, batch: 0 };
+
+    batch = await importarColecaoLigia(batch, "produtos", dados.produtos || [], contador);
+    batch = await importarColecaoLigia(batch, "faccoes", dados.faccoes || [], contador);
+    batch = await importarColecaoLigia(batch, "celulas", dados.celulas || [], contador);
+    batch = await importarColecaoLigia(batch, "processosMigracao", dados.processos || [], contador);
+    batch = await importarColecaoLigia(batch, "ordensProducao", dados.ordensProducao || [], contador);
+    batch = await importarColecaoLigia(batch, "movimentacoesProducao", dados.movimentacoesProducao || [], contador);
+    batch = await importarColecaoLigia(batch, "relatoriosMigracaoLigia", dados.relatoriosMigracaoLigia || [], contador);
+    batch = await importarColecaoLigia(batch, "datasIncoerentesLigia", dados.datasIncoerentes || [], contador);
+
+    if (contador.batch > 0) await batch.commit();
+
+    await setDoc(doc(db, "configuracoes", "migracaoLigiaNovaLogica"), {
+      ...dados.meta,
+      resumo: dados.resumo || {},
+      regrasAplicadas: dados.regrasAplicadas || [],
+      importadoPor: state.currentUser.uid,
+      importadoEm: serverTimestamp(),
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+
+    await registrarLog("migracao_ligia_nova_logica", "importacao", "Planilha Ligia", `${contador.total} documentos importados. Sem pagamentos históricos.`);
+    toast(`Migração da Lígia importada: ${contador.total.toLocaleString("pt-BR")} documentos.`);
+    mostrarResumoLigiaNovaLogica();
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao importar a migração da Lígia.");
+  }
+}
+
+function toggleMenuAcoesManejo(event, ordemId) {
+  event?.stopPropagation?.();
+  document.querySelectorAll(".action-menu.open").forEach(menu => {
+    if (menu.id !== `menu-acoes-${ordemId}`) menu.classList.remove("open");
+  });
+  document.getElementById(`menu-acoes-${ordemId}`)?.classList.toggle("open");
+}
+
+function fecharMenusAcoesManejo() {
+  document.querySelectorAll(".action-menu.open").forEach(menu => menu.classList.remove("open"));
+}
+
+document.addEventListener("click", event => {
+  if (!event.target.closest(".action-menu-wrap")) fecharMenusAcoesManejo();
+});
+
+function abrirRastreamentoOP(ordemId) {
+  const ordem = state.ordens.find(op => op.id === ordemId);
+  if (!ordem) return;
+  abrirPagina("rastreamento");
+  const busca = document.getElementById("buscaRastreamento");
+  if (busca) {
+    busca.value = ordem.numeroOP || ordem.referencia || "";
+    busca.dispatchEvent(new Event("input"));
+  }
+}
+
+function configurarModalAjusteMigracao() {
+  document.getElementById("btnFecharModalAjusteMigracao")?.addEventListener("click", fecharModalAjusteMigracao);
+  document.getElementById("btnCancelarModalAjusteMigracao")?.addEventListener("click", fecharModalAjusteMigracao);
+  document.getElementById("formAjusteMigracao")?.addEventListener("submit", salvarAjusteMigracao);
+
+  const modal = document.getElementById("modalAjusteMigracao");
+  modal?.addEventListener("click", event => {
+    if (event.target === modal) fecharModalAjusteMigracao();
+  });
+}
+
+function abrirModalAjusteMigracao(ordemId) {
+  fecharMenusAcoesManejo();
+  const ordem = state.ordens.find(op => op.id === ordemId);
+  if (!ordem) {
+    toast("OP não encontrada.");
+    return;
+  }
+
+  const modal = document.getElementById("modalAjusteMigracao");
+  const info = document.getElementById("ajusteMigracaoInfo");
+  const local = document.getElementById("ajusteMigracaoLocal");
+  const destino = document.getElementById("ajusteMigracaoDestino");
+  const processo = document.getElementById("ajusteMigracaoProcesso");
+  const dataEnvio = document.getElementById("ajusteMigracaoDataEnvio");
+  const dataChegada = document.getElementById("ajusteMigracaoDataChegada");
+  const proximo = document.getElementById("ajusteMigracaoProximoDestino");
+
+  document.getElementById("ajusteMigracaoOpId").value = ordemId;
+  if (info) {
+    info.innerHTML = `
+      <strong>OP ${escapeHtml(ordem.numeroOP || ordem.id)} | Ref. ${escapeHtml(ordem.referencia || "-")}</strong>
+      <span>Fase original: ${escapeHtml(ordem.faseOriginalLigia || "-")} | Facção original: ${escapeHtml(ordem.faccaoOriginalLigia || "-")} | QTD ${escapeHtml(ordem.quantidade || 0)}</span>
+      <span>Status atual: ${escapeHtml(ordem.statusMigracaoLigia || ordem.status || "-")}</span>
+    `;
+  }
+
+  if (local) local.value = ordem.localAtualMigracao || ordem.statusMigracaoLigia || "MANEJO_AGUARDANDO_DESTINO";
+  if (destino) destino.value = ordem.destinoAtualMigracao || ordem.faccaoAtual || ordem.faccaoOriginalLigia || "";
+  if (processo) processo.value = ordem.processoAtualMigracao || "";
+  if (dataEnvio) dataEnvio.value = normalizarDataISO(ordem.dataEnvioAtualMigracao || "");
+  if (dataChegada) dataChegada.value = normalizarDataISO(ordem.dataChegadaAtualMigracao || "");
+  if (proximo) proximo.value = ordem.proximoDestinoMigracao || "";
+  document.getElementById("ajusteMigracaoMotivo").value = "";
+
+  modal?.classList.remove("hidden");
+}
+
+function fecharModalAjusteMigracao() {
+  document.getElementById("modalAjusteMigracao")?.classList.add("hidden");
+  document.getElementById("formAjusteMigracao")?.reset();
+}
+
+function normalizarDataISO(valor) {
+  if (!valor) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) return valor;
+  return "";
+}
+
+async function salvarAjusteMigracao(event) {
+  event.preventDefault();
+
+  if (!ehAdmin()) {
+    toast("Apenas admin pode corrigir migração.");
+    return;
+  }
+
+  const ordemId = document.getElementById("ajusteMigracaoOpId")?.value || "";
+  const ordem = state.ordens.find(op => op.id === ordemId);
+  if (!ordem) {
+    toast("OP não encontrada.");
+    return;
+  }
+
+  const local = document.getElementById("ajusteMigracaoLocal")?.value || "";
+  const destino = limparTexto(document.getElementById("ajusteMigracaoDestino")?.value || "").toUpperCase();
+  const processo = limparTexto(document.getElementById("ajusteMigracaoProcesso")?.value || "").toUpperCase();
+  const dataEnvio = document.getElementById("ajusteMigracaoDataEnvio")?.value || "";
+  const dataChegada = document.getElementById("ajusteMigracaoDataChegada")?.value || "";
+  const proximoDestino = limparTexto(document.getElementById("ajusteMigracaoProximoDestino")?.value || "").toUpperCase();
+  const motivo = limparTexto(document.getElementById("ajusteMigracaoMotivo")?.value || "");
+
+  if (!motivo) {
+    toast("Informe o motivo da correção.");
+    return;
+  }
+
+  const ocultarDoManejo = ["RELATORIO_CELULAS", "FINALIZADO_BIPADO", "CANCELADA"].includes(local);
+  const patch = {
+    statusMigracaoLigia: local,
+    localAtualMigracao: local,
+    destinoAtualMigracao: destino,
+    processoAtualMigracao: processo,
+    dataEnvioAtualMigracao: dataEnvio,
+    dataChegadaAtualMigracao: dataChegada,
+    proximoDestinoMigracao: proximoDestino,
+    ocultarDoManejo,
+    ajusteManualMigracao: true,
+    ultimoMotivoAjusteMigracao: motivo,
+    atualizadoPor: state.currentUser.uid,
+    atualizadoEm: serverTimestamp()
+  };
+
+  const ajusteRef = doc(collection(db, "ajustesMigracao"));
+
+  try {
+    const batch = writeBatch(db);
+    batch.set(doc(db, "ordensProducao", ordemId), patch, { merge: true });
+    batch.set(ajusteRef, {
+      opId: ordemId,
+      numeroOP: ordem.numeroOP || "",
+      referencia: ordem.referencia || "",
+      antes: {
+        statusMigracaoLigia: ordem.statusMigracaoLigia || "",
+        localAtualMigracao: ordem.localAtualMigracao || "",
+        destinoAtualMigracao: ordem.destinoAtualMigracao || "",
+        processoAtualMigracao: ordem.processoAtualMigracao || ""
+      },
+      depois: patch,
+      motivo,
+      criadoPor: state.currentUser.uid,
+      criadoEm: serverTimestamp()
+    });
+
+    if (["EM_FACCAO", "EM_CELULA"].includes(local) && destino) {
+      const tipoDestino = local === "EM_CELULA" ? "celula" : "faccao";
+      const movId = docIdSeguro(`ajuste-${ordem.numeroOP || ordem.id}-${tipoDestino}-${destino}-${Date.now()}`);
+      batch.set(doc(db, "movimentacoesProducao", movId), {
+        origem: "ajuste_migracao",
+        ajusteMigracaoId: ajusteRef.id,
+        opId: ordemId,
+        numeroOP: ordem.numeroOP || "",
+        referencia: ordem.referencia || "",
+        cor: ordem.cor || "",
+        produtoNome: ordem.produtoNome || "",
+        tipoDestino,
+        tipoDestinoLabel: tipoDestino === "faccao" ? "Facção" : "Célula",
+        destino,
+        destinoId: docIdSeguro(destino),
+        processo: tipoDestino === "celula" ? "CÉLULA INTERNA" : (processo || "PROCESSO A DEFINIR"),
+        setor: getManejoSetorAtual(),
+        setorLabel: getInfoManejoSetor(getManejoSetorAtual()).label,
+        quantidadeEnviada: Number(ordem.quantidade || 0),
+        dataEnvio,
+        dataChegada,
+        falta: 0,
+        quantidadeRecebida: dataChegada ? Number(ordem.quantidade || 0) : 0,
+        status: dataChegada ? "retornou" : "em_andamento",
+        observacoes: `Criado por ajuste manual de migração. Motivo: ${motivo}`,
+        criadoPor: state.currentUser.uid,
+        criadoEm: serverTimestamp(),
+        atualizadoPor: state.currentUser.uid,
+        atualizadoEm: serverTimestamp()
+      }, { merge: true });
+    }
+
+    await batch.commit();
+    await registrarLog("ajuste_migracao_op", "ordensProducao", ordemId, `OP ${ordem.numeroOP || ordemId} | ${local} | ${destino || "sem destino"} | ${motivo}`);
+    fecharModalAjusteMigracao();
+    toast("Correção de migração salva com histórico.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao salvar ajuste de migração.");
+  }
 }
 
 async function importarFaccoesExtraidasPlanilha() {
@@ -4826,9 +4719,48 @@ async function gerarPagamentoPorMovimentacao(mov) {
   const preco = getPrecoReferenciaPorMovimento(mov);
 
   if (!preco) {
+    const pagamentoPendenteId = docIdSeguro(`mov-${mov.id}-sem-valor`);
+    const quantidadePendente = Math.max(Number(mov.quantidadeEnviada || 0) - Number(mov.falta || 0), 0);
+
+    await setDoc(doc(db, "entregasPagamento", pagamentoPendenteId), {
+      origem: "movimentacao",
+      movimentacaoId: mov.id,
+      movimentacaoOrigemId: mov.movimentacaoOrigemId || "",
+      pagamentoReenvio: Boolean(mov.movimentacaoOrigemId || mov.reenvio || mov.origem === "movimentacao"),
+      opId: mov.opId,
+      numeroOP: mov.numeroOP || "",
+      referencia: mov.referencia || "",
+      cor: mov.cor || "",
+      produtoNome: mov.produtoNome || "",
+      faccao: mov.destino || "",
+      precoReferenciaId: "",
+      processo: mov.processo || "",
+      processoMovimentacao: mov.processo || "",
+      servicoId: "",
+      servicoNome: mov.processo || "",
+      setor: mov.setor || "sutia",
+      setorLabel: getLabelSetorPagamento(mov.setor || "sutia"),
+      dataEntrega: mov.dataChegada,
+      quantidade: quantidadePendente,
+      falta: Number(mov.falta || 0),
+      descontoDefeito: Number(mov.descontoDefeito ?? mov.defeito ?? 0),
+      subtotal: 0,
+      valorUnitario: 0,
+      total: 0,
+      statusPagamento: "sem_valor",
+      valorPendente: true,
+      avisoPagamento: `Adicionar valor para Ref. ${mov.referencia || "-"} + ${mov.processo || "-"}.`,
+      observacoes: "Pagamento ficou em aberto porque não existe valor cadastrado para REF + PROCESSO.",
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp(),
+      criadoPor: state.currentUser.uid,
+      criadoEm: serverTimestamp()
+    }, { merge: true });
+
     return {
       ok: false,
-      motivo: `Preço não cadastrado para Ref. ${mov.referencia} + ${mov.processo}.`
+      semValor: true,
+      motivo: `Pagamento em aberto: adicione valor para Ref. ${mov.referencia} + ${mov.processo}.`
     };
   }
 
@@ -8518,6 +8450,10 @@ window.alternarCelula = alternarCelula;
 window.excluirCelula = excluirCelula;
 window.mandarParaFaccao = mandarParaFaccao;
 window.mandarParaCelula = mandarParaCelula;
+
+window.toggleMenuAcoesManejo = toggleMenuAcoesManejo;
+window.abrirModalAjusteMigracao = abrirModalAjusteMigracao;
+window.abrirRastreamentoOP = abrirRastreamentoOP;
 window.registrarChegadaMovimentacao = registrarChegadaMovimentacao;
 window.encaminharMovimentacao = encaminharMovimentacao;
 window.reenviarMovimentacaoParaFaccao = reenviarMovimentacaoParaFaccao;

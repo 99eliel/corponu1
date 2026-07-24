@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-03-importar-faccoes-pendentes-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-03-importar-faccoes-pendentes-1" />
+  <meta name="app-version" content="2026-07-24-ligia-nova-logica-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-24-ligia-nova-logica-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -1668,14 +1668,96 @@
             </div>
           </div>
         </div>
+
+        <div class="panel form ligia-import-panel">
+          <div class="panel-header">
+            <div>
+              <h3>Migração Lígia — nova lógica</h3>
+              <p>Importa somente a planilha da Lígia, com manejo editável, relatórios separados e movimentos sequenciais.</p>
+            </div>
+          </div>
+
+          <div class="notice small">
+            <strong>Regras desta versão:</strong> FASE=PRODUÇÃO vai para relatório de células; BOJOS ENCAPADOS aguarda destino; CASA fica aguardando chegada da facção; PRODUÇÃO só vira data de reenvio quando a FASE indica uma facção.
+          </div>
+
+          <div class="backup-pro-actions">
+            <button class="btn btn-success" id="btnImportarLigiaNovaLogica" type="button">Importar dados da Lígia</button>
+            <button class="btn" id="btnResumoLigiaNovaLogica" type="button">Ver resumo dos dados</button>
+          </div>
+
+          <div id="resumoLigiaNovaLogica" class="preview hidden"></div>
+        </div>
       </section>
     </main>
   </div>
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="update.js?v=2026-07-03-importar-faccoes-pendentes-1"></script>
-  <script type="module" src="app.js?v=2026-07-03-importar-faccoes-pendentes-1"></script>
+
+
+  <div id="modalAjusteMigracao" class="modal hidden">
+    <div class="modal-content modal-content-wide">
+      <div class="modal-header">
+        <div>
+          <h3 id="ajusteMigracaoTitulo">Ajustar OP migrada</h3>
+          <p id="ajusteMigracaoResumo">Corrija local, status, processo e datas sem apagar o dado original da planilha.</p>
+        </div>
+        <button class="btn-icon" id="btnFecharModalAjusteMigracao" type="button">×</button>
+      </div>
+
+      <form id="formAjusteMigracao" class="form compact-form">
+        <input type="hidden" id="ajusteMigracaoOpId" />
+        <div id="ajusteMigracaoInfo" class="movimentacao-op-info"></div>
+
+        <div class="form-grid three">
+          <label>Local correto
+            <select id="ajusteMigracaoLocal" required>
+              <option value="MANEJO_AGUARDANDO_DESTINO">Manejo / aguardando destino</option>
+              <option value="DISPONIVEL_CASA">Disponível casa</option>
+              <option value="EM_FACCAO">Em facção / aguardando chegada</option>
+              <option value="EM_CELULA">Em célula</option>
+              <option value="RELATORIO_CELULAS">Relatório células</option>
+              <option value="FINALIZADO_BIPADO">Finalizado / bipado</option>
+              <option value="CANCELADA">Cancelada</option>
+            </select>
+          </label>
+
+          <label>Destino atual
+            <input id="ajusteMigracaoDestino" type="text" list="manejoFaccaoList" placeholder="Facção, célula ou local" />
+          </label>
+
+          <label>Processo
+            <input id="ajusteMigracaoProcesso" type="text" list="processosValoresList" placeholder="Ex: ENCAPAR BOJO" />
+          </label>
+        </div>
+
+        <div class="form-grid three">
+          <label>Data envio
+            <input id="ajusteMigracaoDataEnvio" type="date" />
+          </label>
+          <label>Data chegada
+            <input id="ajusteMigracaoDataChegada" type="date" />
+          </label>
+          <label>Próximo destino
+            <input id="ajusteMigracaoProximoDestino" type="text" list="manejoFaccaoList" />
+          </label>
+        </div>
+
+        <label>Motivo da correção
+          <textarea id="ajusteMigracaoMotivo" rows="3" placeholder="Ex: Conferido manualmente; estava chegando da facção, não aguardando destino." required></textarea>
+        </label>
+
+        <div class="actions">
+          <button class="btn btn-primary" type="submit">Salvar correção</button>
+          <button class="btn" id="btnCancelarModalAjusteMigracao" type="button">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="update.js?v=2026-07-24-ligia-nova-logica-1"></script>
+  <script type="module" src="app.js?v=2026-07-24-ligia-nova-logica-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
