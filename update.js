@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-24-ligia-nova-logica-1";
+  const APP_VERSION = "2026-07-24-github-seguro-migracao-local-1";
   const STORAGE_KEY = "op_confeccao_app_version";
   let refreshing = false;
 

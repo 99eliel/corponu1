@@ -179,6 +179,7 @@ const reportInfo = {
 
 const FACCOES_EXTRAIDAS_PLANILHA = [];
 const LIGIA_MIGRACAO_DADOS_URL = 'dados-ligia-migracao.json';
+let ligiaMigracaoDadosLocal = null;
 
 
 function carregarSugestoesFaccoesCelus() {
@@ -3309,6 +3310,11 @@ function configurarFaccoes() {
     importarFaccoes.addEventListener("click", importarFaccoesExtraidasPlanilha);
   }
 
+  const inputLigiaJson = document.getElementById("inputImportarLigiaJson");
+  if (inputLigiaJson) {
+    inputLigiaJson.addEventListener("change", lerArquivoLigiaNovaLogica);
+  }
+
   const importarLigia = document.getElementById("btnImportarLigiaNovaLogica");
   if (importarLigia) {
     importarLigia.addEventListener("click", importarLigiaNovaLogica);
@@ -3472,10 +3478,51 @@ function renderFaccoesPendentes() {
 
 
 
+function validarDadosLigiaNovaLogica(dados) {
+  if (!dados || typeof dados !== "object") {
+    throw new Error("Arquivo inválido: JSON vazio ou mal formatado.");
+  }
+  if (!Array.isArray(dados.ordensProducao) || !Array.isArray(dados.movimentacoesProducao)) {
+    throw new Error("Arquivo inválido: não encontrei ordensProducao/movimentacoesProducao.");
+  }
+  if (dados.meta?.naoIncluiPagamentosHistoricos !== true) {
+    throw new Error("Este arquivo não parece ser a migração final da Lígia sem pagamentos históricos.");
+  }
+  return dados;
+}
+
+async function lerArquivoLigiaNovaLogica(event) {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode carregar a migração da Lígia.");
+    event.target.value = "";
+    return;
+  }
+
+  const arquivo = event.target.files?.[0];
+  if (!arquivo) return;
+
+  try {
+    const texto = await arquivo.text();
+    ligiaMigracaoDadosLocal = validarDadosLigiaNovaLogica(JSON.parse(texto));
+    toast("Arquivo da Lígia carregado. Confira o resumo antes de importar.");
+    mostrarResumoLigiaNovaLogica();
+  } catch (error) {
+    console.error(error);
+    ligiaMigracaoDadosLocal = null;
+    toast(error.message || "Erro ao ler o arquivo JSON da Lígia.");
+  }
+}
+
 async function carregarDadosLigiaNovaLogica() {
-  const resposta = await fetch(LIGIA_MIGRACAO_DADOS_URL, { cache: "no-store" });
-  if (!resposta.ok) throw new Error("Não foi possível carregar dados-ligia-migracao.json");
-  return await resposta.json();
+  if (ligiaMigracaoDadosLocal) return ligiaMigracaoDadosLocal;
+
+  try {
+    const resposta = await fetch(LIGIA_MIGRACAO_DADOS_URL, { cache: "no-store" });
+    if (!resposta.ok) throw new Error("Arquivo embutido indisponível");
+    return validarDadosLigiaNovaLogica(await resposta.json());
+  } catch (error) {
+    throw new Error("Selecione primeiro o arquivo dados-ligia-migracao-final-segunda.json no seu computador.");
+  }
 }
 
 async function mostrarResumoLigiaNovaLogica() {
@@ -3488,7 +3535,7 @@ async function mostrarResumoLigiaNovaLogica() {
     box.classList.remove("hidden");
     box.innerHTML = `
       <strong>Resumo da migração Lígia</strong><br>
-      OPs: ${Number(dados.meta?.totalOPs || 0).toLocaleString("pt-BR")}<br>
+      OPs na aba FACÇÃO: ${Number(dados.meta?.totalOPsFaccao || dados.meta?.totalOPs || 0).toLocaleString("pt-BR")}<br>
       Movimentações ativas: ${Number(resumo.movimentacoes || 0).toLocaleString("pt-BR")}<br>
       Relatórios separados: ${Number(resumo.relatoriosSeparados || 0).toLocaleString("pt-BR")}<br>
       Produtos/refs: ${Number(resumo.produtos || 0).toLocaleString("pt-BR")}<br>
@@ -3535,7 +3582,7 @@ async function importarLigiaNovaLogica() {
     return;
   }
 
-  const confirmar = confirm("Importar a planilha da Lígia com a nova lógica? Esta importação NÃO inclui pagamentos históricos. Use em ambiente de teste/implantação.");
+  const confirmar = confirm("Importar a migração final da planilha da Lígia agora? Esta importação NÃO inclui pagamentos históricos e usará o JSON selecionado/local.");
   if (!confirmar) return;
 
   try {
