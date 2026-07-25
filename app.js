@@ -1475,7 +1475,6 @@ function configurarManejo() {
     "filtroManejoFase",
     "filtroManejoQuantidade",
     "filtroManejoCor",
-    "filtroManejoFaccao",
     "filtroManejoChegada",
     "filtroManejoFalta",
     "filtroManejoCelu",
@@ -1567,11 +1566,8 @@ function imprimirManejoFiltrado() {
       <td>${escapeHtml(item.fase || "-")}</td>
       <td class="num">${escapeHtml(item.quantidade)}</td>
       <td>${escapeHtml(item.cor || "-")}</td>
-      <td>${escapeHtml(formatarDataSimples(item.data))}</td>
-      <td>${escapeHtml(item.faccao || "-")}</td>
       <td>${escapeHtml(formatarDataSimples(item.chegada))}</td>
       <td class="num">${escapeHtml(item.falta || 0)}</td>
-      <td>${escapeHtml(formatarDataSimples(item.producao))}</td>
       <td>${escapeHtml(item.celu || "-")}</td>
       <td>${escapeHtml(item.necessidade || "-")}</td>
       <td>${escapeHtml(item.status)}</td>
@@ -1697,13 +1693,10 @@ function imprimirManejoFiltrado() {
               <th>Silk data</th>
               <th>Data tecido</th>
               <th>Fase</th>
-              <th>QTI</th>
+              <th>Quantidade</th>
               <th>Cor</th>
-              
-              <th>Facção</th>
               <th>Chegada</th>
               <th>Falta</th>
-              
               <th>CELU</th>
               <th>Necessidade</th>
               <th>Status</th>
@@ -1933,7 +1926,7 @@ function renderManejoInline() {
   const setor = getManejoSetorAtual();
 
   if (!podeVerManejo(setor)) {
-    tbody.innerHTML = `<tr><td colspan="11" class="empty">Seu usuário não tem acesso a este manejo.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">Seu usuário não tem acesso a este manejo.</td></tr>`;
     renderResumoSomasManejo([]);
     return;
   }
@@ -1943,7 +1936,7 @@ function renderManejoInline() {
   renderResumoSomasManejo(ordens);
 
   if (!ordens.length) {
-    tbody.innerHTML = `<tr><td colspan="11" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
     return;
   }
 
@@ -1976,12 +1969,6 @@ function renderManejoInline() {
           <div class="fase-plus">
             <input id="${rowId}-fase" value="${escapeHtml(manejo?.fase || faseExibicaoMigracaoLigia(op) || "")}" list="manejoFasesList" placeholder="Digite a fase" />
             <button class="btn-plus" type="button" onclick="adicionarFaseSugestao('${op.id}')" title="Adicionar fase às sugestões">+</button>
-          </div>
-        </td>
-        <td>
-          <div class="fase-plus">
-            <input id="${rowId}-faccao" value="${escapeHtml(manejo?.faccao || faccaoExibicaoMigracaoLigia(op) || "")}" list="manejoFaccaoList" placeholder="Facção/local" />
-            <button class="btn-plus" type="button" onclick="adicionarFaccaoSugestao('${op.id}')" title="Adicionar facção/local às sugestões">+</button>
           </div>
         </td>
         <td><input class="manejo-readonly" type="number" value="${escapeHtml(op.quantidade ?? 0)}" readonly /></td>
@@ -2054,7 +2041,6 @@ function getValorManejoParaFiltro(op, campo, setor = getManejoSetorAtual()) {
     fase: manejo?.fase || "",
     quantidade: op.quantidade ?? "",
     cor: op.cor || "",
-    faccao: manejo?.faccao || "",
     chegada: manejo?.chegada || "",
     falta: manejo?.falta ?? "",
     celu: manejo?.celu || "",
@@ -2077,7 +2063,6 @@ function filtrarOrdensManejoPorColunas() {
     fase: document.getElementById("filtroManejoFase")?.value || "",
     quantidade: document.getElementById("filtroManejoQuantidade")?.value || "",
     cor: document.getElementById("filtroManejoCor")?.value || "",
-    faccao: document.getElementById("filtroManejoFaccao")?.value || "",
     chegada: document.getElementById("filtroManejoChegada")?.value || "",
     falta: document.getElementById("filtroManejoFalta")?.value || "",
     celu: document.getElementById("filtroManejoCelu")?.value || "",
@@ -2101,7 +2086,6 @@ function filtrarOrdensManejoPorColunas() {
       manejo?.silkData,
       manejo?.dataTecido,
       manejo?.fase,
-      manejo?.faccao,
       manejo?.chegada,
       manejo?.falta,
       manejo?.celu
@@ -2141,7 +2125,6 @@ function limparFiltrosColunasManejo() {
     "filtroManejoFase",
     "filtroManejoQuantidade",
     "filtroManejoCor",
-    "filtroManejoFaccao",
     "filtroManejoChegada",
     "filtroManejoFalta",
     "filtroManejoCelu",
@@ -2360,10 +2343,6 @@ function renderFiltrosColunasManejo() {
   ], "Todas");
   preencherSelectFiltroManejo("filtroManejoQuantidade", ordens.map(op => getValorManejoParaFiltro(op, "quantidade")), "Todas");
   preencherSelectFiltroManejo("filtroManejoCor", ordens.map(op => getValorManejoParaFiltro(op, "cor")), "Todas");
-  preencherSelectFiltroManejo("filtroManejoFaccao", [
-    ...ordens.map(op => getValorManejoParaFiltro(op, "faccao")),
-    ...state.faccoesManejoExtras
-  ], "Todas");
   preencherSelectFiltroManejo("filtroManejoChegada", ordens.map(op => getValorManejoParaFiltro(op, "chegada")), "Todas");
   preencherSelectFiltroManejo("filtroManejoFalta", ordens.map(op => getValorManejoParaFiltro(op, "falta")), "Todas");
   preencherSelectFiltroManejo("filtroManejoCelu", [
@@ -2449,10 +2428,9 @@ function getFiltrosManejoAtivosTexto() {
     ["Silk", "filtroManejoSilk"],
     ["Data tecido", "filtroManejoDataTecido"],
     ["Fase", "filtroManejoFase"],
-    ["QTI", "filtroManejoQuantidade"],
+    ["Quantidade", "filtroManejoQuantidade"],
     ["Cor", "filtroManejoCor"],
     ["Data", "filtroManejoData"],
-    ["Facção", "filtroManejoFaccao"],
     ["Chegada", "filtroManejoChegada"],
     ["Falta", "filtroManejoFalta"],
     ["Produção", "filtroManejoProducao"],
@@ -2501,7 +2479,7 @@ function renderResumoSomasManejo(ordens) {
     `${formatarNumeroInteiro(totalOps)} OPs | ${formatarNumeroInteiro(totalFalta)} falta | ${formatarNumeroInteiro(organizadas)} org. | ${formatarNumeroInteiro(pendentes)} pend.`
   );
 
-  renderTabelaSomaManejo("somaManejoFases", agruparSomaManejo(ordens, op => op.manejo?.fase || getManejoDaOrdem(op)?.fase || "Sem fase"));
+  renderTabelaSomaManejo("somaManejoFases", agruparSomaManejo(ordens, op => getManejoDaOrdem(op, setor)?.fase || faseExibicaoMigracaoLigia(op) || "Sem fase"));
   renderTabelaSomaManejo("somaManejoCores", agruparSomaManejo(ordens, op => op.cor || "Sem cor"));
 }
 
@@ -2633,7 +2611,7 @@ function criarManejoVirtualMigracaoLigia(op, setor = "sutia") {
     silkData: "",
     dataTecido: dataInputMigracaoLigia(op.dataTecidoOriginalLigia || op.dataTecidoLigia || op.dataTecido || ""),
     fase: faseExibicaoMigracaoLigia(op),
-    faccao: faccaoExibicaoMigracaoLigia(op),
+    faccao: "",
     chegada: dataInputMigracaoLigia(op.dataChegadaAtualMigracao || op.chegadaOriginalLigia || ""),
     falta: Number(op.falta || 0),
     celu: limparTexto(op.celulaOriginalLigia || op.destinoAtualMigracao || "").toUpperCase(),
@@ -2803,6 +2781,8 @@ async function salvarManejoLinha(ordemId) {
   const silkNome = limparTexto(valorLinhaManejo(ordem, "silkNome")).toUpperCase();
   const silkData = valorLinhaManejo(ordem, "silkData") || "";
 
+  const manterDadosOperacionais = manejoExistente && !manejoExistente.virtualMigracao;
+
   const manejo = {
     silk: silkNome,
     silkNome,
@@ -2811,10 +2791,12 @@ async function salvarManejoLinha(ordemId) {
     setorLabel: infoSetor.label,
     dataTecido: valorLinhaManejo(ordem, "dataTecido") || "",
     fase,
-    faccao: limparTexto(valorLinhaManejo(ordem, "faccao")).toUpperCase(),
-    chegada: valorLinhaManejo(ordem, "chegada") || "",
-    falta: Number(valorLinhaManejo(ordem, "falta") || 0),
-    celu: limparTexto(valorLinhaManejo(ordem, "celu")),
+    // Facção/local não fica mais como campo rápido do Manejo.
+    // Para evitar pagamento incorreto, facção, processo e chegada só entram pela movimentação oficial.
+    faccao: manterDadosOperacionais ? (manejoExistente.faccao || "") : "",
+    chegada: manterDadosOperacionais ? (manejoExistente.chegada || "") : "",
+    falta: manterDadosOperacionais ? Number(manejoExistente.falta || 0) : 0,
+    celu: manterDadosOperacionais ? (manejoExistente.celu || "") : "",
     necessidade: getNecessidadeDaOrdem(ordem),
     coluna: "",
     status: "organizada",
@@ -4747,7 +4729,7 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
   if (info) {
     info.innerHTML = `
       <strong>OP ${escapeHtml(ordem.numeroOP || "-")}</strong>
-      <span>Ref. ${escapeHtml(ordem.referencia || "-")} | Cor ${escapeHtml(ordem.cor || "-")} | QTI ${escapeHtml(numeroQuantidadeOP(ordem))}</span>
+      <span>Ref. ${escapeHtml(ordem.referencia || "-")} | Cor ${escapeHtml(ordem.cor || "-")} | Quantidade ${escapeHtml(numeroQuantidadeOP(ordem))}</span>
       ${opcoes.origemResumo ? `<span class="origem-mov-info">${escapeHtml(opcoes.origemResumo)} | Disponível: ${escapeHtml(quantidadeMaxima.toLocaleString("pt-BR"))} peças</span>` : ""}
     `;
   }
@@ -6858,7 +6840,6 @@ function imprimirRelatorioPagamento() {
         <table>
           <thead>
             <tr>
-              <th>Facção</th>
               <th>Referência</th>
               <th>Processo</th>
               <th>Entregas</th>

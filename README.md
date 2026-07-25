@@ -2695,3 +2695,10 @@ Origem
 Observações
 Pendência
 ```
+
+
+## Ajuste de Manejo
+
+- Coluna QTI renomeada para QUANTIDADE.
+- FACÇÃO/LOCAL removida da tabela de Manejo.
+- Envio para facção/célula deve ser feito pelo menu ⋮, para gerar movimentação e pagamento corretamente.
