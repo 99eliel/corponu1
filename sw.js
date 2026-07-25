@@ -1,17 +1,17 @@
-const APP_VERSION = "2026-07-24-github-seguro-migracao-local-1";
+const APP_VERSION = "2026-07-24-github-filtro-fase-sem-loop-1";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 
 const CORE_ASSETS = [
   "./",
   "./index.html",
-  "./style.css?v=2026-07-24-github-seguro-migracao-local-1",
-  "./app.js?v=2026-07-24-github-seguro-migracao-local-1",
-  "./update.js?v=2026-07-24-github-seguro-migracao-local-1",
+  "./style.css?v=2026-07-24-github-filtro-fase-sem-loop-1",
+  "./app.js?v=2026-07-24-github-filtro-fase-sem-loop-1",
+  "./update.js?v=2026-07-24-github-filtro-fase-sem-loop-1",
   "./version.json"
 ];
 
 self.addEventListener("install", event => {
-  self.skipWaiting();
+  // Não usar skipWaiting automático. Isso evita o looping de versão.
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(CORE_ASSETS))
@@ -55,10 +55,7 @@ self.addEventListener("fetch", event => {
   const url = new URL(request.url);
 
   if (request.method !== "GET") return;
-
-  if (url.origin !== self.location.origin) {
-    return;
-  }
+  if (url.origin !== self.location.origin) return;
 
   if (
     request.mode === "navigate" ||
