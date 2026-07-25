@@ -4036,3 +4036,103 @@ table td {
     width: calc(100vw - 24px);
   }
 }
+
+
+/* Ajuste mobile do Manejo - versão compacta para telas pequenas */
+.manejo-inline-table {
+  min-width: 980px !important;
+  table-layout: fixed;
+}
+
+.manejo-inline-table th,
+.manejo-inline-table td {
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+
+.manejo-inline-table th:nth-child(1),
+.manejo-inline-table td:nth-child(1) { width: 70px !important; }
+.manejo-inline-table th:nth-child(2),
+.manejo-inline-table td:nth-child(2) { width: 58px !important; }
+.manejo-inline-table th:nth-child(3),
+.manejo-inline-table td:nth-child(3) { width: 100px !important; }
+.manejo-inline-table th:nth-child(4),
+.manejo-inline-table td:nth-child(4) { width: 92px !important; }
+.manejo-inline-table th:nth-child(5),
+.manejo-inline-table td:nth-child(5) { width: 160px !important; }
+.manejo-inline-table th:nth-child(6),
+.manejo-inline-table td:nth-child(6) { width: 58px !important; }
+.manejo-inline-table th:nth-child(7),
+.manejo-inline-table td:nth-child(7) { width: 82px !important; }
+.manejo-inline-table th:nth-child(8),
+.manejo-inline-table td:nth-child(8) { width: 94px !important; }
+.manejo-inline-table th:nth-child(9),
+.manejo-inline-table td:nth-child(9) { width: 112px !important; }
+.manejo-inline-table th:nth-child(10),
+.manejo-inline-table td:nth-child(10) { width: 52px !important; }
+
+.silk-nome-compacto {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+.manejo-inline-table .fase-plus {
+  grid-template-columns: minmax(0, 1fr) 30px !important;
+  min-width: 0 !important;
+}
+
+.manejo-inline-table .btn-plus {
+  width: 30px !important;
+  height: 32px !important;
+}
+
+@media (max-width: 780px) {
+  .manejo-inline-table {
+    min-width: 900px !important;
+  }
+
+  .manejo-inline-table th,
+  .manejo-inline-table td {
+    padding: 4px !important;
+    font-size: 9.5px !important;
+  }
+
+  .manejo-inline-table input,
+  .manejo-inline-table select,
+  .manejo-inline-table textarea {
+    font-size: 10px !important;
+    min-height: 28px !important;
+    padding: 5px 5px !important;
+  }
+
+  .manejo-inline-table th:nth-child(1),
+  .manejo-inline-table td:nth-child(1) { width: 64px !important; }
+  .manejo-inline-table th:nth-child(2),
+  .manejo-inline-table td:nth-child(2) { width: 52px !important; }
+  .manejo-inline-table th:nth-child(3),
+  .manejo-inline-table td:nth-child(3) { width: 88px !important; }
+  .manejo-inline-table th:nth-child(4),
+  .manejo-inline-table td:nth-child(4) { width: 84px !important; }
+  .manejo-inline-table th:nth-child(5),
+  .manejo-inline-table td:nth-child(5) { width: 140px !important; }
+  .manejo-inline-table th:nth-child(6),
+  .manejo-inline-table td:nth-child(6) { width: 52px !important; }
+  .manejo-inline-table th:nth-child(7),
+  .manejo-inline-table td:nth-child(7) { width: 74px !important; }
+  .manejo-inline-table th:nth-child(8),
+  .manejo-inline-table td:nth-child(8) { width: 84px !important; }
+  .manejo-inline-table th:nth-child(9),
+  .manejo-inline-table td:nth-child(9) { width: 98px !important; }
+  .manejo-inline-table th:nth-child(10),
+  .manejo-inline-table td:nth-child(10) { width: 44px !important; }
+
+  .excel-filter-label {
+    display: none !important;
+  }
+
+  .btn-kebab {
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+  }
+}

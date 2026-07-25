@@ -1949,20 +1949,11 @@ function renderManejoInline() {
       .filter(mov => mov.status !== "finalizado" && mov.status !== "retornou").length;
 
     return `
-      <tr class="${rowClass}" data-manejo-row="1" data-qti="${escapeHtml(numeroQuantidadeOP(op))}" data-falta="0" data-status="${escapeHtml(status)}" data-fase="${escapeHtml(manejo?.fase || faseExibicaoMigracaoLigia(op) || "Sem fase")}" data-cor="${escapeHtml(op.cor || "Sem cor")}">
+      <tr class="${rowClass}" data-manejo-row="1" data-qtd="${escapeHtml(numeroQuantidadeOP(op))}" data-falta="0" data-status="${escapeHtml(status)}" data-fase="${escapeHtml(manejo?.fase || faseExibicaoMigracaoLigia(op) || "Sem fase")}" data-cor="${escapeHtml(op.cor || "Sem cor")}">
         <td><input class="manejo-readonly" value="${escapeHtml(op.numeroOP || "")}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(op.referencia || "")}" readonly /></td>
         <td>
-          <div class="silk-fields">
-            <label class="mini-field">
-              <span>Nome</span>
-              <input id="${rowId}-silkNome" value="${escapeHtml(getSilkNomeManejo(manejo))}" list="manejoSilkNomesList" placeholder="Quem fez" />
-            </label>
-            <label class="mini-field">
-              <span>Data</span>
-              <input id="${rowId}-silkData" type="date" value="${escapeHtml(manejo?.silkData || "")}" title="Data do silk" />
-            </label>
-          </div>
+          <input id="${rowId}-silkNome" class="silk-nome-compacto" value="${escapeHtml(getSilkNomeManejo(manejo))}" list="manejoSilkNomesList" placeholder="Nome" title="Nome de quem fez o silk" />
         </td>
         <td><input id="${rowId}-dataTecido" type="date" value="${escapeHtml(manejo?.dataTecido || "")}" /></td>
         <td>
@@ -2428,7 +2419,7 @@ function getFiltrosManejoAtivosTexto() {
     ["Silk", "filtroManejoSilk"],
     ["Data tecido", "filtroManejoDataTecido"],
     ["Fase", "filtroManejoFase"],
-    ["Quantidade", "filtroManejoQuantidade"],
+    ["QTD", "filtroManejoQuantidade"],
     ["Cor", "filtroManejoCor"],
     ["Data", "filtroManejoData"],
     ["Chegada", "filtroManejoChegada"],
@@ -2494,14 +2485,14 @@ function renderResumoSomasManejoPeloDOM() {
   }
 
   const ordensVisiveis = linhas.map(linha => {
-    const qti = Number(linha.dataset.qti || 0);
+    const qtd = Number(linha.dataset.qtd || 0);
     const falta = Number(linha.dataset.falta || 0);
     const status = linha.dataset.status || "pendente";
     const fase = linha.dataset.fase || "Sem fase";
     const cor = linha.dataset.cor || "Sem cor";
 
     return {
-      quantidade: Number.isFinite(qti) ? qti : 0,
+      quantidade: Number.isFinite(qtd) ? qtd : 0,
       cor,
       manejo: {
         falta: Number.isFinite(falta) ? falta : 0,
@@ -2779,7 +2770,7 @@ async function salvarManejoLinha(ordemId) {
   }
 
   const silkNome = limparTexto(valorLinhaManejo(ordem, "silkNome")).toUpperCase();
-  const silkData = valorLinhaManejo(ordem, "silkData") || "";
+  const silkData = valorLinhaManejo(ordem, "silkData") || manejoExistente?.silkData || "";
 
   const manterDadosOperacionais = manejoExistente && !manejoExistente.virtualMigracao;
 
