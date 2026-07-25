@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-24-github-seguro-migracao-local-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-24-github-seguro-migracao-local-1" />
+  <meta name="app-version" content="2026-07-24-github-filtro-fase-excel-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-24-github-filtro-fase-excel-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -476,7 +476,11 @@
                     <datalist id="filtroManejoDataTecidoList"></datalist>
                   </th>
                   <th>
-                    <input id="filtroManejoFase" class="filtro-digitavel" type="text" list="filtroManejoFaseList" placeholder="Todas" autocomplete="off" />
+                    <div class="excel-filter-cell">
+                      <input id="filtroManejoFase" class="filtro-digitavel" type="text" list="filtroManejoFaseList" placeholder="Todas" autocomplete="off" />
+                      <button id="btnFiltroFaseExcel" class="excel-filter-button" type="button" title="Filtrar fases como no Excel">▾</button>
+                    </div>
+                    <small id="labelFiltroFaseExcel" class="excel-filter-label">Todas as fases</small>
                     <datalist id="filtroManejoFaseList"></datalist>
                   </th>
                   <th>
@@ -511,6 +515,20 @@
           <datalist id="manejoFaccaoList"></datalist>
           <datalist id="manejoCeluList"></datalist>
           <datalist id="manejoSilkNomesList"></datalist>
+
+          <div id="painelFiltroFaseExcel" class="excel-filter-popover hidden">
+            <div class="excel-filter-title">
+              <strong>Filtrar fases</strong>
+              <span>Igual no Excel: pesquise e marque as fases desejadas.</span>
+            </div>
+            <input id="buscaFiltroFaseExcel" class="excel-filter-search" type="text" placeholder="Pesquisar fase..." autocomplete="off" />
+            <div id="listaFiltroFaseExcel" class="excel-filter-list"></div>
+            <div class="excel-filter-actions">
+              <button id="btnSelecionarTodasFasesExcel" class="btn btn-sm" type="button">Selecionar todas</button>
+              <button id="btnLimparSelecaoFasesExcel" class="btn btn-sm" type="button">Limpar seleção</button>
+              <button id="btnAplicarFiltroFaseExcel" class="btn btn-primary btn-sm" type="button">Aplicar</button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1682,17 +1700,8 @@
           </div>
 
           <div class="backup-pro-actions">
-            <label class="btn btn-primary file-btn">
-              Selecionar JSON da Lígia
-              <input type="file" id="inputImportarLigiaJson" accept=".json,application/json" hidden />
-            </label>
             <button class="btn btn-success" id="btnImportarLigiaNovaLogica" type="button">Importar dados da Lígia</button>
             <button class="btn" id="btnResumoLigiaNovaLogica" type="button">Ver resumo dos dados</button>
-          </div>
-
-          <div class="notice backup-note">
-            <strong>GitHub seguro:</strong> os dados reais não ficam dentro do site. Primeiro selecione o arquivo
-            <strong>dados-ligia-migracao-final-segunda.json</strong> no seu computador, confira o resumo e só depois importe.
           </div>
 
           <div id="resumoLigiaNovaLogica" class="preview hidden"></div>
@@ -1765,8 +1774,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-24-github-seguro-migracao-local-1"></script>
-  <script type="module" src="app.js?v=2026-07-24-github-seguro-migracao-local-1"></script>
+  <script src="update.js?v=2026-07-24-github-filtro-fase-excel-1"></script>
+  <script type="module" src="app.js?v=2026-07-24-github-filtro-fase-excel-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">

@@ -3906,3 +3906,133 @@ table td {
 @media(max-width:900px){.form-grid.three{grid-template-columns:1fr}.action-menu{right:auto;left:0}}
 .migracao-badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:.75rem;font-weight:800;margin-top:4px}
 .pagamento-pendente-valor{background:#fff7ed!important;color:#9a3412!important;font-weight:800}
+
+
+/* Filtro de fase estilo Excel */
+.excel-filter-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.excel-filter-cell .filtro-digitavel {
+  min-width: 110px;
+}
+
+.excel-filter-button {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #0f172a;
+  cursor: pointer;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.excel-filter-button:hover,
+.excel-filter-button.active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
+.excel-filter-label {
+  display: block;
+  margin-top: 4px;
+  max-width: 170px;
+  color: #64748b;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.excel-filter-popover {
+  position: fixed;
+  z-index: 9999;
+  width: 340px;
+  max-width: calc(100vw - 24px);
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.22);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.excel-filter-title {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.excel-filter-title strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.excel-filter-title span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.excel-filter-search {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 11px;
+  outline: none;
+  margin-bottom: 10px;
+}
+
+.excel-filter-search:focus {
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+}
+
+.excel-filter-list {
+  max-height: 290px;
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 6px;
+  background: #f8fafc;
+}
+
+.excel-filter-option {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.excel-filter-option:hover {
+  background: #e0e7ff;
+}
+
+.excel-filter-option small {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.excel-filter-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  .excel-filter-popover {
+    left: 12px !important;
+    width: calc(100vw - 24px);
+  }
+}

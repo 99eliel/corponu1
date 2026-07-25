@@ -56,6 +56,7 @@ const state = {
   movimentacoesProducao: [],
   manejos: [],
   fasesManejoExtras: [],
+  filtroFasesManejoSelecionadas: null,
   faccoesManejoExtras: [],
   celusManejoExtras: [],
   precosReferencia: [],
@@ -258,6 +259,7 @@ document.addEventListener("DOMContentLoaded", () => {
   configurarProduto();
   configurarOrdem();
   configurarManejo();
+  configurarFiltroExcelFasesManejo();
   configurarProcessos();
   configurarFaccoes();
   configurarCelulas();
@@ -2076,6 +2078,8 @@ function filtrarOrdensManejoPorColunas() {
     necessidade: document.getElementById("filtroManejoNecessidade")?.value || ""
   };
 
+  const fasesSelecionadasExcel = state.filtroFasesManejoSelecionadas;
+
   return getOrdensDoSetorManejo(setor).filter(op => {
     const manejo = getManejoDaOrdem(op, setor);
 
@@ -2099,6 +2103,11 @@ function filtrarOrdensManejoPorColunas() {
 
     if (busca && !textoGeral.includes(busca)) return false;
 
+    if (fasesSelecionadasExcel instanceof Set) {
+      const chaveFaseItem = chaveFiltroFaseManejo(getValorManejoParaFiltro(op, "fase", setor));
+      if (!fasesSelecionadasExcel.has(chaveFaseItem)) return false;
+    }
+
     return Object.entries(filtros).every(([campo, valor]) => {
       if (!valor) return true;
 
@@ -2115,6 +2124,7 @@ function filtrarOrdensManejoPorColunas() {
 }
 
 function limparFiltrosColunasManejo() {
+  state.filtroFasesManejoSelecionadas = null;
   [
     "buscaManejoLinha",
     "filtroManejoStatus",
@@ -2134,6 +2144,7 @@ function limparFiltrosColunasManejo() {
     const el = document.getElementById(id);
     if (el) el.value = "";
   });
+  atualizarIndicadorFiltroExcelFasesManejo();
 }
 
 function preencherSelectFiltroManejo(id, valores, labelTodos = "Todos") {
@@ -2164,6 +2175,171 @@ function preencherSelectFiltroManejo(id, valores, labelTodos = "Todos") {
   }
 }
 
+
+function chaveFiltroFaseManejo(valor) {
+  const texto = String(valor || "").trim() || "Sem fase";
+  return normalizarTexto(texto);
+}
+
+function getValorFaseManejoParaFiltro(op, setor = getManejoSetorAtual()) {
+  const valor = getValorManejoParaFiltro(op, "fase", setor);
+  return String(valor || "").trim() || "Sem fase";
+}
+
+function getFasesDisponiveisFiltroManejo() {
+  const setor = getManejoSetorAtual();
+  const fases = new Map();
+
+  getOrdensDoSetorManejo(setor).forEach(op => {
+    const fase = getValorFaseManejoParaFiltro(op, setor);
+    fases.set(chaveFiltroFaseManejo(fase), fase);
+  });
+
+  state.fasesManejoExtras.forEach(faseExtra => {
+    const fase = String(faseExtra || "").trim();
+    if (fase) fases.set(chaveFiltroFaseManejo(fase), fase.toUpperCase());
+  });
+
+  return [...fases.values()].sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+}
+
+function getFasesSelecionadasTextoManejo() {
+  const selecionadas = state.filtroFasesManejoSelecionadas;
+  if (!(selecionadas instanceof Set)) return "";
+  if (!selecionadas.size) return "Nenhuma fase";
+
+  const fases = getFasesDisponiveisFiltroManejo().filter(fase => selecionadas.has(chaveFiltroFaseManejo(fase)));
+  if (fases.length <= 3) return fases.join(", ");
+  return `${fases.slice(0, 3).join(", ")} +${fases.length - 3}`;
+}
+
+function atualizarIndicadorFiltroExcelFasesManejo() {
+  const btn = document.getElementById("btnFiltroFaseExcel");
+  const texto = document.getElementById("labelFiltroFaseExcel");
+  const selecionadas = state.filtroFasesManejoSelecionadas;
+  const ativo = selecionadas instanceof Set;
+
+  if (btn) {
+    btn.classList.toggle("active", ativo);
+    btn.title = ativo ? `Filtro de fases ativo: ${getFasesSelecionadasTextoManejo()}` : "Filtrar fases como no Excel";
+  }
+
+  if (texto) {
+    texto.textContent = ativo ? `Fases: ${getFasesSelecionadasTextoManejo()}` : "Todas as fases";
+  }
+}
+
+function esconderFiltroExcelFasesManejo() {
+  const painel = document.getElementById("painelFiltroFaseExcel");
+  if (painel) painel.classList.add("hidden");
+}
+
+function configurarFiltroExcelFasesManejo() {
+  const btn = document.getElementById("btnFiltroFaseExcel");
+  const painel = document.getElementById("painelFiltroFaseExcel");
+  const busca = document.getElementById("buscaFiltroFaseExcel");
+  const selecionarTodos = document.getElementById("btnSelecionarTodasFasesExcel");
+  const limparSelecao = document.getElementById("btnLimparSelecaoFasesExcel");
+  const fechar = document.getElementById("btnAplicarFiltroFaseExcel");
+
+  if (btn && painel) {
+    btn.addEventListener("click", event => {
+      event.stopPropagation();
+      const aberto = !painel.classList.contains("hidden");
+
+      if (aberto) {
+        painel.classList.add("hidden");
+        return;
+      }
+
+      const rect = btn.getBoundingClientRect();
+      painel.style.top = `${Math.min(window.innerHeight - 80, rect.bottom + 8)}px`;
+      painel.style.left = `${Math.max(12, Math.min(window.innerWidth - 360, rect.left - 260))}px`;
+      painel.classList.remove("hidden");
+      if (busca) busca.value = "";
+      renderListaFiltroExcelFasesManejo();
+      setTimeout(() => busca?.focus(), 30);
+    });
+  }
+
+  if (busca) busca.addEventListener("input", renderListaFiltroExcelFasesManejo);
+
+  if (selecionarTodos) {
+    selecionarTodos.addEventListener("click", () => {
+      state.filtroFasesManejoSelecionadas = null;
+      renderListaFiltroExcelFasesManejo();
+      atualizarManejoComSoma();
+    });
+  }
+
+  if (limparSelecao) {
+    limparSelecao.addEventListener("click", () => {
+      state.filtroFasesManejoSelecionadas = new Set();
+      renderListaFiltroExcelFasesManejo();
+      atualizarManejoComSoma();
+    });
+  }
+
+  if (fechar) fechar.addEventListener("click", esconderFiltroExcelFasesManejo);
+
+  document.addEventListener("click", event => {
+    if (!painel || painel.classList.contains("hidden")) return;
+    if (painel.contains(event.target) || btn?.contains(event.target)) return;
+    esconderFiltroExcelFasesManejo();
+  });
+}
+
+function renderListaFiltroExcelFasesManejo() {
+  const lista = document.getElementById("listaFiltroFaseExcel");
+  if (!lista) return;
+
+  const busca = normalizarTexto(document.getElementById("buscaFiltroFaseExcel")?.value || "");
+  const fases = getFasesDisponiveisFiltroManejo();
+  const fasesFiltradas = fases.filter(fase => !busca || normalizarTexto(fase).includes(busca));
+  const selecionadas = state.filtroFasesManejoSelecionadas;
+
+  if (!fasesFiltradas.length) {
+    lista.innerHTML = `<div class="empty small">Nenhuma fase encontrada.</div>`;
+    atualizarIndicadorFiltroExcelFasesManejo();
+    return;
+  }
+
+  lista.innerHTML = fasesFiltradas.map(fase => {
+    const chave = chaveFiltroFaseManejo(fase);
+    const checked = !(selecionadas instanceof Set) || selecionadas.has(chave);
+    const qtd = getOrdensDoSetorManejo(getManejoSetorAtual()).filter(op => chaveFiltroFaseManejo(getValorFaseManejoParaFiltro(op)) === chave).length;
+
+    return `
+      <label class="excel-filter-option">
+        <input type="checkbox" data-fase-excel="${escapeHtml(chave)}" ${checked ? "checked" : ""} />
+        <span>${escapeHtml(fase)}</span>
+        <small>${qtd}</small>
+      </label>
+    `;
+  }).join("");
+
+  lista.querySelectorAll("input[data-fase-excel]").forEach(input => {
+    input.addEventListener("change", () => {
+      const todas = getFasesDisponiveisFiltroManejo().map(fase => chaveFiltroFaseManejo(fase));
+      let novaSelecao = state.filtroFasesManejoSelecionadas instanceof Set
+        ? new Set(state.filtroFasesManejoSelecionadas)
+        : new Set(todas);
+
+      if (input.checked) {
+        novaSelecao.add(input.dataset.faseExcel);
+      } else {
+        novaSelecao.delete(input.dataset.faseExcel);
+      }
+
+      state.filtroFasesManejoSelecionadas = novaSelecao.size === todas.length ? null : novaSelecao;
+      renderListaFiltroExcelFasesManejo();
+      atualizarManejoComSoma();
+    });
+  });
+
+  atualizarIndicadorFiltroExcelFasesManejo();
+}
+
 function renderFiltrosColunasManejo() {
   const setor = getManejoSetorAtual();
   const ordens = getOrdensDoSetorManejo(setor);
@@ -2189,6 +2365,9 @@ function renderFiltrosColunasManejo() {
     ...state.celusManejoExtras
   ], "Todos");
   preencherSelectFiltroManejo("filtroManejoNecessidade", ordens.map(op => getValorManejoParaFiltro(op, "necessidade")), "Todas");
+  atualizarIndicadorFiltroExcelFasesManejo();
+  const painel = document.getElementById("painelFiltroFaseExcel");
+  if (painel && !painel.classList.contains("hidden")) renderListaFiltroExcelFasesManejo();
 }
 
 
@@ -2282,6 +2461,9 @@ function getFiltrosManejoAtivosTexto() {
       return valor ? `${nome}: ${valor}` : "";
     })
     .filter(Boolean);
+
+  const fasesExcel = getFasesSelecionadasTextoManejo();
+  if (fasesExcel) ativos.push(`Fases selecionadas: ${fasesExcel}`);
 
   if (busca) ativos.unshift(`Busca: ${busca}`);
 

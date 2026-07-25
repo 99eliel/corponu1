@@ -16,3 +16,5 @@ Não suba no GitHub os arquivos:
 - migracao-ligia-final-segunda.zip
 - Planilha Lígia (1).xlsx
 - resumo_migracao_ligia_final_segunda.xlsx
+
+Atualização: filtro de FASE estilo Excel no Manejo, com pesquisa, seleção múltipla e contagem por fase.
