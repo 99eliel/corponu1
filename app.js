@@ -1933,7 +1933,7 @@ function renderManejoInline() {
   const setor = getManejoSetorAtual();
 
   if (!podeVerManejo(setor)) {
-    tbody.innerHTML = `<tr><td colspan="10" class="empty">Seu usuário não tem acesso a este manejo.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="empty">Seu usuário não tem acesso a este manejo.</td></tr>`;
     renderResumoSomasManejo([]);
     return;
   }
@@ -1943,7 +1943,7 @@ function renderManejoInline() {
   renderResumoSomasManejo(ordens);
 
   if (!ordens.length) {
-    tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
     return;
   }
 
@@ -1956,7 +1956,7 @@ function renderManejoInline() {
       .filter(mov => mov.status !== "finalizado" && mov.status !== "retornou").length;
 
     return `
-      <tr class="${rowClass}" data-manejo-row="1" data-qti="${escapeHtml(numeroQuantidadeOP(op))}" data-falta="0" data-status="${escapeHtml(status)}" data-fase="${escapeHtml(manejo?.fase || "Sem fase")}" data-cor="${escapeHtml(op.cor || "Sem cor")}">
+      <tr class="${rowClass}" data-manejo-row="1" data-qti="${escapeHtml(numeroQuantidadeOP(op))}" data-falta="0" data-status="${escapeHtml(status)}" data-fase="${escapeHtml(manejo?.fase || faseExibicaoMigracaoLigia(op) || "Sem fase")}" data-cor="${escapeHtml(op.cor || "Sem cor")}">
         <td><input class="manejo-readonly" value="${escapeHtml(op.numeroOP || "")}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(op.referencia || "")}" readonly /></td>
         <td>
@@ -1974,8 +1974,14 @@ function renderManejoInline() {
         <td><input id="${rowId}-dataTecido" type="date" value="${escapeHtml(manejo?.dataTecido || "")}" /></td>
         <td>
           <div class="fase-plus">
-            <input id="${rowId}-fase" value="${escapeHtml(manejo?.fase || "")}" list="manejoFasesList" placeholder="Digite a fase" />
+            <input id="${rowId}-fase" value="${escapeHtml(manejo?.fase || faseExibicaoMigracaoLigia(op) || "")}" list="manejoFasesList" placeholder="Digite a fase" />
             <button class="btn-plus" type="button" onclick="adicionarFaseSugestao('${op.id}')" title="Adicionar fase às sugestões">+</button>
+          </div>
+        </td>
+        <td>
+          <div class="fase-plus">
+            <input id="${rowId}-faccao" value="${escapeHtml(manejo?.faccao || faccaoExibicaoMigracaoLigia(op) || "")}" list="manejoFaccaoList" placeholder="Facção/local" />
+            <button class="btn-plus" type="button" onclick="adicionarFaccaoSugestao('${op.id}')" title="Adicionar facção/local às sugestões">+</button>
           </div>
         </td>
         <td><input class="manejo-readonly" type="number" value="${escapeHtml(op.quantidade ?? 0)}" readonly /></td>
@@ -2550,6 +2556,92 @@ function getNecessidadeDaOrdem(op) {
   return "";
 }
 
+
+function dataInputMigracaoLigia(valor) {
+  const texto = String(valor || "").trim();
+  if (!texto || texto === "-" || texto.toUpperCase() === "PRONTO") return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) return texto;
+  const m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) {
+    const dia = m[1].padStart(2, "0");
+    const mes = m[2].padStart(2, "0");
+    return `${m[3]}-${mes}-${dia}`;
+  }
+  return "";
+}
+
+function ehOrdemMigracaoLigia(op) {
+  return Boolean(
+    op && (
+      op.importadoLigiaNovaLogica ||
+      op.origem === "migracao_ligia_final" ||
+      op.origemMigracao?.toLowerCase?.().includes("lígia") ||
+      op.origemMigracao?.toLowerCase?.().includes("ligia") ||
+      op.statusMigracaoLigia ||
+      op.faseOriginalLigia ||
+      op.localAtualMigracao
+    )
+  );
+}
+
+function faseExibicaoMigracaoLigia(op) {
+  const faseOriginal = limparTexto(op?.faseOriginalLigia || "").toUpperCase();
+  if (faseOriginal) return faseOriginal;
+
+  const local = limparTexto(op?.localAtualMigracao || op?.statusMigracaoLigia || "").toUpperCase();
+  const mapa = {
+    DISPONIVEL_CASA: "DISPONÍVEL CASA",
+    MANEJO_AGUARDANDO_DESTINO: "AGUARDANDO DESTINO",
+    EM_FACCAO: "EM FACÇÃO",
+    EM_CELULA: "EM CÉLULA",
+    RELATORIO_CELULAS: "PRODUÇÃO",
+    FINALIZADO_BIPADO: "BIPADOS",
+    CANCELADA: "CANCELADA NO SISTEMA"
+  };
+
+  if (mapa[local]) return mapa[local];
+
+  const status = limparTexto(op?.statusMigracaoLigia || "").toUpperCase();
+  if (status.includes("DISPONIVEL")) return "DISPONÍVEL CASA";
+  if (status.includes("BOJO")) return "BOJOS ENCAPADOS";
+  if (status.includes("PRODUCAO") || status.includes("PRODUÇÃO")) return "PRODUÇÃO";
+  if (status.includes("CANCELADA")) return "CANCELADA NO SISTEMA";
+
+  return "AGUARDANDO DESTINO";
+}
+
+function faccaoExibicaoMigracaoLigia(op) {
+  return limparTexto(
+    op?.destinoAtualMigracao ||
+    op?.faccaoAtual ||
+    op?.faccaoOriginalLigia ||
+    op?.proximoDestinoMigracao ||
+    ""
+  ).toUpperCase();
+}
+
+function criarManejoVirtualMigracaoLigia(op, setor = "sutia") {
+  if (!ehOrdemMigracaoLigia(op)) return null;
+  if (getTipoPecaManejoOP(op) !== getInfoManejoSetor(setor).tipoPeca) return null;
+
+  return {
+    id: op.id,
+    setor,
+    virtualMigracao: true,
+    silk: limparTexto(op.silkOriginalLigia || op.silk || "").toUpperCase(),
+    silkNome: limparTexto(op.silkOriginalLigia || op.silk || "").toUpperCase(),
+    silkData: "",
+    dataTecido: dataInputMigracaoLigia(op.dataTecidoOriginalLigia || op.dataTecidoLigia || op.dataTecido || ""),
+    fase: faseExibicaoMigracaoLigia(op),
+    faccao: faccaoExibicaoMigracaoLigia(op),
+    chegada: dataInputMigracaoLigia(op.dataChegadaAtualMigracao || op.chegadaOriginalLigia || ""),
+    falta: Number(op.falta || 0),
+    celu: limparTexto(op.celulaOriginalLigia || op.destinoAtualMigracao || "").toUpperCase(),
+    necessidade: getNecessidadeDaOrdem(op),
+    status: "organizada"
+  };
+}
+
 function getManejoDaOrdem(op, setor = "sutia") {
   if (!op) return null;
 
@@ -2575,6 +2667,12 @@ function getManejoDaOrdem(op, setor = "sutia") {
       ...manejoSetor
     };
   }
+
+  // Fallback obrigatório para itens migrados da planilha da Lígia.
+  // Na migração eles não vêm com manejosSetores preenchido, mas precisam aparecer no Manejo
+  // com a FASE original antes da Facção/Local, igual na planilha.
+  const manejoVirtualLigia = criarManejoVirtualMigracaoLigia(op, setor);
+  if (manejoVirtualLigia) return manejoVirtualLigia;
 
   return null;
 }
@@ -2969,6 +3067,9 @@ function getTodosManejosDaOrdem(op) {
   Object.values(op?.manejosSetores || {}).forEach(manejo => {
     if (manejo) lista.push(manejo);
   });
+
+  const virtualLigia = criarManejoVirtualMigracaoLigia(op, getManejoSetorAtual());
+  if (virtualLigia) lista.push(virtualLigia);
 
   return lista;
 }
