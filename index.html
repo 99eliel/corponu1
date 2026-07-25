@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-25-github-manejo-mobile-compacto-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-25-github-manejo-mobile-compacto-1" />
+  <meta name="app-version" content="2026-07-25-gerenciamento-tela-cheia-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-25-gerenciamento-tela-cheia-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -662,7 +662,7 @@
               <p>Acompanhe tudo que está nas facções externas. O cadastro fica separado em Gerenciar facções.</p>
             </div>
             <div class="actions">
-              <button class="btn" id="btnToggleGerenciarFaccoes" type="button">Gerenciar facções</button>
+              <button class="btn" id="btnToggleGerenciarFaccoes" type="button">Abrir gerenciamento</button>
             </div>
           </div>
 
@@ -726,17 +726,18 @@
                 <p>Cadastre, edite ou inative facções. Esta área fica escondida para não poluir a movimentação.</p>
               </div>
               <div class="actions">
-                <button class="btn btn-success" id="btnImportarFaccoesExtraidas" type="button">Importar facções da planilha</button>
+                <button class="btn btn-success" id="btnImportarFaccoesExtraidas" type="button">Importar facções oficiais</button>
                 <button class="btn btn-primary" id="btnAbrirCadastroFaccao" type="button">Cadastrar facção</button>
+                <button class="btn" id="btnFecharGerenciarFaccoes" type="button">Voltar para facções</button>
               </div>
             </div>
 
             <div class="faccoes-import-box admin-only-block">
               <div>
-                <strong>Importação preparada</strong>
-                <span>20 facções OK serão importadas como ativas. 15 ficam em pendentes para revisão.</span>
+                <strong>Divisão oficial preparada</strong>
+                <span>47 facções serão importadas conforme a divisão correta: Bojo, Alça, Sutiã montagem, Sutiã completo, Calcinha montagem e Calcinha completa.</span>
               </div>
-              <small>Depois de revisar uma pendente, clique em Editar, complete os dados e salve. Ela vira facção normal.</small>
+              <small>Ao enviar para facção, escolha primeiro o processo; o sistema mostra somente as facções daquele processo.</small>
             </div>
 
             <form class="form admin-only-block faccao-form-inline hidden" id="formFaccao">
@@ -776,7 +777,7 @@
             <div class="panel-subheader faccoes-pendentes-header">
               <div>
                 <h3>Facções pendentes</h3>
-                <p>Dados extraídos da planilha que precisam de conferência antes de usar no envio.</p>
+                <p>Facções que precisam de conferência antes de usar no envio.</p>
               </div>
             </div>
 
@@ -799,9 +800,9 @@
             <div class="panel-subheader faccoes-list-header">
               <div>
                 <h3>Facções cadastradas</h3>
-                <p>Lista de nomes disponíveis para envio no Manejo.</p>
+                <p>Lista oficial disponível para envio, separada por grupo e processo.</p>
               </div>
-              <input id="buscaFaccao" class="search" type="text" placeholder="Buscar facção, cidade, PIX ou celular..." />
+              <input id="buscaFaccao" class="search" type="text" placeholder="Buscar facção, grupo, processo, cidade, PIX ou celular..." />
             </div>
 
             <div class="table-wrap">
@@ -809,6 +810,8 @@
                 <thead>
                   <tr>
                     <th>Nome</th>
+                    <th>Grupo</th>
+                    <th>Processos permitidos</th>
                     <th>Cidade</th>
                     <th>Chave PIX</th>
                     <th>Celular</th>
@@ -914,7 +917,7 @@
             <div class="panel-subheader celulas-list-header">
               <div>
                 <h3>Células cadastradas</h3>
-                <p>Lista de nomes disponíveis para envio no Manejo.</p>
+                <p>Lista oficial disponível para envio, separada por grupo e processo.</p>
               </div>
               <input id="buscaCelula" class="search" type="text" placeholder="Buscar célula..." />
             </div>
@@ -998,7 +1001,7 @@
               <p>Feche o pagamento usando as chegadas registradas. Os dados desta tela só são carregados quando você abre Pagamentos.</p>
             </div>
             <div class="actions">
-              <button class="btn btn-primary" id="btnToggleGerenciarValores" type="button">Gerenciar valores</button>
+              <button class="btn btn-primary" id="btnToggleGerenciarValores" type="button">Abrir gerenciamento</button>
             </div>
           </div>
 
@@ -1118,7 +1121,7 @@
               <p>Escolha um processo e organize todas as referências e valores dele. A organização agora é por referência + processo.</p>
             </div>
             <div class="actions">
-              <button class="btn" id="btnFecharGerenciarValores" type="button">Ocultar valores</button>
+              <button class="btn" id="btnFecharGerenciarValores" type="button">Voltar para pagamentos</button>
             </div>
           </div>
 
@@ -1774,8 +1777,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-25-github-manejo-mobile-compacto-1"></script>
-  <script type="module" src="app.js?v=2026-07-25-github-manejo-mobile-compacto-1"></script>
+  <script src="update.js?v=2026-07-25-gerenciamento-tela-cheia-1"></script>
+  <script type="module" src="app.js?v=2026-07-25-gerenciamento-tela-cheia-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
@@ -1794,19 +1797,19 @@
           OP selecionada
         </div>
 
-        <label>
-          Destino
-          <select id="movimentacaoDestino" required>
-            <option value="">Selecione</option>
+        <label id="grupoMovimentacaoProcesso">
+          1. Processo / etapa
+          <select id="movimentacaoProcessoSelect">
+            <option value="">Selecione o processo</option>
           </select>
+          <input id="movimentacaoProcesso" type="text" placeholder="Ex: ENCAPAR BOJO, SUTIÃ MONTAGEM..." required />
         </label>
 
-        <label id="grupoMovimentacaoProcesso">
-          Processo / etapa
-          <select id="movimentacaoProcessoSelect">
-            <option value="">Selecione ou digite abaixo</option>
+        <label>
+          2. Para qual facção/célula vai
+          <select id="movimentacaoDestino" required>
+            <option value="">Selecione primeiro o processo</option>
           </select>
-          <input id="movimentacaoProcesso" type="text" placeholder="Ex: ENCAPAR BOJO, MONTAGEM..." required />
         </label>
 
         <label>

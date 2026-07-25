@@ -178,7 +178,80 @@ const reportInfo = {
 };
 
 
-const FACCOES_EXTRAIDAS_PLANILHA = [];
+const FACCOES_OFICIAIS_DIVISAO = [
+  { grupo: "Bojo", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO"], nome: "DIVINA" },
+  { grupo: "Bojo", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO"], nome: "GRACIANE" },
+  { grupo: "Bojo", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO"], nome: "JESSICA" },
+  { grupo: "Bojo", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO"], nome: "LARISSA" },
+  { grupo: "Bojo", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO"], nome: "ALINE BATISTA" },
+  { grupo: "Bojo", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO"], nome: "DAIANY" },
+  { grupo: "Bojo / Sutiã", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO", "SUTIÃ MONTAGEM"], nome: "NAGILA" },
+  { grupo: "Bojo", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO"], nome: "DELMA" },
+  { grupo: "Bojo / Sutiã", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO", "SUTIÃ MONTAGEM"], nome: "GIRLAINE" },
+
+  { grupo: "Alça", processoPadrao: "ALÇA", processosPermitidos: ["ALÇA"], nome: "JANAINA" },
+  { grupo: "Alça", processoPadrao: "ALÇA", processosPermitidos: ["ALÇA"], nome: "IVONE" },
+  { grupo: "Alça", processoPadrao: "ALÇA", processosPermitidos: ["ALÇA"], nome: "LUANA" },
+  { grupo: "Alça", processoPadrao: "ALÇA", processosPermitidos: ["ALÇA"], nome: "KARYTA" },
+  { grupo: "Alça", processoPadrao: "ALÇA", processosPermitidos: ["ALÇA"], nome: "SIMEI" },
+  { grupo: "Alça", processoPadrao: "ALÇA", processosPermitidos: ["ALÇA"], nome: "SIMONE" },
+
+  { grupo: "Calcinha", processoPadrao: "CALCINHA MONTAGEM", processosPermitidos: ["CALCINHA MONTAGEM"], nome: "ANA FLAVIA" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA MONTAGEM", processosPermitidos: ["CALCINHA MONTAGEM"], nome: "KAUANE" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA MONTAGEM", processosPermitidos: ["CALCINHA MONTAGEM"], nome: "LIANA" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA MONTAGEM", processosPermitidos: ["CALCINHA MONTAGEM"], nome: "DAIANA" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA MONTAGEM", processosPermitidos: ["CALCINHA MONTAGEM"], nome: "LEIDIANE" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA MONTAGEM", processosPermitidos: ["CALCINHA MONTAGEM"], nome: "ANDREZA" },
+
+  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "LORENA" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "JEAN" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "SCHENEIDER" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "DANIELA" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "KAMILA" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "LIANDRA" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "JUZENI" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "THEILLOR" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "SILVANY" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "LEONARDO" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "MATHEUS" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "BEATRIZ" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "MARILIA" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "DARLLEN" },
+  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "RONEIDIA" },
+
+  { grupo: "Sutiã", processoPadrao: "SUTIÃ MONTAGEM", processosPermitidos: ["SUTIÃ MONTAGEM"], nome: "LIVIA" },
+  { grupo: "Sutiã", processoPadrao: "SUTIÃ MONTAGEM", processosPermitidos: ["SUTIÃ MONTAGEM"], nome: "FRACEILDA" },
+  { grupo: "Sutiã", processoPadrao: "SUTIÃ MONTAGEM", processosPermitidos: ["SUTIÃ MONTAGEM"], nome: "MOCINHA" },
+  { grupo: "Sutiã", processoPadrao: "SUTIÃ MONTAGEM", processosPermitidos: ["SUTIÃ MONTAGEM"], nome: "NAYARA" },
+  { grupo: "Sutiã", processoPadrao: "SUTIÃ MONTAGEM", processosPermitidos: ["SUTIÃ MONTAGEM"], nome: "JHENIFER" },
+
+  { grupo: "Sutiã", processoPadrao: "SUTIÃ COMPLETO", processosPermitidos: ["SUTIÃ COMPLETO"], nome: "DANUBIA", valorManualNoFechamento: true },
+  { grupo: "Sutiã", processoPadrao: "SUTIÃ COMPLETO", processosPermitidos: ["SUTIÃ COMPLETO"], nome: "LARA CRISTINA (KAKA)", valorManualNoFechamento: true },
+  { grupo: "Sutiã", processoPadrao: "SUTIÃ COMPLETO", processosPermitidos: ["SUTIÃ COMPLETO"], nome: "GISLAINY", valorManualNoFechamento: true },
+  { grupo: "Sutiã", processoPadrao: "SUTIÃ COMPLETO", processosPermitidos: ["SUTIÃ COMPLETO"], nome: "ITAMAR", valorManualNoFechamento: true },
+  { grupo: "Sutiã", processoPadrao: "SUTIÃ COMPLETO", processosPermitidos: ["SUTIÃ COMPLETO"], nome: "LUCIA", valorManualNoFechamento: true },
+  { grupo: "Sutiã", processoPadrao: "SUTIÃ COMPLETO", processosPermitidos: ["SUTIÃ COMPLETO"], nome: "GOIANIRA", valorManualNoFechamento: true }
+];
+
+const PROCESSOS_OFICIAIS_FACCAO = [
+  "ENCAPAR BOJO",
+  "ALÇA",
+  "SUTIÃ MONTAGEM",
+  "SUTIÃ COMPLETO",
+  "CALCINHA MONTAGEM",
+  "CALCINHA COMPLETA"
+];
+
+const FACCOES_EXTRAIDAS_PLANILHA = FACCOES_OFICIAIS_DIVISAO.map(item => ({
+  ...item,
+  status: "ok",
+  cidade: "",
+  pix: "",
+  celular: "",
+  origem: `Divisão oficial: ${item.grupo} / ${item.processoPadrao}`,
+  observacoes: `Facção oficial da divisão ${item.grupo}. Processo: ${item.processosPermitidos.join(", ")}.`
+}));
+
 const LIGIA_MIGRACAO_DADOS_URL = 'dados-ligia-migracao.json';
 let ligiaMigracaoDadosLocal = null;
 
@@ -1219,9 +1292,9 @@ const MANEJOS_PERMISSAO = {
 };
 
 const RECURSOS_PERMISSAO = {
-  gerenciarValores: "Gerenciar valores",
+  gerenciarValores: "Abrir gerenciamento",
   marcarPagamentos: "Marcar pagamentos como pagos",
-  gerenciarFaccoes: "Gerenciar facções",
+  gerenciarFaccoes: "Abrir gerenciamento",
   gerenciarCelulas: "Gerenciar células"
 };
 
@@ -3535,19 +3608,25 @@ function configurarFaccoes() {
       const painel = document.getElementById("painelGerenciarFaccoes");
       if (!painel) return;
 
-      const abrindo = painel.classList.contains("hidden");
-      painel.classList.toggle("hidden");
-      toggleGerenciar.textContent = abrindo ? "Ocultar gerenciamento" : "Gerenciar facções";
+      if (painel.classList.contains("hidden")) {
+        abrirTelaGerenciarFaccoes();
+      } else {
+        fecharTelaGerenciarFaccoes();
+      }
     });
+  }
+
+  const fecharGerenciarFaccoes = document.getElementById("btnFecharGerenciarFaccoes");
+  if (fecharGerenciarFaccoes) {
+    fecharGerenciarFaccoes.addEventListener("click", fecharTelaGerenciarFaccoes);
   }
 
   const abrirCadastro = document.getElementById("btnAbrirCadastroFaccao");
   if (abrirCadastro) {
     abrirCadastro.addEventListener("click", () => {
-      const painel = document.getElementById("painelGerenciarFaccoes");
       const formFaccao = document.getElementById("formFaccao");
 
-      if (painel) painel.classList.remove("hidden");
+      abrirTelaGerenciarFaccoes();
 
       if (formFaccao) {
         formFaccao.classList.remove("hidden");
@@ -3593,6 +3672,42 @@ function limparFormFaccao() {
 
   const id = document.getElementById("faccaoId");
   if (id) id.value = "";
+}
+
+function abrirTelaGerenciarFaccoes() {
+  if (!podeUsarRecurso("gerenciarFaccoes")) {
+    toast("Seu usuário não tem permissão para gerenciar facções.");
+    return;
+  }
+
+  const painel = document.getElementById("painelGerenciarFaccoes");
+  const botao = document.getElementById("btnToggleGerenciarFaccoes");
+  if (!painel) return;
+
+  painel.classList.remove("hidden");
+  painel.classList.add("manager-screen-active");
+  document.body.classList.add("manager-open");
+  if (botao) botao.textContent = "Gerenciamento aberto";
+
+  renderFaccoes();
+  renderFaccoesPendentes();
+
+  setTimeout(() => {
+    painel.scrollTo({ top: 0, behavior: "smooth" });
+  }, 50);
+}
+
+function fecharTelaGerenciarFaccoes() {
+  const painel = document.getElementById("painelGerenciarFaccoes");
+  const botao = document.getElementById("btnToggleGerenciarFaccoes");
+
+  if (painel) {
+    painel.classList.add("hidden");
+    painel.classList.remove("manager-screen-active");
+  }
+
+  document.body.classList.remove("manager-open");
+  if (botao) botao.textContent = "Abrir gerenciamento";
 }
 
 async function salvarFaccao(event) {
@@ -3669,20 +3784,25 @@ function renderFaccoes() {
         faccao.celular,
         faccao.observacoes,
         faccao.origemImportacao,
-        faccao.titularPix
+        faccao.titularPix,
+        faccao.grupo,
+        faccao.processoPadrao,
+        Array.isArray(faccao.processosPermitidos) ? faccao.processosPermitidos.join(" ") : ""
       ].join(" "));
       return texto.includes(busca);
     });
   }
 
   if (!faccoes.length) {
-    tbody.innerHTML = `<tr><td colspan="${ehAdmin() ? 6 : 5}" class="empty">Nenhuma facção cadastrada.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${ehAdmin() ? 8 : 7}" class="empty">Nenhuma facção cadastrada.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = faccoes.map(faccao => `
     <tr>
       <td><strong>${escapeHtml(faccao.nome || "-")}</strong></td>
+      <td>${escapeHtml(faccao.grupo || "-")}</td>
+      <td>${escapeHtml(Array.isArray(faccao.processosPermitidos) && faccao.processosPermitidos.length ? faccao.processosPermitidos.join(", ") : (faccao.processoPadrao || "-"))}</td>
       <td>${escapeHtml(faccao.cidade || "-")}</td>
       <td>${escapeHtml(faccao.chavePix || "-")}</td>
       <td>${escapeHtml(faccao.celular || "-")}</td>
@@ -4116,6 +4236,11 @@ async function importarFaccoesExtraidasPlanilha() {
         pixConfianca: item.pixConfianca || "",
         origemImportacao: item.origem || "",
         importadoDaPlanilha: true,
+        divisaoOficialLigia: true,
+        grupo: item.grupo || "",
+        processoPadrao: item.processoPadrao || item.processo || "",
+        processosPermitidos: Array.isArray(item.processosPermitidos) ? item.processosPermitidos : [item.processoPadrao || item.processo || "PROCESSO A DEFINIR"].filter(Boolean),
+        valorManualNoFechamento: Boolean(item.valorManualNoFechamento),
         cadastroPendente: pendente,
         statusImportacao: pendente ? "pendente" : "ok",
         pendenciaImportacao: pendente ? (item.pendencia || "Revisar dados") : "",
@@ -4142,7 +4267,7 @@ async function importarFaccoesExtraidasPlanilha() {
     }
 
     await registrarLog("faccoes_importadas_planilha", "faccao", "importacao", `${ok} OK | ${pendentes} pendentes | ${puladas} puladas`);
-    toast(`${ok} facções importadas. ${pendentes} ficaram pendentes para revisar.${puladas ? ` ${puladas} já estavam completas e foram mantidas.` : ""}`);
+    toast(`${ok} facções oficiais importadas pela divisão correta. ${pendentes} ficaram pendentes para revisar.${puladas ? ` ${puladas} já estavam completas e foram mantidas.` : ""}`);
   } catch (error) {
     console.error(error);
     toast("Erro ao importar facções da planilha.");
@@ -4229,9 +4354,7 @@ function editarFaccao(id) {
   if (!faccao) return;
 
   abrirPagina("faccoes");
-  document.getElementById("painelGerenciarFaccoes")?.classList.remove("hidden");
-  const toggleGerenciar = document.getElementById("btnToggleGerenciarFaccoes");
-  if (toggleGerenciar) toggleGerenciar.textContent = "Ocultar gerenciamento";
+  abrirTelaGerenciarFaccoes();
   document.getElementById("formFaccao")?.classList.remove("hidden");
 
   document.getElementById("faccaoId").value = faccao.id;
@@ -4602,6 +4725,89 @@ function classeStatusMovimento(status) {
 
 let movimentacaoModalContexto = null;
 
+
+function normalizarProcessoOficial(valor) {
+  return limparTexto(valor || "").toUpperCase();
+}
+
+function getProcessosOficiaisPorSetor(setor = getManejoSetorAtual()) {
+  if (setor === "calcinha") {
+    return ["CALCINHA MONTAGEM", "CALCINHA COMPLETA"];
+  }
+  return ["ENCAPAR BOJO", "ALÇA", "SUTIÃ MONTAGEM", "SUTIÃ COMPLETO"];
+}
+
+function getProcessosPermitidosDaFaccao(faccao) {
+  if (!faccao) return [];
+  if (Array.isArray(faccao.processosPermitidos) && faccao.processosPermitidos.length) {
+    return faccao.processosPermitidos.map(normalizarProcessoOficial).filter(Boolean);
+  }
+  if (faccao.processoPadrao) return [normalizarProcessoOficial(faccao.processoPadrao)];
+
+  const oficial = FACCOES_OFICIAIS_DIVISAO.find(item => normalizarProcessoOficial(item.nome) === normalizarProcessoOficial(faccao.nome));
+  return oficial?.processosPermitidos?.map(normalizarProcessoOficial).filter(Boolean) || [];
+}
+
+function faccaoAceitaProcesso(faccaoOuNome, processo) {
+  const processoNorm = normalizarProcessoOficial(processo);
+  if (!processoNorm) return false;
+
+  const faccao = typeof faccaoOuNome === "object"
+    ? faccaoOuNome
+    : state.faccoes.find(item => normalizarProcessoOficial(item.nome) === normalizarProcessoOficial(faccaoOuNome));
+
+  const permitidos = getProcessosPermitidosDaFaccao(faccao);
+  return permitidos.length ? permitidos.includes(processoNorm) : false;
+}
+
+function getFaccoesPermitidasParaProcesso(processo) {
+  const processoNorm = normalizarProcessoOficial(processo);
+  if (!processoNorm) return [];
+
+  return state.faccoes
+    .filter(item => item.ativo !== false && !item.cadastroPendente)
+    .filter(item => faccaoAceitaProcesso(item, processoNorm))
+    .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true }));
+}
+
+function atualizarDestinosMovimentacaoPorProcesso(destinoPadrao = "") {
+  const contexto = movimentacaoModalContexto;
+  const destinoSelect = document.getElementById("movimentacaoDestino");
+  if (!destinoSelect || !contexto) return;
+
+  const tipoDestino = contexto.tipoDestino;
+  if (tipoDestino !== "faccao") {
+    const destinos = state.celulas.filter(item => item.ativo !== false);
+    destinoSelect.innerHTML = `<option value="">Selecione célula</option>` + destinos.map(destino => {
+      return `<option value="${escapeHtml(destino.nome || "")}">${escapeHtml(destino.nome || "")}</option>`;
+    }).join("");
+    if (destinoPadrao) destinoSelect.value = destinoPadrao;
+    return;
+  }
+
+  const processo = normalizarProcessoOficial(document.getElementById("movimentacaoProcesso")?.value || document.getElementById("movimentacaoProcessoSelect")?.value || "");
+  if (!processo) {
+    destinoSelect.innerHTML = `<option value="">Selecione primeiro o processo</option>`;
+    destinoSelect.value = "";
+    return;
+  }
+
+  const destinos = getFaccoesPermitidasParaProcesso(processo);
+  destinoSelect.innerHTML = `<option value="">Selecione a facção de ${escapeHtml(processo)}</option>` + destinos.map(destino => {
+    const processos = getProcessosPermitidosDaFaccao(destino).join(", ");
+    const grupo = destino.grupo ? ` — ${destino.grupo}` : "";
+    return `<option value="${escapeHtml(destino.nome || "")}" title="${escapeHtml(processos)}">${escapeHtml(destino.nome || "")}${escapeHtml(grupo)}</option>`;
+  }).join("");
+
+  if (destinoPadrao && destinos.some(item => normalizarProcessoOficial(item.nome) === normalizarProcessoOficial(destinoPadrao))) {
+    destinoSelect.value = destinoPadrao;
+  }
+
+  if (!destinos.length) {
+    destinoSelect.innerHTML = `<option value="">Nenhuma facção cadastrada para ${escapeHtml(processo)}</option>`;
+  }
+}
+
 function configurarModalMovimentacao() {
   const form = document.getElementById("formMovimentacaoProducao");
   if (form) {
@@ -4626,17 +4832,26 @@ function configurarModalMovimentacao() {
   }
 
   const processoSelect = document.getElementById("movimentacaoProcessoSelect");
+  const processoInput = document.getElementById("movimentacaoProcesso");
   if (processoSelect) {
     processoSelect.addEventListener("change", () => {
-      const processoInput = document.getElementById("movimentacaoProcesso");
-      if (processoInput && processoSelect.value) {
-        processoInput.value = processoSelect.value;
+      if (processoInput) {
+        processoInput.value = processoSelect.value || "";
       }
+      atualizarDestinosMovimentacaoPorProcesso();
     });
+  }
+
+  if (processoInput) {
+    processoInput.addEventListener("input", () => atualizarDestinosMovimentacaoPorProcesso());
   }
 }
 
 function getProcessosSugeridosMovimentacao(op, setor, tipoDestino) {
+  if (tipoDestino === "faccao") {
+    return getProcessosOficiaisPorSetor(setor);
+  }
+
   const referencia = normalizarReferencia(op?.referencia || "");
   const processosTabela = getPrecosReferenciaAtivos()
     .filter(preco => normalizarReferencia(preco.referencia || "") === referencia)
@@ -4646,10 +4861,9 @@ function getProcessosSugeridosMovimentacao(op, setor, tipoDestino) {
     .filter(mov => normalizarReferencia(mov.referencia || "") === referencia)
     .map(mov => mov.processo);
 
-  const padrao = tipoDestino === "faccao" ? "ENCAPAR BOJO" : "MONTAGEM";
-
   return [...new Set([
-    padrao,
+    "CÉLULA INTERNA",
+    "MONTAGEM",
     ...processosTabela,
     ...processosHistorico
   ].map(item => limparTexto(item).toUpperCase()).filter(Boolean))]
@@ -4679,9 +4893,7 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
     abrirPagina(tipoDestino === "faccao" ? "faccoes" : "celulas");
 
     if (tipoDestino === "faccao") {
-      document.getElementById("painelGerenciarFaccoes")?.classList.remove("hidden");
-      const toggle = document.getElementById("btnToggleGerenciarFaccoes");
-      if (toggle) toggle.textContent = "Ocultar gerenciamento";
+      abrirTelaGerenciarFaccoes();
     } else {
       document.getElementById("painelGerenciarCelulas")?.classList.remove("hidden");
       const toggle = document.getElementById("btnToggleGerenciarCelulas");
@@ -4701,6 +4913,7 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
     origem: opcoes.origem || "manejo",
     movimentacaoOrigemId: opcoes.movimentacaoOrigemId || "",
     quantidadeMaxima,
+    destinoPadrao: opcoes.destinoPadrao || "",
     origemResumo: opcoes.origemResumo || ""
   };
 
@@ -4729,10 +4942,10 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
   if (tipoInput) tipoInput.value = tipoDestino;
 
   if (destinoSelect) {
-    destinoSelect.innerHTML = `<option value="">Selecione ${escapeHtml(label.toLowerCase())}</option>` + destinos.map(destino => {
-      return `<option value="${escapeHtml(destino.nome || "")}">${escapeHtml(destino.nome || "")}</option>`;
-    }).join("");
-    destinoSelect.value = opcoes.destinoPadrao || "";
+    destinoSelect.innerHTML = tipoDestino === "faccao"
+      ? `<option value="">Selecione primeiro o processo</option>`
+      : `<option value="">Selecione ${escapeHtml(label.toLowerCase())}</option>` + destinos.map(destino => `<option value="${escapeHtml(destino.nome || "")}">${escapeHtml(destino.nome || "")}</option>`).join("");
+    destinoSelect.value = "";
   }
 
   const grupoProcesso = document.getElementById("grupoMovimentacaoProcesso");
@@ -4749,7 +4962,7 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
   const processos = getProcessosSugeridosMovimentacao(ordem, setor, tipoDestino);
 
   const processoInicial = exigeProcesso
-    ? (opcoes.forcarEscolhaProcesso ? "" : (opcoes.processoPadrao || processos[0] || ""))
+    ? (opcoes.processoPadrao || "")
     : "";
 
   if (processoSelect) {
@@ -4760,6 +4973,7 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
   }
 
   if (processoInput) processoInput.value = exigeProcesso ? processoInicial : "CÉLULA INTERNA";
+  atualizarDestinosMovimentacaoPorProcesso(opcoes.destinoPadrao || "");
   if (quantidadeInput) {
     quantidadeInput.value = quantidadePadrao || "";
     quantidadeInput.max = quantidadeMaxima || "";
@@ -4803,7 +5017,12 @@ async function confirmarMovimentacaoProducao(event) {
   }
 
   if (tipoDestino === "faccao" && !processo) {
-    toast("Informe para qual processo a peça será reenviada.");
+    toast("Informe primeiro o processo da facção.");
+    return;
+  }
+
+  if (tipoDestino === "faccao" && !faccaoAceitaProcesso(destino, processo)) {
+    toast("Essa facção não pertence ao processo selecionado. Escolha conforme a divisão oficial.");
     return;
   }
 
@@ -5659,29 +5878,39 @@ function abrirGerenciarValores() {
   if (!painel) return;
 
   const abrindo = painel.classList.contains("hidden");
-  painel.classList.toggle("hidden");
+
+  if (!abrindo) {
+    fecharGerenciarValores();
+    return;
+  }
+
+  painel.classList.remove("hidden");
+  painel.classList.add("manager-screen-active");
+  document.body.classList.add("manager-open");
 
   if (botao) {
-    botao.textContent = abrindo ? "Ocultar gerenciamento" : "Gerenciar valores";
+    botao.textContent = "Gerenciamento aberto";
   }
 
-  if (abrindo) {
-    preencherProcessosValores();
-    renderProcessosValores();
-    renderPrecosReferencia();
+  preencherProcessosValores();
+  renderProcessosValores();
+  renderPrecosReferencia();
 
-    setTimeout(() => {
-      painel.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 80);
-  }
+  setTimeout(() => {
+    painel.scrollTo({ top: 0, behavior: "smooth" });
+  }, 50);
 }
 
 function fecharGerenciarValores() {
   const painel = document.getElementById("painelGerenciarValores");
   const botao = document.getElementById("btnToggleGerenciarValores");
 
-  if (painel) painel.classList.add("hidden");
-  if (botao) botao.textContent = "Gerenciar valores";
+  if (painel) {
+    painel.classList.add("hidden");
+    painel.classList.remove("manager-screen-active");
+  }
+  document.body.classList.remove("manager-open");
+  if (botao) botao.textContent = "Abrir gerenciamento";
 }
 
 function usarNovoProcessoValor() {
