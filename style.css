@@ -4242,3 +4242,95 @@ body.manager-open {
     max-height: calc(100vh - 240px);
   }
 }
+
+
+/* Processos: consulta econômica por lote */
+.processos-loadbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.processos-loadbar strong {
+  display: block;
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.processos-loadbar span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.processos-loadbar .actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+  .processos-loadbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .processos-loadbar .actions,
+  .processos-loadbar .actions .btn {
+    width: 100%;
+  }
+}
+
+/* Otimização do Manejo: carregamento em lotes */
+.load-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #dbe3ef;
+  border-radius: 14px;
+  background: #f8fafc;
+  margin: 12px 0;
+}
+.load-control strong {
+  display: block;
+  color: #0f172a;
+  font-size: 13px;
+}
+.load-control span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  margin-top: 2px;
+}
+.load-control-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+@media (max-width: 720px) {
+  .load-control {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .load-control-actions {
+    justify-content: stretch;
+  }
+  .load-control-actions .btn {
+    flex: 1 1 100%;
+  }
+}
+
+.manejo-global-help { display:block; margin-top:8px; line-height:1.35; }

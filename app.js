@@ -24,7 +24,9 @@ import {
   writeBatch,
   getDocs,
   addDoc,
-  where
+  where,
+  limit as firestoreLimit,
+  startAfter
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -46,14 +48,30 @@ const secondaryAuth = getAuth(secondaryApp);
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.mjs";
 
+const PROCESSOS_PAGE_SIZE = 80;
+const MANEJO_PAGE_SIZE = 50;
+
 const state = {
   currentUser: null,
   perfil: null,
   produtos: [],
   ordens: [],
+  ordensUltimoDoc: null,
+  ordensTemMais: true,
+  ordensCarregando: false,
+  manejoBuscaGlobalAtiva: false,
+  manejoBuscaGlobalDescricao: "",
+  manejoBuscaGlobalPrimaria: null,
+  manejoBuscaGlobalUltimoDoc: null,
+  manejoBuscaGlobalTemMais: false,
   faccoes: [],
   celulas: [],
   movimentacoesProducao: [],
+  processosMovimentacoes: [],
+  processosUltimoDoc: null,
+  processosTemMais: true,
+  processosCarregando: false,
+  processosPaginaTamanho: 80,
   manejos: [],
   fasesManejoExtras: [],
   filtroFasesManejoSelecionadas: null,
@@ -87,11 +105,11 @@ const pageInfo = {
   },
   manejo: {
     title: "Manejo",
-    subtitle: "Preparação interna da OP e encaminhamento para facção ou célula."
+    subtitle: "Preparação interna da OP: abre 50 itens, mas buscas e filtros no banco retornam todos os resultados encontrados."
   },
   processos: {
     title: "Processos",
-    subtitle: "Visualização em tempo real das informações do manejo."
+    subtitle: "Visualização dos processos: abre por lote, mas buscas/filtros no banco não limitam resultados."
   },
   faccoes: {
     title: "Facções",
@@ -482,6 +500,15 @@ function limparListeners() {
   state.listenersPorChave = {};
   state.dadosCarregados = {};
   state.carregandoDados = {};
+  state.processosMovimentacoes = [];
+  state.processosUltimoDoc = null;
+  state.processosTemMais = true;
+  state.processosCarregando = false;
+  state.manejoBuscaGlobalAtiva = false;
+  state.manejoBuscaGlobalDescricao = "";
+  state.manejoBuscaGlobalPrimaria = null;
+  state.manejoBuscaGlobalUltimoDoc = null;
+  state.manejoBuscaGlobalTemMais = false;
 }
 
 function registrarListenerChave(chave, unsubscribe) {
@@ -510,7 +537,8 @@ function iniciarListenersFirestore() {
 
 function iniciarDadosEssenciais() {
   const produtosQuery = query(collection(db, "produtos"), orderBy("referencia", "asc"));
-  const ordensQuery = query(collection(db, "ordensProducao"), orderBy("criadoEm", "desc"));
+  // Economia de leitura: OPs entram por lote. O sistema abre somente as 50 mais recentes.
+  const ordensQuery = query(collection(db, "ordensProducao"), orderBy("criadoEm", "desc"), firestoreLimit(MANEJO_PAGE_SIZE));
 
   registrarListenerChave("produtos", onSnapshot(produtosQuery, snapshot => {
     state.produtos = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
@@ -522,8 +550,15 @@ function iniciarDadosEssenciais() {
   }));
 
   registrarListenerChave("ordens", onSnapshot(ordensQuery, snapshot => {
-    state.ordens = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    const primeiras = snapshot.docs.map(item => ({ id: item.id, ...item.data(), __loteManejo: "inicial" }));
+    const idsPrimeiras = new Set(primeiras.map(item => item.id));
+    const extrasMantidos = state.ordens.filter(item => item.__loteManejo === "extra" && !idsPrimeiras.has(item.id));
+
+    state.ordens = [...primeiras, ...extrasMantidos];
+    state.ordensUltimoDoc = snapshot.docs[snapshot.docs.length - 1] || state.ordensUltimoDoc;
+    state.ordensTemMais = snapshot.docs.length === MANEJO_PAGE_SIZE;
     marcarCarregado("ordens");
+    atualizarStatusCargaManejo();
     renderTudo();
   }, error => {
     console.error(error);
@@ -533,6 +568,423 @@ function iniciarDadosEssenciais() {
   // Dados pequenos/operacionais usados no Manejo para envio.
   carregarFaccoesSeNecessario();
   carregarCelulasSeNecessario();
+}
+
+
+function atualizarStatusCargaManejo(mensagem = "") {
+  const status = document.getElementById("manejoStatusCarga");
+  const btnMais = document.getElementById("btnManejoCarregarMais");
+  const btnBuscar = document.getElementById("btnManejoBuscarBanco");
+  const btnAtualizar = document.getElementById("btnManejoAtualizarLista");
+
+  const carregadas = state.ordens.length.toLocaleString("pt-BR");
+  const buscaGlobal = !!state.manejoBuscaGlobalAtiva;
+  const textoPadrao = buscaGlobal
+    ? `${carregadas} OPs carregadas na busca global${state.manejoBuscaGlobalDescricao ? ` (${state.manejoBuscaGlobalDescricao})` : ""}. Busca sem limite: todos os resultados encontrados foram carregados.`
+    : (state.ordensTemMais
+      ? `${carregadas} OPs carregadas. Use os filtros e clique em "Buscar filtros no banco" para carregar todos os resultados encontrados, sem limitar a 50.`
+      : `${carregadas} OPs carregadas. Não há mais registros neste lote.`);
+
+  if (status) status.textContent = mensagem || textoPadrao;
+
+  if (btnMais) {
+    const temMais = buscaGlobal ? state.manejoBuscaGlobalTemMais : state.ordensTemMais;
+    btnMais.disabled = !!state.ordensCarregando || !temMais;
+    btnMais.textContent = buscaGlobal ? "Busca completa" : (temMais ? `Carregar mais ${MANEJO_PAGE_SIZE}` : "Tudo carregado");
+  }
+
+  if (btnBuscar) btnBuscar.disabled = !!state.ordensCarregando;
+  if (btnAtualizar) btnAtualizar.disabled = !!state.ordensCarregando;
+}
+
+function mesclarOrdensCarregadas(novas, marcador = "extra") {
+  const existentes = new Map(state.ordens.map(item => [item.id, item]));
+  novas.forEach(item => {
+    existentes.set(item.id, { ...existentes.get(item.id), ...item, __loteManejo: marcador });
+  });
+  state.ordens = [...existentes.values()].sort((a, b) => {
+    const dataA = getTimestampOrdenacao(a.criadoEm || a.atualizadoEm || a.numeroOP || "");
+    const dataB = getTimestampOrdenacao(b.criadoEm || b.atualizadoEm || b.numeroOP || "");
+    return dataB - dataA;
+  });
+}
+
+function getTimestampOrdenacao(valor) {
+  if (valor && typeof valor.toDate === "function") return valor.toDate().getTime();
+  if (valor instanceof Date) return valor.getTime();
+  const n = Number(valor || 0);
+  if (Number.isFinite(n)) return n;
+  const parsed = Date.parse(String(valor || ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+
+function normalizarBuscaFirestore(valor) {
+  return normalizarTexto(valor).trim().replace(/\s+/g, " ");
+}
+
+function gerarVariantesBuscaExata(valor) {
+  const original = String(valor || "").trim();
+  const normalizado = normalizarBuscaFirestore(original);
+  const upper = original.toUpperCase();
+  const semAcentoUpper = normalizado.toUpperCase();
+  const variantes = new Set([original, upper, semAcentoUpper]);
+
+  const mapaFases = {
+    producao: "PRODUÇÃO",
+    "bojos encapados": "BOJOS ENCAPADOS",
+    casa: "CASA",
+    "pegar bojo": "PEGAR BOJO",
+    "nao usa bojo": "NAO USA BOJO",
+    preparar: "PREPARAR",
+    "desceu preparar": "DESCEU PREPARAR",
+    bipados: "BIPADOS",
+    "disponivel p casa": "DISPONIVEL P CASA",
+    "cancelada no sistema": "CANCELADA NO SISTEMA",
+    "nagila/itamar": "NAGILA/ITAMAR"
+  };
+
+  if (mapaFases[normalizado]) variantes.add(mapaFases[normalizado]);
+
+  return [...variantes].filter(Boolean);
+}
+
+function tokensBuscaManejo(item = {}, manejoOverride = null, setor = getManejoSetorAtual()) {
+  const manejo = manejoOverride || getManejoDaOrdem(item, setor) || {};
+  const valores = [
+    item.numeroOP,
+    item.numeroOPExterno,
+    item.referencia,
+    item.cor,
+    item.produtoNome,
+    item.tipoPeca,
+    item.tipoPecaLabel,
+    item.necessidadeLigia,
+    item.statusMigracaoLigia,
+    item.localAtualMigracao,
+    item.faseOriginalLigia,
+    item.celulaOriginalLigia,
+    manejo.silkNome,
+    manejo.silk,
+    manejo.fase,
+    manejo.dataTecido,
+    manejo.celu,
+    manejo.necessidade
+  ];
+
+  const tokens = new Set();
+  valores.forEach(valor => {
+    const limpo = normalizarBuscaFirestore(valor);
+    if (!limpo) return;
+    tokens.add(limpo);
+    limpo.split(/[^a-z0-9]+/i).forEach(parte => {
+      if (parte && parte.length >= 2) tokens.add(parte);
+    });
+  });
+  return [...tokens].slice(0, 100);
+}
+
+function gerarCamposBuscaManejo(item = {}, manejoOverride = null, setor = getManejoSetorAtual()) {
+  const manejo = manejoOverride || getManejoDaOrdem(item, setor) || {};
+  const fase = manejo.fase || item.faseOriginalLigia || item.statusMigracaoLigia || "";
+  const necessidade = manejo.necessidade || item.necessidadeLigia || "";
+
+  return {
+    numeroOPBusca: normalizarBuscaFirestore(item.numeroOP || item.numeroOPExterno || ""),
+    referenciaBusca: normalizarBuscaFirestore(item.referencia || ""),
+    corBusca: normalizarBuscaFirestore(item.cor || ""),
+    faseBusca: normalizarBuscaFirestore(fase),
+    necessidadeBusca: normalizarBuscaFirestore(necessidade),
+    tipoPecaBusca: normalizarBuscaFirestore(item.tipoPeca || ""),
+    statusMigracaoBusca: normalizarBuscaFirestore(item.statusMigracaoLigia || item.localAtualMigracao || ""),
+    termosBuscaManejo: tokensBuscaManejo(item, manejoOverride, setor)
+  };
+}
+
+function limparEstadoBuscaGlobalManejo() {
+  state.manejoBuscaGlobalAtiva = false;
+  state.manejoBuscaGlobalDescricao = "";
+  state.manejoBuscaGlobalPrimaria = null;
+  state.manejoBuscaGlobalUltimoDoc = null;
+  state.manejoBuscaGlobalTemMais = false;
+}
+
+function criterioFiltroManejo(id) {
+  return String(document.getElementById(id)?.value || "").trim();
+}
+
+function getCriteriosBuscaGlobalManejo() {
+  const buscaGeral = criterioFiltroManejo("buscaManejoLinha");
+  const criterios = {
+    buscaGeral,
+    op: criterioFiltroManejo("filtroManejoOP"),
+    referencia: criterioFiltroManejo("filtroManejoReferencia"),
+    silk: criterioFiltroManejo("filtroManejoSilk"),
+    dataTecido: criterioFiltroManejo("filtroManejoDataTecido"),
+    fase: criterioFiltroManejo("filtroManejoFase"),
+    quantidade: criterioFiltroManejo("filtroManejoQuantidade"),
+    cor: criterioFiltroManejo("filtroManejoCor"),
+    necessidade: criterioFiltroManejo("filtroManejoNecessidade"),
+    status: criterioFiltroManejo("filtroManejoStatus")
+  };
+
+  const fasesExcel = state.filtroFasesManejoSelecionadas instanceof Set
+    ? [...state.filtroFasesManejoSelecionadas].filter(Boolean)
+    : [];
+
+  return { ...criterios, fasesExcel };
+}
+
+function temCriterioBuscaGlobalManejo(criterios) {
+  return Boolean(
+    criterios.buscaGeral || criterios.op || criterios.referencia || criterios.fase ||
+    criterios.cor || criterios.necessidade || criterios.status || criterios.quantidade ||
+    criterios.silk || criterios.dataTecido || criterios.fasesExcel?.length
+  );
+}
+
+function descricaoBuscaGlobalManejo(criterios) {
+  const partes = [];
+  if (criterios.buscaGeral) partes.push(`busca: ${criterios.buscaGeral}`);
+  if (criterios.op) partes.push(`OP: ${criterios.op}`);
+  if (criterios.referencia) partes.push(`ref.: ${criterios.referencia}`);
+  if (criterios.fase) partes.push(`fase: ${criterios.fase}`);
+  if (criterios.fasesExcel?.length) partes.push(`${criterios.fasesExcel.length} fase(s)`);
+  if (criterios.cor) partes.push(`cor: ${criterios.cor}`);
+  if (criterios.necessidade) partes.push(`necessidade: ${criterios.necessidade}`);
+  if (criterios.status) partes.push(`status: ${criterios.status}`);
+  if (criterios.quantidade) partes.push(`qtd: ${criterios.quantidade}`);
+  if (criterios.silk) partes.push(`silk: ${criterios.silk}`);
+  if (criterios.dataTecido) partes.push(`tecido: ${criterios.dataTecido}`);
+  return partes.join(" | ");
+}
+
+function montarConsultasPrimariasManejo(criterios) {
+  const base = collection(db, "ordensProducao");
+  const normalizado = valor => normalizarBuscaFirestore(valor);
+  const consultas = [];
+
+  const adicionar = (consulta, descricao) => {
+    consultas.push({ consulta, descricao });
+  };
+
+  if (criterios.op || /^\d+$/.test(criterios.buscaGeral || "")) {
+    const op = criterios.op || criterios.buscaGeral;
+    adicionar(query(base, where("numeroOPBusca", "==", normalizado(op))), `OP ${op}`);
+  } else if (criterios.referencia) {
+    adicionar(query(base, where("referenciaBusca", "==", normalizado(criterios.referencia))), `referência ${criterios.referencia}`);
+  } else if (criterios.fase) {
+    adicionar(query(base, where("faseBusca", "==", normalizado(criterios.fase))), `fase ${criterios.fase}`);
+  } else if (criterios.fasesExcel?.length) {
+    const fases = criterios.fasesExcel.map(item => normalizado(item)).filter(Boolean);
+    for (let i = 0; i < fases.length; i += 10) {
+      const lote = fases.slice(i, i + 10);
+      if (lote.length === 1) {
+        adicionar(query(base, where("faseBusca", "==", lote[0])), `fase ${lote[0]}`);
+      } else {
+        adicionar(query(base, where("faseBusca", "in", lote)), `${lote.length} fases selecionadas`);
+      }
+    }
+  } else if (criterios.cor) {
+    adicionar(query(base, where("corBusca", "==", normalizado(criterios.cor))), `cor ${criterios.cor}`);
+  } else if (criterios.necessidade) {
+    adicionar(query(base, where("necessidadeBusca", "==", normalizado(criterios.necessidade))), `necessidade ${criterios.necessidade}`);
+  } else if (criterios.status) {
+    adicionar(query(base, where("status", "==", criterios.status)), `status ${criterios.status}`);
+  } else if (criterios.buscaGeral) {
+    adicionar(query(base, where("termosBuscaManejo", "array-contains", normalizado(criterios.buscaGeral))), `busca ${criterios.buscaGeral}`);
+  }
+
+  // Quando o filtro não tem campo indexado direto, o sistema busca tudo e filtra na tela.
+  // Isso só acontece quando o usuário pede a busca no banco; a abertura normal continua econômica com 50 itens.
+  if (!consultas.length && temCriterioBuscaGlobalManejo(criterios)) {
+    adicionar(query(base, orderBy("criadoEm", "desc")), "busca completa sem limite");
+  }
+
+  return consultas;
+}
+
+function montarConsultaPrimariaManejo(criterios, cursor = null) {
+  // Mantida para compatibilidade com versões anteriores do código.
+  // A busca global atual não usa paginação: quando pesquisa no banco, carrega todos os resultados encontrados.
+  const consultas = montarConsultasPrimariasManejo(criterios);
+  return consultas[0] || null;
+}
+
+async function buscarFallbackManejoSemCamposNovos(criterios) {
+  const base = collection(db, "ordensProducao");
+  const consultas = [];
+
+  if (criterios.op || /^\d+$/.test(criterios.buscaGeral || "")) {
+    const op = criterios.op || criterios.buscaGeral;
+    consultas.push(getDocs(query(base, where("numeroOP", "==", op))));
+    consultas.push(getDocs(query(base, where("numeroOPExterno", "==", op))));
+  }
+
+  if (criterios.referencia) {
+    gerarVariantesBuscaExata(criterios.referencia).forEach(valor => {
+      consultas.push(getDocs(query(base, where("referencia", "==", valor))));
+    });
+  }
+
+  const fases = criterios.fase
+    ? gerarVariantesBuscaExata(criterios.fase)
+    : (criterios.fasesExcel || []);
+
+  fases.forEach(fase => {
+    gerarVariantesBuscaExata(fase).forEach(valor => {
+      consultas.push(getDocs(query(base, where("faseOriginalLigia", "==", valor))));
+    });
+  });
+
+  if (criterios.cor) {
+    gerarVariantesBuscaExata(criterios.cor).forEach(valor => {
+      consultas.push(getDocs(query(base, where("cor", "==", valor))));
+    });
+  }
+
+  // Para filtros antigos que não têm índice próprio, busca completa sem limite e filtra na tela.
+  if (!consultas.length && temCriterioBuscaGlobalManejo(criterios)) {
+    consultas.push(getDocs(query(base, orderBy("criadoEm", "desc"))));
+  }
+
+  if (!consultas.length) return [];
+
+  const resultados = await Promise.allSettled(consultas);
+  const docs = [];
+  resultados.forEach(resultado => {
+    if (resultado.status !== "fulfilled") return;
+    resultado.value.docs.forEach(item => docs.push({ id: item.id, ...item.data(), __loteManejo: "extra" }));
+  });
+  return docs;
+}
+
+async function carregarMaisOrdensManejo() {
+  if (state.ordensCarregando) {
+    atualizarStatusCargaManejo();
+    return;
+  }
+
+  if (state.manejoBuscaGlobalAtiva) {
+    state.manejoBuscaGlobalTemMais = false;
+    atualizarStatusCargaManejo("Busca global já carregou todos os resultados encontrados. Para nova busca, altere os filtros e clique em Buscar filtros no banco.");
+    toast("A busca no banco já trouxe todos os resultados encontrados.");
+    return;
+  }
+
+  if (!state.ordensTemMais) {
+    atualizarStatusCargaManejo();
+    return;
+  }
+
+  state.ordensCarregando = true;
+  atualizarStatusCargaManejo("Carregando mais 50 OPs do banco...");
+
+  try {
+    let q = query(
+      collection(db, "ordensProducao"),
+      orderBy("criadoEm", "desc"),
+      firestoreLimit(MANEJO_PAGE_SIZE)
+    );
+
+    if (state.ordensUltimoDoc) {
+      q = query(
+        collection(db, "ordensProducao"),
+        orderBy("criadoEm", "desc"),
+        startAfter(state.ordensUltimoDoc),
+        firestoreLimit(MANEJO_PAGE_SIZE)
+      );
+    }
+
+    const snapshot = await getDocs(q);
+    const novas = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    mesclarOrdensCarregadas(novas, "extra");
+    state.ordensUltimoDoc = snapshot.docs[snapshot.docs.length - 1] || state.ordensUltimoDoc;
+    state.ordensTemMais = snapshot.docs.length === MANEJO_PAGE_SIZE;
+    renderFiltrosColunasManejo();
+    atualizarManejoComSoma();
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao carregar mais OPs do manejo.");
+  } finally {
+    state.ordensCarregando = false;
+    atualizarStatusCargaManejo();
+  }
+}
+
+async function buscarOrdemManejoNoBanco() {
+  const criterios = getCriteriosBuscaGlobalManejo();
+
+  if (!temCriterioBuscaGlobalManejo(criterios)) {
+    toast("Digite uma busca ou preencha algum filtro para pesquisar no banco.");
+    document.getElementById("buscaManejoLinha")?.focus();
+    return;
+  }
+
+  state.ordensCarregando = true;
+  atualizarStatusCargaManejo("Buscando todos os resultados no banco, sem limite de 50...");
+
+  try {
+    const consultasPrimarias = montarConsultasPrimariasManejo(criterios);
+    const encontrados = [];
+
+    if (consultasPrimarias.length) {
+      const resultados = await Promise.allSettled(consultasPrimarias.map(item => getDocs(item.consulta)));
+      resultados.forEach(resultado => {
+        if (resultado.status !== "fulfilled") return;
+        resultado.value.docs.forEach(item => encontrados.push({ id: item.id, ...item.data(), __loteManejo: "extra" }));
+      });
+    }
+
+    // Fallback para dados importados antes dos campos de busca global.
+    // Ajuda na transição sem obrigar apagar o banco só para testar.
+    if (!encontrados.length) {
+      const fallback = await buscarFallbackManejoSemCamposNovos(criterios);
+      encontrados.push(...fallback);
+    }
+
+    const unicos = [...new Map(encontrados.map(item => [item.id, item])).values()];
+    if (!unicos.length) {
+      limparEstadoBuscaGlobalManejo();
+      toast("Nenhum pedido encontrado no banco com esses filtros.");
+      atualizarStatusCargaManejo(`Nenhum resultado encontrado para ${descricaoBuscaGlobalManejo(criterios)}.`);
+      atualizarManejoComSoma();
+      return;
+    }
+
+    // Limpa a lista anterior para mostrar uma busca verdadeira no banco.
+    // A busca global agora não é paginada: se houver 80, carrega 80; se houver 200, carrega 200.
+    state.ordens = [];
+    mesclarOrdensCarregadas(unicos, "extra");
+    state.manejoBuscaGlobalAtiva = true;
+    state.manejoBuscaGlobalDescricao = descricaoBuscaGlobalManejo(criterios);
+    state.manejoBuscaGlobalPrimaria = criterios;
+    state.manejoBuscaGlobalUltimoDoc = null;
+    state.manejoBuscaGlobalTemMais = false;
+
+    renderFiltrosColunasManejo();
+    atualizarManejoComSoma();
+    toast(`${unicos.length} pedido(s) encontrado(s) no banco.`);
+    atualizarStatusCargaManejo(`${unicos.length} pedido(s) carregado(s) para: ${state.manejoBuscaGlobalDescricao}. Busca sem limite aplicada.`);
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao buscar filtros no banco. Verifique se a migração foi feita com esta versão atualizada.");
+    atualizarStatusCargaManejo("Não foi possível buscar os filtros no banco agora.");
+  } finally {
+    state.ordensCarregando = false;
+    atualizarStatusCargaManejo();
+  }
+}
+
+async function atualizarPrimeiroLoteManejo() {
+  limparEstadoBuscaGlobalManejo();
+  state.ordens = state.ordens.filter(item => item.__loteManejo === "extra" && item._mantidoManual);
+  state.ordensUltimoDoc = null;
+  state.ordensTemMais = true;
+  atualizarStatusCargaManejo("Atualize a página para renovar o primeiro lote em tempo real.");
+  renderFiltrosColunasManejo();
+  atualizarManejoComSoma();
+  toast("Busca global limpa. Use Ctrl+Shift+R para renovar o primeiro lote em tempo real.");
 }
 
 function carregarFaccoesSeNecessario() {
@@ -593,6 +1045,95 @@ function carregarMovimentacoesSeNecessario() {
     console.error(error);
     toast("Erro ao carregar movimentações. Verifique as permissões.");
   }));
+}
+
+
+function setStatusCargaProcessos(mensagem) {
+  const el = document.getElementById("processosStatusCarga");
+  if (el) el.textContent = mensagem || "";
+}
+
+function atualizarBotoesCargaProcessos() {
+  const btnMais = document.getElementById("btnProcessosCarregarMais");
+  const btnAtualizar = document.getElementById("btnProcessosAtualizar");
+
+  if (btnMais) {
+    btnMais.disabled = !!state.processosCarregando || !state.processosTemMais;
+    btnMais.textContent = state.processosTemMais ? `Carregar mais ${PROCESSOS_PAGE_SIZE}` : "Tudo carregado";
+  }
+
+  if (btnAtualizar) {
+    btnAtualizar.disabled = !!state.processosCarregando;
+  }
+}
+
+async function carregarProcessosPaginadosSeNecessario() {
+  if (state.processosMovimentacoes.length || state.processosCarregando) {
+    atualizarBotoesCargaProcessos();
+    return;
+  }
+  await carregarProcessosPaginados(true);
+}
+
+async function carregarProcessosPaginados(reset = false) {
+  if (state.processosCarregando) return;
+
+  if (reset) {
+    state.processosMovimentacoes = [];
+    state.processosUltimoDoc = null;
+    state.processosTemMais = true;
+  }
+
+  if (!state.processosTemMais && !reset) {
+    atualizarBotoesCargaProcessos();
+    return;
+  }
+
+  state.processosCarregando = true;
+  atualizarBotoesCargaProcessos();
+  setStatusCargaProcessos(reset ? "Carregando primeiras movimentações..." : "Carregando mais movimentações...");
+  renderProcessos();
+
+  try {
+    let processosQuery = query(
+      collection(db, "movimentacoesProducao"),
+      orderBy("criadoEm", "desc"),
+      firestoreLimit(PROCESSOS_PAGE_SIZE)
+    );
+
+    if (state.processosUltimoDoc && !reset) {
+      processosQuery = query(
+        collection(db, "movimentacoesProducao"),
+        orderBy("criadoEm", "desc"),
+        startAfter(state.processosUltimoDoc),
+        firestoreLimit(PROCESSOS_PAGE_SIZE)
+      );
+    }
+
+    const snapshot = await getDocs(processosQuery);
+    const novos = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    const existentes = new Set(state.processosMovimentacoes.map(mov => mov.id));
+    const semDuplicar = novos.filter(mov => !existentes.has(mov.id));
+
+    state.processosMovimentacoes = reset ? novos : [...state.processosMovimentacoes, ...semDuplicar];
+    state.processosUltimoDoc = snapshot.docs[snapshot.docs.length - 1] || state.processosUltimoDoc;
+    state.processosTemMais = snapshot.docs.length === PROCESSOS_PAGE_SIZE;
+
+    const carregadas = state.processosMovimentacoes.length.toLocaleString("pt-BR");
+    setStatusCargaProcessos(
+      state.processosTemMais
+        ? `${carregadas} movimentações carregadas. Clique em carregar mais para buscar o próximo lote.`
+        : `${carregadas} movimentações carregadas. Não há mais registros neste lote de consulta.`
+    );
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao carregar processos. Verifique permissões e conexão.");
+    setStatusCargaProcessos("Não foi possível carregar os processos agora.");
+  } finally {
+    state.processosCarregando = false;
+    atualizarBotoesCargaProcessos();
+    renderProcessos();
+  }
 }
 
 function carregarPrecosReferenciaSeNecessario() {
@@ -674,12 +1215,18 @@ function carregarLogsSeNecessario() {
 function carregarDadosDaPagina(page) {
   if (page === "manejo") {
     carregarPrecosReferenciaSeNecessario();
-    carregarMovimentacoesSeNecessario();
+    // Economia de leitura: não carrega todas as movimentações ao abrir o manejo.
+    // Movimentações completas ficam nas abas Processos/Rastreamento, também com carregamento controlado.
     carregarFaccoesSeNecessario();
     carregarCelulasSeNecessario();
+    atualizarStatusCargaManejo();
   }
 
-  if (page === "processos" || page === "rastreamento") {
+  if (page === "processos") {
+    carregarProcessosPaginadosSeNecessario();
+  }
+
+  if (page === "rastreamento") {
     carregarMovimentacoesSeNecessario();
     carregarFaccoesSeNecessario();
     carregarCelulasSeNecessario();
@@ -1580,7 +2127,23 @@ function configurarManejo() {
   if (imprimir) {
     imprimir.addEventListener("click", imprimirManejoFiltrado);
   }
+
+  const carregarMais = document.getElementById("btnManejoCarregarMais");
+  if (carregarMais) {
+    carregarMais.addEventListener("click", carregarMaisOrdensManejo);
+  }
+
+  const buscarBanco = document.getElementById("btnManejoBuscarBanco");
+  if (buscarBanco) {
+    buscarBanco.addEventListener("click", buscarOrdemManejoNoBanco);
+  }
+
+  const atualizarLista = document.getElementById("btnManejoAtualizarLista");
+  if (atualizarLista) {
+    atualizarLista.addEventListener("click", atualizarPrimeiroLoteManejo);
+  }
 }
+
 
 
 function valorManejoParaImpressao(op, campo) {
@@ -2007,6 +2570,7 @@ function renderManejoInline() {
   const ordens = filtrarOrdensManejoPorColunas();
 
   renderResumoSomasManejo(ordens);
+  atualizarStatusCargaManejo();
 
   if (!ordens.length) {
     tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
@@ -2102,7 +2666,7 @@ function getValorManejoParaFiltro(op, campo, setor = getManejoSetorAtual()) {
     referencia: op.referencia || "",
     silk: getSilkNomeManejo(manejo),
     dataTecido: manejo?.dataTecido || "",
-    fase: manejo?.fase || "",
+    fase: manejo?.fase || faseExibicaoMigracaoLigia(op) || op.faseOriginalLigia || op.statusMigracaoLigia || "",
     quantidade: op.quantidade ?? "",
     cor: op.cor || "",
     chegada: manejo?.chegada || "",
@@ -2875,6 +3439,7 @@ async function salvarManejoLinha(ordemId) {
 
   try {
     const patch = montarPatchManejoSetor(setor, manejo, "organizada", {
+      ...gerarCamposBuscaManejo({ ...ordem, faseOriginalLigia: fase }, manejo, setor),
       atualizadoPor: state.currentUser.uid,
       atualizadoEm: serverTimestamp()
     });
@@ -3274,6 +3839,21 @@ function configurarProcessos() {
   if (imprimir) {
     imprimir.addEventListener("click", imprimirProcessosFiltrados);
   }
+
+  const atualizar = document.getElementById("btnProcessosAtualizar");
+  if (atualizar) {
+    atualizar.addEventListener("click", () => carregarProcessosPaginados(true));
+  }
+
+  const carregarMais = document.getElementById("btnProcessosCarregarMais");
+  if (carregarMais) {
+    carregarMais.addEventListener("click", () => carregarProcessosPaginados(false));
+  }
+
+  const buscarBanco = document.getElementById("btnProcessosBuscarBanco");
+  if (buscarBanco) {
+    buscarBanco.addEventListener("click", buscarProcessosNoBancoSemLimite);
+  }
 }
 
 function preencherSelectProcessos(id, valores, labelTodos = "Todos") {
@@ -3312,7 +3892,7 @@ function quantidadeRecebidaMovimentacao(mov) {
 }
 
 function getMovimentacoesProcessos() {
-  return [...state.movimentacoesProducao].sort((a, b) => {
+  return [...state.processosMovimentacoes].sort((a, b) => {
     const tempo = getMovTimestamp(b) - getMovTimestamp(a);
     if (tempo !== 0) return tempo;
     return String(a.numeroOP || "").localeCompare(String(b.numeroOP || ""), "pt-BR", { numeric: true });
@@ -3378,6 +3958,68 @@ function filtrarOrdensProcessos() {
 
     return true;
   });
+}
+
+function temFiltrosProcessosAtivos(filtros) {
+  return Boolean(
+    filtros.busca || filtros.status || filtros.referencia || filtros.cor ||
+    filtros.processo || filtros.destino || filtros.tipo || filtros.necessidade
+  );
+}
+
+function montarConsultaPrimariaProcessosSemLimite(filtros) {
+  const base = collection(db, "movimentacoesProducao");
+
+  if (filtros.status) return query(base, where("status", "==", filtros.status));
+  if (filtros.referencia) return query(base, where("referencia", "==", filtros.referencia));
+  if (filtros.processo) return query(base, where("processo", "==", filtros.processo));
+  if (filtros.destino) return query(base, where("destino", "==", filtros.destino));
+  if (filtros.cor) return query(base, where("cor", "==", filtros.cor));
+  if (filtros.busca && /^\d+$/.test(filtros.busca)) return query(base, where("numeroOP", "==", filtros.busca));
+
+  // Quando o filtro não tem campo direto ou o usuário quer buscar tudo, carrega sem limitador e filtra na tela.
+  return query(base, orderBy("criadoEm", "desc"));
+}
+
+async function buscarProcessosNoBancoSemLimite() {
+  if (state.processosCarregando) return;
+
+  const filtros = getFiltrosProcessos();
+  const descricao = getTextoFiltrosProcessosAtivos();
+
+  state.processosCarregando = true;
+  atualizarBotoesCargaProcessos();
+  setStatusCargaProcessos(
+    temFiltrosProcessosAtivos(filtros)
+      ? "Buscando todos os processos que batem com os filtros, sem limite de 80..."
+      : "Carregando todos os processos do banco, sem limite de 80..."
+  );
+  renderProcessos();
+
+  try {
+    const consulta = montarConsultaPrimariaProcessosSemLimite(filtros);
+    const snapshot = await getDocs(consulta);
+    const encontrados = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+
+    state.processosMovimentacoes = encontrados;
+    state.processosUltimoDoc = null;
+    state.processosTemMais = false;
+
+    renderFiltrosProcessos();
+    renderProcessos();
+
+    const filtrados = filtrarOrdensProcessos();
+    setStatusCargaProcessos(`${filtrados.length.toLocaleString("pt-BR")} processo(s) exibido(s). Busca sem limite aplicada. ${descricao}`);
+    toast(`${filtrados.length.toLocaleString("pt-BR")} processo(s) carregado(s) sem limite.`);
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao buscar processos no banco.");
+    setStatusCargaProcessos("Não foi possível buscar todos os processos agora.");
+  } finally {
+    state.processosCarregando = false;
+    atualizarBotoesCargaProcessos();
+    renderProcessos();
+  }
 }
 
 function limparFiltrosProcessos() {
@@ -3551,13 +4193,24 @@ function renderProcessos() {
   const tbody = document.getElementById("listaProcessos");
   if (!tbody) return;
 
+  atualizarBotoesCargaProcessos();
   renderFiltrosProcessos();
 
   const movimentos = filtrarOrdensProcessos();
   renderResumoProcessos(movimentos);
 
+  if (state.processosCarregando && !state.processosMovimentacoes.length) {
+    tbody.innerHTML = `<tr><td colspan="13" class="empty">Carregando primeiro lote de processos...</td></tr>`;
+    return;
+  }
+
+  if (!state.processosMovimentacoes.length) {
+    tbody.innerHTML = `<tr><td colspan="13" class="empty">Clique em Atualizar lista para carregar o primeiro lote de movimentações.</td></tr>`;
+    return;
+  }
+
   if (!movimentos.length) {
-    tbody.innerHTML = `<tr><td colspan="13" class="empty">Nenhuma movimentação encontrada com os filtros selecionados.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13" class="empty">Nenhuma movimentação encontrada nos registros carregados. Para pesquisar em todo o banco, clique em Buscar filtros no banco.</td></tr>`;
     return;
   }
 
@@ -3930,6 +4583,7 @@ function prepararDocumentoImportacaoLigia(item) {
   const copia = { ...item };
   delete copia.id;
   copia.importadoLigiaNovaLogica = true;
+  Object.assign(copia, gerarCamposBuscaManejo(copia, null, copia.tipoPeca || "sutia"));
   copia.atualizadoPor = state.currentUser.uid;
   copia.atualizadoEm = serverTimestamp();
   if (!copia.criadoPor) copia.criadoPor = state.currentUser.uid;
@@ -4119,6 +4773,7 @@ async function salvarAjusteMigracao(event) {
     dataChegadaAtualMigracao: dataChegada,
     proximoDestinoMigracao: proximoDestino,
     ocultarDoManejo,
+    ...gerarCamposBuscaManejo({ ...ordem, statusMigracaoLigia: local, localAtualMigracao: local }, null, getManejoSetorAtual()),
     ajusteManualMigracao: true,
     ultimoMotivoAjusteMigracao: motivo,
     atualizadoPor: state.currentUser.uid,

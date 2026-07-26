@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-25-gerenciamento-tela-cheia-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-25-gerenciamento-tela-cheia-1" />
+  <meta name="app-version" content="2026-07-25-manejo-filtro-global-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-25-manejo-filtro-global-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -359,6 +359,19 @@
             <strong>Funcionamento:</strong> Nº OP, REF, QTD, COR, NECESSIDADE e o tipo da peça vêm da importação. Aqui ficam Silk, Tecido e Fase. Para gerar movimentação e pagamento, use o botão ⋮ e envie para Facção ou Célula.
           </div>
 
+          <div class="load-control manejo-load-control">
+            <div>
+              <strong>Manejo econômico</strong>
+              <span id="manejoStatusCarga">Abrindo 50 itens. Ao buscar no banco, o sistema carrega todos os resultados encontrados.</span>
+            </div>
+            <div class="load-control-actions">
+              <button class="btn btn-sm" id="btnManejoCarregarMais" type="button">Carregar mais 50</button>
+              <button class="btn btn-sm" id="btnManejoBuscarBanco" type="button">Buscar filtros no banco</button>
+              <button class="btn btn-sm" id="btnManejoAtualizarLista" type="button">Limpar busca global</button>
+            </div>
+            <small class="muted manejo-global-help">Os filtros digitados funcionam na tela carregada. Para pesquisar em todos os pedidos, preencha o filtro e clique em <strong>Buscar filtros no banco</strong>. A busca não limita em 50 resultados.</small>
+          </div>
+
 
           <div class="manejo-setor-tabs manejo-tipo-tabs">
             <button class="manejo-setor-btn active" type="button" data-setor="sutia">
@@ -538,7 +551,7 @@
           <div class="panel-header">
             <div>
               <h3>Visualizar processos</h3>
-              <p>Tela de acompanhamento em tempo real das movimentações. Use os filtros para acompanhar etapa, destino, processo e status.</p>
+              <p>Tela de acompanhamento das movimentações com carregamento por lote para economizar leituras do Firestore.</p>
             </div>
             <input id="buscaProcessos" class="search" type="text" placeholder="Buscar OP, ref., cor, destino, processo..." />
           </div>
@@ -625,7 +638,19 @@
             </label>
 
             <button class="btn" id="btnLimparFiltrosProcessos" type="button">Limpar filtros</button>
+            <button class="btn btn-primary" id="btnProcessosBuscarBanco" type="button">Buscar filtros no banco</button>
             <button class="btn btn-print" id="btnImprimirProcessosFiltrados" type="button">Imprimir processos</button>
+          </div>
+
+          <div class="load-control processos-load-control">
+            <div>
+              <strong>Processos econômico</strong>
+              <span id="processosStatusCarga">Abre por lote. Buscas no banco carregam todos os resultados encontrados.</span>
+            </div>
+            <div class="load-control-actions">
+              <button class="btn btn-sm" id="btnProcessosCarregarMais" type="button">Carregar mais 80</button>
+              <button class="btn btn-sm" id="btnProcessosAtualizar" type="button">Atualizar lista</button>
+            </div>
           </div>
 
           <div class="table-wrap processos-table-wrap">
@@ -1777,8 +1802,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-25-gerenciamento-tela-cheia-1"></script>
-  <script type="module" src="app.js?v=2026-07-25-gerenciamento-tela-cheia-1"></script>
+  <script src="update.js?v=2026-07-25-manejo-filtro-global-1"></script>
+  <script type="module" src="app.js?v=2026-07-25-manejo-filtro-global-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
