@@ -1649,7 +1649,7 @@ version.json
 Versão atual:
 
 ```txt
-2026-07-26-importacao-ligia-json-local-1
+2026-07-26-ligia-importacao-total-1
 ```
 
 O que foi aplicado:

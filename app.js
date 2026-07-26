@@ -49,7 +49,7 @@ const secondaryAuth = getAuth(secondaryApp);
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.mjs";
 
 const PROCESSOS_PAGE_SIZE = 80;
-const MANEJO_PAGE_SIZE = 50;
+const MANEJO_PAGE_SIZE = 750; // modo implantação: não limitar OPs na tela
 
 const state = {
   currentUser: null,
@@ -105,7 +105,7 @@ const pageInfo = {
   },
   manejo: {
     title: "Manejo",
-    subtitle: "Preparação interna da OP: abre 50 itens, mas buscas e filtros no banco retornam todos os resultados encontrados."
+    subtitle: "Preparação interna da OP: modo implantação carregando todas as OPs para conferência completa."
   },
   processos: {
     title: "Processos",
@@ -538,8 +538,9 @@ function iniciarListenersFirestore() {
 
 function iniciarDadosEssenciais() {
   const produtosQuery = query(collection(db, "produtos"), orderBy("referencia", "asc"));
-  // Economia de leitura: OPs entram por lote. O sistema abre somente as 50 mais recentes.
-  const ordensQuery = query(collection(db, "ordensProducao"), orderBy("criadoEm", "desc"), firestoreLimit(MANEJO_PAGE_SIZE));
+  // Modo implantação: carregar todas as OPs para conferência completa da migração.
+  // Depois da validação, podemos voltar para paginação/cursor sem mascarar resultados.
+  const ordensQuery = query(collection(db, "ordensProducao"), orderBy("criadoEm", "desc"));
 
   registrarListenerChave("produtos", onSnapshot(produtosQuery, snapshot => {
     state.produtos = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
@@ -557,7 +558,7 @@ function iniciarDadosEssenciais() {
 
     state.ordens = [...primeiras, ...extrasMantidos];
     state.ordensUltimoDoc = snapshot.docs[snapshot.docs.length - 1] || state.ordensUltimoDoc;
-    state.ordensTemMais = snapshot.docs.length === MANEJO_PAGE_SIZE;
+    state.ordensTemMais = false;
     marcarCarregado("ordens");
     atualizarStatusCargaManejo();
     renderTudo();
@@ -581,17 +582,17 @@ function atualizarStatusCargaManejo(mensagem = "") {
   const carregadas = state.ordens.length.toLocaleString("pt-BR");
   const buscaGlobal = !!state.manejoBuscaGlobalAtiva;
   const textoPadrao = buscaGlobal
-    ? `${carregadas} OPs carregadas na busca global${state.manejoBuscaGlobalDescricao ? ` (${state.manejoBuscaGlobalDescricao})` : ""}. Busca sem limite: todos os resultados encontrados foram carregados.`
+    ? `${carregadas} OPs carregadas na busca global${state.manejoBuscaGlobalDescricao ? ` (${state.manejoBuscaGlobalDescricao})` : ""}. Todos os resultados encontrados foram carregados.`
     : (state.ordensTemMais
-      ? `${carregadas} OPs carregadas. Use os filtros e clique em "Buscar filtros no banco" para carregar todos os resultados encontrados, sem limitar a 50.`
-      : `${carregadas} OPs carregadas. Não há mais registros neste lote.`);
+      ? `${carregadas} OPs carregadas. Modo implantação: todas as OPs disponíveis foram carregadas para conferência.`
+      : `${carregadas} OPs carregadas. Tudo carregado.`);
 
   if (status) status.textContent = mensagem || textoPadrao;
 
   if (btnMais) {
     const temMais = buscaGlobal ? state.manejoBuscaGlobalTemMais : state.ordensTemMais;
     btnMais.disabled = !!state.ordensCarregando || !temMais;
-    btnMais.textContent = buscaGlobal ? "Busca completa" : (temMais ? `Carregar mais ${MANEJO_PAGE_SIZE}` : "Tudo carregado");
+    btnMais.textContent = "Tudo carregado";
   }
 
   if (btnBuscar) btnBuscar.disabled = !!state.ordensCarregando;
@@ -865,56 +866,9 @@ async function buscarFallbackManejoSemCamposNovos(criterios) {
 }
 
 async function carregarMaisOrdensManejo() {
-  if (state.ordensCarregando) {
-    atualizarStatusCargaManejo();
-    return;
-  }
-
-  if (state.manejoBuscaGlobalAtiva) {
-    state.manejoBuscaGlobalTemMais = false;
-    atualizarStatusCargaManejo("Busca global já carregou todos os resultados encontrados. Para nova busca, altere os filtros e clique em Buscar filtros no banco.");
-    toast("A busca no banco já trouxe todos os resultados encontrados.");
-    return;
-  }
-
-  if (!state.ordensTemMais) {
-    atualizarStatusCargaManejo();
-    return;
-  }
-
-  state.ordensCarregando = true;
-  atualizarStatusCargaManejo("Carregando mais 50 OPs do banco...");
-
-  try {
-    let q = query(
-      collection(db, "ordensProducao"),
-      orderBy("criadoEm", "desc"),
-      firestoreLimit(MANEJO_PAGE_SIZE)
-    );
-
-    if (state.ordensUltimoDoc) {
-      q = query(
-        collection(db, "ordensProducao"),
-        orderBy("criadoEm", "desc"),
-        startAfter(state.ordensUltimoDoc),
-        firestoreLimit(MANEJO_PAGE_SIZE)
-      );
-    }
-
-    const snapshot = await getDocs(q);
-    const novas = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
-    mesclarOrdensCarregadas(novas, "extra");
-    state.ordensUltimoDoc = snapshot.docs[snapshot.docs.length - 1] || state.ordensUltimoDoc;
-    state.ordensTemMais = snapshot.docs.length === MANEJO_PAGE_SIZE;
-    renderFiltrosColunasManejo();
-    atualizarManejoComSoma();
-  } catch (error) {
-    console.error(error);
-    toast("Erro ao carregar mais OPs do manejo.");
-  } finally {
-    state.ordensCarregando = false;
-    atualizarStatusCargaManejo();
-  }
+  state.ordensTemMais = false;
+  atualizarStatusCargaManejo("Modo implantação: todas as OPs disponíveis já são carregadas de uma vez.");
+  toast("Todas as OPs disponíveis já estão carregadas.");
 }
 
 async function buscarOrdemManejoNoBanco() {
@@ -4719,6 +4673,18 @@ async function importarLigiaNovaLogica() {
 
     if (contador.batch > 0) await batch.commit();
 
+    const totalOrdensJson = (dados.ordensProducao || []).length;
+    const totalMovimentosJson = (dados.movimentacoesProducao || []).length;
+    if (totalOrdensJson < 700) {
+      throw new Error(`Arquivo da Lígia incompleto: encontrei apenas ${totalOrdensJson} OPs. Use o JSON completo da migração final.`);
+    }
+
+    // Mostra tudo imediatamente na tela depois da importação, sem depender do lote inicial.
+    state.ordens = (dados.ordensProducao || []).map(item => ({ ...item, id: item.id || docIdSeguro(item.numeroOP || item.numeroOPExterno || ""), __loteManejo: "importacao_completa" }));
+    state.ordensUltimoDoc = null;
+    state.ordensTemMais = false;
+    limparEstadoBuscaGlobalManejo();
+
     await setDoc(doc(db, "configuracoes", "migracaoLigiaNovaLogica"), {
       ...dados.meta,
       resumo: dados.resumo || {},
@@ -4729,7 +4695,9 @@ async function importarLigiaNovaLogica() {
     }, { merge: true });
 
     await registrarLog("migracao_ligia_nova_logica", "importacao", "Planilha Ligia", `${contador.total} documentos importados. Sem pagamentos históricos.`);
-    toast(`Migração da Lígia importada: ${contador.total.toLocaleString("pt-BR")} documentos.`);
+    renderFiltrosColunasManejo();
+    renderTudo();
+    toast(`Migração completa: ${totalOrdensJson.toLocaleString("pt-BR")} OPs e ${totalMovimentosJson.toLocaleString("pt-BR")} movimentações importadas.`);
     mostrarResumoLigiaNovaLogica();
   } catch (error) {
     console.error(error);
