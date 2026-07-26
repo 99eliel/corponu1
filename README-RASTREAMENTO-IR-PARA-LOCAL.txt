@@ -1,0 +1,1 @@
+Rastreamento ajustado: botão Ir para local abre automaticamente Facções, Células ou Manejo conforme a localização atual da OP. A busca da aba de destino é preenchida com a OP e a linha é destacada para o usuário mexer na peça.

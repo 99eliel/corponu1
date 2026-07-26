@@ -87,6 +87,8 @@ const state = {
   dadosCarregados: {},
   carregandoDados: {},
   listenersPorChave: {},
+  rastreamentoMovimentoDestacado: "",
+  rastreamentoOrigemBusca: "",
   unsubscribers: []
 };
 
@@ -2545,7 +2547,7 @@ function renderManejoInline() {
       .filter(mov => mov.status !== "finalizado" && mov.status !== "retornou").length;
 
     return `
-      <tr class="${rowClass}" data-manejo-row="1" data-qtd="${escapeHtml(numeroQuantidadeOP(op))}" data-falta="0" data-status="${escapeHtml(status)}" data-fase="${escapeHtml(manejo?.fase || faseExibicaoMigracaoLigia(op) || "Sem fase")}" data-cor="${escapeHtml(op.cor || "Sem cor")}">
+      <tr id="manejo-row-${escapeHtml(op.id || "")}" class="${rowClass} ${state.rastreamentoMovimentoDestacado === op.id ? "linha-destaque-rastreamento" : ""}" data-manejo-row="1" data-qtd="${escapeHtml(numeroQuantidadeOP(op))}" data-falta="0" data-status="${escapeHtml(status)}" data-fase="${escapeHtml(manejo?.fase || faseExibicaoMigracaoLigia(op) || "Sem fase")}" data-cor="${escapeHtml(op.cor || "Sem cor")}">
         <td><input class="manejo-readonly" value="${escapeHtml(op.numeroOP || "")}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(op.referencia || "")}" readonly /></td>
         <td>
@@ -4733,6 +4735,126 @@ function abrirRastreamentoOP(ordemId) {
   }
 }
 
+function normalizarStatusMovimentacaoAtual(status) {
+  return limparTexto(status || "em_andamento").toLowerCase();
+}
+
+function movimentacaoAindaMexivel(mov) {
+  const status = normalizarStatusMovimentacaoAtual(mov?.status);
+  return !["finalizado", "encaminhado", "cancelado", "cancelada"].includes(status);
+}
+
+function valorDataMovimentacaoMillis(mov) {
+  const candidatos = [mov?.atualizadoEm, mov?.criadoEm, mov?.dataChegada, mov?.dataEnvio];
+  for (const valor of candidatos) {
+    if (!valor) continue;
+    if (typeof valor?.toMillis === "function") return valor.toMillis();
+    if (typeof valor?.toDate === "function") return valor.toDate().getTime();
+    if (typeof valor === "string") {
+      const time = Date.parse(valor);
+      if (!Number.isNaN(time)) return time;
+    }
+  }
+  return 0;
+}
+
+function ordenarMovimentacoesMaisRecentes(a, b) {
+  return valorDataMovimentacaoMillis(b) - valorDataMovimentacaoMillis(a);
+}
+
+function movimentacoesDaMesmaOP(movBase) {
+  return state.movimentacoesProducao.filter(item => {
+    if (movBase?.opId && item.opId === movBase.opId) return true;
+    if (movBase?.numeroOP && item.numeroOP === movBase.numeroOP) return true;
+    return false;
+  });
+}
+
+function encontrarMovimentacaoAtualDaPeca(movBase) {
+  const relacionados = movimentacoesDaMesmaOP(movBase);
+  const ativos = relacionados.filter(movimentacaoAindaMexivel).sort(ordenarMovimentacoesMaisRecentes);
+  if (ativos.length) return ativos[0];
+  return movBase;
+}
+
+function destacarLinhaAposNavegar(id, seletorExtra = "") {
+  setTimeout(() => {
+    const alvo = document.getElementById(`mov-row-${id}`) || document.getElementById(`manejo-row-${id}`) || (seletorExtra ? document.querySelector(seletorExtra) : null);
+    if (!alvo) return;
+    alvo.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    alvo.classList.add("linha-destaque-rastreamento-pulso");
+    setTimeout(() => alvo.classList.remove("linha-destaque-rastreamento-pulso"), 2600);
+  }, 350);
+}
+
+function abrirManejoPelaOP(mov) {
+  const opId = mov?.opId || state.ordens.find(op => op.numeroOP === mov?.numeroOP)?.id || "";
+  state.rastreamentoMovimentoDestacado = opId;
+  abrirPagina("manejo");
+  const busca = document.getElementById("buscaManejoLinha");
+  if (busca) {
+    busca.value = mov?.numeroOP || mov?.referencia || "";
+    busca.dispatchEvent(new Event("input"));
+  }
+  atualizarManejoComSoma();
+  destacarLinhaAposNavegar(opId, opId ? "" : `[data-manejo-row=\"1\"]`);
+}
+
+function abrirLocalDaPeca(movimentacaoId) {
+  const movOriginal = state.movimentacoesProducao.find(item => item.id === movimentacaoId)
+    || state.processosMovimentacoes.find(item => item.id === movimentacaoId);
+
+  if (!movOriginal) {
+    toast("Não encontrei essa movimentação no rastreamento.");
+    return;
+  }
+
+  const movAtual = encontrarMovimentacaoAtualDaPeca(movOriginal);
+  const tipo = limparTexto(movAtual.tipoDestino || "").toLowerCase();
+  state.rastreamentoMovimentoDestacado = movAtual.id || "";
+  state.rastreamentoOrigemBusca = movOriginal.id || "";
+
+  if (tipo === "faccao") {
+    abrirPagina("faccoes");
+    const busca = document.getElementById("buscaFaccaoMovimentacoes");
+    if (busca) {
+      busca.value = movAtual.numeroOP || movAtual.referencia || "";
+      busca.dispatchEvent(new Event("input"));
+    }
+    renderFaccoesMovimentacoes();
+    destacarLinhaAposNavegar(movAtual.id);
+    toast(`OP ${movAtual.numeroOP || ""} aberta na aba Facções.`);
+    return;
+  }
+
+  if (tipo === "celula") {
+    abrirPagina("celulas");
+    const busca = document.getElementById("buscaCelulaMovimentacoes");
+    if (busca) {
+      busca.value = movAtual.numeroOP || movAtual.referencia || "";
+      busca.dispatchEvent(new Event("input"));
+    }
+    renderCelulasMovimentacoes();
+    destacarLinhaAposNavegar(movAtual.id);
+    toast(`OP ${movAtual.numeroOP || ""} aberta na aba Células.`);
+    return;
+  }
+
+  if (normalizarStatusMovimentacaoAtual(movAtual.status) === "finalizado") {
+    abrirPagina("rastreamento");
+    const busca = document.getElementById("buscaRastreamento");
+    if (busca) {
+      busca.value = movAtual.numeroOP || movAtual.referencia || "";
+      busca.dispatchEvent(new Event("input"));
+    }
+    toast("Essa OP já está finalizada/bipada. Mantive no rastreamento para conferência.");
+    return;
+  }
+
+  abrirManejoPelaOP(movAtual);
+  toast(`OP ${movAtual.numeroOP || ""} aberta no Manejo.`);
+}
+
 function configurarModalAjusteMigracao() {
   document.getElementById("btnFecharModalAjusteMigracao")?.addEventListener("click", fecharModalAjusteMigracao);
   document.getElementById("btnCancelarModalAjusteMigracao")?.addEventListener("click", fecharModalAjusteMigracao);
@@ -5032,7 +5154,7 @@ function renderFaccoesMovimentacoes() {
   }
 
   tbody.innerHTML = movimentos.map(mov => `
-    <tr class="${mov.status === "em_andamento" || !mov.status ? "mov-em-faccao" : ""}">
+    <tr id="mov-row-${escapeHtml(mov.id || "")}" class="${mov.status === "em_andamento" || !mov.status ? "mov-em-faccao" : ""} ${state.rastreamentoMovimentoDestacado === mov.id ? "linha-destaque-rastreamento" : ""}">
       <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
       <td><strong>${escapeHtml(mov.referencia || "-")}</strong></td>
       <td>${escapeHtml(mov.cor || "-")}</td>
@@ -5311,7 +5433,7 @@ function renderCelulasMovimentacoes() {
   }
 
   tbody.innerHTML = movimentos.map(mov => `
-    <tr class="${mov.status === "em_andamento" || !mov.status ? "mov-em-celula" : ""}">
+    <tr id="mov-row-${escapeHtml(mov.id || "")}" class="${mov.status === "em_andamento" || !mov.status ? "mov-em-celula" : ""} ${state.rastreamentoMovimentoDestacado === mov.id ? "linha-destaque-rastreamento" : ""}">
       <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
       <td><strong>${escapeHtml(mov.referencia || "-")}</strong></td>
       <td>${escapeHtml(mov.cor || "-")}</td>
@@ -6293,7 +6415,7 @@ function renderRastreamento() {
   }
 
   tbody.innerHTML = movimentos.map(mov => `
-    <tr>
+    <tr id="rastreamento-row-${escapeHtml(mov.id || "")}" class="${state.rastreamentoMovimentoDestacado === mov.id ? "linha-destaque-rastreamento" : ""}">
       <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
       <td><strong>${escapeHtml(mov.referencia || "-")}</strong></td>
       <td>${escapeHtml(mov.cor || "-")}</td>
@@ -6310,6 +6432,7 @@ function renderRastreamento() {
         </span>
       </td>
       <td>
+        <button class="btn btn-sm btn-primary" onclick="abrirLocalDaPeca('${mov.id}')">Ir para local</button>
         ${mov.status === "encaminhado" ? `<span class="badge info">Encaminhado</span>` : ""}
         ${mov.status !== "finalizado" && mov.status !== "encaminhado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
         ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : mov.status === "encaminhado" ? "" : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
@@ -9697,6 +9820,7 @@ window.mandarParaCelula = mandarParaCelula;
 window.toggleMenuAcoesManejo = toggleMenuAcoesManejo;
 window.abrirModalAjusteMigracao = abrirModalAjusteMigracao;
 window.abrirRastreamentoOP = abrirRastreamentoOP;
+window.abrirLocalDaPeca = abrirLocalDaPeca;
 window.registrarChegadaMovimentacao = registrarChegadaMovimentacao;
 window.encaminharMovimentacao = encaminharMovimentacao;
 window.reenviarMovimentacaoParaFaccao = reenviarMovimentacaoParaFaccao;

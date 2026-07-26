@@ -4338,3 +4338,24 @@ body.manager-open {
 .text-success { color: #166534; font-weight: 700; }
 .text-danger { color: #991b1b; font-weight: 700; }
 .ligia-file-status { margin-bottom: 12px; }
+
+
+/* Rastreamento: localização rápida da peça */
+.linha-destaque-rastreamento {
+  outline: 3px solid rgba(37, 99, 235, 0.55);
+  outline-offset: -3px;
+  background: #eff6ff !important;
+}
+
+.linha-destaque-rastreamento-pulso {
+  animation: rastreamentoPulso 1.15s ease-in-out 2;
+}
+
+@keyframes rastreamentoPulso {
+  0%, 100% { box-shadow: 0 0 0 rgba(37, 99, 235, 0); }
+  50% { box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.22); }
+}
+
+.rastreamento-table td:last-child .btn {
+  margin: 2px;
+}
