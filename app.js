@@ -663,6 +663,10 @@ function tokensBuscaManejo(item = {}, manejoOverride = null, setor = getManejoSe
     item.statusMigracaoLigia,
     item.localAtualMigracao,
     item.faseOriginalLigia,
+    item.silkOriginalLigia,
+    item.silkLigia,
+    item.dataTecidoOriginalLigia,
+    item.dataTecidoLigia,
     item.celulaOriginalLigia,
     manejo.silkNome,
     manejo.silk,
@@ -2592,7 +2596,7 @@ function renderManejoInline() {
         <td>
           <input id="${rowId}-silkNome" class="silk-nome-compacto" value="${escapeHtml(getSilkNomeManejo(manejo))}" list="manejoSilkNomesList" placeholder="Nome" title="Nome de quem fez o silk" />
         </td>
-        <td><input id="${rowId}-dataTecido" type="date" value="${escapeHtml(manejo?.dataTecido || "")}" /></td>
+        <td><input id="${rowId}-dataTecido" type="text" value="${escapeHtml(manejo?.dataTecido || "")}" placeholder="Tecido" title="Data/status do tecido vindo da planilha" /></td>
         <td>
           <div class="fase-plus">
             <input id="${rowId}-fase" value="${escapeHtml(manejo?.fase || faseExibicaoMigracaoLigia(op) || "")}" list="manejoFasesList" placeholder="Digite a fase" />
@@ -3147,6 +3151,7 @@ function getNecessidadeDaOrdem(op) {
   if (!op) return "";
 
   if (op.necessidade) return op.necessidade;
+  if (op.necessidadeLigia) return op.necessidadeLigia;
   if (op.previsaoEntrega) return op.previsaoEntrega;
   if (op.dataNecessidade) return op.dataNecessidade;
   if (op.dataEntrega) return op.dataEntrega;
@@ -3174,6 +3179,19 @@ function dataInputMigracaoLigia(valor) {
     return `${m[3]}-${mes}-${dia}`;
   }
   return "";
+}
+
+function dataTecidoTextoMigracaoLigia(valor) {
+  const texto = String(valor || "").trim();
+  if (!texto || texto === "-" || texto.toUpperCase() === "PRONTO") return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) return formatarDataSimples(texto);
+  const m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) {
+    const dia = m[1].padStart(2, "0");
+    const mes = m[2].padStart(2, "0");
+    return `${dia}/${mes}/${m[3]}`;
+  }
+  return texto.toUpperCase();
 }
 
 function ehOrdemMigracaoLigia(op) {
@@ -3237,7 +3255,7 @@ function criarManejoVirtualMigracaoLigia(op, setor = "sutia") {
     silk: limparTexto(op.silkOriginalLigia || op.silk || "").toUpperCase(),
     silkNome: limparTexto(op.silkOriginalLigia || op.silk || "").toUpperCase(),
     silkData: "",
-    dataTecido: dataInputMigracaoLigia(op.dataTecidoOriginalLigia || op.dataTecidoLigia || op.dataTecido || ""),
+    dataTecido: dataTecidoTextoMigracaoLigia(op.dataTecidoOriginalLigia || op.dataTecidoLigia || op.dataTecido || ""),
     fase: faseExibicaoMigracaoLigia(op),
     faccao: "",
     chegada: dataInputMigracaoLigia(op.dataChegadaAtualMigracao || op.chegadaOriginalLigia || ""),
@@ -3265,19 +3283,25 @@ function getManejoDaOrdem(op, setor = "sutia") {
   }
 
   const manejoSetor = op.manejosSetores?.[setor];
+  const manejoVirtualLigia = criarManejoVirtualMigracaoLigia(op, setor);
 
   if (manejoSetor) {
     return {
       id: op.id,
       setor,
-      ...manejoSetor
+      ...(manejoVirtualLigia || {}),
+      ...manejoSetor,
+      silk: manejoSetor.silk || manejoSetor.silkNome || manejoVirtualLigia?.silk || "",
+      silkNome: manejoSetor.silkNome || manejoSetor.silk || manejoVirtualLigia?.silkNome || "",
+      dataTecido: manejoSetor.dataTecido || manejoVirtualLigia?.dataTecido || "",
+      fase: manejoSetor.fase || manejoVirtualLigia?.fase || "",
+      necessidade: manejoSetor.necessidade || manejoVirtualLigia?.necessidade || ""
     };
   }
 
   // Fallback obrigatório para itens migrados da planilha da Lígia.
   // Na migração eles não vêm com manejosSetores preenchido, mas precisam aparecer no Manejo
-  // com a FASE original antes da Facção/Local, igual na planilha.
-  const manejoVirtualLigia = criarManejoVirtualMigracaoLigia(op, setor);
+  // com a FASE original, SILK e DATA TECIDO igual na planilha.
   if (manejoVirtualLigia) return manejoVirtualLigia;
 
   return null;
@@ -4550,7 +4574,7 @@ async function carregarDadosLigiaNovaLogica() {
     if (!resposta.ok) throw new Error("Arquivo embutido indisponível");
     return validarDadosLigiaNovaLogica(await resposta.json());
   } catch (error) {
-    throw new Error("Selecione primeiro o arquivo dados-ligia-migracao-final-segunda.json no seu computador.");
+    throw new Error("Selecione primeiro o arquivo dados-ligia-migracao-final-segunda-silk-tecido.json no seu computador.");
   }
 }
 
@@ -4570,6 +4594,8 @@ async function mostrarResumoLigiaNovaLogica() {
       Produtos/refs: ${Number(resumo.produtos || 0).toLocaleString("pt-BR")}<br>
       Facções: ${Number(resumo.faccoes || 0).toLocaleString("pt-BR")}<br>
       Células: ${Number(resumo.celulas || 0).toLocaleString("pt-BR")}<br>
+      SILK preenchidos: ${Number(resumo.silkPreenchidosFaccao || 0).toLocaleString("pt-BR")}<br>
+      DATA TECIDO preenchidas: ${Number(resumo.dataTecidoPreenchidaFaccao || 0).toLocaleString("pt-BR")}<br>
       Datas incoerentes para conferência: ${Number(resumo.datasIncoerentes || 0).toLocaleString("pt-BR")}<br>
       <br><strong>Importante:</strong> esta versão não importa pagamentos históricos.
     `;

@@ -1649,7 +1649,7 @@ version.json
 Versão atual:
 
 ```txt
-2026-07-01-auto-update-1
+2026-07-26-silk-tecido-ligia-1
 ```
 
 O que foi aplicado:
