@@ -1,0 +1,1 @@
+Correção do filtro de FASE no Manejo. Quando uma fase existente é selecionada, o filtro passa a ser exato. Ex.: CASA não retorna DISPONÍVEL CASA. Busca parcial continua funcionando quando o texto digitado não for uma fase exata.

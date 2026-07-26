@@ -2697,6 +2697,15 @@ function filtrarOrdensManejoPorColunas() {
         return getValorManejoParaFiltro(op, campo, setor) === valor;
       }
 
+      if (campo === "fase") {
+        const fasesConhecidas = getFasesDisponiveisFiltroManejo().map(fase => chaveFiltroFaseManejo(fase));
+        const filtroEhFaseExata = fasesConhecidas.includes(chaveFiltroFaseManejo(valor));
+
+        if (filtroEhFaseExata) {
+          return chaveFiltroFaseManejo(getValorManejoParaFiltro(op, campo, setor)) === chaveFiltroFaseManejo(valor);
+        }
+      }
+
       return valorItem.includes(valorFiltro);
     });
   });
