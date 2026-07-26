@@ -49,7 +49,7 @@ const secondaryAuth = getAuth(secondaryApp);
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.mjs";
 
 const PROCESSOS_PAGE_SIZE = 80;
-const MANEJO_PAGE_SIZE = 750; // modo implantação: não limitar OPs na tela
+const MANEJO_PAGE_SIZE = 50; // abre econômico; filtros/buscas no banco carregam todos os resultados encontrados
 
 const state = {
   currentUser: null,
@@ -107,7 +107,7 @@ const pageInfo = {
   },
   manejo: {
     title: "Manejo",
-    subtitle: "Preparação interna da OP: modo implantação carregando todas as OPs para conferência completa."
+    subtitle: "Preparação interna da OP: abre 50 itens; filtros/busca no banco carregam todos os resultados encontrados."
   },
   processos: {
     title: "Processos",
@@ -540,9 +540,9 @@ function iniciarListenersFirestore() {
 
 function iniciarDadosEssenciais() {
   const produtosQuery = query(collection(db, "produtos"), orderBy("referencia", "asc"));
-  // Modo implantação: carregar todas as OPs para conferência completa da migração.
-  // Depois da validação, podemos voltar para paginação/cursor sem mascarar resultados.
-  const ordensQuery = query(collection(db, "ordensProducao"), orderBy("criadoEm", "desc"));
+  // Economia real de leitura: ao abrir o Manejo, carrega somente 50 OPs.
+  // Quando o usuário usa filtro/busca no banco, aí sim o sistema carrega todos os resultados encontrados.
+  const ordensQuery = query(collection(db, "ordensProducao"), orderBy("criadoEm", "desc"), firestoreLimit(MANEJO_PAGE_SIZE));
 
   registrarListenerChave("produtos", onSnapshot(produtosQuery, snapshot => {
     state.produtos = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
@@ -560,7 +560,7 @@ function iniciarDadosEssenciais() {
 
     state.ordens = [...primeiras, ...extrasMantidos];
     state.ordensUltimoDoc = snapshot.docs[snapshot.docs.length - 1] || state.ordensUltimoDoc;
-    state.ordensTemMais = false;
+    state.ordensTemMais = snapshot.docs.length >= MANEJO_PAGE_SIZE;
     marcarCarregado("ordens");
     atualizarStatusCargaManejo();
     renderTudo();
@@ -585,16 +585,13 @@ function atualizarStatusCargaManejo(mensagem = "") {
   const buscaGlobal = !!state.manejoBuscaGlobalAtiva;
   const textoPadrao = buscaGlobal
     ? `${carregadas} OPs carregadas na busca global${state.manejoBuscaGlobalDescricao ? ` (${state.manejoBuscaGlobalDescricao})` : ""}. Todos os resultados encontrados foram carregados.`
-    : (state.ordensTemMais
-      ? `${carregadas} OPs carregadas. Modo implantação: todas as OPs disponíveis foram carregadas para conferência.`
-      : `${carregadas} OPs carregadas. Tudo carregado.`);
+    : `${carregadas} OPs iniciais carregadas para economizar leituras. Para procurar fora desses 50, use os filtros e clique em “Buscar filtros no banco”.`;
 
   if (status) status.textContent = mensagem || textoPadrao;
 
   if (btnMais) {
-    const temMais = buscaGlobal ? state.manejoBuscaGlobalTemMais : state.ordensTemMais;
-    btnMais.disabled = !!state.ordensCarregando || !temMais;
-    btnMais.textContent = "Tudo carregado";
+    btnMais.disabled = true;
+    btnMais.textContent = buscaGlobal ? "Busca completa carregada" : "Use filtros para buscar no banco";
   }
 
   if (btnBuscar) btnBuscar.disabled = !!state.ordensCarregando;
@@ -868,9 +865,8 @@ async function buscarFallbackManejoSemCamposNovos(criterios) {
 }
 
 async function carregarMaisOrdensManejo() {
-  state.ordensTemMais = false;
-  atualizarStatusCargaManejo("Modo implantação: todas as OPs disponíveis já são carregadas de uma vez.");
-  toast("Todas as OPs disponíveis já estão carregadas.");
+  atualizarStatusCargaManejo("Para economizar leituras, o Manejo abre só 50 OPs. Use os filtros e clique em Buscar filtros no banco para carregar todos os resultados daquela busca.");
+  toast("Use os filtros para buscar no banco. Assim o sistema não carrega tudo sem necessidade.");
 }
 
 async function buscarOrdemManejoNoBanco() {
@@ -939,13 +935,13 @@ async function buscarOrdemManejoNoBanco() {
 
 async function atualizarPrimeiroLoteManejo() {
   limparEstadoBuscaGlobalManejo();
-  state.ordens = state.ordens.filter(item => item.__loteManejo === "extra" && item._mantidoManual);
+  state.ordens = state.ordens.filter(item => item.__loteManejo === "inicial");
   state.ordensUltimoDoc = null;
   state.ordensTemMais = true;
-  atualizarStatusCargaManejo("Atualize a página para renovar o primeiro lote em tempo real.");
+  atualizarStatusCargaManejo("Busca global limpa. O Manejo voltou para os 50 itens iniciais econômicos.");
   renderFiltrosColunasManejo();
   atualizarManejoComSoma();
-  toast("Busca global limpa. Use Ctrl+Shift+R para renovar o primeiro lote em tempo real.");
+  toast("Busca global limpa. Para procurar mais OPs, use os filtros e Buscar filtros no banco.");
 }
 
 function carregarFaccoesSeNecessario() {

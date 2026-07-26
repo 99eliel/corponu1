@@ -1649,7 +1649,7 @@ version.json
 Versão atual:
 
 ```txt
-2026-07-26-filtro-seguro-sem-travar-1
+2026-07-26-manejo-50-filtro-global-1
 ```
 
 O que foi aplicado:
