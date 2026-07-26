@@ -272,6 +272,7 @@ const FACCOES_EXTRAIDAS_PLANILHA = FACCOES_OFICIAIS_DIVISAO.map(item => ({
 
 const LIGIA_MIGRACAO_DADOS_URL = 'dados-ligia-migracao.json';
 let ligiaMigracaoDadosLocal = null;
+let ligiaImportarAposSelecionarArquivo = false;
 
 
 function carregarSugestoesFaccoesCelus() {
@@ -4327,6 +4328,17 @@ function configurarFaccoes() {
     inputLigiaJson.addEventListener("change", lerArquivoLigiaNovaLogica);
   }
 
+  const selecionarLigia = document.getElementById("btnSelecionarLigiaJson");
+  if (selecionarLigia) {
+    selecionarLigia.addEventListener("click", () => {
+      if (!ehAdmin()) {
+        toast("Apenas admin pode carregar a migração da Lígia.");
+        return;
+      }
+      document.getElementById("inputImportarLigiaJson")?.click();
+    });
+  }
+
   const importarLigia = document.getElementById("btnImportarLigiaNovaLogica");
   if (importarLigia) {
     importarLigia.addEventListener("click", importarLigiaNovaLogica);
@@ -4531,6 +4543,37 @@ function renderFaccoesPendentes() {
 
 
 
+function atualizarStatusArquivoLigia(mensagem, tipo = "info") {
+  const box = document.getElementById("ligiaArquivoStatus");
+  if (!box) return;
+  const classe = tipo === "erro" ? "text-danger" : tipo === "ok" ? "text-success" : "";
+  box.innerHTML = `<span class="${classe}">${mensagem}</span>`;
+}
+
+function abrirSeletorArquivoLigia(importarDepois = false) {
+  const input = document.getElementById("inputImportarLigiaJson");
+  if (!input) {
+    toast("Campo de seleção do JSON da Lígia não encontrado. Suba a versão corrigida do sistema.");
+    return false;
+  }
+  ligiaImportarAposSelecionarArquivo = Boolean(importarDepois);
+  input.value = "";
+  input.click();
+  return true;
+}
+
+function mostrarErroLigiaNaTela(error) {
+  const box = document.getElementById("resumoLigiaNovaLogica");
+  if (box) {
+    box.classList.remove("hidden");
+    box.innerHTML = `
+      <strong>Erro na importação da Lígia</strong><br>
+      ${escapeHtml(error?.message || "Erro desconhecido.")}<br><br>
+      <span class="muted">Confira se o arquivo selecionado é o JSON da migração e não o ZIP.</span>
+    `;
+  }
+}
+
 function validarDadosLigiaNovaLogica(dados) {
   if (!dados || typeof dados !== "object") {
     throw new Error("Arquivo inválido: JSON vazio ou mal formatado.");
@@ -4557,11 +4600,20 @@ async function lerArquivoLigiaNovaLogica(event) {
   try {
     const texto = await arquivo.text();
     ligiaMigracaoDadosLocal = validarDadosLigiaNovaLogica(JSON.parse(texto));
-    toast("Arquivo da Lígia carregado. Confira o resumo antes de importar.");
-    mostrarResumoLigiaNovaLogica();
+    atualizarStatusArquivoLigia(`JSON carregado: <strong>${escapeHtml(arquivo.name)}</strong>`, "ok");
+    toast("Arquivo da Lígia carregado.");
+    await mostrarResumoLigiaNovaLogica();
+
+    if (ligiaImportarAposSelecionarArquivo) {
+      ligiaImportarAposSelecionarArquivo = false;
+      setTimeout(() => importarLigiaNovaLogica(), 250);
+    }
   } catch (error) {
     console.error(error);
     ligiaMigracaoDadosLocal = null;
+    ligiaImportarAposSelecionarArquivo = false;
+    atualizarStatusArquivoLigia(error.message || "Erro ao ler o arquivo JSON da Lígia.", "erro");
+    mostrarErroLigiaNaTela(error);
     toast(error.message || "Erro ao ler o arquivo JSON da Lígia.");
   }
 }
@@ -4572,9 +4624,12 @@ async function carregarDadosLigiaNovaLogica() {
   try {
     const resposta = await fetch(LIGIA_MIGRACAO_DADOS_URL, { cache: "no-store" });
     if (!resposta.ok) throw new Error("Arquivo embutido indisponível");
-    return validarDadosLigiaNovaLogica(await resposta.json());
+    const dados = validarDadosLigiaNovaLogica(await resposta.json());
+    ligiaMigracaoDadosLocal = dados;
+    atualizarStatusArquivoLigia("JSON embutido carregado automaticamente.", "ok");
+    return dados;
   } catch (error) {
-    throw new Error("Selecione primeiro o arquivo dados-ligia-migracao-final-segunda-silk-tecido.json no seu computador.");
+    throw new Error("Selecione primeiro o arquivo dados-ligia-migracao-final-segunda-silk-tecido.json no seu computador. Não use o ZIP na importação.");
   }
 }
 
@@ -4601,7 +4656,8 @@ async function mostrarResumoLigiaNovaLogica() {
     `;
   } catch (error) {
     console.error(error);
-    toast("Erro ao carregar o resumo da migração Lígia.");
+    mostrarErroLigiaNaTela(error);
+    toast(error.message || "Erro ao carregar o resumo da migração Lígia.");
   }
 }
 
@@ -4638,6 +4694,12 @@ async function importarLigiaNovaLogica() {
     return;
   }
 
+  if (!ligiaMigracaoDadosLocal) {
+    toast("Selecione o JSON da Lígia primeiro. Vou abrir o seletor de arquivo.");
+    abrirSeletorArquivoLigia(true);
+    return;
+  }
+
   const confirmar = confirm("Importar a migração final da planilha da Lígia agora? Esta importação NÃO inclui pagamentos históricos e usará o JSON selecionado/local.");
   if (!confirmar) return;
 
@@ -4671,7 +4733,8 @@ async function importarLigiaNovaLogica() {
     mostrarResumoLigiaNovaLogica();
   } catch (error) {
     console.error(error);
-    toast("Erro ao importar a migração da Lígia.");
+    mostrarErroLigiaNaTela(error);
+    toast(error.message || "Erro ao importar a migração da Lígia.");
   }
 }
 

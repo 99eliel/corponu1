@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-26-silk-tecido-ligia-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-26-silk-tecido-ligia-1" />
+  <meta name="app-version" content="2026-07-26-importacao-ligia-json-local-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-26-importacao-ligia-json-local-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -1727,9 +1727,16 @@
             <strong>Regras desta versão:</strong> FASE=PRODUÇÃO vai para relatório de células; BOJOS ENCAPADOS aguarda destino; CASA fica aguardando chegada da facção; PRODUÇÃO só vira data de reenvio quando a FASE indica uma facção.
           </div>
 
+          <div class="notice small ligia-file-status" id="ligiaArquivoStatus">
+            Nenhum JSON da Lígia selecionado ainda. Clique em <strong>Selecionar JSON da Lígia</strong> e escolha o arquivo no seu computador.
+          </div>
+
+          <input id="inputImportarLigiaJson" type="file" accept=".json,application/json" class="hidden" />
+
           <div class="backup-pro-actions">
-            <button class="btn btn-success" id="btnImportarLigiaNovaLogica" type="button">Importar dados da Lígia</button>
+            <button class="btn" id="btnSelecionarLigiaJson" type="button">Selecionar JSON da Lígia</button>
             <button class="btn" id="btnResumoLigiaNovaLogica" type="button">Ver resumo dos dados</button>
+            <button class="btn btn-success" id="btnImportarLigiaNovaLogica" type="button">Importar dados da Lígia</button>
           </div>
 
           <div id="resumoLigiaNovaLogica" class="preview hidden"></div>
@@ -1802,8 +1809,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-26-silk-tecido-ligia-1"></script>
-  <script type="module" src="app.js?v=2026-07-26-silk-tecido-ligia-1"></script>
+  <script src="update.js?v=2026-07-26-importacao-ligia-json-local-1"></script>
+  <script type="module" src="app.js?v=2026-07-26-importacao-ligia-json-local-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">

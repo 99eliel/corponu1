@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-26-silk-tecido-ligia-1";
+  const APP_VERSION = "2026-07-26-importacao-ligia-json-local-1";
   const STORAGE_KEY = "op_confeccao_app_version";
   const PROMPT_KEY = "op_confeccao_update_prompt_version";
   let refreshing = false;

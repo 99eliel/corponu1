@@ -1,0 +1,1 @@
+Correção: Importar dados da Lígia agora abre o seletor de JSON local quando nenhum arquivo foi selecionado. Não use ZIP na importação. Arquivo correto: dados-ligia-migracao-final-segunda-silk-tecido.json

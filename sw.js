@@ -1,12 +1,12 @@
-const APP_VERSION = "2026-07-26-silk-tecido-ligia-1";
+const APP_VERSION = "2026-07-26-importacao-ligia-json-local-1";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 
 const CORE_ASSETS = [
   "./",
   "./index.html",
-  "./style.css?v=2026-07-26-silk-tecido-ligia-1",
-  "./app.js?v=2026-07-26-silk-tecido-ligia-1",
-  "./update.js?v=2026-07-26-silk-tecido-ligia-1",
+  "./style.css?v=2026-07-26-importacao-ligia-json-local-1",
+  "./app.js?v=2026-07-26-importacao-ligia-json-local-1",
+  "./update.js?v=2026-07-26-importacao-ligia-json-local-1",
   "./version.json"
 ];
 

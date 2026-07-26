@@ -4334,3 +4334,7 @@ body.manager-open {
 }
 
 .manejo-global-help { display:block; margin-top:8px; line-height:1.35; }
+
+.text-success { color: #166534; font-weight: 700; }
+.text-danger { color: #991b1b; font-weight: 700; }
+.ligia-file-status { margin-bottom: 12px; }
