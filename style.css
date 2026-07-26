@@ -4359,3 +4359,36 @@ body.manager-open {
 .rastreamento-table td:last-child .btn {
   margin: 2px;
 }
+
+/* Conferência obrigatória da chegada da facção */
+.chegada-conferencia-box {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+}
+
+.chegada-conferencia-box.hidden {
+  display: none !important;
+}
+
+.chegada-alerta-conferencia {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.movimentacao-form textarea {
+  min-height: 72px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  padding: 9px 11px;
+  font-weight: 700;
+  background: #ffffff;
+  resize: vertical;
+}

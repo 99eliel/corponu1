@@ -1879,6 +1879,27 @@
           Movimentação selecionada
         </div>
 
+        <div id="grupoChegadaConferenciaFaccao" class="chegada-conferencia-box hidden">
+          <div class="chegada-alerta-conferencia">
+            Confira antes de gerar o pagamento. Se o processo ou a facção estiverem errados, corrija aqui.
+          </div>
+
+          <label>
+            Processo feito
+            <select id="chegadaProcessoSelect"></select>
+          </label>
+
+          <label>
+            Quem fez / facção
+            <select id="chegadaDestino"></select>
+          </label>
+
+          <label>
+            Observação da conferência
+            <textarea id="chegadaConferenciaObs" rows="2" placeholder="Ex: conferido na chegada; estava como Casa na planilha, mas voltou da Graciane"></textarea>
+          </label>
+        </div>
+
         <label>
           Data de chegada/retorno
           <input id="chegadaData" type="date" required />

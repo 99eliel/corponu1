@@ -6192,6 +6192,66 @@ function configurarModalChegadaMovimentacao() {
       if (event.target === modal) fecharModalChegadaMovimentacao();
     });
   }
+
+  const processoSelect = document.getElementById("chegadaProcessoSelect");
+  if (processoSelect) {
+    processoSelect.addEventListener("change", () => atualizarDestinosChegadaPorProcesso());
+  }
+}
+
+function getProcessosSugeridosChegada(mov) {
+  if (!mov || mov.tipoDestino !== "faccao") return [];
+
+  const setor = mov.setor || "sutia";
+  const processosOficiais = getProcessosOficiaisPorSetor(setor);
+  const processoAtual = normalizarProcessoOficial(mov.processo || "");
+
+  return [...new Set([processoAtual, ...processosOficiais].filter(Boolean))];
+}
+
+function preencherProcessosChegada(mov) {
+  const processoSelect = document.getElementById("chegadaProcessoSelect");
+  if (!processoSelect) return;
+
+  const processos = getProcessosSugeridosChegada(mov);
+  processoSelect.innerHTML = `<option value="">Selecione o processo feito</option>` + processos.map(processo => {
+    return `<option value="${escapeHtml(processo)}">${escapeHtml(processo)}</option>`;
+  }).join("");
+
+  const processoAtual = normalizarProcessoOficial(mov?.processo || "");
+  if (processoAtual && processos.includes(processoAtual)) {
+    processoSelect.value = processoAtual;
+  }
+}
+
+function atualizarDestinosChegadaPorProcesso(destinoPadrao = "") {
+  const processoSelect = document.getElementById("chegadaProcessoSelect");
+  const destinoSelect = document.getElementById("chegadaDestino");
+  if (!processoSelect || !destinoSelect) return;
+
+  const processo = normalizarProcessoOficial(processoSelect.value || "");
+  if (!processo) {
+    destinoSelect.innerHTML = `<option value="">Selecione primeiro o processo</option>`;
+    destinoSelect.value = "";
+    return;
+  }
+
+  const destinos = getFaccoesPermitidasParaProcesso(processo);
+  destinoSelect.innerHTML = `<option value="">Selecione quem fez</option>` + destinos.map(faccao => {
+    const processos = getProcessosPermitidosDaFaccao(faccao).join(", ");
+    const grupo = faccao.grupo ? ` — ${faccao.grupo}` : "";
+    return `<option value="${escapeHtml(faccao.nome || "")}" title="${escapeHtml(processos)}">${escapeHtml(faccao.nome || "")}${escapeHtml(grupo)}</option>`;
+  }).join("");
+
+  const destinoNorm = normalizarProcessoOficial(destinoPadrao || "");
+  const achouDestino = destinos.find(item => normalizarProcessoOficial(item.nome || "") === destinoNorm);
+  if (achouDestino) {
+    destinoSelect.value = achouDestino.nome || "";
+  }
+
+  if (!destinos.length) {
+    destinoSelect.innerHTML = `<option value="">Nenhuma facção cadastrada para ${escapeHtml(processo)}</option>`;
+  }
 }
 
 function registrarChegadaMovimentacao(id) {
@@ -6209,13 +6269,16 @@ function registrarChegadaMovimentacao(id) {
   const faltaInput = document.getElementById("chegadaFalta");
   const defeitoInput = document.getElementById("chegadaDefeito");
   const grupoDefeito = document.getElementById("grupoChegadaDefeito");
+  const grupoConferencia = document.getElementById("grupoChegadaConferenciaFaccao");
+  const obsConferencia = document.getElementById("chegadaConferenciaObs");
   const mostraDefeito = mov.tipoDestino === "faccao";
 
   if (grupoDefeito) grupoDefeito.classList.toggle("hidden", !mostraDefeito);
+  if (grupoConferencia) grupoConferencia.classList.toggle("hidden", !mostraDefeito);
 
   if (titulo) titulo.textContent = `Registrar chegada - ${mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino)}`;
   if (resumo) resumo.textContent = mostraDefeito
-    ? "Informe a data, a falta e o desconto em reais por defeito, se houver."
+    ? "Confira processo e facção antes de confirmar. Esse dado será usado para pagamento."
     : "Informe a data de retorno e a falta, se houver.";
 
   if (info) {
@@ -6229,6 +6292,15 @@ function registrarChegadaMovimentacao(id) {
   if (dataInput) dataInput.value = mov.dataChegada || getDataHojeISO();
   if (faltaInput) faltaInput.value = Number(mov.falta || 0);
   if (defeitoInput) defeitoInput.value = mostraDefeito ? Number(mov.descontoDefeito ?? mov.defeito ?? 0) : 0;
+
+  if (mostraDefeito) {
+    preencherProcessosChegada(mov);
+    atualizarDestinosChegadaPorProcesso(mov.destino || "");
+  }
+
+  if (obsConferencia) {
+    obsConferencia.value = mov.conferenciaChegada?.observacao || "";
+  }
 
   modal?.classList.remove("hidden");
   dataInput?.focus();
@@ -6256,6 +6328,31 @@ async function confirmarChegadaMovimentacao(event) {
   const descontoDefeito = mov.tipoDestino === "faccao"
     ? Math.max(0, Number(document.getElementById("chegadaDefeito")?.value || 0))
     : 0;
+
+  let processoConfirmado = mov.processo || "";
+  let destinoConfirmado = mov.destino || "";
+  const observacaoConferencia = limparTexto(document.getElementById("chegadaConferenciaObs")?.value || "");
+
+  if (mov.tipoDestino === "faccao") {
+    processoConfirmado = normalizarProcessoOficial(document.getElementById("chegadaProcessoSelect")?.value || "");
+    destinoConfirmado = limparTexto(document.getElementById("chegadaDestino")?.value || "").toUpperCase();
+
+    if (!processoConfirmado) {
+      toast("Confirme qual processo foi feito antes de registrar a chegada.");
+      return;
+    }
+
+    if (!destinoConfirmado) {
+      toast("Confirme qual facção fez a peça antes de registrar a chegada.");
+      return;
+    }
+
+    if (!faccaoAceitaProcesso(destinoConfirmado, processoConfirmado)) {
+      toast("A facção escolhida não pertence ao processo confirmado. Confira a divisão oficial.");
+      return;
+    }
+  }
+
   const quantidadeRecebida = Math.max(Number(mov.quantidadeEnviada || 0) - falta, 0);
 
   if (!dataChegada) {
@@ -6269,7 +6366,14 @@ async function confirmarChegadaMovimentacao(event) {
   }
 
   try {
-    await setDoc(doc(db, "movimentacoesProducao", id), {
+    const processoAnterior = mov.processo || "";
+    const destinoAnterior = mov.destino || "";
+    const houveCorrecaoConferencia = mov.tipoDestino === "faccao" && (
+      normalizarProcessoOficial(processoAnterior) !== normalizarProcessoOficial(processoConfirmado) ||
+      normalizarProcessoOficial(destinoAnterior) !== normalizarProcessoOficial(destinoConfirmado)
+    );
+
+    const dadosChegada = {
       dataChegada,
       falta,
       descontoDefeito,
@@ -6278,10 +6382,34 @@ async function confirmarChegadaMovimentacao(event) {
       status: "retornou",
       atualizadoPor: state.currentUser.uid,
       atualizadoEm: serverTimestamp()
-    }, { merge: true });
+    };
+
+    if (mov.tipoDestino === "faccao") {
+      Object.assign(dadosChegada, {
+        processo: processoConfirmado,
+        destino: destinoConfirmado,
+        processoConfirmadoChegada: processoConfirmado,
+        destinoConfirmadoChegada: destinoConfirmado,
+        conferenciaChegadaObrigatoria: true,
+        conferenciaChegada: {
+          processoOriginal: processoAnterior,
+          destinoOriginal: destinoAnterior,
+          processoConfirmado: processoConfirmado,
+          destinoConfirmado: destinoConfirmado,
+          houveCorrecao: houveCorrecaoConferencia,
+          observacao: observacaoConferencia,
+          confirmadoPor: state.currentUser.uid
+        }
+      });
+    }
+
+    await setDoc(doc(db, "movimentacoesProducao", id), dadosChegada, { merge: true });
 
     const movAtualizada = {
       ...mov,
+      ...dadosChegada,
+      processo: mov.tipoDestino === "faccao" ? processoConfirmado : mov.processo,
+      destino: mov.tipoDestino === "faccao" ? destinoConfirmado : mov.destino,
       dataChegada,
       falta,
       descontoDefeito,
@@ -6296,15 +6424,16 @@ async function confirmarChegadaMovimentacao(event) {
       "movimentacao_retorno",
       "movimentacaoProducao",
       id,
-      `OP ${mov.numeroOP} | ${mov.destino} | voltou ${quantidadeRecebida} peças | falta ${falta} | desconto defeito ${formatarMoedaBR(descontoDefeito)}`
+      `OP ${mov.numeroOP} | ${destinoConfirmado || mov.destino} | processo ${processoConfirmado || mov.processo || "-"} | voltou ${quantidadeRecebida} peças | falta ${falta} | desconto defeito ${formatarMoedaBR(descontoDefeito)}`
     );
 
     fecharModalChegadaMovimentacao();
 
     if (mov.tipoDestino === "faccao") {
+      const msgConferencia = houveCorrecaoConferencia ? " Conferência aplicada antes do pagamento." : "";
       toast(pagamento.ok
-        ? `${pagamento.pagamentoReenvio ? "Chegada de reenvio registrada e novo pagamento gerado" : "Chegada registrada e pagamento gerado"}: ${formatarMoedaBR(pagamento.total)}.`
-        : `Chegada registrada. ${pagamento.motivo}`);
+        ? `${pagamento.pagamentoReenvio ? "Chegada de reenvio registrada e novo pagamento gerado" : "Chegada registrada e pagamento gerado"}: ${formatarMoedaBR(pagamento.total)}.${msgConferencia}`
+        : `Chegada registrada.${msgConferencia} ${pagamento.motivo}`);
     } else {
       toast("Chegada da célula registrada.");
     }
