@@ -50,6 +50,10 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dis
 
 const PROCESSOS_PAGE_SIZE = 80;
 const MANEJO_PAGE_SIZE = 50; // abre econômico; filtros/buscas no banco carregam todos os resultados encontrados
+const SISTEMA_LISTA_INICIAL = 50;
+const MOVIMENTACOES_LISTA_INICIAL = 80;
+const PAGAMENTOS_LISTA_INICIAL = 80;
+const LOGS_LISTA_INICIAL = 100;
 
 const state = {
   currentUser: null,
@@ -72,6 +76,12 @@ const state = {
   processosTemMais: true,
   processosCarregando: false,
   processosPaginaTamanho: 80,
+  produtosBuscaGlobalAtiva: false,
+  ordensBuscaGlobalAtiva: false,
+  movimentacoesBuscaGlobalAtiva: false,
+  pagamentosBuscaGlobalAtiva: false,
+  relatorioBuscaGlobalAtiva: false,
+  logsBuscaGlobalAtiva: false,
   manejos: [],
   fasesManejoExtras: [],
   filtroFasesManejoSelecionadas: null,
@@ -539,7 +549,7 @@ function iniciarListenersFirestore() {
 }
 
 function iniciarDadosEssenciais() {
-  const produtosQuery = query(collection(db, "produtos"), orderBy("referencia", "asc"));
+  const produtosQuery = query(collection(db, "produtos"), orderBy("referencia", "asc"), firestoreLimit(SISTEMA_LISTA_INICIAL));
   // Economia real de leitura: ao abrir o Manejo, carrega somente 50 OPs.
   // Quando o usuário usa filtro/busca no banco, aí sim o sistema carrega todos os resultados encontrados.
   const ordensQuery = query(collection(db, "ordensProducao"), orderBy("criadoEm", "desc"), firestoreLimit(MANEJO_PAGE_SIZE));
@@ -547,6 +557,7 @@ function iniciarDadosEssenciais() {
   registrarListenerChave("produtos", onSnapshot(produtosQuery, snapshot => {
     state.produtos = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     marcarCarregado("produtos");
+    atualizarAvisosEconomiaGeral();
     renderTudo();
   }, error => {
     console.error(error);
@@ -988,11 +999,13 @@ function carregarMovimentacoesSeNecessario() {
   if (state.dadosCarregados.movimentacoes || state.carregandoDados.movimentacoes || state.listenersPorChave.movimentacoes) return;
   state.carregandoDados.movimentacoes = true;
 
-  const movimentacoesQuery = query(collection(db, "movimentacoesProducao"), orderBy("criadoEm", "desc"));
+  const movimentacoesQuery = query(collection(db, "movimentacoesProducao"), orderBy("criadoEm", "desc"), firestoreLimit(MOVIMENTACOES_LISTA_INICIAL));
 
   registrarListenerChave("movimentacoes", onSnapshot(movimentacoesQuery, snapshot => {
     state.movimentacoesProducao = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    state.processosMovimentacoes = mesclarColecaoPorId(state.processosMovimentacoes, state.movimentacoesProducao);
     marcarCarregado("movimentacoes");
+    atualizarAvisosEconomiaGeral();
     renderRastreamento();
     renderFaccoesMovimentacoes();
     renderCelulasMovimentacoes();
@@ -1004,6 +1017,334 @@ function carregarMovimentacoesSeNecessario() {
   }));
 }
 
+
+
+
+function setTextoStatusCarga(id, texto) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = texto || "";
+}
+
+function mesclarColecaoPorId(listaAtual = [], novos = []) {
+  const mapa = new Map(listaAtual.map(item => [item.id, item]));
+  novos.forEach(item => mapa.set(item.id, { ...mapa.get(item.id), ...item }));
+  return [...mapa.values()];
+}
+
+function getStatusEconomiaInicial(nome, total, limite) {
+  return `${Number(total || 0).toLocaleString("pt-BR")} ${nome} carregado(s) no modo econômico. Use a busca/filtro no banco para trazer todos os resultados.`;
+}
+
+async function buscarProdutosNoBanco() {
+  const buscaOriginal = document.getElementById("buscaProduto")?.value || "";
+  const busca = normalizarTexto(buscaOriginal);
+
+  if (!busca) {
+    setTextoStatusCarga("produtosStatusCarga", getStatusEconomiaInicial("produto(s)", state.produtos.length, SISTEMA_LISTA_INICIAL));
+    toast("Digite uma referência ou nome para buscar todos os produtos no banco.");
+    return;
+  }
+
+  setTextoStatusCarga("produtosStatusCarga", "Buscando produtos no banco, sem limite...");
+
+  try {
+    const base = collection(db, "produtos");
+    let snap;
+
+    if (/^\d+[a-z0-9*\-\/]*$/i.test(String(buscaOriginal).trim())) {
+      snap = await getDocs(query(base, where("referencia", "==", normalizarReferencia(buscaOriginal))));
+      if (snap.empty) snap = await getDocs(query(base, orderBy("referencia", "asc")));
+    } else {
+      snap = await getDocs(query(base, orderBy("referencia", "asc")));
+    }
+
+    const encontrados = snap.docs.map(item => ({ id: item.id, ...item.data() }));
+    state.produtos = mesclarColecaoPorId(state.produtos, encontrados);
+    state.produtosBuscaGlobalAtiva = true;
+    renderProdutos();
+    renderProdutosPendentes();
+    renderDatalistReferencias();
+
+    const exibidos = state.produtos.filter(p => {
+      const texto = normalizarTexto(`${p.referencia || ""} ${p.nome || ""} ${p.statusCadastro || ""}`);
+      return texto.includes(busca);
+    }).length;
+
+    setTextoStatusCarga("produtosStatusCarga", `${exibidos.toLocaleString("pt-BR")} produto(s) exibido(s). Busca completa aplicada.`);
+    toast(`${exibidos.toLocaleString("pt-BR")} produto(s) encontrado(s).`);
+  } catch (error) {
+    console.error(error);
+    setTextoStatusCarga("produtosStatusCarga", "Erro ao buscar produtos no banco.");
+    toast("Erro ao buscar produtos no banco.");
+  }
+}
+
+function getBuscaOrdemPagina() {
+  return String(document.getElementById("buscaOrdem")?.value || "").trim();
+}
+
+async function buscarOrdensPaginaNoBanco() {
+  const termoOriginal = getBuscaOrdemPagina();
+  const termo = normalizarTexto(termoOriginal);
+
+  if (!termo) {
+    toast("Digite OP, referência, cor ou necessidade para buscar todas as OPs no banco.");
+    setTextoStatusCarga("ordensStatusCarga", getStatusEconomiaInicial("OP(s)", state.ordens.length, MANEJO_PAGE_SIZE));
+    return;
+  }
+
+  setTextoStatusCarga("ordensStatusCarga", "Buscando OPs no banco, sem limite...");
+
+  try {
+    const base = collection(db, "ordensProducao");
+    const consultas = [];
+
+    if (/^\d+$/.test(termoOriginal)) {
+      consultas.push(getDocs(query(base, where("numeroOPBusca", "==", normalizarBuscaFirestore(termoOriginal)))));
+      consultas.push(getDocs(query(base, where("numeroOP", "==", termoOriginal))));
+    } else {
+      consultas.push(getDocs(query(base, where("referenciaBusca", "==", normalizarBuscaFirestore(termoOriginal)))));
+      consultas.push(getDocs(query(base, where("corBusca", "==", normalizarBuscaFirestore(termoOriginal)))));
+      consultas.push(getDocs(query(base, where("faseBusca", "==", normalizarBuscaFirestore(termoOriginal)))));
+      consultas.push(getDocs(query(base, where("termosBuscaManejo", "array-contains", normalizarBuscaFirestore(termoOriginal)))));
+    }
+
+    let encontrados = [];
+    const resultados = await Promise.allSettled(consultas);
+    resultados.forEach(resultado => {
+      if (resultado.status === "fulfilled") {
+        encontrados.push(...resultado.value.docs.map(item => ({ id: item.id, ...item.data(), __loteManejo: "busca_ordens" })));
+      }
+    });
+
+    // Se nenhum índice/campo de busca encontrou, faz busca completa apenas quando o usuário realmente procurou algo.
+    if (!encontrados.length) {
+      const snap = await getDocs(query(base, orderBy("criadoEm", "desc")));
+      encontrados = snap.docs.map(item => ({ id: item.id, ...item.data(), __loteManejo: "busca_ordens" }));
+    }
+
+    state.ordens = mesclarColecaoPorId(state.ordens, encontrados);
+    state.ordensBuscaGlobalAtiva = true;
+    renderOrdens();
+    renderDatalistCores();
+
+    const exibidas = state.ordens.filter(op => {
+      const texto = normalizarTexto(`${op.numeroOP || ""} ${op.numeroOPExterno || ""} ${op.referencia || ""} ${op.cor || ""} ${op.produtoNome || ""} ${getNecessidadeDaOrdem(op) || ""}`);
+      return texto.includes(termo);
+    }).length;
+
+    setTextoStatusCarga("ordensStatusCarga", `${exibidas.toLocaleString("pt-BR")} OP(s) exibida(s). Busca completa aplicada.`);
+    toast(`${exibidas.toLocaleString("pt-BR")} OP(s) encontrada(s).`);
+  } catch (error) {
+    console.error(error);
+    setTextoStatusCarga("ordensStatusCarga", "Erro ao buscar OPs no banco.");
+    toast("Erro ao buscar OPs no banco.");
+  }
+}
+
+async function buscarMovimentacoesNoBancoPorTermo(termoOriginal = "", origem = "rastreamento") {
+  const termo = normalizarTexto(termoOriginal);
+
+  if (!termo) {
+    toast("Digite OP, referência, facção, célula, cor ou processo para buscar no banco.");
+    return false;
+  }
+
+  const statusId = origem === "rastreamento" ? "rastreamentoStatusCarga"
+    : origem === "faccoes" ? "faccoesMovStatusCarga"
+    : origem === "celulas" ? "celulasMovStatusCarga"
+    : "processosStatusCarga";
+
+  setTextoStatusCarga(statusId, "Buscando movimentações no banco, sem limite...");
+
+  try {
+    const base = collection(db, "movimentacoesProducao");
+    let snap;
+
+    let encontrados = [];
+
+    if (/^\d+$/.test(String(termoOriginal).trim())) {
+      const resultados = await Promise.allSettled([
+        getDocs(query(base, where("numeroOP", "==", String(termoOriginal).trim()))),
+        getDocs(query(base, where("referencia", "==", String(termoOriginal).trim())))
+      ]);
+      resultados.forEach(resultado => {
+        if (resultado.status === "fulfilled") {
+          encontrados.push(...resultado.value.docs.map(item => ({ id: item.id, ...item.data() })));
+        }
+      });
+    } else {
+      // Busca flexível: só lê tudo quando o usuário digitou algo, para não gastar leitura ao abrir a tela.
+      snap = await getDocs(query(base, orderBy("criadoEm", "desc")));
+      encontrados = snap.docs.map(item => ({ id: item.id, ...item.data() }));
+    }
+
+    state.movimentacoesProducao = mesclarColecaoPorId(state.movimentacoesProducao, encontrados);
+    state.processosMovimentacoes = mesclarColecaoPorId(state.processosMovimentacoes, encontrados);
+    state.movimentacoesBuscaGlobalAtiva = true;
+
+    renderRastreamento();
+    renderFaccoesMovimentacoes();
+    renderCelulasMovimentacoes();
+    renderProcessos();
+
+    const total = encontrados.length.toLocaleString("pt-BR");
+    setTextoStatusCarga(statusId, `${total} movimentação(ões) carregada(s) do banco para esta busca.`);
+    return true;
+  } catch (error) {
+    console.error(error);
+    setTextoStatusCarga(statusId, "Erro ao buscar movimentações no banco.");
+    toast("Erro ao buscar movimentações no banco.");
+    return false;
+  }
+}
+
+async function buscarRastreamentoNoBanco() {
+  const termo = document.getElementById("buscaRastreamento")?.value || "";
+  await buscarMovimentacoesNoBancoPorTermo(termo, "rastreamento");
+}
+
+async function buscarFaccoesMovimentacoesNoBanco() {
+  const termo = document.getElementById("buscaFaccaoMovimentacoes")?.value || "";
+  await buscarMovimentacoesNoBancoPorTermo(termo, "faccoes");
+}
+
+async function buscarCelulasMovimentacoesNoBanco() {
+  const termo = document.getElementById("buscaCelulaMovimentacoes")?.value || "";
+  await buscarMovimentacoesNoBancoPorTermo(termo, "celulas");
+}
+
+function getFiltrosPagamentoAtivos() {
+  return {
+    inicio: document.getElementById("pagamentoDataInicio")?.value || "",
+    fim: document.getElementById("pagamentoDataFim")?.value || "",
+    faccao: document.getElementById("pagamentoFiltroFaccao")?.value || "",
+    referencia: document.getElementById("pagamentoFiltroReferencia")?.value || "",
+    preco: document.getElementById("pagamentoFiltroPreco")?.value || "",
+    status: document.getElementById("pagamentoFiltroStatus")?.value || "pendente"
+  };
+}
+
+function temFiltroPagamentoAtivo(filtros) {
+  return Boolean(filtros.inicio || filtros.fim || filtros.faccao || filtros.referencia || filtros.preco || filtros.status);
+}
+
+async function buscarPagamentosNoBanco() {
+  const filtros = getFiltrosPagamentoAtivos();
+  if (!temFiltroPagamentoAtivo(filtros)) {
+    toast("Escolha pelo menos um filtro para buscar pagamentos completos no banco.");
+    return;
+  }
+
+  setTextoStatusCarga("pagamentosStatusCarga", "Buscando pagamentos no banco, sem limite...");
+
+  try {
+    const base = collection(db, "entregasPagamento");
+    let consulta = query(base, orderBy("dataEntrega", "desc"));
+
+    if (filtros.referencia) consulta = query(base, where("referencia", "==", filtros.referencia));
+    else if (filtros.faccao) consulta = query(base, where("faccao", "==", filtros.faccao));
+    else if (filtros.status) consulta = query(base, where("statusPagamento", "==", filtros.status));
+
+    const snap = await getDocs(consulta);
+    const encontrados = snap.docs.map(item => ({ id: item.id, ...item.data() }));
+    state.entregasPagamento = mesclarColecaoPorId(state.entregasPagamento, encontrados);
+    state.pagamentosBuscaGlobalAtiva = true;
+    renderPagamentos();
+
+    const total = getEntregasPagamentoFiltradas().length;
+    setTextoStatusCarga("pagamentosStatusCarga", `${total.toLocaleString("pt-BR")} pagamento(s) exibido(s). Busca completa aplicada.`);
+    toast(`${total.toLocaleString("pt-BR")} pagamento(s) carregado(s).`);
+  } catch (error) {
+    console.error(error);
+    setTextoStatusCarga("pagamentosStatusCarga", "Erro ao buscar pagamentos no banco.");
+    toast("Erro ao buscar pagamentos no banco.");
+  }
+}
+
+function getFiltrosRelatorioAtivos() {
+  return {
+    semana: document.getElementById("filtroSemana")?.value || "",
+    mes: document.getElementById("filtroMes")?.value || "",
+    ano: document.getElementById("filtroAno")?.value || "",
+    referencia: document.getElementById("filtroReferencia")?.value || "",
+    cor: document.getElementById("filtroCor")?.value || ""
+  };
+}
+
+function temFiltroRelatorioAtivo(filtros) {
+  return Boolean(filtros.semana || filtros.mes || filtros.ano || filtros.referencia || filtros.cor);
+}
+
+async function buscarRelatorioNoBanco() {
+  const filtros = getFiltrosRelatorioAtivos();
+
+  if (!temFiltroRelatorioAtivo(filtros)) {
+    setTextoStatusCarga("relatoriosStatusCarga", `Relatório usando os dados econômicos já carregados (${state.ordens.length.toLocaleString("pt-BR")} OPs). Aplique filtro para buscar no banco inteiro.`);
+    renderRelatorio();
+    return;
+  }
+
+  setTextoStatusCarga("relatoriosStatusCarga", "Buscando relatório no banco, sem limite...");
+
+  try {
+    const base = collection(db, "ordensProducao");
+    let consulta = query(base, orderBy("criadoEm", "desc"));
+
+    if (filtros.referencia) consulta = query(base, where("referenciaBusca", "==", normalizarBuscaFirestore(filtros.referencia)));
+    else if (filtros.cor) consulta = query(base, where("corBusca", "==", normalizarBuscaFirestore(filtros.cor)));
+
+    const snap = await getDocs(consulta);
+    const encontrados = snap.docs.map(item => ({ id: item.id, ...item.data(), __loteManejo: "relatorio" }));
+    state.ordens = mesclarColecaoPorId(state.ordens, encontrados);
+    state.relatorioBuscaGlobalAtiva = true;
+
+    renderRelatorio();
+    const total = getOrdensRelatorio().length;
+    setTextoStatusCarga("relatoriosStatusCarga", `${total.toLocaleString("pt-BR")} OP(s) no relatório. Busca completa aplicada.`);
+  } catch (error) {
+    console.error(error);
+    setTextoStatusCarga("relatoriosStatusCarga", "Erro ao buscar relatório no banco.");
+    toast("Erro ao buscar relatório no banco.");
+  }
+}
+
+async function buscarLogsNoBanco() {
+  const termo = document.getElementById("buscaLogs")?.value || "";
+  if (!termo) {
+    toast("Digite algo para buscar logs completos no banco.");
+    return;
+  }
+
+  setTextoStatusCarga("logsStatusCarga", "Buscando logs no banco, sem limite...");
+
+  try {
+    const snap = await getDocs(query(collection(db, "logsAlteracoes"), orderBy("criadoEm", "desc")));
+    state.logs = snap.docs.map(item => ({ id: item.id, ...item.data() }));
+    state.logsBuscaGlobalAtiva = true;
+    renderLogs();
+    setTextoStatusCarga("logsStatusCarga", "Busca completa de logs aplicada.");
+  } catch (error) {
+    console.error(error);
+    setTextoStatusCarga("logsStatusCarga", "Erro ao buscar logs no banco.");
+  }
+}
+
+function atualizarAvisosEconomiaGeral() {
+  setTextoStatusCarga("produtosStatusCarga", getStatusEconomiaInicial("produto(s)", state.produtos.length, SISTEMA_LISTA_INICIAL));
+  setTextoStatusCarga("ordensStatusCarga", getStatusEconomiaInicial("OP(s)", state.ordens.length, MANEJO_PAGE_SIZE));
+  if (!state.movimentacoesBuscaGlobalAtiva) {
+    setTextoStatusCarga("rastreamentoStatusCarga", getStatusEconomiaInicial("movimentação(ões)", state.movimentacoesProducao.length, MOVIMENTACOES_LISTA_INICIAL));
+    setTextoStatusCarga("faccoesMovStatusCarga", getStatusEconomiaInicial("movimentação(ões)", state.movimentacoesProducao.length, MOVIMENTACOES_LISTA_INICIAL));
+    setTextoStatusCarga("celulasMovStatusCarga", getStatusEconomiaInicial("movimentação(ões)", state.movimentacoesProducao.length, MOVIMENTACOES_LISTA_INICIAL));
+  }
+  if (!state.pagamentosBuscaGlobalAtiva) {
+    setTextoStatusCarga("pagamentosStatusCarga", getStatusEconomiaInicial("pagamento(s)", state.entregasPagamento.length, PAGAMENTOS_LISTA_INICIAL));
+  }
+  if (!state.logsBuscaGlobalAtiva) {
+    setTextoStatusCarga("logsStatusCarga", getStatusEconomiaInicial("log(s)", state.logs.length, LOGS_LISTA_INICIAL));
+  }
+}
 
 function setStatusCargaProcessos(mensagem) {
   const el = document.getElementById("processosStatusCarga");
@@ -1120,11 +1461,12 @@ function carregarEntregasPagamentoSeNecessario() {
   if (state.dadosCarregados.entregasPagamento || state.carregandoDados.entregasPagamento || state.listenersPorChave.entregasPagamento) return;
   state.carregandoDados.entregasPagamento = true;
 
-  const entregasPagamentoQuery = query(collection(db, "entregasPagamento"), orderBy("dataEntrega", "desc"));
+  const entregasPagamentoQuery = query(collection(db, "entregasPagamento"), orderBy("dataEntrega", "desc"), firestoreLimit(PAGAMENTOS_LISTA_INICIAL));
 
   registrarListenerChave("entregasPagamento", onSnapshot(entregasPagamentoQuery, snapshot => {
     state.entregasPagamento = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     marcarCarregado("entregasPagamento");
+    atualizarAvisosEconomiaGeral();
     renderPagamentos();
   }, error => {
     state.carregandoDados.entregasPagamento = false;
@@ -1156,11 +1498,12 @@ function carregarLogsSeNecessario() {
   if (state.dadosCarregados.logs || state.carregandoDados.logs || state.listenersPorChave.logs) return;
   state.carregandoDados.logs = true;
 
-  const logsQuery = query(collection(db, "logsAlteracoes"), orderBy("criadoEm", "desc"));
+  const logsQuery = query(collection(db, "logsAlteracoes"), orderBy("criadoEm", "desc"), firestoreLimit(LOGS_LISTA_INICIAL));
 
   registrarListenerChave("logs", onSnapshot(logsQuery, snapshot => {
     state.logs = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     marcarCarregado("logs");
+    atualizarAvisosEconomiaGeral();
     renderLogs();
   }, error => {
     state.carregandoDados.logs = false;
@@ -1214,8 +1557,10 @@ function carregarDadosDaPagina(page) {
   }
 
   if (page === "relatorios") {
-    // Relatórios só usam o que já estiver carregado. Consultas maiores devem ser feitas por filtro/período em versões futuras.
+    setTextoStatusCarga("relatoriosStatusCarga", `Modo econômico: relatório usando dados já carregados (${state.ordens.length.toLocaleString("pt-BR")} OPs). Aplique filtro para buscar no banco inteiro.`);
   }
+
+  atualizarAvisosEconomiaGeral();
 }
 
 
@@ -1382,6 +1727,7 @@ function configurarProduto() {
   });
 
   document.getElementById("buscaProduto").addEventListener("input", renderProdutos);
+  document.getElementById("btnBuscarProdutoBanco")?.addEventListener("click", buscarProdutosNoBanco);
   document.getElementById("btnCancelarProduto").addEventListener("click", limparFormProduto);
 }
 
@@ -1560,6 +1906,7 @@ function configurarOrdem() {
   });
 
   document.getElementById("buscaOrdem").addEventListener("input", renderOrdens);
+  document.getElementById("btnBuscarOrdemBanco")?.addEventListener("click", buscarOrdensPaginaNoBanco);
   document.getElementById("btnCancelarOrdem").addEventListener("click", limparFormOrdem);
 }
 
@@ -4259,6 +4606,7 @@ function configurarFaccoes() {
   if (buscaMovimentacoes) {
     buscaMovimentacoes.addEventListener("input", renderFaccoesMovimentacoes);
   }
+  document.getElementById("btnBuscarFaccoesMovBanco")?.addEventListener("click", buscarFaccoesMovimentacoesNoBanco);
 
   const toggleGerenciar = document.getElementById("btnToggleGerenciarFaccoes");
   if (toggleGerenciar) {
@@ -5292,6 +5640,7 @@ function configurarCelulas() {
   if (buscaMovimentacoes) {
     buscaMovimentacoes.addEventListener("input", renderCelulasMovimentacoes);
   }
+  document.getElementById("btnBuscarCelulasMovBanco")?.addEventListener("click", buscarCelulasMovimentacoesNoBanco);
 
   const toggleGerenciar = document.getElementById("btnToggleGerenciarCelulas");
   if (toggleGerenciar) {
@@ -5547,6 +5896,7 @@ function configurarRastreamento() {
   if (busca) {
     busca.addEventListener("input", renderRastreamento);
   }
+  document.getElementById("btnBuscarRastreamentoBanco")?.addEventListener("click", buscarRastreamentoNoBanco);
 }
 
 function getMovimentacoesDaOrdem(opId) {
@@ -6708,6 +7058,11 @@ function configurarPagamentos() {
       if (status) status.value = "pendente";
       renderPagamentos();
     });
+  }
+
+  const buscarPagamentos = document.getElementById("btnBuscarPagamentosBanco");
+  if (buscarPagamentos) {
+    buscarPagamentos.addEventListener("click", buscarPagamentosNoBanco);
   }
 
   const marcarPagos = document.getElementById("btnMarcarPagamentosFiltrados");
@@ -8091,7 +8446,7 @@ function configurarRelatorios() {
     });
   });
 
-  document.getElementById("btnAplicarFiltros").addEventListener("click", renderRelatorio);
+  document.getElementById("btnAplicarFiltros").addEventListener("click", buscarRelatorioNoBanco);
 
   document.getElementById("btnLimparFiltros").addEventListener("click", () => {
     document.getElementById("filtroSemana").value = "";

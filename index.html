@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-26-manejo-50-filtro-global-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-26-manejo-50-filtro-global-1" />
+  <meta name="app-version" content="2026-07-26-sistema-economico-filtro-global-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-26-sistema-economico-filtro-global-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -234,8 +234,12 @@
                 <h3>Produtos cadastrados</h3>
                 <p>Lista de referências disponíveis para criar OP.</p>
               </div>
-              <input id="buscaProduto" class="search" type="text" placeholder="Buscar referência..." />
+              <div class="search-actions">
+                <input id="buscaProduto" class="search" type="text" placeholder="Buscar referência..." />
+                <button class="btn btn-sm" id="btnBuscarProdutoBanco" type="button">Buscar no banco</button>
+              </div>
             </div>
+            <p class="load-status" id="produtosStatusCarga">Modo econômico: carregando lista inicial.</p>
 
             <div class="table-wrap">
               <table>
@@ -316,8 +320,12 @@
                 <h3>Ordens cadastradas</h3>
                 <p>Usuário comum pode criar e editar OP. Exclusão fica para admin.</p>
               </div>
-              <input id="buscaOrdem" class="search" type="text" placeholder="Buscar OP, referência ou cor..." />
+              <div class="search-actions">
+                <input id="buscaOrdem" class="search" type="text" placeholder="Buscar OP, referência ou cor..." />
+                <button class="btn btn-sm" id="btnBuscarOrdemBanco" type="button">Buscar no banco</button>
+              </div>
             </div>
+            <p class="load-status" id="ordensStatusCarga">Modo econômico: carregando lista inicial.</p>
 
             <div class="table-wrap">
               <table>
@@ -719,8 +727,12 @@
               <h3>O que está nas facções</h3>
               <p>Movimentações abertas e retornadas de facções externas.</p>
             </div>
-            <input id="buscaFaccaoMovimentacoes" class="search" type="text" placeholder="Buscar OP, ref., facção, processo..." />
+            <div class="search-actions">
+              <input id="buscaFaccaoMovimentacoes" class="search" type="text" placeholder="Buscar OP, ref., facção, processo..." />
+              <button class="btn btn-sm" id="btnBuscarFaccoesMovBanco" type="button">Buscar no banco</button>
+            </div>
           </div>
+          <p class="load-status" id="faccoesMovStatusCarga">Modo econômico: carregando movimentações iniciais.</p>
 
           <div class="table-wrap">
             <table class="faccoes-mov-table">
@@ -892,8 +904,12 @@
               <h3>O que está nas células</h3>
               <p>Movimentações abertas e retornadas de células internas.</p>
             </div>
-            <input id="buscaCelulaMovimentacoes" class="search" type="text" placeholder="Buscar OP, ref., célula, processo..." />
+            <div class="search-actions">
+              <input id="buscaCelulaMovimentacoes" class="search" type="text" placeholder="Buscar OP, ref., célula, processo..." />
+              <button class="btn btn-sm" id="btnBuscarCelulasMovBanco" type="button">Buscar no banco</button>
+            </div>
           </div>
+          <p class="load-status" id="celulasMovStatusCarga">Modo econômico: carregando movimentações iniciais.</p>
 
           <div class="table-wrap">
             <table class="celulas-mov-table">
@@ -971,8 +987,12 @@
               <h3>Rastreamento da peça</h3>
               <p>Use o rastreamento para se localizar e abrir a aba onde a peça está para mexer nela.</p>
             </div>
-            <input id="buscaRastreamento" class="search" type="text" placeholder="Buscar OP, ref., cor, facção, célula ou processo..." />
+            <div class="search-actions">
+              <input id="buscaRastreamento" class="search" type="text" placeholder="Buscar OP, ref., cor, facção, célula ou processo..." />
+              <button class="btn btn-sm" id="btnBuscarRastreamentoBanco" type="button">Buscar no banco</button>
+            </div>
           </div>
+          <p class="load-status" id="rastreamentoStatusCarga">Modo econômico: carregando movimentações iniciais.</p>
 
           <div class="rastreamento-cards">
             <div class="processo-card">
@@ -1072,9 +1092,12 @@
             </label>
 
             <button class="btn" id="btnLimparFiltrosPagamento" type="button">Limpar</button>
+            <button class="btn btn-primary" id="btnBuscarPagamentosBanco" type="button">Buscar no banco</button>
             <button class="btn btn-success" id="btnMarcarPagamentosFiltrados" type="button">Marcar filtrados como pagos</button>
             <button class="btn btn-print" id="btnImprimirPagamento" type="button">Imprimir pagamento</button>
           </div>
+
+          <p class="load-status" id="pagamentosStatusCarga">Modo econômico: carregando pagamentos iniciais.</p>
 
           <div class="pagamento-cards">
             <div class="pagamento-card">
@@ -1384,12 +1407,14 @@
             </label>
 
             <div class="filter-actions">
-              <button class="btn btn-primary" id="btnAplicarFiltros">Aplicar filtros</button>
+              <button class="btn btn-primary" id="btnAplicarFiltros">Buscar relatório no banco</button>
               <button class="btn" id="btnLimparFiltros">Limpar</button>
               <button class="btn btn-success" id="btnExportarCSV">Exportar CSV</button>
               <button class="btn" id="btnImprimir">Imprimir</button>
             </div>
           </div>
+
+          <p class="load-status" id="relatoriosStatusCarga">Modo econômico: aplique filtro para buscar o relatório completo no banco.</p>
 
           <div class="report-title">
             <h3 id="tituloRelatorio">Relatório de Enfesto</h3>
@@ -1809,8 +1834,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-26-manejo-50-filtro-global-1"></script>
-  <script type="module" src="app.js?v=2026-07-26-manejo-50-filtro-global-1"></script>
+  <script src="update.js?v=2026-07-26-sistema-economico-filtro-global-1"></script>
+  <script type="module" src="app.js?v=2026-07-26-sistema-economico-filtro-global-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">

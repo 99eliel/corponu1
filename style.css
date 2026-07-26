@@ -4392,3 +4392,40 @@ body.manager-open {
   background: #ffffff;
   resize: vertical;
 }
+
+/* Economia de leituras: busca completa só quando o usuário pedir */
+.search-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.search-actions .search {
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+
+.load-status {
+  margin: 8px 0 12px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #dbe3ef;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 720px) {
+  .search-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .search-actions .search,
+  .search-actions .btn {
+    width: 100%;
+  }
+}

@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-26-manejo-50-filtro-global-1";
+  const APP_VERSION = "2026-07-26-sistema-economico-filtro-global-1";
   const STORAGE_KEY = "op_confeccao_app_version";
   const PROMPT_KEY = "op_confeccao_update_prompt_version";
   let refreshing = false;
