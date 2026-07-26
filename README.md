@@ -1649,7 +1649,7 @@ version.json
 Versão atual:
 
 ```txt
-2026-07-26-chegada-conferencia-processo-1
+2026-07-26-filtro-seguro-sem-travar-1
 ```
 
 O que foi aplicado:

@@ -2032,9 +2032,18 @@ function montarPatchManejoSetor(setor, manejo, status, extras = {}) {
 }
 
 
+let timerFiltroManejo = null;
+
 function atualizarManejoComSoma() {
   renderManejoInline();
   setTimeout(renderResumoSomasManejoPeloDOM, 0);
+}
+
+function atualizarManejoComSomaLeve() {
+  clearTimeout(timerFiltroManejo);
+  timerFiltroManejo = setTimeout(() => {
+    atualizarManejoComSoma();
+  }, 180);
 }
 
 function configurarManejo() {
@@ -2044,7 +2053,7 @@ function configurarManejo() {
 
   const busca = document.getElementById("buscaManejoLinha");
   if (busca) {
-    busca.addEventListener("input", atualizarManejoComSoma);
+    busca.addEventListener("input", atualizarManejoComSomaLeve);
   }
 
   [
@@ -2063,9 +2072,8 @@ function configurarManejo() {
   ].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    ["input", "change"].forEach(evento => {
-      el.addEventListener(evento, atualizarManejoComSoma);
-    });
+    el.addEventListener("input", atualizarManejoComSomaLeve);
+    el.addEventListener("change", atualizarManejoComSoma);
   });
 
   const limpar = document.getElementById("btnLimparFiltrosManejo");
@@ -2641,6 +2649,7 @@ function getValorManejoParaFiltro(op, campo, setor = getManejoSetorAtual()) {
 
 function filtrarOrdensManejoPorColunas() {
   const setor = getManejoSetorAtual();
+  const ordensSetor = getOrdensDoSetorManejo(setor);
   const busca = normalizarTexto(document.getElementById("buscaManejoLinha")?.value || "");
 
   const filtros = {
@@ -2659,8 +2668,11 @@ function filtrarOrdensManejoPorColunas() {
   };
 
   const fasesSelecionadasExcel = state.filtroFasesManejoSelecionadas;
+  const faseFiltroChave = filtros.fase ? chaveFiltroFaseManejo(filtros.fase) : "";
+  const fasesConhecidas = new Set(getFasesDisponiveisFiltroManejo(ordensSetor, setor).map(fase => chaveFiltroFaseManejo(fase)));
+  const filtroFaseEhExato = !!faseFiltroChave && fasesConhecidas.has(faseFiltroChave);
 
-  return getOrdensDoSetorManejo(setor).filter(op => {
+  return ordensSetor.filter(op => {
     const manejo = getManejoDaOrdem(op, setor);
 
     const textoGeral = normalizarTexto([
@@ -2675,6 +2687,9 @@ function filtrarOrdensManejoPorColunas() {
       manejo?.silkData,
       manejo?.dataTecido,
       manejo?.fase,
+      faseExibicaoMigracaoLigia(op),
+      op.faseOriginalLigia,
+      op.statusMigracaoLigia,
       manejo?.chegada,
       manejo?.falta,
       manejo?.celu
@@ -2682,30 +2697,25 @@ function filtrarOrdensManejoPorColunas() {
 
     if (busca && !textoGeral.includes(busca)) return false;
 
-    if (fasesSelecionadasExcel instanceof Set) {
-      const chaveFaseItem = chaveFiltroFaseManejo(getValorManejoParaFiltro(op, "fase", setor));
-      if (!fasesSelecionadasExcel.has(chaveFaseItem)) return false;
+    const faseItemChave = chaveFiltroFaseManejo(getValorManejoParaFiltro(op, "fase", setor));
+
+    if (fasesSelecionadasExcel instanceof Set && !fasesSelecionadasExcel.has(faseItemChave)) {
+      return false;
     }
 
     return Object.entries(filtros).every(([campo, valor]) => {
       if (!valor) return true;
 
-      const valorFiltro = normalizarTexto(valor);
-      const valorItem = normalizarTexto(getValorManejoParaFiltro(op, campo, setor));
-
       if (campo === "status") {
         return getValorManejoParaFiltro(op, campo, setor) === valor;
       }
 
-      if (campo === "fase") {
-        const fasesConhecidas = getFasesDisponiveisFiltroManejo().map(fase => chaveFiltroFaseManejo(fase));
-        const filtroEhFaseExata = fasesConhecidas.includes(chaveFiltroFaseManejo(valor));
-
-        if (filtroEhFaseExata) {
-          return chaveFiltroFaseManejo(getValorManejoParaFiltro(op, campo, setor)) === chaveFiltroFaseManejo(valor);
-        }
+      if (campo === "fase" && filtroFaseEhExato) {
+        return faseItemChave === faseFiltroChave;
       }
 
+      const valorFiltro = normalizarTexto(valor);
+      const valorItem = normalizarTexto(getValorManejoParaFiltro(op, campo, setor));
       return valorItem.includes(valorFiltro);
     });
   });
@@ -2773,11 +2783,12 @@ function getValorFaseManejoParaFiltro(op, setor = getManejoSetorAtual()) {
   return String(valor || "").trim() || "Sem fase";
 }
 
-function getFasesDisponiveisFiltroManejo() {
-  const setor = getManejoSetorAtual();
+function getFasesDisponiveisFiltroManejo(ordensBase = null, setorBase = null) {
+  const setor = setorBase || getManejoSetorAtual();
   const fases = new Map();
+  const ordens = ordensBase || getOrdensDoSetorManejo(setor);
 
-  getOrdensDoSetorManejo(setor).forEach(op => {
+  ordens.forEach(op => {
     const fase = getValorFaseManejoParaFiltro(op, setor);
     fases.set(chaveFiltroFaseManejo(fase), fase);
   });
@@ -2880,10 +2891,18 @@ function renderListaFiltroExcelFasesManejo() {
   const lista = document.getElementById("listaFiltroFaseExcel");
   if (!lista) return;
 
+  const setor = getManejoSetorAtual();
+  const ordensSetor = getOrdensDoSetorManejo(setor);
   const busca = normalizarTexto(document.getElementById("buscaFiltroFaseExcel")?.value || "");
-  const fases = getFasesDisponiveisFiltroManejo();
+  const fases = getFasesDisponiveisFiltroManejo(ordensSetor, setor);
   const fasesFiltradas = fases.filter(fase => !busca || normalizarTexto(fase).includes(busca));
   const selecionadas = state.filtroFasesManejoSelecionadas;
+  const contagemPorFase = new Map();
+
+  ordensSetor.forEach(op => {
+    const chave = chaveFiltroFaseManejo(getValorFaseManejoParaFiltro(op, setor));
+    contagemPorFase.set(chave, (contagemPorFase.get(chave) || 0) + 1);
+  });
 
   if (!fasesFiltradas.length) {
     lista.innerHTML = `<div class="empty small">Nenhuma fase encontrada.</div>`;
@@ -2894,7 +2913,7 @@ function renderListaFiltroExcelFasesManejo() {
   lista.innerHTML = fasesFiltradas.map(fase => {
     const chave = chaveFiltroFaseManejo(fase);
     const checked = !(selecionadas instanceof Set) || selecionadas.has(chave);
-    const qtd = getOrdensDoSetorManejo(getManejoSetorAtual()).filter(op => chaveFiltroFaseManejo(getValorFaseManejoParaFiltro(op)) === chave).length;
+    const qtd = contagemPorFase.get(chave) || 0;
 
     return `
       <label class="excel-filter-option">
@@ -2907,7 +2926,7 @@ function renderListaFiltroExcelFasesManejo() {
 
   lista.querySelectorAll("input[data-fase-excel]").forEach(input => {
     input.addEventListener("change", () => {
-      const todas = getFasesDisponiveisFiltroManejo().map(fase => chaveFiltroFaseManejo(fase));
+      const todas = fases.map(fase => chaveFiltroFaseManejo(fase));
       let novaSelecao = state.filtroFasesManejoSelecionadas instanceof Set
         ? new Set(state.filtroFasesManejoSelecionadas)
         : new Set(todas);
