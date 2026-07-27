@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-silk-tecido-obrigatorios-1",
-  "descricao": "Manejo com filtro SILK Preenchido/Sem silk e bloqueio de envio para facção/célula até SILK e DATA TECIDO estarem preenchidos.",
+  "version": "2026-07-27-op-manual-salvar-1",
+  "descricao": "Cadastro manual de OP agora permite digitar o número da ordem antes de salvar, preservando regras de SILK/TECIDO e modo produção seguro.",
   "data": "2026-07-27"
 }

@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-27-silk-tecido-obrigatorios-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-27-silk-tecido-obrigatorios-1" />
+  <meta name="app-version" content="2026-07-27-op-manual-salvar-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-27-op-manual-salvar-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -263,11 +263,17 @@
             <div class="panel-header">
               <div>
                 <h3>Adicionar ordem de produção</h3>
-                <p>A OP usa referência, cor, quantidade e intervalo de necessidade como dados principais.</p>
+                <p>A OP usa número, referência, cor, quantidade e intervalo de necessidade como dados principais.</p>
               </div>
             </div>
 
             <input type="hidden" id="ordemId" />
+
+            <label>
+              Nº da OP
+              <input id="ordemNumero" type="text" placeholder="Digite o número da OP. Ex: 58193" autocomplete="off" inputmode="numeric" required />
+              <small class="field-help">Esse número será usado para salvar e localizar a ordem no sistema.</small>
+            </label>
 
             <label>
               Referência do produto
@@ -1759,8 +1765,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-27-silk-tecido-obrigatorios-1"></script>
-  <script type="module" src="app.js?v=2026-07-27-silk-tecido-obrigatorios-1"></script>
+  <script src="update.js?v=2026-07-27-op-manual-salvar-1"></script>
+  <script type="module" src="app.js?v=2026-07-27-op-manual-salvar-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">

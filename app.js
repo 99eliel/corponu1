@@ -931,8 +931,27 @@ function configurarOrdem() {
     event.preventDefault();
 
     const id = document.getElementById("ordemId").value;
+    const numeroOPDigitado = normalizarNumeroOP(document.getElementById("ordemNumero")?.value || "");
     const referencia = normalizarReferencia(document.getElementById("ordemReferencia").value);
     const produto = state.produtos.find(p => p.referencia === referencia);
+
+    if (!numeroOPDigitado) {
+      toast("Digite o número da OP antes de salvar.");
+      document.getElementById("ordemNumero")?.focus();
+      return;
+    }
+
+    const docIdDigitado = docIdSeguro(numeroOPDigitado);
+    const opDuplicada = state.ordens.find(op => {
+      const mesmoId = String(op.id || "") === String(docIdDigitado);
+      const mesmoNumero = normalizarNumeroOP(op.numeroOP || "") === numeroOPDigitado;
+      return (mesmoId || mesmoNumero) && String(op.id || "") !== String(id || "");
+    });
+
+    if (opDuplicada) {
+      toast(`A OP ${numeroOPDigitado} já existe no sistema. Use o rastreamento ou edite a OP existente.`);
+      return;
+    }
 
     if (!produto) {
       const cadastrarAgora = confirm(`A referência ${referencia || "(vazia)"} ainda não está cadastrada. Deseja cadastrar esse produto agora?`);
@@ -984,7 +1003,7 @@ function configurarOrdem() {
       if (id) {
         const opAntiga = state.ordens.find(op => op.id === id);
         const ordemAtualizada = montarDadosOrdem({
-          numeroOP: opAntiga?.numeroOP || id,
+          numeroOP: opAntiga?.numeroOP || numeroOPDigitado || id,
           produto,
           referencia,
           cor,
@@ -1003,7 +1022,7 @@ function configurarOrdem() {
         await registrarLog("ordem_atualizada", "ordemProducao", id, `${ordemAtualizada.numeroOP} | Ref. ${referencia} | Cor ${cor} | Qtd. ${quantidade}`);
         toast("OP atualizada.");
       } else {
-        const numeroOP = await gerarNumeroOPFirebase(ano);
+        const numeroOP = numeroOPDigitado;
         const ordemNova = montarDadosOrdem({
           numeroOP,
           produto,
@@ -1135,6 +1154,7 @@ function capturarOrdemPendente(referencia) {
   const necessidadeFim = document.getElementById("ordemNecessidadeFim")?.value || "";
 
   return {
+    numeroOP: normalizarNumeroOP(document.getElementById("ordemNumero")?.value || ""),
     referencia: normalizarReferencia(referencia),
     cor: normalizarCor(document.getElementById("ordemCor").value),
     quantidade: document.getElementById("ordemQuantidade").value,
@@ -1181,6 +1201,8 @@ function restaurarOrdemPendenteSePossivel(produtoCadastrado) {
     sessionStorage.removeItem("op_confeccao_ordem_pendente");
     abrirPagina("ordens");
 
+    document.getElementById("ordemNumero").value = pendente.numeroOP || "";
+    document.getElementById("ordemNumero").readOnly = false;
     document.getElementById("ordemReferencia").value = produtoCadastrado.referencia;
     document.getElementById("ordemCor").value = pendente.cor || "";
     document.getElementById("ordemQuantidade").value = pendente.quantidade || "";
@@ -1200,6 +1222,8 @@ function restaurarOrdemPendenteSePossivel(produtoCadastrado) {
 
 function limparFormOrdem() {
   document.getElementById("ordemId").value = "";
+  document.getElementById("ordemNumero").value = "";
+  document.getElementById("ordemNumero").readOnly = false;
   document.getElementById("ordemReferencia").value = "";
   document.getElementById("ordemCor").value = "";
   document.getElementById("ordemQuantidade").value = "";
@@ -1214,6 +1238,8 @@ function editarOrdem(id) {
   if (!ordem) return;
 
   document.getElementById("ordemId").value = ordem.id;
+  document.getElementById("ordemNumero").value = ordem.numeroOP || ordem.id || "";
+  document.getElementById("ordemNumero").readOnly = true;
   document.getElementById("ordemReferencia").value = ordem.referencia;
   document.getElementById("ordemCor").value = ordem.cor || "";
   document.getElementById("ordemQuantidade").value = ordem.quantidade;
@@ -9768,6 +9794,10 @@ function exportarCSV() {
 
 function preencherAnoAtual() {
   // Campo Ano foi removido da tela de OP. O ano é calculado pela data inicial da necessidade.
+}
+
+function normalizarNumeroOP(valor) {
+  return String(valor || "").trim().toUpperCase();
 }
 
 function normalizarReferencia(valor) {
