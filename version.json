@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-menu-manejo-processos-sutia-1",
-  "descricao": "Facções unificadas por nome, organização de duplicadas e envio para facção perguntando processo antes do destino.",
+  "version": "2026-07-27-menu-funcoes-corrigidas-1",
+  "descricao": "Correção das ações do menu do Manejo, exposição segura das funções globais e envio para facção com processos somente de sutiã.",
   "data": "2026-07-27"
 }

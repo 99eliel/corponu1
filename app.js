@@ -4111,11 +4111,11 @@ function montarMenuAcoesManejoHtml(ordemId) {
   const podeLimpar = Boolean(manejo && ehAdmin());
 
   return `
-    <button type="button" onclick="fecharMenusAcoesManejo(); mandarParaFaccao('${ordemId}')">Enviar para facção</button>
-    <button type="button" onclick="fecharMenusAcoesManejo(); mandarParaCelula('${ordemId}')">Enviar para célula</button>
-    <button type="button" onclick="fecharMenusAcoesManejo(); abrirModalAjusteMigracao('${ordemId}')">Mover / editar local</button>
-    <button type="button" onclick="fecharMenusAcoesManejo(); abrirRastreamentoOP('${ordemId}')">Ver histórico/rastreamento</button>
-    ${podeLimpar ? `<button class="danger" type="button" onclick="fecharMenusAcoesManejo(); limparManejoLinha('${ordemId}')">Limpar manejo</button>` : ""}
+    <button type="button" onclick="window.fecharMenusAcoesManejo(); window.mandarParaFaccao('${ordemId}')">Enviar para facção</button>
+    <button type="button" onclick="window.fecharMenusAcoesManejo(); window.mandarParaCelula('${ordemId}')">Enviar para célula</button>
+    <button type="button" onclick="window.fecharMenusAcoesManejo(); window.abrirModalAjusteMigracao('${ordemId}')">Mover / editar local</button>
+    <button type="button" onclick="window.fecharMenusAcoesManejo(); window.abrirRastreamentoOP('${ordemId}')">Ver histórico/rastreamento</button>
+    ${podeLimpar ? `<button class="danger" type="button" onclick="window.fecharMenusAcoesManejo(); window.limparManejoLinha('${ordemId}')">Limpar manejo</button>` : ""}
   `;
 }
 
@@ -5513,6 +5513,7 @@ function mandarParaFaccao(ordemId) {
   carregarFaccoesSeNecessario();
   carregarPrecosReferenciaSeNecessario();
   abrirModalMovimentacao(ordemId, "faccao", {
+    setor: "sutia",
     forcarEscolhaProcesso: true,
     titulo: "Enviar para facção",
     resumo: "Primeiro escolha o processo do sutiã. Depois o sistema mostra somente as facções desse processo, sem duplicar nomes."
@@ -9566,6 +9567,7 @@ window.mandarParaFaccao = mandarParaFaccao;
 window.mandarParaCelula = mandarParaCelula;
 
 window.toggleMenuAcoesManejo = toggleMenuAcoesManejo;
+window.fecharMenusAcoesManejo = fecharMenusAcoesManejo;
 window.abrirModalAjusteMigracao = abrirModalAjusteMigracao;
 window.abrirRastreamentoOP = abrirRastreamentoOP;
 window.registrarChegadaMovimentacao = registrarChegadaMovimentacao;
