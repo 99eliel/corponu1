@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-27-otimizacao-leituras-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-27-otimizacao-leituras-1" />
+  <meta name="app-version" content="2026-07-27-sem-dashboard-carregar-mais-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-27-sem-dashboard-carregar-mais-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -70,10 +70,9 @@
       </div>
 
       <nav>
-        <button class="nav-btn active" data-page="dashboard">Dashboard</button>
         <button class="nav-btn" data-page="produtos">Produtos / Referências</button>
         <button class="nav-btn" data-page="ordens">Ordens de Produção</button>
-        <button class="nav-btn" data-page="manejo">Manejo</button>
+        <button class="nav-btn active" data-page="manejo">Manejo</button>
         <button class="nav-btn" data-page="processos">Processos</button>
         <button class="nav-btn" data-page="faccoes">Facções</button>
         <button class="nav-btn" data-page="celulas">Células</button>
@@ -89,8 +88,8 @@
     <main class="main">
       <header class="topbar">
         <div>
-          <h2 id="pageTitle">Dashboard</h2>
-          <p id="pageSubtitle">Resumo geral das ordens e referências cadastradas.</p>
+          <h2 id="pageTitle">Manejo</h2>
+          <p id="pageSubtitle">Preparação interna da OP e encaminhamento para facção ou célula.</p>
         </div>
 
         <div class="user-box">
@@ -103,7 +102,7 @@
         </div>
       </header>
 
-      <section id="dashboard" class="page active">
+      <section id="dashboard" class="page hidden">
         <div class="cards">
           <div class="card card-highlight">
             <span>OPs cadastradas</span>
@@ -348,7 +347,7 @@
 
 
 
-      <section id="manejo" class="page">
+      <section id="manejo" class="page active">
         <div class="panel">
           <div class="panel-header">
             <div>
@@ -1473,7 +1472,6 @@
               <div class="permissoes-group">
                 <h4>Telas que pode ver</h4>
 
-                <label><input type="checkbox" data-permissao-tela="dashboard" /> Dashboard</label>
                 <label><input type="checkbox" data-permissao-tela="produtos" /> Produtos / Referências</label>
                 <label><input type="checkbox" data-permissao-tela="ordens" /> Ordens de Produção</label>
                 <label><input type="checkbox" data-permissao-tela="manejo" /> Manejo</label>
@@ -1774,8 +1772,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-27-otimizacao-leituras-1"></script>
-  <script type="module" src="app.js?v=2026-07-27-otimizacao-leituras-1"></script>
+  <script src="update.js?v=2026-07-27-sem-dashboard-carregar-mais-1"></script>
+  <script type="module" src="app.js?v=2026-07-27-sem-dashboard-carregar-mais-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">

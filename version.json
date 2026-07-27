@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-otimizacao-leituras-1",
+  "version": "2026-07-27-sem-dashboard-carregar-mais-1",
   "updatedAt": "2026-07-27T00:00:00-03:00",
-  "notes": "Otimização de leituras Firestore, cache persistente e renderização somente da tela ativa."
+  "notes": "Dashboard removido do menu e tabelas grandes com carregar mais sem quebrar filtros."
 }

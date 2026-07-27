@@ -75,6 +75,7 @@ const state = {
   dadosCarregados: {},
   carregandoDados: {},
   listenersPorChave: {},
+  limitesRenderTabela: {},
   unsubscribers: []
 };
 
@@ -85,13 +86,12 @@ const state = {
 const OTIMIZACAO_LEITURAS_ATIVA = true;
 
 function paginaAtivaAtual() {
-  return document.querySelector(".page.active")?.id || "dashboard";
+  return document.querySelector(".page.active")?.id || "manejo";
 }
 
 function renderPaginaAtiva() {
   const page = paginaAtivaAtual();
 
-  if (page === "dashboard") renderDashboard();
   if (page === "produtos") {
     renderProdutos();
     renderProdutosPendentes();
@@ -832,7 +832,6 @@ function abrirPagina(page) {
 
   carregarDadosDaPagina(page);
 
-  if (page === "dashboard") renderDashboard();
   if (page === "produtos") {
     renderProdutos();
     renderProdutosPendentes();
@@ -1374,7 +1373,6 @@ async function excluirOrdem(id) {
 
 
 const TELAS_PERMISSAO = {
-  dashboard: "Dashboard",
   produtos: "Produtos / Referências",
   ordens: "Ordens de Produção",
   manejo: "Manejo",
@@ -1411,7 +1409,6 @@ function getPermissoesPadrao(tipo = "usuario") {
 
   return {
     telas: {
-      dashboard: true,
       produtos: true,
       ordens: true,
       manejo: true,
@@ -1464,8 +1461,6 @@ function podeAcessarTela(page, usuario = state.perfil) {
   if (!page) return false;
   if (usuario?.tipo === "admin") return true;
   if (PAGINAS_SOMENTE_ADMIN.includes(page)) return false;
-  if (page === "dashboard") return true;
-
   const permissoes = getPermissoesUsuario(usuario);
   return Boolean(permissoes.telas?.[page]);
 }
@@ -1489,9 +1484,9 @@ function getManejosPermitidos(usuario = state.perfil) {
 }
 
 function getPrimeiraPaginaPermitida(usuario = state.perfil) {
-  const ordem = ["dashboard", "manejo", "processos", "rastreamento", "pagamentos", "faccoes", "celulas", "produtos", "ordens", "relatorios"];
+  const ordem = ["manejo", "processos", "rastreamento", "pagamentos", "faccoes", "celulas", "produtos", "ordens", "relatorios"];
 
-  return ordem.find(page => podeAcessarTela(page, usuario)) || "dashboard";
+  return ordem.find(page => podeAcessarTela(page, usuario)) || "manejo";
 }
 
 function resumoPermissoesUsuario(usuario) {
@@ -1676,14 +1671,21 @@ function configurarManejo() {
   ].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.addEventListener("input", () => agendarAtualizacaoManejoComSoma(id === "filtroManejoOP" ? 180 : 260));
-    el.addEventListener("change", atualizarManejoComSoma);
+    el.addEventListener("input", () => {
+      resetarLimitesRenderTabelaPrefixo("manejo");
+      agendarAtualizacaoManejoComSoma(id === "filtroManejoOP" ? 180 : 260);
+    });
+    el.addEventListener("change", () => {
+      resetarLimitesRenderTabelaPrefixo("manejo");
+      atualizarManejoComSoma();
+    });
   });
 
   const limpar = document.getElementById("btnLimparFiltrosManejo");
   if (limpar) {
     limpar.addEventListener("click", () => {
       limparFiltrosColunasManejo();
+      resetarLimitesRenderTabelaPrefixo("manejo");
       atualizarManejoComSoma();
     });
   }
@@ -2130,12 +2132,15 @@ function renderManejoInline() {
     return;
   }
 
-  const ordens = filtrarOrdensManejoPorColunas();
+  const ordensFiltradas = filtrarOrdensManejoPorColunas();
+  const chaveRender = `manejo-${setor}`;
+  const ordens = limitarItensRenderTabela(chaveRender, ordensFiltradas);
 
-  renderResumoSomasManejo(ordens);
+  renderResumoSomasManejo(ordensFiltradas);
 
-  if (!ordens.length) {
+  if (!ordensFiltradas.length) {
     tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
+    limparControleRenderTabela(chaveRender);
     return;
   }
 
@@ -2189,6 +2194,7 @@ function renderManejoInline() {
     `;
   }).join("");
 
+  renderControleRenderTabela(tbody, chaveRender, ordensFiltradas.length, ordens.length, "OPs do manejo");
   renderResumoSomasManejoPeloDOM();
 }
 
@@ -3760,11 +3766,14 @@ function renderProcessos() {
 
   renderFiltrosProcessos();
 
-  const movimentos = filtrarOrdensProcessos();
-  renderResumoProcessos(movimentos);
+  const movimentosFiltrados = filtrarOrdensProcessos();
+  const chaveRender = "processos";
+  const movimentos = limitarItensRenderTabela(chaveRender, movimentosFiltrados);
+  renderResumoProcessos(movimentosFiltrados);
 
-  if (!movimentos.length) {
+  if (!movimentosFiltrados.length) {
     tbody.innerHTML = `<tr><td colspan="13" class="empty">Nenhuma movimentação encontrada com os filtros selecionados.</td></tr>`;
+    limparControleRenderTabela(chaveRender);
     return;
   }
 
@@ -3790,6 +3799,7 @@ function renderProcessos() {
       </tr>
     `;
   }).join("");
+  renderControleRenderTabela(tbody, chaveRender, movimentosFiltrados.length, movimentos.length, "movimentações");
 }
 
 
@@ -4056,8 +4066,13 @@ function renderFaccoes() {
     });
   }
 
-  if (!faccoes.length) {
+  const faccoesFiltradas = faccoes;
+  const chaveRender = "faccoes-cadastro";
+  faccoes = limitarItensRenderTabela(chaveRender, faccoesFiltradas);
+
+  if (!faccoesFiltradas.length) {
     tbody.innerHTML = `<tr><td colspan="${ehAdmin() ? 6 : 5}" class="empty">Nenhuma facção cadastrada.</td></tr>`;
+    limparControleRenderTabela(chaveRender);
     return;
   }
 
@@ -4081,6 +4096,7 @@ function renderFaccoes() {
       </td>` : ""}
     </tr>
   `).join("");
+  renderControleRenderTabela(tbody, chaveRender, faccoesFiltradas.length, faccoes.length, "facções");
 }
 
 function renderFaccoesPendentes() {
@@ -4140,7 +4156,7 @@ async function mostrarResumoLigiaNovaLogica() {
       Datas incoerentes para conferência: ${Number(resumo.datasIncoerentes || 0).toLocaleString("pt-BR")}<br>
       BOJOS ENCAPADOS: ${Number(resumo.bojosEncapadosPecas || resumo.faseSomas?.["BOJOS ENCAPADOS"] || 0).toLocaleString("pt-BR")} peças<br>
       <br><strong>Importante:</strong> esta versão não importa pagamentos históricos.<br>
-      <strong>Conferência:</strong> depois de importar, o Dashboard deve mostrar ${Number(dados.meta?.totalOPs || 0).toLocaleString("pt-BR")} OPs cadastradas e BOJOS ENCAPADOS = ${Number(resumo.bojosEncapadosPecas || 0).toLocaleString("pt-BR")} peças.<br>
+      <strong>Conferência:</strong> depois de importar, a tela de Manejo/Ordens deve mostrar ${Number(dados.meta?.totalOPs || 0).toLocaleString("pt-BR")} OPs cadastradas e BOJOS ENCAPADOS = ${Number(resumo.bojosEncapadosPecas || 0).toLocaleString("pt-BR")} peças.<br>
       <strong>Modo seguro:</strong> esta versão NÃO apaga e NÃO sobrescreve OPs já existentes. Ela só adiciona itens faltantes e preserva o que os usuários já lançaram.
     `;
   } catch (error) {
@@ -4865,8 +4881,13 @@ function renderFaccoesMovimentacoes() {
   const descontoDefeitoEl = document.getElementById("faccoesPecasDefeito");
   if (descontoDefeitoEl) descontoDefeitoEl.textContent = formatarMoedaBR(descontoDefeito);
 
-  if (!movimentos.length) {
+  const movimentosFiltrados = movimentos;
+  const chaveRender = "faccoes-movimentacoes";
+  movimentos = limitarItensRenderTabela(chaveRender, movimentosFiltrados);
+
+  if (!movimentosFiltrados.length) {
     tbody.innerHTML = `<tr><td colspan="12" class="empty">Nenhuma OP enviada para facção ainda.</td></tr>`;
+    limparControleRenderTabela(chaveRender);
     return;
   }
 
@@ -4897,6 +4918,7 @@ function renderFaccoesMovimentacoes() {
       </td>
     </tr>
   `).join("");
+  renderControleRenderTabela(tbody, chaveRender, movimentosFiltrados.length, movimentos.length, "movimentações de facção");
 }
 
 
@@ -5084,8 +5106,13 @@ function renderCelulas() {
     celulas = celulas.filter(celula => normalizarTexto(celula.nome || "").includes(busca));
   }
 
-  if (!celulas.length) {
+  const celulasFiltradas = celulas;
+  const chaveRender = "celulas-cadastro";
+  celulas = limitarItensRenderTabela(chaveRender, celulasFiltradas);
+
+  if (!celulasFiltradas.length) {
     tbody.innerHTML = `<tr><td colspan="${ehAdmin() ? 3 : 2}" class="empty">Nenhuma célula cadastrada.</td></tr>`;
+    limparControleRenderTabela(chaveRender);
     return;
   }
 
@@ -5108,6 +5135,7 @@ function renderCelulas() {
       ` : ""}
     </tr>
   `).join("");
+  renderControleRenderTabela(tbody, chaveRender, celulasFiltradas.length, celulas.length, "células");
 }
 
 
@@ -5146,8 +5174,13 @@ function renderCelulasMovimentacoes() {
   setText("celulasPecasEnviadas", pecasEnviadas);
   setText("celulasPecasRecebidas", pecasRecebidas);
 
-  if (!movimentos.length) {
+  const movimentosFiltrados = movimentos;
+  const chaveRender = "celulas-movimentacoes";
+  movimentos = limitarItensRenderTabela(chaveRender, movimentosFiltrados);
+
+  if (!movimentosFiltrados.length) {
     tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma OP enviada para célula ainda.</td></tr>`;
+    limparControleRenderTabela(chaveRender);
     return;
   }
 
@@ -5175,6 +5208,7 @@ function renderCelulasMovimentacoes() {
       </td>
     </tr>
   `).join("");
+  renderControleRenderTabela(tbody, chaveRender, movimentosFiltrados.length, movimentos.length, "movimentações de célula");
 }
 
 
@@ -8065,7 +8099,10 @@ function renderPagamentos() {
   } else if (!grupos.length) {
     tbody.innerHTML = `<tr><td colspan="7" class="empty">Nenhuma entrega encontrada para o período/filtro selecionado.</td></tr>`;
   } else {
-    tbody.innerHTML = grupos.map(grupo => `
+    const gruposFiltrados = grupos;
+    const chaveRender = "pagamentos-grupos";
+    const gruposVisiveis = limitarItensRenderTabela(chaveRender, gruposFiltrados);
+    tbody.innerHTML = gruposVisiveis.map(grupo => `
       <tr class="${grupo.faccao === "SEM FACÇÃO" ? "pagamento-sem-faccao" : ""}">
         <td><strong>${escapeHtml(grupo.faccao)}</strong></td>
         <td><strong>${escapeHtml(grupo.referencia)}</strong></td>
@@ -8076,6 +8113,7 @@ function renderPagamentos() {
         <td><strong>${escapeHtml(formatarMoedaBR(grupo.total))}</strong></td>
       </tr>
     `).join("");
+    renderControleRenderTabela(tbody, chaveRender, gruposFiltrados.length, gruposVisiveis.length, "grupos de pagamento");
   }
 
   renderEntregasPagamento(entregas);
@@ -8085,8 +8123,13 @@ function renderEntregasPagamento(entregas = getEntregasPagamentoFiltradas()) {
   const tbody = document.getElementById("listaEntregasPagamento");
   if (!tbody) return;
 
-  if (!entregas.length) {
+  const entregasFiltradas = entregas;
+  const chaveRender = "pagamentos-entregas";
+  entregas = limitarItensRenderTabela(chaveRender, entregasFiltradas);
+
+  if (!entregasFiltradas.length) {
     tbody.innerHTML = `<tr><td colspan="9" class="empty">Nenhuma entrega registrada para os filtros selecionados.</td></tr>`;
+    limparControleRenderTabela(chaveRender);
     return;
   }
 
@@ -8115,6 +8158,7 @@ function renderEntregasPagamento(entregas = getEntregasPagamentoFiltradas()) {
       </td>
     </tr>
   `).join("");
+  renderControleRenderTabela(tbody, chaveRender, entregasFiltradas.length, entregas.length, "entregas de pagamento");
 }
 
 async function marcarPagamentosFiltradosComoPagos() {
@@ -8712,9 +8756,6 @@ function coletarPermissoesUsuarioForm() {
   document.querySelectorAll("[data-permissao-recurso]").forEach(input => {
     recursos[input.dataset.permissaoRecurso] = Boolean(input.checked);
   });
-
-  // Dashboard fica sempre liberado para evitar usuário sem tela inicial.
-  telas.dashboard = true;
 
   return { telas, manejo, recursos };
 }
@@ -9785,8 +9826,13 @@ function renderProdutos() {
 
   const tbody = document.getElementById("listaProdutos");
 
-  if (!produtos.length) {
+  const produtosFiltrados = produtos;
+  const chaveRender = "produtos";
+  produtos = limitarItensRenderTabela(chaveRender, produtosFiltrados);
+
+  if (!produtosFiltrados.length) {
     tbody.innerHTML = `<tr><td colspan="${ehAdmin() ? 7 : 6}" class="empty">Nenhum produto cadastrado.</td></tr>`;
+    limparControleRenderTabela(chaveRender);
     return;
   }
 
@@ -9804,6 +9850,7 @@ function renderProdutos() {
       </td>` : ""}
     </tr>
   `).join("");
+  renderControleRenderTabela(tbody, chaveRender, produtosFiltrados.length, produtos.length, "referências");
 }
 
 
@@ -9881,8 +9928,13 @@ function renderOrdens() {
 
   const tbody = document.getElementById("listaOrdens");
 
-  if (!ordens.length) {
+  const ordensFiltradas = ordens;
+  const chaveRender = "ordens";
+  ordens = limitarItensRenderTabela(chaveRender, ordensFiltradas);
+
+  if (!ordensFiltradas.length) {
     tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma ordem cadastrada.</td></tr>`;
+    limparControleRenderTabela(chaveRender);
     return;
   }
 
@@ -9904,6 +9956,7 @@ function renderOrdens() {
       </td>
     </tr>
   `).join("");
+  renderControleRenderTabela(tbody, chaveRender, ordensFiltradas.length, ordens.length, "OPs");
 }
 
 function renderDatalistReferencias() {
@@ -10153,6 +10206,87 @@ function toast(msg) {
   }, 3500);
 }
 
+const TAMANHO_LOTE_RENDER_TABELA = 50;
+
+function normalizarChaveRenderTabela(chave) {
+  return String(chave || "tabela").replace(/[^a-zA-Z0-9_-]/g, "-");
+}
+
+function getLimiteRenderTabela(chave) {
+  const id = normalizarChaveRenderTabela(chave);
+  const limite = Number(state.limitesRenderTabela?.[id] || TAMANHO_LOTE_RENDER_TABELA);
+  return Number.isFinite(limite) && limite > 0 ? limite : TAMANHO_LOTE_RENDER_TABELA;
+}
+
+function limitarItensRenderTabela(chave, itens) {
+  const lista = Array.isArray(itens) ? itens : [];
+  return lista.slice(0, getLimiteRenderTabela(chave));
+}
+
+function limparControleRenderTabela(chave) {
+  const id = `controle-render-${normalizarChaveRenderTabela(chave)}`;
+  document.getElementById(id)?.remove();
+}
+
+function renderControleRenderTabela(tbody, chave, total, exibidos, label = "registros") {
+  if (!tbody) return;
+
+  const id = `controle-render-${normalizarChaveRenderTabela(chave)}`;
+  const alvo = tbody.closest(".table-wrap") || tbody.closest("table")?.parentElement || tbody.parentElement;
+
+  if (!alvo) return;
+
+  if (!total || total <= TAMANHO_LOTE_RENDER_TABELA) {
+    document.getElementById(id)?.remove();
+    return;
+  }
+
+  let controle = document.getElementById(id);
+  if (!controle) {
+    controle = document.createElement("div");
+    controle.id = id;
+    controle.className = "table-render-control";
+    alvo.insertAdjacentElement("afterend", controle);
+  }
+
+  const temMais = exibidos < total;
+  controle.innerHTML = `
+    <div>
+      Mostrando <strong>${Number(exibidos || 0).toLocaleString("pt-BR")}</strong> de
+      <strong>${Number(total || 0).toLocaleString("pt-BR")}</strong> ${escapeHtml(label)}.
+      <small>Os filtros e a impressão continuam usando todos os dados filtrados.</small>
+    </div>
+    <div class="table-render-actions">
+      ${temMais ? `<button class="btn btn-sm" type="button" onclick="aumentarLimiteRenderTabela('${normalizarChaveRenderTabela(chave)}')">Carregar mais 50</button>` : ""}
+      ${temMais ? `<button class="btn btn-sm btn-primary" type="button" onclick="mostrarTodosRenderTabela('${normalizarChaveRenderTabela(chave)}')">Mostrar todos filtrados</button>` : `<span class="badge ok">Todos visíveis</span>`}
+    </div>
+  `;
+}
+
+function aumentarLimiteRenderTabela(chave) {
+  const id = normalizarChaveRenderTabela(chave);
+  state.limitesRenderTabela[id] = getLimiteRenderTabela(id) + TAMANHO_LOTE_RENDER_TABELA;
+  renderPaginaAtiva();
+}
+
+function mostrarTodosRenderTabela(chave) {
+  const id = normalizarChaveRenderTabela(chave);
+  state.limitesRenderTabela[id] = 999999;
+  renderPaginaAtiva();
+}
+
+function resetarLimiteRenderTabela(chave) {
+  const id = normalizarChaveRenderTabela(chave);
+  state.limitesRenderTabela[id] = TAMANHO_LOTE_RENDER_TABELA;
+}
+
+function resetarLimitesRenderTabelaPrefixo(prefixo) {
+  const p = normalizarChaveRenderTabela(prefixo);
+  Object.keys(state.limitesRenderTabela || {}).forEach(chave => {
+    if (chave.startsWith(p)) state.limitesRenderTabela[chave] = TAMANHO_LOTE_RENDER_TABELA;
+  });
+}
+
 async function atualizarDadosServidorAgora() {
   toast("Atualizando dados do servidor...");
 
@@ -10160,7 +10294,6 @@ async function atualizarDadosServidorAgora() {
 
   // Reinicia somente os listeners necessários da tela atual.
   const chavesPorPagina = {
-    dashboard: ["produtos", "ordens"],
     produtos: ["produtos", "ordens"],
     ordens: ["produtos", "ordens"],
     manejo: ["produtos", "ordens", "faccoes", "celulas", "precosReferencia"],
@@ -10189,6 +10322,8 @@ async function atualizarDadosServidorAgora() {
 }
 
 window.atualizarDadosServidorAgora = atualizarDadosServidorAgora;
+window.aumentarLimiteRenderTabela = aumentarLimiteRenderTabela;
+window.mostrarTodosRenderTabela = mostrarTodosRenderTabela;
 window.editarProduto = editarProduto;
 window.excluirProduto = excluirProduto;
 window.editarOrdem = editarOrdem;

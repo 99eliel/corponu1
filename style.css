@@ -4042,3 +4042,31 @@ table td {
     width: 100%;
   }
 }
+
+/* Controle de exibição progressiva para não travar a tela com tabelas grandes */
+.table-render-control {
+  margin: 10px 0 18px;
+  padding: 10px 12px;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.table-render-control small {
+  display: block;
+  color: #64748b;
+  margin-top: 2px;
+}
+.table-render-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#dashboard.hidden {
+  display: none !important;
+}
