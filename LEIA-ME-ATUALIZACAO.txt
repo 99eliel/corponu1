@@ -1,0 +1,36 @@
+CORPONU - CORREÇÃO PONTUAL DA CHEGADA MANUAL
+Versão: 2026-07-28-chegada-manual-condicional-1
+
+ARQUIVOS PARA SUBSTITUIR NO GITHUB:
+1. update.js
+2. sw.js
+3. version.json
+
+NÃO SUBSTITUA NESTA CORREÇÃO:
+- app.js
+- index.html
+- style.css
+- regras do Firebase
+
+O QUE FOI CORRIGIDO:
+- O campo Processo virou uma seleção controlada.
+- O campo Facção fica escondido até o processo ser escolhido.
+- Depois do processo, aparecem somente as facções que fazem aquele serviço.
+- O formulário impede salvar uma facção que não pertence ao processo.
+- O botão Salvar fica temporariamente bloqueado para reduzir duplo clique.
+- A rotina original de salvamento, pagamento, histórico e Firebase foi preservada.
+
+COMO PUBLICAR:
+1. Abra o repositório corponu1 no GitHub.
+2. Substitua os três arquivos listados acima.
+3. Confirme o commit.
+4. Abra o sistema e pressione Ctrl+F5 uma vez no primeiro computador.
+5. Teste em Facções > Chegada manual.
+
+FLUXO ESPERADO:
+OP -> REF/Cor/Quantidade -> Processo -> Facções filtradas -> Datas -> Salvar
+
+IMPORTANTE:
+A correção foi colocada em update.js para evitar substituir o app.js de aproximadamente
+10 mil linhas durante o uso em produção. No final de semana, esta lógica poderá ser
+incorporada definitivamente ao app.js após os testes completos.

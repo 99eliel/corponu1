@@ -1,11 +1,11 @@
-const APP_VERSION = "2026-07-27-resgate-chegada-manual-faccao-1";
+const APP_VERSION = "2026-07-28-chegada-manual-condicional-1";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 
 const CORE_ASSETS = [
   "./index.html",
   "./style.css?v=2026-07-27-resgate-chegada-manual-faccao-1",
   "./app.js?v=2026-07-27-resgate-chegada-manual-faccao-1",
-  "./update.js?v=2026-07-27-resgate-chegada-manual-faccao-1"
+  "./update.js?v=2026-07-28-chegada-manual-condicional-1"
 ];
 
 self.addEventListener("install", event => {
@@ -52,7 +52,9 @@ async function staleWhileRevalidate(request) {
   const cached = await caches.match(request);
   const networkPromise = fetch(request)
     .then(response => {
-      if (response && response.ok) caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
+      if (response && response.ok) {
+        caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
+      }
       return response;
     })
     .catch(() => cached);
@@ -62,8 +64,10 @@ async function staleWhileRevalidate(request) {
 self.addEventListener("fetch", event => {
   const request = event.request;
   const url = new URL(request.url);
+
   if (request.method !== "GET") return;
   if (url.origin !== self.location.origin) return;
+
   if (
     request.mode === "navigate" ||
     url.pathname.endsWith("/") ||
@@ -77,5 +81,6 @@ self.addEventListener("fetch", event => {
     event.respondWith(networkFirst(request));
     return;
   }
+
   event.respondWith(staleWhileRevalidate(request));
 });

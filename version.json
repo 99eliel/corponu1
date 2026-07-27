@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-resgate-chegada-manual-faccao-1",
-  "updatedAt": "2026-07-27T00:00:00-03:00",
-  "notes": "Versão funcional com chegada manual de facção, sem limpar dados do Firebase e preservando login, manejo, filtros, rastreamento e lançamentos atuais."
+  "version": "2026-07-28-chegada-manual-condicional-1",
+  "updatedAt": "2026-07-28T00:00:00-03:00",
+  "notes": "Correção pontual da Chegada Manual: processo selecionado primeiro e exibição somente das facções permitidas para o serviço, preservando app.js, Firebase e demais funções em produção."
 }
