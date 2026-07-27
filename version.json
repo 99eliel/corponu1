@@ -1,1 +1,5 @@
-{"version": "2026-07-27-ligia-atualizada-limpa-anterior"}
+{
+  "version": "2026-07-27-ligia-sem-loop-versao-2",
+  "descricao": "Correção do loop de versão; versões alinhadas entre index, update, sw e version.json.",
+  "data": "2026-07-27"
+}

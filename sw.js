@@ -1,13 +1,11 @@
-const APP_VERSION = "2026-07-27-ligia-filtro-casa-1";
+const APP_VERSION = "2026-07-27-ligia-sem-loop-versao-2";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 
 const CORE_ASSETS = [
-  "./",
   "./index.html",
-  "./style.css?v=2026-07-27-ligia-filtro-casa-1",
-  "./app.js?v=2026-07-27-ligia-filtro-casa-1",
-  "./update.js?v=2026-07-27-ligia-filtro-casa-1",
-  "./version.json"
+  "./style.css?v=2026-07-27-ligia-sem-loop-versao-2",
+  "./app.js?v=2026-07-27-ligia-sem-loop-versao-2",
+  "./update.js?v=2026-07-27-ligia-sem-loop-versao-2"
 ];
 
 self.addEventListener("install", event => {
@@ -32,16 +30,16 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("message", event => {
-  if (event.data && event.data.type === "SKIP_WAITING") {
-    self.skipWaiting();
-  }
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 async function networkFirst(request) {
   try {
     const response = await fetch(request, { cache: "no-store" });
-    const cache = await caches.open(CACHE_NAME);
-    cache.put(request, response.clone());
+    if (response && response.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, response.clone());
+    }
     return response;
   } catch (error) {
     const cached = await caches.match(request);
@@ -50,16 +48,22 @@ async function networkFirst(request) {
   }
 }
 
+async function staleWhileRevalidate(request) {
+  const cached = await caches.match(request);
+  const networkPromise = fetch(request)
+    .then(response => {
+      if (response && response.ok) caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
+      return response;
+    })
+    .catch(() => cached);
+  return cached || networkPromise;
+}
+
 self.addEventListener("fetch", event => {
   const request = event.request;
   const url = new URL(request.url);
-
   if (request.method !== "GET") return;
-
-  if (url.origin !== self.location.origin) {
-    return;
-  }
-
+  if (url.origin !== self.location.origin) return;
   if (
     request.mode === "navigate" ||
     url.pathname.endsWith("/") ||
@@ -67,8 +71,11 @@ self.addEventListener("fetch", event => {
     url.pathname.endsWith("/app.js") ||
     url.pathname.endsWith("/style.css") ||
     url.pathname.endsWith("/update.js") ||
-    url.pathname.endsWith("/version.json")
+    url.pathname.endsWith("/version.json") ||
+    url.pathname.endsWith("/dados-ligia-migracao.json")
   ) {
     event.respondWith(networkFirst(request));
+    return;
   }
+  event.respondWith(staleWhileRevalidate(request));
 });

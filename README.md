@@ -2695,3 +2695,8 @@ Origem
 Observações
 Pendência
 ```
+
+
+## Correção de loop de versão
+Versão estabilizada: 2026-07-27-ligia-sem-loop-versao-2
+Todos os arquivos de versionamento foram alinhados para evitar recarregamento infinito.
