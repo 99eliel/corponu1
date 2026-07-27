@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-op-digitada-sem-sugestao-1",
-  "descricao": "Filtro de OP otimizado: sem datalist/sugestões pesadas e com atualização digitada em atraso curto para evitar travamento ao pesquisar.",
+  "version": "2026-07-27-rastreamento-global-editar-local-1",
+  "descricao": "Rastreamento com busca global por OP e edição/correção de local para qualquer ordem, inclusive relatórios separados.",
   "data": "2026-07-27"
 }

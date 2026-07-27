@@ -1796,7 +1796,7 @@ async function registrarEntregaManejo(ordemId) {
     return;
   }
 
-  const ordem = state.ordens.find(op => op.id === ordemId);
+  const ordem = state.ordens.find(op => String(op.id) === String(ordemId) || String(op.numeroOP) === String(ordemId));
   if (!ordem) {
     toast("OP não encontrada.");
     return;
@@ -3960,7 +3960,7 @@ document.addEventListener("click", event => {
 });
 
 function abrirRastreamentoOP(ordemId) {
-  const ordem = state.ordens.find(op => op.id === ordemId);
+  const ordem = state.ordens.find(op => String(op.id) === String(ordemId) || String(op.numeroOP) === String(ordemId));
   if (!ordem) return;
   abrirPagina("rastreamento");
   const busca = document.getElementById("buscaRastreamento");
@@ -3983,7 +3983,7 @@ function configurarModalAjusteMigracao() {
 
 function abrirModalAjusteMigracao(ordemId) {
   fecharMenusAcoesManejo();
-  const ordem = state.ordens.find(op => op.id === ordemId);
+  const ordem = state.ordens.find(op => String(op.id) === String(ordemId) || String(op.numeroOP) === String(ordemId));
   if (!ordem) {
     toast("OP não encontrada.");
     return;
@@ -3998,20 +3998,22 @@ function abrirModalAjusteMigracao(ordemId) {
   const dataChegada = document.getElementById("ajusteMigracaoDataChegada");
   const proximo = document.getElementById("ajusteMigracaoProximoDestino");
 
-  document.getElementById("ajusteMigracaoOpId").value = ordemId;
+  document.getElementById("ajusteMigracaoOpId").value = ordem.id;
+  const localAtual = getLocalizacaoAtualOrdem(ordem);
+  const ultimaMov = getUltimaMovimentacaoOrdem(ordem);
   if (info) {
     info.innerHTML = `
       <strong>OP ${escapeHtml(ordem.numeroOP || ordem.id)} | Ref. ${escapeHtml(ordem.referencia || "-")}</strong>
       <span>Fase original: ${escapeHtml(ordem.faseOriginalLigia || "-")} | Facção original: ${escapeHtml(ordem.faccaoOriginalLigia || "-")} | QTD ${escapeHtml(ordem.quantidade || 0)}</span>
-      <span>Status atual: ${escapeHtml(ordem.statusMigracaoLigia || ordem.status || "-")}</span>
+      <span>Status atual: ${escapeHtml(localAtual.local || ordem.statusMigracaoLigia || ordem.status || "-")} | Destino: ${escapeHtml(localAtual.destino || "-")}</span>
     `;
   }
 
-  if (local) local.value = ordem.localAtualMigracao || ordem.statusMigracaoLigia || "MANEJO_AGUARDANDO_DESTINO";
-  if (destino) destino.value = ordem.destinoAtualMigracao || ordem.faccaoAtual || ordem.faccaoOriginalLigia || "";
-  if (processo) processo.value = ordem.processoAtualMigracao || "";
-  if (dataEnvio) dataEnvio.value = normalizarDataISO(ordem.dataEnvioAtualMigracao || "");
-  if (dataChegada) dataChegada.value = normalizarDataISO(ordem.dataChegadaAtualMigracao || "");
+  if (local) local.value = normalizarStatusParaLocalAjuste(ordem.localAtualMigracao || ordem.statusMigracaoLigia || localAtual.local || "MANEJO_AGUARDANDO_DESTINO");
+  if (destino) destino.value = ordem.destinoAtualMigracao || localAtual.destino || ordem.faccaoAtual || ordem.faccaoOriginalLigia || ordem.celulaOriginalLigia || "";
+  if (processo) processo.value = ordem.processoAtualMigracao || localAtual.processo || ultimaMov?.processo || "";
+  if (dataEnvio) dataEnvio.value = normalizarDataISO(ordem.dataEnvioAtualMigracao || ultimaMov?.dataEnvio || "");
+  if (dataChegada) dataChegada.value = normalizarDataISO(ordem.dataChegadaAtualMigracao || ultimaMov?.dataChegada || "");
   if (proximo) proximo.value = ordem.proximoDestinoMigracao || "";
   document.getElementById("ajusteMigracaoMotivo").value = "";
 
@@ -4038,13 +4040,13 @@ async function salvarAjusteMigracao(event) {
   }
 
   const ordemId = document.getElementById("ajusteMigracaoOpId")?.value || "";
-  const ordem = state.ordens.find(op => op.id === ordemId);
+  const ordem = state.ordens.find(op => String(op.id) === String(ordemId) || String(op.numeroOP) === String(ordemId));
   if (!ordem) {
     toast("OP não encontrada.");
     return;
   }
 
-  const local = document.getElementById("ajusteMigracaoLocal")?.value || "";
+  const local = normalizarStatusParaLocalAjuste(document.getElementById("ajusteMigracaoLocal")?.value || "");
   const destino = limparTexto(document.getElementById("ajusteMigracaoDestino")?.value || "").toUpperCase();
   const processo = limparTexto(document.getElementById("ajusteMigracaoProcesso")?.value || "").toUpperCase();
   const dataEnvio = document.getElementById("ajusteMigracaoDataEnvio")?.value || "";
@@ -4058,6 +4060,7 @@ async function salvarAjusteMigracao(event) {
   }
 
   const ocultarDoManejo = ["RELATORIO_CELULAS", "FINALIZADO_BIPADO", "CANCELADA"].includes(local);
+  const setorAjuste = getSetorPrincipalOrdem(ordem);
   const patch = {
     statusMigracaoLigia: local,
     localAtualMigracao: local,
@@ -4069,9 +4072,29 @@ async function salvarAjusteMigracao(event) {
     ocultarDoManejo,
     ajusteManualMigracao: true,
     ultimoMotivoAjusteMigracao: motivo,
+    relatorioMigracao: ocultarDoManejo ? labelLocalAjusteMigracao(local) : "",
     atualizadoPor: state.currentUser.uid,
     atualizadoEm: serverTimestamp()
   };
+
+  if (!ocultarDoManejo) {
+    const manejoExistente = getManejoDaOrdem(ordem, setorAjuste) || {};
+    const faseCorrigida = processo || (local === "DISPONIVEL_CASA" ? "DISPONÍVEL P CASA" : local === "EM_FACCAO" ? "AGUARDANDO CHEGADA FACÇÃO" : local === "EM_CELULA" ? "PRODUÇÃO / CÉLULA" : "AGUARDANDO DESTINO");
+    const manejoCorrigido = {
+      ...manejoExistente,
+      fase: faseCorrigida,
+      data: dataEnvio || manejoExistente.data || "",
+      chegada: dataChegada || manejoExistente.chegada || "",
+      faccao: local === "EM_FACCAO" ? destino : (manejoExistente.faccao || ""),
+      celu: local === "EM_CELULA" ? destino : (manejoExistente.celu || ""),
+      proximoDestino,
+      processoAtualMigracao: processo,
+      statusMigracao: local,
+      observacoes: [manejoExistente.observacoes || "", `Ajustado manualmente: ${motivo}`].filter(Boolean).join(" | ")
+    };
+
+    Object.assign(patch, montarPatchManejoSetor(setorAjuste, manejoCorrigido, "organizada"));
+  }
 
   const ajusteRef = doc(collection(db, "ajustesMigracao"));
 
@@ -4110,8 +4133,8 @@ async function salvarAjusteMigracao(event) {
         destino,
         destinoId: docIdSeguro(destino),
         processo: tipoDestino === "celula" ? "CÉLULA INTERNA" : (processo || "PROCESSO A DEFINIR"),
-        setor: getManejoSetorAtual(),
-        setorLabel: getInfoManejoSetor(getManejoSetorAtual()).label,
+        setor: setorAjuste,
+        setorLabel: getInfoManejoSetor(setorAjuste).label,
         quantidadeEnviada: Number(ordem.quantidade || 0),
         dataEnvio,
         dataChegada,
@@ -4129,6 +4152,8 @@ async function salvarAjusteMigracao(event) {
     await batch.commit();
     await registrarLog("ajuste_migracao_op", "ordensProducao", ordemId, `OP ${ordem.numeroOP || ordemId} | ${local} | ${destino || "sem destino"} | ${motivo}`);
     fecharModalAjusteMigracao();
+    renderRastreamento();
+    atualizarManejoComSoma();
     toast("Correção de migração salva com histórico.");
   } catch (error) {
     console.error(error);
@@ -4629,10 +4654,18 @@ async function excluirCelula(id) {
   }
 }
 
+let timerBuscaRastreamento = null;
+
 function configurarRastreamento() {
   const busca = document.getElementById("buscaRastreamento");
   if (busca) {
-    busca.addEventListener("input", renderRastreamento);
+    // Busca global sem datalist e com pequeno atraso para não travar ao digitar OP.
+    busca.removeAttribute("list");
+    busca.setAttribute("autocomplete", "off");
+    busca.addEventListener("input", () => {
+      if (timerBuscaRastreamento) clearTimeout(timerBuscaRastreamento);
+      timerBuscaRastreamento = setTimeout(renderRastreamento, 160);
+    });
   }
 }
 
@@ -5387,27 +5420,270 @@ async function excluirMovimentacao(id) {
   }
 }
 
+
+const LOCAIS_AJUSTE_MIGRACAO_LABELS = {
+  MANEJO_AGUARDANDO_DESTINO: "Manejo / aguardando destino",
+  DISPONIVEL_CASA: "Disponível casa",
+  EM_FACCAO: "Em facção / aguardando chegada",
+  EM_CELULA: "Em célula",
+  RELATORIO_CELULAS: "Relatório células",
+  FINALIZADO_BIPADO: "Finalizado / bipado",
+  CANCELADA: "Cancelada"
+};
+
+function normalizarStatusParaLocalAjuste(status) {
+  const s = limparTexto(status || "").toUpperCase();
+  if (!s) return "MANEJO_AGUARDANDO_DESTINO";
+  if (s.includes("RELATORIO_CELULAS") || s.includes("CELULAS_SEM_ACAO")) return "RELATORIO_CELULAS";
+  if (s.includes("FINALIZADO") || s.includes("BIPADO")) return "FINALIZADO_BIPADO";
+  if (s.includes("CANCEL")) return "CANCELADA";
+  if (s.includes("DISPONIVEL") && s.includes("CASA")) return "DISPONIVEL_CASA";
+  if (s.includes("EM_FACCAO") || s.includes("AGUARDANDO_CHEGADA")) return "EM_FACCAO";
+  if (s.includes("EM_CELULA") || s === "PRODUCAO" || s.includes("PRODUÇÃO")) return "EM_CELULA";
+  return "MANEJO_AGUARDANDO_DESTINO";
+}
+
+function labelLocalAjusteMigracao(local) {
+  return LOCAIS_AJUSTE_MIGRACAO_LABELS[local] || local || "Manejo / aguardando destino";
+}
+
+function getSetorPrincipalOrdem(op) {
+  return getTipoPecaManejoOP(op) === "calcinha" ? "calcinha" : "sutia";
+}
+
+function getMovimentacoesDaOrdemOrdenadas(opId) {
+  return getMovimentacoesDaOrdem(opId).sort((a, b) => getMovTimestamp(b) - getMovTimestamp(a));
+}
+
+function getUltimaMovimentacaoOrdem(op) {
+  const movimentos = getMovimentacoesDaOrdemOrdenadas(op?.id);
+  return movimentos[0] || null;
+}
+
+function montarTextoBuscaGlobalOP(op, movimentos = []) {
+  return normalizarTexto([
+    op?.numeroOP,
+    op?.numeroOPExterno,
+    op?.referencia,
+    op?.cor,
+    op?.produtoNome,
+    op?.tipoPeca,
+    op?.tipoPecaLabel,
+    op?.status,
+    op?.statusMigracaoLigia,
+    op?.localAtualMigracao,
+    op?.relatorioMigracao,
+    op?.faseOriginalLigia,
+    op?.faccaoOriginalLigia,
+    op?.dataOriginalLigia,
+    op?.chegadaOriginalLigia,
+    op?.producaoOriginalLigia,
+    op?.celulaOriginalLigia,
+    op?.necessidadeOriginalLigia,
+    op?.destinoAtualMigracao,
+    op?.processoAtualMigracao,
+    op?.proximoDestinoMigracao,
+    ...movimentos.flatMap(mov => [mov.destino, mov.processo, mov.tipoDestinoLabel, mov.status, mov.dataEnvio, mov.dataChegada])
+  ].join(" "));
+}
+
+function getLocalizacaoAtualOrdem(op) {
+  const movimentos = getMovimentacoesDaOrdemOrdenadas(op?.id);
+  const ultima = movimentos[0] || null;
+  const localAjustado = normalizarStatusParaLocalAjuste(op?.localAtualMigracao || op?.statusMigracaoLigia || "");
+  const destinoAjustado = op?.destinoAtualMigracao || op?.faccaoAtual || op?.celulaAtual || "";
+  const processoAjustado = op?.processoAtualMigracao || "";
+
+  if (op?.ajusteManualMigracao) {
+    return {
+      local: labelLocalAjusteMigracao(localAjustado),
+      tipo: localAjustado === "EM_CELULA" ? "Célula" : localAjustado === "EM_FACCAO" ? "Facção" : "Ajuste manual",
+      destino: destinoAjustado || op?.proximoDestinoMigracao || "-",
+      processo: processoAjustado || ultima?.processo || "-",
+      dataEnvio: op?.dataEnvioAtualMigracao || ultima?.dataEnvio || "",
+      dataChegada: op?.dataChegadaAtualMigracao || ultima?.dataChegada || "",
+      status: "Corrigida manualmente",
+      statusClasse: "info",
+      origem: "Ajuste manual"
+    };
+  }
+
+  if (op?.ocultarDoManejo || ["RELATORIO_CELULAS", "FINALIZADO_BIPADO", "CANCELADA"].includes(localAjustado)) {
+    return {
+      local: labelLocalAjusteMigracao(localAjustado),
+      tipo: localAjustado === "RELATORIO_CELULAS" ? "Relatório" : "Histórico",
+      destino: op?.celulaOriginalLigia || op?.destinoAtualMigracao || op?.faccaoOriginalLigia || "-",
+      processo: op?.processoAtualMigracao || op?.faseOriginalLigia || "-",
+      dataEnvio: op?.producaoOriginalLigia || op?.dataEnvioAtualMigracao || "",
+      dataChegada: op?.dataChegadaAtualMigracao || op?.chegadaOriginalLigia || "",
+      status: op?.relatorioMigracao || labelLocalAjusteMigracao(localAjustado),
+      statusClasse: localAjustado === "CANCELADA" ? "danger" : "bipado",
+      origem: "Relatório separado"
+    };
+  }
+
+  if (ultima) {
+    const tipoLabel = ultima.tipoDestinoLabel || labelTipoMovimento(ultima.tipoDestino);
+    if (ultima.status === "finalizado") {
+      return {
+        local: "Finalizado / bipado",
+        tipo: tipoLabel,
+        destino: ultima.destino || "-",
+        processo: ultima.processo || "-",
+        dataEnvio: ultima.dataEnvio || "",
+        dataChegada: ultima.dataChegada || "",
+        status: labelStatusMovimento(ultima.status),
+        statusClasse: classeStatusMovimento(ultima.status),
+        origem: "Movimentação"
+      };
+    }
+
+    if (ultima.status === "retornou") {
+      return {
+        local: `Retornou de ${tipoLabel.toLowerCase()}`,
+        tipo: tipoLabel,
+        destino: ultima.destino || "-",
+        processo: ultima.processo || "-",
+        dataEnvio: ultima.dataEnvio || "",
+        dataChegada: ultima.dataChegada || "",
+        status: labelStatusMovimento(ultima.status),
+        statusClasse: classeStatusMovimento(ultima.status),
+        origem: "Movimentação"
+      };
+    }
+
+    return {
+      local: `${tipoLabel} / em andamento`,
+      tipo: tipoLabel,
+      destino: ultima.destino || "-",
+      processo: ultima.processo || "-",
+      dataEnvio: ultima.dataEnvio || "",
+      dataChegada: ultima.dataChegada || "",
+      status: labelStatusMovimento(ultima.status),
+      statusClasse: classeStatusMovimento(ultima.status),
+      origem: "Movimentação"
+    };
+  }
+
+  const setor = getSetorPrincipalOrdem(op);
+  const manejo = getManejoDaOrdem(op, setor);
+  if (manejo) {
+    return {
+      local: labelLocalAjusteMigracao(localAjustado),
+      tipo: getInfoManejoSetor(setor).label,
+      destino: manejo.faccao || manejo.celu || manejo.proximoDestino || "Manejo",
+      processo: manejo.fase || processoAjustado || "-",
+      dataEnvio: manejo.data || "",
+      dataChegada: manejo.chegada || "",
+      status: labelLocalAjusteMigracao(localAjustado),
+      statusClasse: "pending",
+      origem: "Manejo"
+    };
+  }
+
+  return {
+    local: labelLocalAjusteMigracao(localAjustado),
+    tipo: op?.tipoPecaLabel || "OP",
+    destino: destinoAjustado || op?.faccaoOriginalLigia || op?.celulaOriginalLigia || "-",
+    processo: processoAjustado || op?.faseOriginalLigia || "-",
+    dataEnvio: op?.dataEnvioAtualMigracao || op?.dataOriginalLigia || "",
+    dataChegada: op?.dataChegadaAtualMigracao || op?.chegadaOriginalLigia || "",
+    status: labelLocalAjusteMigracao(localAjustado),
+    statusClasse: "pending",
+    origem: "OP"
+  };
+}
+
+function formatarFaltaRastreamentoOP(op) {
+  const valor = op?.faltaOriginalLigia;
+  if (valor === undefined || valor === null || valor === "") return "0";
+  const numero = Number(valor);
+  if (Number.isFinite(numero)) return numero.toLocaleString("pt-BR");
+  return String(valor);
+}
+
+function renderLinhaRastreamentoGlobalOP(op) {
+  const local = getLocalizacaoAtualOrdem(op);
+  const quantidade = Number(op?.quantidade || 0);
+  const acoes = ehAdmin()
+    ? `<button class="btn btn-sm btn-primary" onclick="abrirModalAjusteMigracao('${op.id}')">Editar local</button>
+       <button class="btn btn-sm" onclick="filtrarManejosPorOP('${escapeHtml(op.numeroOP || op.id)}')">Abrir manejo</button>`
+    : `<button class="btn btn-sm" onclick="filtrarManejosPorOP('${escapeHtml(op.numeroOP || op.id)}')">Abrir manejo</button>`;
+
+  return `
+    <tr class="rastreamento-global-row">
+      <td><strong>${escapeHtml(op.numeroOP || op.id || "-")}</strong></td>
+      <td><strong>${escapeHtml(op.referencia || "-")}</strong></td>
+      <td>${escapeHtml(op.cor || "-")}</td>
+      <td>${escapeHtml(local.tipo || op.tipoPecaLabel || "OP")}</td>
+      <td>
+        <strong>${escapeHtml(local.local || "-")}</strong><br>
+        <small>${escapeHtml(local.destino || "-")}</small>
+      </td>
+      <td>${escapeHtml(local.processo || "-")}</td>
+      <td><strong>${escapeHtml(quantidade.toLocaleString("pt-BR"))}</strong></td>
+      <td>${escapeHtml(dataISOParaBR(local.dataEnvio) || local.dataEnvio || "-")}</td>
+      <td>${escapeHtml(dataISOParaBR(local.dataChegada) || local.dataChegada || "-")}</td>
+      <td>${escapeHtml(formatarFaltaRastreamentoOP(op))}</td>
+      <td>
+        <span class="badge ${escapeHtml(local.statusClasse || "pending")}">${escapeHtml(local.status || "-")}</span><br>
+        <small>${escapeHtml(local.origem || "-")}</small>
+      </td>
+      <td>${acoes}</td>
+    </tr>
+  `;
+}
+
 function renderRastreamento() {
   const tbody = document.getElementById("listaRastreamento");
   if (!tbody) return;
 
-  const busca = normalizarTexto(document.getElementById("buscaRastreamento")?.value || "");
-  let movimentos = [...state.movimentacoesProducao];
+  const buscaOriginal = document.getElementById("buscaRastreamento")?.value || "";
+  const busca = normalizarTexto(buscaOriginal);
 
+  // Busca global: quando digita uma OP/ref/cor/destino, pesquisa também em ordens que não têm movimentação ativa
+  // ou que foram separadas em relatórios, como FASE=PRODUÇÃO.
   if (busca) {
-    movimentos = movimentos.filter(mov => {
-      const texto = normalizarTexto([
-        mov.numeroOP,
-        mov.referencia,
-        mov.cor,
-        mov.tipoDestinoLabel,
-        mov.destino,
-        mov.processo,
-        mov.status
-      ].join(" "));
-      return texto.includes(busca);
-    });
+    const ordensEncontradas = state.ordens
+      .filter(op => montarTextoBuscaGlobalOP(op, getMovimentacoesDaOrdem(op.id)).includes(busca))
+      .sort((a, b) => {
+        const aExata = normalizarTexto(a.numeroOP || a.id) === busca ? 0 : 1;
+        const bExata = normalizarTexto(b.numeroOP || b.id) === busca ? 0 : 1;
+        if (aExata !== bExata) return aExata - bExata;
+        return String(a.numeroOP || "").localeCompare(String(b.numeroOP || ""), "pt-BR", { numeric: true });
+      });
+
+    const total = ordensEncontradas.length;
+    const emAndamento = ordensEncontradas.filter(op => {
+      const loc = getLocalizacaoAtualOrdem(op);
+      return /andamento|facção|faccao|célula|celula/i.test(`${loc.local} ${loc.status}`);
+    }).length;
+    const retornaram = ordensEncontradas.filter(op => /retornou/i.test(getLocalizacaoAtualOrdem(op).local)).length;
+    const finalizadas = ordensEncontradas.filter(op => {
+      const loc = getLocalizacaoAtualOrdem(op);
+      return /bipado|finalizado|relatório células|relatorio celulas/i.test(`${loc.local} ${loc.status}`);
+    }).length;
+
+    const setText = (id, valor) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = Number(valor || 0).toLocaleString("pt-BR");
+    };
+
+    setText("rastTotalMovimentacoes", total);
+    setText("rastEmAndamento", emAndamento);
+    setText("rastRetornaram", retornaram);
+    setText("rastFinalizadas", finalizadas);
+
+    if (!ordensEncontradas.length) {
+      tbody.innerHTML = `<tr><td colspan="12" class="empty">Nenhuma OP encontrada. Confira se o número foi digitado corretamente.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = ordensEncontradas.map(renderLinhaRastreamentoGlobalOP).join("");
+    return;
   }
+
+  let movimentos = [...state.movimentacoesProducao];
 
   const total = movimentos.length;
   const emAndamento = movimentos.filter(mov => mov.status === "em_andamento" || !mov.status).length;
@@ -5425,35 +5701,45 @@ function renderRastreamento() {
   setText("rastFinalizadas", finalizadas);
 
   if (!movimentos.length) {
-    tbody.innerHTML = `<tr><td colspan="12" class="empty">Nenhuma movimentação encontrada.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" class="empty">Nenhuma movimentação encontrada. Digite o número de uma OP para fazer a busca global.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = movimentos.map(mov => `
-    <tr>
-      <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
-      <td><strong>${escapeHtml(mov.referencia || "-")}</strong></td>
-      <td>${escapeHtml(mov.cor || "-")}</td>
-      <td>${escapeHtml(mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino))}</td>
-      <td><strong>${escapeHtml(mov.destino || "-")}</strong></td>
-      <td>${escapeHtml(mov.processo || "-")}</td>
-      <td><strong>${escapeHtml(Number(mov.quantidadeEnviada || 0).toLocaleString("pt-BR"))}</strong></td>
-      <td>${escapeHtml(dataISOParaBR(mov.dataEnvio) || mov.dataEnvio || "-")}</td>
-      <td>${escapeHtml(dataISOParaBR(mov.dataChegada) || mov.dataChegada || "-")}</td>
-      <td>${escapeHtml(Number(mov.falta || 0).toLocaleString("pt-BR"))}</td>
-      <td>
-        <span class="badge ${classeStatusMovimento(mov.status)}">
-          ${escapeHtml(labelStatusMovimento(mov.status))}
-        </span>
-      </td>
-      <td>
-        ${mov.status === "encaminhado" ? `<span class="badge info">Encaminhado</span>` : ""}
-        ${mov.status !== "finalizado" && mov.status !== "encaminhado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
-        ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : mov.status === "encaminhado" ? "" : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
-        ${ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="excluirMovimentacao('${mov.id}')">Excluir</button>` : ""}
-      </td>
-    </tr>
-  `).join("");
+  movimentos = movimentos.sort((a, b) => getMovTimestamp(b) - getMovTimestamp(a));
+
+  tbody.innerHTML = movimentos.map(mov => {
+    const ordem = getOrdemDaMovimentacao(mov);
+    const editarLocal = ordem && ehAdmin()
+      ? `<button class="btn btn-sm btn-primary" onclick="abrirModalAjusteMigracao('${ordem.id}')">Editar local</button>`
+      : "";
+
+    return `
+      <tr>
+        <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
+        <td><strong>${escapeHtml(mov.referencia || "-")}</strong></td>
+        <td>${escapeHtml(mov.cor || "-")}</td>
+        <td>${escapeHtml(mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino))}</td>
+        <td><strong>${escapeHtml(mov.destino || "-")}</strong></td>
+        <td>${escapeHtml(mov.processo || "-")}</td>
+        <td><strong>${escapeHtml(Number(mov.quantidadeEnviada || 0).toLocaleString("pt-BR"))}</strong></td>
+        <td>${escapeHtml(dataISOParaBR(mov.dataEnvio) || mov.dataEnvio || "-")}</td>
+        <td>${escapeHtml(dataISOParaBR(mov.dataChegada) || mov.dataChegada || "-")}</td>
+        <td>${escapeHtml(Number(mov.falta || 0).toLocaleString("pt-BR"))}</td>
+        <td>
+          <span class="badge ${classeStatusMovimento(mov.status)}">
+            ${escapeHtml(labelStatusMovimento(mov.status))}
+          </span>
+        </td>
+        <td>
+          ${editarLocal}
+          ${mov.status === "encaminhado" ? `<span class="badge info">Encaminhado</span>` : ""}
+          ${mov.status !== "finalizado" && mov.status !== "encaminhado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
+          ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : mov.status === "encaminhado" ? "" : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
+          ${ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="excluirMovimentacao('${mov.id}')">Excluir</button>` : ""}
+        </td>
+      </tr>
+    `;
+  }).join("");
 }
 
 function configurarPagamentos() {
