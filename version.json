@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-necessidade-editavel-1",
-  "descricao": "Campo Necessidade editável igual à planilha, preservando dados atuais e mantendo regras de SILK/TECIDO e modo produção seguro.",
+  "version": "2026-07-27-necessidade-manejo-editavel-2",
+  "descricao": "Campo Necessidade editável no Manejo, sem usar data de criação como necessidade e preservando dados já lançados.",
   "data": "2026-07-27"
 }

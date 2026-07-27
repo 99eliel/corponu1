@@ -1,6 +1,6 @@
 (() => {
   const META_VERSION = document.querySelector('meta[name="app-version"]')?.getAttribute("content");
-  const APP_VERSION = META_VERSION || "2026-07-27-necessidade-editavel-1";
+  const APP_VERSION = META_VERSION || "2026-07-27-necessidade-manejo-editavel-2";
   const STORAGE_KEY = "op_confeccao_app_version";
   const ATTEMPT_PREFIX = "op_confeccao_update_attempt_";
   let refreshing = false;

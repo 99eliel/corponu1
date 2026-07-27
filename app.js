@@ -83,7 +83,7 @@ const pageInfo = {
   },
   ordens: {
     title: "Ordens de Produção",
-    subtitle: "Crie OPs informando referência, cor, quantidade e intervalo de necessidade."
+    subtitle: "Crie OPs informando referência, cor, quantidade e necessidade livre."
   },
   manejo: {
     title: "Manejo",
@@ -2116,7 +2116,7 @@ function renderManejoInline() {
         </td>
         <td><input class="manejo-readonly" type="number" value="${escapeHtml(op.quantidade ?? 0)}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(op.cor || "")}" readonly /></td>
-        <td><input class="manejo-readonly" value="${escapeHtml(getNecessidadeDaOrdem(op))}" readonly /></td>
+        <td><input id="${rowId}-necessidade" value="${escapeHtml(getNecessidadeDaOrdem(op, setor))}" placeholder="Necessidade" title="Digite ou edite a necessidade" /></td>
         <td>
           ${manejoStatusBadge(manejo, op, setor)}
           ${movimentosAbertos ? `<small class="mov-aberto">${movimentosAbertos} mov.</small>` : ""}
@@ -2687,22 +2687,50 @@ function renderResumoSomasManejoPeloDOM() {
 }
 
 
-function getNecessidadeDaOrdem(op) {
+function getNecessidadeDaOrdem(op, setor = "") {
   if (!op) return "";
 
-  if (op.necessidade) return op.necessidade;
-  if (op.previsaoEntrega) return op.previsaoEntrega;
-  if (op.dataNecessidade) return op.dataNecessidade;
-  if (op.dataEntrega) return op.dataEntrega;
+  // Quando o usuário já editou manualmente, respeita exatamente o campo salvo,
+  // inclusive se ele deixou em branco de propósito.
+  if (op.necessidadeManual === true) {
+    return limparTexto(op.necessidade ?? op.necessidadeTexto ?? "");
+  }
+
+  const camposDiretos = [
+    op.necessidade,
+    op.necessidadeTexto,
+    op.necessidadeOriginalLigia
+  ];
+
+  for (const valor of camposDiretos) {
+    const texto = limparTexto(valor);
+    if (texto) return texto;
+  }
+
+  // Na migração da Lígia, algumas necessidades vieram dentro do manejo do setor.
+  // Antes o sistema ignorava isso e acabava mostrando a data de criação/hoje.
+  const manejoSetor = setor ? getManejoDaOrdem(op, setor) : null;
+  const manejoPadrao = manejoSetor || getManejoDaOrdem(op, getManejoSetorAtual?.() || "sutia") || getManejoDaOrdem(op, "sutia") || getManejoDaOrdem(op, "bojo");
+  const necessidadeManejo = limparTexto(manejoPadrao?.necessidade || manejoPadrao?.necessidadeTexto || "");
+  if (necessidadeManejo) return necessidadeManejo;
+
+  const camposCompatibilidade = [
+    op.previsaoEntrega,
+    op.dataNecessidade,
+    op.dataEntrega
+  ];
+
+  for (const valor of camposCompatibilidade) {
+    const texto = limparTexto(valor);
+    if (texto) return texto;
+  }
 
   if (op.mes && op.ano && op.semana) {
     return `Semana ${op.semana} - ${op.mes}/${op.ano}`;
   }
 
-  if (op.criadoEm && typeof op.criadoEm.toDate === "function") {
-    return op.criadoEm.toDate().toLocaleDateString("pt-BR");
-  }
-
+  // Não usa mais criadoEm como necessidade, porque isso mostrava a data de hoje
+  // em OPs que estavam sem necessidade preenchida.
   return "";
 }
 
@@ -2860,6 +2888,8 @@ async function salvarManejoLinha(ordemId) {
 
   const silkNome = limparTexto(valorLinhaManejo(ordem, "silkNome")).toUpperCase();
   const silkData = valorLinhaManejo(ordem, "silkData") || "";
+  const necessidadeLinha = normalizarNecessidadeOrdem(valorLinhaManejo(ordem, "necessidade"));
+  const periodoNecessidadeLinha = extrairPeriodoNecessidade(necessidadeLinha);
 
   const manejo = {
     silk: silkNome,
@@ -2873,7 +2903,8 @@ async function salvarManejoLinha(ordemId) {
     chegada: valorLinhaManejo(ordem, "chegada") || "",
     falta: Number(valorLinhaManejo(ordem, "falta") || 0),
     celu: limparTexto(valorLinhaManejo(ordem, "celu")),
-    necessidade: getNecessidadeDaOrdem(ordem),
+    necessidade: necessidadeLinha,
+    necessidadeTexto: necessidadeLinha,
     coluna: "",
     status: "organizada",
     atualizadoPor: state.currentUser.uid,
@@ -2887,6 +2918,11 @@ async function salvarManejoLinha(ordemId) {
 
   try {
     const patch = montarPatchManejoSetor(setor, manejo, "organizada", {
+      necessidade: necessidadeLinha,
+      necessidadeTexto: necessidadeLinha,
+      necessidadeManual: true,
+      necessidadeInicio: periodoNecessidadeLinha.inicio || "",
+      necessidadeFim: periodoNecessidadeLinha.fim || "",
       atualizadoPor: state.currentUser.uid,
       atualizadoEm: serverTimestamp()
     });
@@ -2934,6 +2970,8 @@ async function biparManejoLinha(ordemId) {
 
   const silkNome = limparTexto(valorLinhaManejo(ordem, "silkNome")).toUpperCase() || manejoExistente.silkNome || manejoExistente.silk || "";
   const silkData = valorLinhaManejo(ordem, "silkData") || manejoExistente.silkData || "";
+  const necessidadeLinha = normalizarNecessidadeOrdem(valorLinhaManejo(ordem, "necessidade"));
+  const periodoNecessidadeLinha = extrairPeriodoNecessidade(necessidadeLinha);
 
   const manejo = {
     ...manejoExistente,
@@ -2948,7 +2986,8 @@ async function biparManejoLinha(ordemId) {
     chegada: valorLinhaManejo(ordem, "chegada") || manejoExistente.chegada || "",
     falta: Number(valorLinhaManejo(ordem, "falta") || manejoExistente.falta || 0),
     celu: limparTexto(valorLinhaManejo(ordem, "celu")) || manejoExistente.celu || "",
-    necessidade: getNecessidadeDaOrdem(ordem),
+    necessidade: necessidadeLinha,
+    necessidadeTexto: necessidadeLinha,
     coluna: "",
     status: "bipado",
     bipado: true,
@@ -2974,6 +3013,11 @@ async function biparManejoLinha(ordemId) {
 
     const patch = montarPatchManejoSetor(setor, manejo, "bipado", {
       ...extras,
+      necessidade: necessidadeLinha,
+      necessidadeTexto: necessidadeLinha,
+      necessidadeManual: true,
+      necessidadeInicio: periodoNecessidadeLinha.inicio || "",
+      necessidadeFim: periodoNecessidadeLinha.fim || "",
       atualizadoPor: state.currentUser.uid,
       atualizadoEm: serverTimestamp()
     });

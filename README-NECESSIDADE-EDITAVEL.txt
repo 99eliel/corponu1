@@ -8,4 +8,4 @@ Alterações desta versão:
 5. A listagem de OPs agora mostra a necessidade exatamente como está salva.
 6. O filtro de necessidade do Manejo continua usando o texto salvo.
 
-Versão: 2026-07-27-necessidade-editavel-1
+Versão: 2026-07-27-necessidade-manejo-editavel-2
