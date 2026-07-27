@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-27-login-blindado-2" />
-  <link rel="stylesheet" href="style.css?v=2026-07-27-login-blindado-2" />
+  <meta name="app-version" content="2026-07-27-login-final-corrigido-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-27-login-final-corrigido-1" />
 
   <script>
     // Proteção mínima do login: evita recarregar a página mesmo se algum módulo atrasar.
@@ -37,7 +37,7 @@
                 aviso = document.createElement("div");
                 aviso.id = "loginFallbackAviso";
                 aviso.className = "notice small";
-                aviso.textContent = "O módulo do sistema ainda está carregando. Aguarde alguns segundos e clique em Entrar novamente. Se persistir, use Ctrl + F5.";
+                aviso.textContent = "O módulo principal ainda está carregando. Aguarde alguns segundos. Se persistir, use Ctrl + F5.";
                 form.appendChild(aviso);
               }
             }
@@ -81,6 +81,7 @@
         </label>
 
         <button class="btn btn-primary full" type="submit">Entrar</button>
+        <div id="loginStatus" class="notice small login-status hidden"></div>
         <button class="btn full" type="button" id="btnResetSenha">Esqueci minha senha</button>
 
         <div class="notice small">
@@ -1811,8 +1812,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-27-login-blindado-2"></script>
-  <script type="module" src="app.js?v=2026-07-27-login-blindado-2"></script>
+  <script src="update.js?v=2026-07-27-login-final-corrigido-1"></script>
+  <script type="module" src="app.js?v=2026-07-27-login-final-corrigido-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">

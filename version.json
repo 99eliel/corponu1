@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-login-blindado-2",
+  "version": "2026-07-27-login-final-corrigido-1",
   "updatedAt": "2026-07-27T00:00:00-03:00",
-  "notes": "Correção blindada do login: formulário não recarrega a página, mostrar senha funciona e o Firestore cai para modo normal se o cache persistente falhar."
+  "notes": "Correção final do login: autenticação processada no submit, perfil com mensagem visível, PDF carregado sob demanda e login antes das telas pesadas."
 }

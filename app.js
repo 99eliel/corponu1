@@ -1,4 +1,3 @@
-import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   getAuth,
@@ -41,6 +40,15 @@ const firebaseConfig = {
   measurementId: "G-3FVRT3CD6W"
 };
 
+
+let pdfjsLibCache = null;
+async function carregarPdfJs() {
+  if (pdfjsLibCache) return pdfjsLibCache;
+  pdfjsLibCache = await import("https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.mjs");
+  pdfjsLibCache.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.mjs";
+  return pdfjsLibCache;
+}
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
@@ -65,7 +73,6 @@ try {
 }
 const secondaryAuth = getAuth(secondaryApp);
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.mjs";
 
 const state = {
   currentUser: null,
@@ -384,12 +391,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  // Login e senha são configurados primeiro para nunca ficarem travados por erro em outra tela.
-  iniciarParte("sugestões de facções", carregarSugestoesFaccoesCelus);
-  iniciarParte("sugestões do manejo", carregarSugestoesExtrasManejo);
+  // Login e senha entram antes de qualquer função pesada, para não bloquear acesso.
   iniciarParte("mostrar senha", configurarVisibilidadeSenhas);
   iniciarParte("login", configurarAuth);
 
+  iniciarParte("sugestões de facções", carregarSugestoesFaccoesCelus);
+  iniciarParte("sugestões do manejo", carregarSugestoesExtrasManejo);
   iniciarParte("menu lateral", configurarSidebarRetratil);
   iniciarParte("navegação", configurarNavegacao);
   iniciarParte("atualização manual", () => document.getElementById("btnAtualizarServidor")?.addEventListener("click", atualizarDadosServidorAgora));
@@ -427,21 +434,120 @@ function configurarVisibilidadeSenhas() {
   });
 }
 
+function setLoginStatus(mensagem, tipo = "info") {
+  const el = document.getElementById("loginStatus");
+  if (!el) return;
+  el.textContent = mensagem || "";
+  el.className = `notice small login-status ${tipo}`;
+  el.classList.toggle("hidden", !mensagem);
+}
+
+let uidEmProcessamentoLogin = null;
+async function processarUsuarioAutenticado(user) {
+  if (!user) return;
+  if (uidEmProcessamentoLogin === user.uid) return;
+  uidEmProcessamentoLogin = user.uid;
+
+  limparListeners();
+  state.currentUser = user;
+  setLoginStatus("Login confirmado. Carregando perfil...", "info");
+
+  let perfilSnap;
+  try {
+    perfilSnap = await getDoc(doc(db, "usuarios", user.uid));
+  } catch (error) {
+    console.error("Erro ao buscar perfil do usuário:", error);
+    uidEmProcessamentoLogin = null;
+    setLoginStatus("Entrou no Authentication, mas o Firestore bloqueou o perfil. Confira as regras e o documento em usuarios com o mesmo UID.", "erro");
+    toast("Authentication OK, mas perfil bloqueado no Firestore.");
+    return;
+  }
+
+  if (!perfilSnap.exists()) {
+    uidEmProcessamentoLogin = null;
+    setLoginStatus(`Login feito, mas não existe perfil em usuarios/${user.uid}. Crie esse documento ou confira o UID.`, "erro");
+    toast("Login sem perfil no Firestore. Confira o UID em usuarios.");
+    return;
+  }
+
+  const perfil = { uid: user.uid, ...perfilSnap.data() };
+
+  if (perfil.ativo === false) {
+    uidEmProcessamentoLogin = null;
+    setLoginStatus("Usuário encontrado, mas está marcado como inativo.", "erro");
+    toast("Usuário inativo. Fale com o administrador.");
+    return;
+  }
+
+  // Proteção para usuários antigos: se o campo ativo não existir, considera ativo sem alterar o banco.
+  if (perfil.ativo === undefined) perfil.ativo = true;
+
+  state.perfil = perfil;
+  setLoginStatus("Perfil carregado. Abrindo sistema...", "sucesso");
+
+  try {
+    mostrarSistema();
+  } catch (error) {
+    console.error("Erro ao abrir sistema após login:", error);
+    document.getElementById("authScreen")?.classList.add("hidden");
+    document.getElementById("appShell")?.classList.remove("hidden");
+    toast("Login realizado. Uma tela encontrou erro ao abrir, mas seu acesso foi mantido.");
+  }
+
+  try {
+    iniciarListenersFirestore();
+  } catch (error) {
+    console.error("Erro ao iniciar dados do sistema:", error);
+    toast("Login realizado. Houve erro ao carregar dados; use Atualizar ou confira as regras do Firebase.");
+  }
+
+  try {
+    registrarLog("login", "sistema", "Sistema", "Usuário entrou no sistema.");
+  } catch (error) {
+    console.warn("Não foi possível registrar log de login.", error);
+  }
+}
+
 function configurarAuth() {
   window.OP_APP_AUTH_READY = true;
-  document.getElementById("loginForm")?.addEventListener("submit", async event => {
-    event.preventDefault();
+  const formLogin = document.getElementById("loginForm");
+  if (formLogin && formLogin.dataset.authPrincipalReady !== "1") {
+    formLogin.dataset.authPrincipalReady = "1";
+    formLogin.addEventListener("submit", async event => {
+      event.preventDefault();
+      event.stopPropagation();
 
-    const email = document.getElementById("loginEmail").value.trim();
-    const senha = document.getElementById("loginSenha").value;
+      const email = document.getElementById("loginEmail")?.value.trim();
+      const senha = document.getElementById("loginSenha")?.value;
 
-    try {
-      await signInWithEmailAndPassword(auth, email, senha);
-    } catch (error) {
-      console.error(error);
-      toast("Erro ao entrar. Confira e-mail e senha.");
-    }
-  });
+      if (!email || !senha) {
+        setLoginStatus("Digite e-mail e senha.", "erro");
+        return;
+      }
+
+      const btn = formLogin.querySelector('button[type="submit"]');
+      if (btn) {
+        btn.disabled = true;
+        btn.dataset.textoOriginal = btn.textContent;
+        btn.textContent = "Entrando...";
+      }
+
+      try {
+        setLoginStatus("Conferindo e-mail e senha...", "info");
+        const cred = await signInWithEmailAndPassword(auth, email, senha);
+        await processarUsuarioAutenticado(cred.user);
+      } catch (error) {
+        console.error("Erro no login:", error);
+        setLoginStatus("Erro ao entrar. Confira e-mail, senha e se o usuário existe no Firebase Authentication.", "erro");
+        toast("Erro ao entrar. Confira e-mail e senha.");
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = btn.dataset.textoOriginal || "Entrar";
+        }
+      }
+    });
+  }
 
   document.getElementById("btnResetSenha")?.addEventListener("click", async () => {
     const email = document.getElementById("loginEmail").value.trim();
@@ -465,63 +571,16 @@ function configurarAuth() {
   });
 
   onAuthStateChanged(auth, async user => {
-    limparListeners();
-
     if (!user) {
+      limparListeners();
       state.currentUser = null;
       state.perfil = null;
+      uidEmProcessamentoLogin = null;
       mostrarTelaLogin();
       return;
     }
 
-    state.currentUser = user;
-
-    let perfilSnap;
-    try {
-      perfilSnap = await getDoc(doc(db, "usuarios", user.uid));
-    } catch (error) {
-      console.error("Erro ao buscar perfil do usuário:", error);
-      await signOut(auth);
-      toast("Erro de permissão ao buscar o perfil. Confira as regras do Firestore e o documento em usuarios.");
-      return;
-    }
-
-    if (!perfilSnap.exists()) {
-      await signOut(auth);
-      toast("Login sem perfil no Firestore. Crie o documento em usuarios usando o UID deste usuário.");
-      return;
-    }
-
-    const perfil = {
-      uid: user.uid,
-      ...perfilSnap.data()
-    };
-
-    if (!perfil.ativo) {
-      await signOut(auth);
-      toast("Usuário inativo. Fale com o administrador.");
-      return;
-    }
-
-    state.perfil = perfil;
-
-    try {
-      mostrarSistema();
-    } catch (error) {
-      console.error("Erro ao abrir sistema após login:", error);
-      document.getElementById("authScreen")?.classList.add("hidden");
-      document.getElementById("appShell")?.classList.remove("hidden");
-      toast("Login realizado. Uma tela encontrou erro ao abrir, mas seu acesso foi mantido.");
-    }
-
-    try {
-      iniciarListenersFirestore();
-    } catch (error) {
-      console.error("Erro ao iniciar dados do sistema:", error);
-      toast("Login realizado. Houve erro ao carregar dados; use Atualizar ou confira as regras do Firebase.");
-    }
-
-    registrarLog("login", "sistema", "Sistema", "Usuário entrou no sistema.");
+    await processarUsuarioAutenticado(user);
   });
 }
 
@@ -9383,6 +9442,7 @@ function preencherCamposPDFImportacao() {
 
 async function extrairTextoPDF(file) {
   const buffer = await file.arrayBuffer();
+  const pdfjsLib = await carregarPdfJs();
   const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
   let textoFinal = "";
 
