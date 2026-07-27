@@ -71,6 +71,8 @@ const state = {
   logs: [],
   pdfImportacaoPendente: [],
   relatorioAtual: "enfesto",
+  relatorioFiltrosAplicados: false,
+  logsFiltrosAplicados: false,
   manejoSetorAtual: "sutia",
   dadosCarregados: {},
   carregandoDados: {},
@@ -739,7 +741,7 @@ function carregarDadosDaPagina(page) {
   }
 
   if (page === "logs") {
-    carregarLogsSeNecessario();
+    // Auditoria carrega somente quando o usuário clicar em Filtrar auditoria.
   }
 
   if (page === "relatorios") {
@@ -8331,11 +8333,17 @@ function configurarRelatorios() {
       document.querySelectorAll(".report-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       state.relatorioAtual = btn.dataset.relatorio;
+      state.relatorioFiltrosAplicados = false;
+      resetarLimitesRenderTabelaPrefixo("relatorio");
       renderRelatorio();
     });
   });
 
-  document.getElementById("btnAplicarFiltros").addEventListener("click", renderRelatorio);
+  document.getElementById("btnAplicarFiltros").addEventListener("click", () => {
+    state.relatorioFiltrosAplicados = true;
+    resetarLimiteRenderTabela(`relatorio-${state.relatorioAtual}`);
+    renderRelatorio();
+  });
 
   document.getElementById("btnLimparFiltros").addEventListener("click", () => {
     document.getElementById("filtroSemana").value = "";
@@ -8343,11 +8351,19 @@ function configurarRelatorios() {
     document.getElementById("filtroAno").value = "";
     document.getElementById("filtroReferencia").value = "";
     document.getElementById("filtroCor").value = "";
+    state.relatorioFiltrosAplicados = false;
+    resetarLimitesRenderTabelaPrefixo("relatorio");
     renderRelatorio();
   });
 
   document.getElementById("btnExportarCSV").addEventListener("click", exportarCSV);
-  document.getElementById("btnImprimir").addEventListener("click", () => window.print());
+  document.getElementById("btnImprimir").addEventListener("click", () => {
+    if (!state.relatorioFiltrosAplicados) {
+      toast("Aplique os filtros antes de imprimir o relatório.");
+      return;
+    }
+    window.print();
+  });
 }
 
 function getOrdensRelatorio() {
@@ -8418,17 +8434,22 @@ function ordemMes(mes) {
 
 function renderRelatorio() {
   const info = reportInfo[state.relatorioAtual];
-  document.getElementById("tituloRelatorio").textContent = info.title;
-  document.getElementById("subtituloRelatorio").textContent = info.subtitle;
-
+  const titulo = document.getElementById("tituloRelatorio");
+  const subtitulo = document.getElementById("subtituloRelatorio");
   const thead = document.getElementById("cabecalhoRelatorio");
   const tbody = document.getElementById("corpoRelatorio");
-  const ordens = getOrdensRelatorio();
+  const chaveTabela = `relatorio-${state.relatorioAtual}`;
 
+  if (!info || !thead || !tbody) return;
+
+  titulo.textContent = info.title;
+  subtitulo.textContent = info.subtitle;
+  limparControleRenderTabela(chaveTabela);
+
+  let colspan = 6;
 
   if (info.tipo === "bipado") {
-    const movimentos = getMovimentacoesRelatorioBipadas();
-
+    colspan = 10;
     thead.innerHTML = `
       <tr>
         <th>OP</th>
@@ -8443,31 +8464,8 @@ function renderRelatorio() {
         <th>Status</th>
       </tr>
     `;
-
-    if (!movimentos.length) {
-      tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma movimentação bipada encontrada.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = movimentos.map(mov => `
-      <tr>
-        <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
-        <td>${escapeHtml(mov.referencia || "-")}</td>
-        <td><strong>${escapeHtml(mov.cor || "-")}</strong></td>
-        <td>${escapeHtml(mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino))}</td>
-        <td><strong>${escapeHtml(mov.destino || "-")}</strong></td>
-        <td>${escapeHtml(mov.processo || "-")}</td>
-        <td>${escapeHtml(quantidadeRecebidaMovimentacao(mov).toLocaleString("pt-BR"))}</td>
-        <td>${escapeHtml(dataISOParaBR(mov.dataChegada) || mov.dataChegada || "-")}</td>
-        <td>${escapeHtml(mov.movimentacaoOrigemId ? "Reenvio" : "Manejo")}</td>
-        <td><span class="badge ok">Bipado</span></td>
-      </tr>
-    `).join("");
-
-    return;
-  }
-
-  if (info.tipo === "geral") {
+  } else if (info.tipo === "geral") {
+    colspan = 10;
     thead.innerHTML = `
       <tr>
         <th>OP</th>
@@ -8482,13 +8480,64 @@ function renderRelatorio() {
         <th>Obs.</th>
       </tr>
     `;
+  } else {
+    colspan = 6;
+    thead.innerHTML = `
+      <tr>
+        <th>OP</th>
+        <th>Necessidade</th>
+        <th>Referência</th>
+        <th>Cor</th>
+        <th>Quantidade</th>
+        <th>${escapeHtml(info.coluna)}</th>
+      </tr>
+    `;
+  }
 
-    if (!ordens.length) {
-      tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma ordem encontrada para este relatório.</td></tr>`;
+  if (!state.relatorioFiltrosAplicados) {
+    tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty">Escolha o tipo de relatório, informe os filtros necessários e clique em <strong>Aplicar filtros</strong>. Nada é listado automaticamente para economizar leitura e processamento.</td></tr>`;
+    return;
+  }
+
+  if (info.tipo === "bipado") {
+    const movimentos = getMovimentacoesRelatorioBipadas();
+
+    if (!movimentos.length) {
+      tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma movimentação bipada encontrada para os filtros aplicados.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = ordens.map(op => `
+    const movimentosVisiveis = limitarItensRenderTabela(chaveTabela, movimentos);
+    tbody.innerHTML = movimentosVisiveis.map(mov => `
+      <tr>
+        <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
+        <td>${escapeHtml(mov.referencia || "-")}</td>
+        <td><strong>${escapeHtml(mov.cor || "-")}</strong></td>
+        <td>${escapeHtml(mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino))}</td>
+        <td><strong>${escapeHtml(mov.destino || "-")}</strong></td>
+        <td>${escapeHtml(mov.processo || "-")}</td>
+        <td>${escapeHtml(quantidadeRecebidaMovimentacao(mov).toLocaleString("pt-BR"))}</td>
+        <td>${escapeHtml(dataISOParaBR(mov.dataChegada) || mov.dataChegada || "-")}</td>
+        <td>${escapeHtml(mov.movimentacaoOrigemId ? "Reenvio" : "Manejo")}</td>
+        <td><span class="badge ok">Bipado</span></td>
+      </tr>
+    `).join("");
+
+    renderControleRenderTabela(tbody, chaveTabela, movimentos.length, movimentosVisiveis.length, "movimentações filtradas");
+    return;
+  }
+
+  const ordens = getOrdensRelatorio();
+
+  if (!ordens.length) {
+    tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty">Nenhuma ordem encontrada para os filtros aplicados.</td></tr>`;
+    return;
+  }
+
+  const ordensVisiveis = limitarItensRenderTabela(chaveTabela, ordens);
+
+  if (info.tipo === "geral") {
+    tbody.innerHTML = ordensVisiveis.map(op => `
       <tr>
         <td><strong>${escapeHtml(op.numeroOP)}</strong></td>
         <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
@@ -8502,36 +8551,20 @@ function renderRelatorio() {
         <td>${escapeHtml(op.observacoes || "-")}</td>
       </tr>
     `).join("");
-
-    return;
+  } else {
+    tbody.innerHTML = ordensVisiveis.map(op => `
+      <tr>
+        <td><strong>${escapeHtml(op.numeroOP)}</strong></td>
+        <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
+        <td>${escapeHtml(op.referencia)}</td>
+        <td><strong>${escapeHtml(op.cor || "-")}</strong></td>
+        <td>${op.quantidade}</td>
+        <td>${simNaoBadge(true)}</td>
+      </tr>
+    `).join("");
   }
 
-  thead.innerHTML = `
-    <tr>
-      <th>OP</th>
-      <th>Necessidade</th>
-      <th>Referência</th>
-      <th>Cor</th>
-      <th>Quantidade</th>
-      <th>${escapeHtml(info.coluna)}</th>
-    </tr>
-  `;
-
-  if (!ordens.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhuma ordem encontrada para este relatório.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = ordens.map(op => `
-    <tr>
-      <td><strong>${escapeHtml(op.numeroOP)}</strong></td>
-      <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
-      <td>${escapeHtml(op.referencia)}</td>
-      <td><strong>${escapeHtml(op.cor || "-")}</strong></td>
-      <td>${op.quantidade}</td>
-      <td>${simNaoBadge(true)}</td>
-    </tr>
-  `).join("");
+  renderControleRenderTabela(tbody, chaveTabela, ordens.length, ordensVisiveis.length, "ordens filtradas");
 }
 
 function configurarUsuarios() {
@@ -8939,7 +8972,27 @@ async function alternarUsuario(uid, novoStatus) {
 function configurarLogs() {
   const busca = document.getElementById("buscaLog");
   if (busca) {
-    busca.addEventListener("input", renderLogs);
+    busca.addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        aplicarFiltroLogsAuditoria();
+      }
+    });
+  }
+
+  const btnFiltrar = document.getElementById("btnFiltrarLogs");
+  if (btnFiltrar) {
+    btnFiltrar.addEventListener("click", aplicarFiltroLogsAuditoria);
+  }
+
+  const btnLimpar = document.getElementById("btnLimparLogs");
+  if (btnLimpar) {
+    btnLimpar.addEventListener("click", () => {
+      if (busca) busca.value = "";
+      state.logsFiltrosAplicados = false;
+      resetarLimiteRenderTabela("logs-auditoria");
+      renderLogs();
+    });
   }
 
   const btn = document.getElementById("btnExportarLogs");
@@ -8948,12 +9001,41 @@ function configurarLogs() {
   }
 }
 
+function aplicarFiltroLogsAuditoria() {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode visualizar logs.");
+    return;
+  }
+
+  state.logsFiltrosAplicados = true;
+  resetarLimiteRenderTabela("logs-auditoria");
+  carregarLogsSeNecessario();
+  renderLogs();
+}
+
 function renderLogs() {
   const tbody = document.getElementById("listaLogs");
   if (!tbody) return;
 
+  limparControleRenderTabela("logs-auditoria");
+
   if (!ehAdmin()) {
     tbody.innerHTML = `<tr><td colspan="6" class="empty">Apenas admin pode visualizar logs.</td></tr>`;
+    return;
+  }
+
+  if (!state.logsFiltrosAplicados) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Digite um termo, se precisar, e clique em <strong>Filtrar auditoria</strong>. Os logs não aparecem automaticamente para reduzir carregamento.</td></tr>`;
+    return;
+  }
+
+  if (state.carregandoDados.logs && !state.dadosCarregados.logs) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Carregando auditoria...</td></tr>`;
+    return;
+  }
+
+  if (!state.dadosCarregados.logs && !state.logs.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Clique em Filtrar auditoria para carregar os registros.</td></tr>`;
     return;
   }
 
@@ -8976,11 +9058,12 @@ function renderLogs() {
   }
 
   if (!logs.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhum log encontrado.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhum log encontrado para o filtro aplicado.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = logs.slice(0, 300).map(log => `
+  const logsVisiveis = limitarItensRenderTabela("logs-auditoria", logs);
+  tbody.innerHTML = logsVisiveis.map(log => `
     <tr>
       <td>${escapeHtml(formatarDataHora(log.criadoEm))}</td>
       <td>
@@ -8993,6 +9076,30 @@ function renderLogs() {
       <td class="log-detail">${escapeHtml(log.detalhes || "-")}</td>
     </tr>
   `).join("");
+
+  renderControleRenderTabela(tbody, "logs-auditoria", logs.length, logsVisiveis.length, "logs filtrados");
+}
+
+function getLogsAuditoriaFiltrados() {
+  const busca = normalizarTexto(document.getElementById("buscaLog")?.value || "");
+  let logs = [...state.logs];
+
+  if (busca) {
+    logs = logs.filter(log => {
+      const texto = normalizarTexto([
+        log.usuarioNome,
+        log.usuarioEmail,
+        log.usuarioTipo,
+        log.acao,
+        log.tipoAlvo,
+        log.alvoId,
+        log.detalhes
+      ].join(" "));
+      return texto.includes(busca);
+    });
+  }
+
+  return logs;
 }
 
 function exportarLogsCSV() {
@@ -9001,10 +9108,15 @@ function exportarLogsCSV() {
     return;
   }
 
-  const logs = [...state.logs];
+  if (!state.logsFiltrosAplicados) {
+    toast("Filtre a auditoria antes de exportar.");
+    return;
+  }
+
+  const logs = getLogsAuditoriaFiltrados();
 
   if (!logs.length) {
-    toast("Não há logs para exportar.");
+    toast("Não há logs filtrados para exportar.");
     return;
   }
 
@@ -9027,9 +9139,10 @@ function exportarLogsCSV() {
 
   const csv = linhas
     .map(linha => linha.map(campo => `"${String(campo).replaceAll('"', '""')}"`).join(";"))
-    .join("\n");
+    .join("
+");
 
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
 
@@ -10064,6 +10177,11 @@ function getLinhasCSVRelatorio(ordens) {
 
 
 function exportarCSV() {
+  if (!state.relatorioFiltrosAplicados) {
+    toast("Aplique os filtros antes de exportar o relatório.");
+    return;
+  }
+
   const info = reportInfo[state.relatorioAtual];
   const ordens = getOrdensRelatorio();
   const temDados = info.tipo === "bipado" ? getMovimentacoesRelatorioBipadas().length : ordens.length;

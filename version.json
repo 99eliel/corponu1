@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-sem-dashboard-carregar-mais-1",
+  "version": "2026-07-27-relatorios-auditoria-sob-demanda-1",
   "updatedAt": "2026-07-27T00:00:00-03:00",
-  "notes": "Dashboard removido do menu e tabelas grandes com carregar mais sem quebrar filtros."
+  "notes": "Relatórios e auditoria sem listagem automática; mostram dados somente após aplicar filtros, com carregar mais sem quebrar filtros."
 }
