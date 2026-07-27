@@ -2382,25 +2382,51 @@ function filtroManejoCombina(campo, valorFiltroOriginal, valorItemOriginal, seto
 
   if (!valorFiltro) return true;
 
+  // Opção universal para o Manejo: permite localizar rapidamente campos vazios
+  // sem quebrar os filtros exatos, como CASA x DISPONÍVEL P CASA.
+  const filtrosCampoVazio = [
+    "campo vazio",
+    "vazio",
+    "sem preenchimento",
+    "sem preencher",
+    "nao preenchido",
+    "não preenchido",
+    "em branco"
+  ];
+  const filtrosCampoPreenchido = [
+    "preenchido",
+    "preenchida",
+    "preenchidos",
+    "com preenchimento"
+  ];
+
+  if (filtrosCampoVazio.includes(valorFiltro)) {
+    return !valorItem;
+  }
+
+  if (filtrosCampoPreenchido.includes(valorFiltro)) {
+    return Boolean(valorItem);
+  }
+
   // Filtros especiais do SILK e da DATA TECIDO:
   // "Preenchido" mostra tudo que já tem qualquer informação salva no campo,
   // sem obrigar o usuário a escolher um nome/data específica.
   if (campo === "silk") {
-    if (["preenchido", "preenchida", "preenchidos", "com silk", "silk preenchido"].includes(valorFiltro)) {
+    if (["com silk", "silk preenchido"].includes(valorFiltro)) {
       return Boolean(valorItem);
     }
 
-    if (["vazio", "sem silk", "nao preenchido", "não preenchido"].includes(valorFiltro)) {
+    if (["sem silk"].includes(valorFiltro)) {
       return !valorItem;
     }
   }
 
   if (campo === "dataTecido") {
-    if (["preenchido", "preenchida", "preenchidos", "com tecido", "tecido preenchido"].includes(valorFiltro)) {
+    if (["com tecido", "tecido preenchido"].includes(valorFiltro)) {
       return Boolean(valorItem);
     }
 
-    if (["vazio", "sem tecido", "nao preenchido", "não preenchido"].includes(valorFiltro)) {
+    if (["sem tecido"].includes(valorFiltro)) {
       return !valorItem;
     }
   }
@@ -2410,7 +2436,7 @@ function filtroManejoCombina(campo, valorFiltroOriginal, valorItemOriginal, seto
       return valorItem.includes("urgente") || valorItem.includes("urgencia");
     }
 
-    if (["vazio", "sem necessidade", "nao preenchido", "não preenchido"].includes(valorFiltro)) {
+    if (["sem necessidade"].includes(valorFiltro)) {
       return !valorItem;
     }
   }
@@ -2599,9 +2625,17 @@ function preencherSelectFiltroManejo(id, valores, labelTodos = "Todos") {
   // SILK e DATA TECIDO precisam ter a opção "Preenchido" para listar rapidamente
   // tudo que já está liberado para seguir.
   const opcoesFixasPorFiltro = {
-    filtroManejoSilk: ["Preenchido", "Sem silk"],
-    filtroManejoDataTecido: ["Preenchido", "Sem tecido"],
-    filtroManejoNecessidade: ["URGENTE", "Sem necessidade"]
+    filtroManejoReferencia: ["Campo vazio"],
+    filtroManejoSilk: ["Preenchido", "Campo vazio", "Sem silk"],
+    filtroManejoDataTecido: ["Preenchido", "Campo vazio", "Sem tecido"],
+    filtroManejoFase: ["Campo vazio"],
+    filtroManejoQuantidade: ["Campo vazio"],
+    filtroManejoCor: ["Campo vazio"],
+    filtroManejoFaccao: ["Campo vazio"],
+    filtroManejoChegada: ["Campo vazio"],
+    filtroManejoFalta: ["Campo vazio"],
+    filtroManejoCelu: ["Campo vazio"],
+    filtroManejoNecessidade: ["URGENTE", "Campo vazio", "Sem necessidade"]
   };
   const fixas = opcoesFixasPorFiltro[id] || [];
   const fixasNormalizadas = new Set(fixas.map(valor => normalizarTexto(valor).trim()));
@@ -2654,11 +2688,13 @@ function renderFiltrosColunasManejo() {
   preencherSelectFiltroManejo("filtroManejoReferencia", ordens.map(op => getValorManejoParaFiltro(op, "referencia")), "Todas");
   preencherSelectFiltroManejo("filtroManejoSilk", [
     "Preenchido",
+    "Campo vazio",
     "Sem silk",
     ...ordens.map(op => getValorManejoParaFiltro(op, "silk"))
   ], "Todos");
   preencherSelectFiltroManejo("filtroManejoDataTecido", [
     "Preenchido",
+    "Campo vazio",
     "Sem tecido",
     ...ordens.map(op => getValorManejoParaFiltro(op, "dataTecido"))
   ], "Todas");
@@ -2680,6 +2716,7 @@ function renderFiltrosColunasManejo() {
   ], "Todos");
   preencherSelectFiltroManejo("filtroManejoNecessidade", [
     "URGENTE",
+    "Campo vazio",
     "Sem necessidade",
     ...ordens.map(op => getValorManejoParaFiltro(op, "necessidade"))
   ], "Todas");

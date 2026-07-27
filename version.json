@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-resgate-funcional-dados-1",
+  "version": "2026-07-27-resgate-filtros-campo-vazio-1",
   "updatedAt": "2026-07-27T00:00:00-03:00",
   "notes": "Versão de resgate funcional baseada na última versão estável: login normal, dados do Firebase carregando, sem dashboard e com carregar mais."
 }
