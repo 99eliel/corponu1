@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-menu-funcoes-corrigidas-1",
-  "descricao": "Correção das ações do menu do Manejo, exposição segura das funções globais e envio para facção com processos somente de sutiã.",
+  "version": "2026-07-27-silk-tecido-obrigatorios-1",
+  "descricao": "Manejo com filtro SILK Preenchido/Sem silk e bloqueio de envio para facção/célula até SILK e DATA TECIDO estarem preenchidos.",
   "data": "2026-07-27"
 }

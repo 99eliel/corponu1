@@ -3923,3 +3923,94 @@ table td {
 @media(max-width:900px){.form-grid.three{grid-template-columns:1fr}.action-menu{max-width:calc(100vw - 16px)}}
 .migracao-badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:.75rem;font-weight:800;margin-top:4px}
 .pagamento-pendente-valor{background:#fff7ed!important;color:#9a3412!important;font-weight:800}
+
+/* Rastreamento global: mostra a trilha completa da OP sem precisar procurar em várias abas */
+.rastreamento-historico-row td {
+  background: #f8fafc;
+  padding: 0 14px 18px;
+}
+
+.rastreamento-historico-card {
+  border: 1px solid #dbe4f0;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.rastreamento-historico-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.rastreamento-historico-head strong {
+  display: block;
+  color: #0f172a;
+  font-size: 0.98rem;
+}
+
+.rastreamento-historico-head span {
+  display: block;
+  color: #475569;
+  font-size: 0.86rem;
+  margin-top: 2px;
+}
+
+.rastreamento-timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.rastreamento-step {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.rastreamento-step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #16a34a;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
+.rastreamento-step-body {
+  border-left: 3px solid #bbf7d0;
+  padding: 0 0 8px 12px;
+}
+
+.rastreamento-step-body strong {
+  color: #0f172a;
+  display: block;
+}
+
+.rastreamento-step-body span,
+.rastreamento-step-body small {
+  color: #475569;
+  display: block;
+  margin-top: 2px;
+}
+
+.rastreamento-step-body p {
+  margin: 6px 0 0;
+  color: #334155;
+  font-size: 0.86rem;
+}
+
+@media (max-width: 720px) {
+  .rastreamento-historico-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

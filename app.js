@@ -2098,6 +2098,94 @@ function getStatusManejo(op, setor = "sutia") {
   return manejo ? "organizada" : "pendente";
 }
 
+function silkPreenchidoManejo(manejo) {
+  if (!manejo) return false;
+  return Boolean(getSilkNomeManejo(manejo) || manejo.silkData || manejo.dataSilk);
+}
+
+function getValorSilkManejoParaFiltro(manejo) {
+  if (!manejo) return "";
+
+  const nome = getSilkNomeManejo(manejo);
+  if (nome) return nome;
+
+  return manejo.silkData || manejo.dataSilk || "";
+}
+
+function getDadosLinhaOuManejoObrigatorios(op, setor = getManejoSetorAtual()) {
+  const manejo = getManejoDaOrdem(op, setor) || {};
+  const silkNomeLinha = limparTexto(valorLinhaManejo(op, "silkNome")).toUpperCase();
+  const silkDataLinha = valorLinhaManejo(op, "silkData") || "";
+  const dataTecidoLinha = valorLinhaManejo(op, "dataTecido") || "";
+
+  const silkNome = silkNomeLinha || getSilkNomeManejo(manejo);
+  const silkData = silkDataLinha || manejo.silkData || manejo.dataSilk || "";
+  const dataTecido = dataTecidoLinha || manejo.dataTecido || "";
+
+  return {
+    silkNome,
+    silkData,
+    dataTecido,
+    silkPreenchido: Boolean(silkNome || silkData),
+    tecidoPreenchido: Boolean(dataTecido)
+  };
+}
+
+function validarSilkETecidoAntesDeMovimentar(op, setor = getManejoSetorAtual()) {
+  const dados = getDadosLinhaOuManejoObrigatorios(op, setor);
+  const faltando = [];
+
+  if (!dados.silkPreenchido) faltando.push("SILK");
+  if (!dados.tecidoPreenchido) faltando.push("DATA TECIDO");
+
+  if (faltando.length) {
+    toast(`Antes de seguir, preencha ${faltando.join(" e ")} da OP ${op.numeroOP || ""}.`);
+    return { ok: false, ...dados };
+  }
+
+  return { ok: true, ...dados };
+}
+
+async function salvarSilkETecidoAntesDeMovimentar(op, setor = getManejoSetorAtual(), dadosObrigatorios = null) {
+  if (!op?.id) return;
+
+  const dados = dadosObrigatorios || getDadosLinhaOuManejoObrigatorios(op, setor);
+  const manejoExistente = getManejoDaOrdem(op, setor) || {};
+  const faseLinha = limparTexto(valorLinhaManejo(op, "fase")).toUpperCase();
+  const fase = faseLinha || manejoExistente.fase || "PRONTO PARA MOVIMENTAR";
+
+  const manejo = {
+    ...manejoExistente,
+    setor,
+    setorLabel: getInfoManejoSetor(setor).label,
+    silk: dados.silkNome || manejoExistente.silk || "",
+    silkNome: dados.silkNome || manejoExistente.silkNome || manejoExistente.silk || "",
+    silkData: dados.silkData || manejoExistente.silkData || "",
+    dataTecido: dados.dataTecido || manejoExistente.dataTecido || "",
+    fase,
+    faccao: limparTexto(valorLinhaManejo(op, "faccao")).toUpperCase() || manejoExistente.faccao || "",
+    chegada: valorLinhaManejo(op, "chegada") || manejoExistente.chegada || "",
+    falta: Number(valorLinhaManejo(op, "falta") || manejoExistente.falta || 0),
+    celu: limparTexto(valorLinhaManejo(op, "celu")) || manejoExistente.celu || "",
+    necessidade: getNecessidadeDaOrdem(op),
+    status: manejoExistente.status || "organizada",
+    atualizadoPor: state.currentUser.uid,
+    atualizadoEm: serverTimestamp()
+  };
+
+  if (!manejoExistente?.criadoEm) {
+    manejo.criadoPor = state.currentUser.uid;
+    manejo.criadoEm = serverTimestamp();
+  }
+
+  const patch = montarPatchManejoSetor(setor, manejo, getStatusManejo(op, setor) || "organizada", {
+    atualizadoPor: state.currentUser.uid,
+    atualizadoEm: serverTimestamp()
+  });
+
+  await setDoc(doc(db, "ordensProducao", op.id), patch, { merge: true });
+}
+
 function getValorManejoParaFiltro(op, campo, setor = getManejoSetorAtual()) {
   const manejo = getManejoDaOrdem(op, setor);
 
@@ -2105,7 +2193,7 @@ function getValorManejoParaFiltro(op, campo, setor = getManejoSetorAtual()) {
     status: getStatusManejo(op, setor),
     op: op.numeroOP || "",
     referencia: op.referencia || "",
-    silk: getSilkNomeManejo(manejo),
+    silk: getValorSilkManejoParaFiltro(manejo),
     dataTecido: manejo?.dataTecido || "",
     fase: manejo?.fase || "",
     quantidade: op.quantidade ?? "",
@@ -2163,9 +2251,19 @@ function filtroManejoCombina(campo, valorFiltroOriginal, valorItemOriginal, seto
 
   if (!valorFiltro) return true;
 
-  // Filtro especial da DATA TECIDO:
-  // "Preenchido" mostra todas as OPs que têm qualquer data/texto em tecido,
-  // independente do dia. Isso ajuda a saber rapidamente o que já pode ser movimentado.
+  // Filtros especiais do SILK e da DATA TECIDO:
+  // "Preenchido" mostra tudo que já tem qualquer informação salva no campo,
+  // sem obrigar o usuário a escolher um nome/data específica.
+  if (campo === "silk") {
+    if (["preenchido", "preenchida", "preenchidos", "com silk", "silk preenchido"].includes(valorFiltro)) {
+      return Boolean(valorItem);
+    }
+
+    if (["vazio", "sem silk", "nao preenchido", "não preenchido"].includes(valorFiltro)) {
+      return !valorItem;
+    }
+  }
+
   if (campo === "dataTecido") {
     if (["preenchido", "preenchida", "preenchidos", "com tecido", "tecido preenchido"].includes(valorFiltro)) {
       return Boolean(valorItem);
@@ -2278,9 +2376,10 @@ function preencherSelectFiltroManejo(id, valores, labelTodos = "Todos") {
   const limposBase = [...new Set(valores.map(valor => String(valor ?? "").trim()).filter(Boolean))];
 
   // Mantém opções especiais no topo do datalist para facilitar o uso no dia a dia.
-  // No filtro DATA TECIDO, "Preenchido" precisa aparecer primeiro para listar todas
-  // as OPs que já têm tecido informado, sem precisar escolher uma data específica.
+  // SILK e DATA TECIDO precisam ter a opção "Preenchido" para listar rapidamente
+  // tudo que já está liberado para seguir.
   const opcoesFixasPorFiltro = {
+    filtroManejoSilk: ["Preenchido", "Sem silk"],
     filtroManejoDataTecido: ["Preenchido", "Sem tecido"]
   };
   const fixas = opcoesFixasPorFiltro[id] || [];
@@ -2332,7 +2431,11 @@ function renderFiltrosColunasManejo() {
 
   prepararFiltroOPManejoDigitado();
   preencherSelectFiltroManejo("filtroManejoReferencia", ordens.map(op => getValorManejoParaFiltro(op, "referencia")), "Todas");
-  preencherSelectFiltroManejo("filtroManejoSilk", ordens.map(op => getValorManejoParaFiltro(op, "silk")), "Todos");
+  preencherSelectFiltroManejo("filtroManejoSilk", [
+    "Preenchido",
+    "Sem silk",
+    ...ordens.map(op => getValorManejoParaFiltro(op, "silk"))
+  ], "Todos");
   preencherSelectFiltroManejo("filtroManejoDataTecido", [
     "Preenchido",
     "Sem tecido",
@@ -5166,6 +5269,13 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
 
   const setor = opcoes.setor || getManejoSetorAtual();
   const label = labelTipoMovimento(tipoDestino);
+  const origemMovimentacao = opcoes.origem || "manejo";
+
+  if (origemMovimentacao === "manejo" && ["faccao", "celula"].includes(tipoDestino)) {
+    const validacao = validarSilkETecidoAntesDeMovimentar(ordem, setor);
+    if (!validacao.ok) return;
+  }
+
   const destinosBase = tipoDestino === "faccao"
     ? getFaccoesUnicas()
     : state.celulas.filter(item => item.ativo !== false);
@@ -5199,7 +5309,7 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
     ordemId,
     tipoDestino,
     setor,
-    origem: opcoes.origem || "manejo",
+    origem: origemMovimentacao,
     movimentacaoOrigemId: opcoes.movimentacaoOrigemId || "",
     quantidadeMaxima,
     origemResumo: opcoes.origemResumo || ""
@@ -5315,6 +5425,13 @@ async function confirmarMovimentacaoProducao(event) {
   const quantidadeEnviada = Number(document.getElementById("movimentacaoQuantidade")?.value || 0);
   const dataEnvio = document.getElementById("movimentacaoDataEnvio")?.value || "";
 
+  let dadosObrigatoriosManejo = null;
+  if ((movimentacaoModalContexto?.origem || "manejo") === "manejo" && ["faccao", "celula"].includes(tipoDestino)) {
+    const validacaoObrigatoria = validarSilkETecidoAntesDeMovimentar(ordem, setor);
+    if (!validacaoObrigatoria.ok) return;
+    dadosObrigatoriosManejo = validacaoObrigatoria;
+  }
+
   if (tipoDestino === "faccao" && !processo) {
     toast("Primeiro escolha o processo que a facção vai fazer.");
     return;
@@ -5388,6 +5505,10 @@ async function confirmarMovimentacaoProducao(event) {
   };
 
   try {
+    if ((movimentacaoModalContexto?.origem || "manejo") === "manejo" && dadosObrigatoriosManejo) {
+      await salvarSilkETecidoAntesDeMovimentar(ordem, setor, dadosObrigatoriosManejo);
+    }
+
     const ref = await addDoc(collection(db, "movimentacoesProducao"), dados);
     const veioDeMovimentacao = Boolean(dados.movimentacaoOrigemId);
 
@@ -6039,6 +6160,237 @@ function formatarFaltaRastreamentoOP(op) {
   return String(valor);
 }
 
+function formatarDataRastreamento(valor) {
+  if (!valor) return "";
+  return dataISOParaBR(valor) || String(valor);
+}
+
+function timestampDataRastreamento(valor, ordemPadrao = 0) {
+  if (!valor) return ordemPadrao;
+  const texto = String(valor).trim().toLowerCase();
+
+  const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3])).getTime();
+
+  const meses = {
+    jan: 0, janeiro: 0, fev: 1, fevereiro: 1, mar: 2, marco: 2, março: 2,
+    abr: 3, abril: 3, mai: 4, maio: 4, jun: 5, junho: 5, jul: 6, julho: 6,
+    ago: 7, agosto: 7, set: 8, setembro: 8, out: 9, outubro: 9, nov: 10, novembro: 10, dez: 11, dezembro: 11
+  };
+
+  const barraNumero = texto.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+  if (barraNumero) {
+    const ano = barraNumero[3] ? Number(barraNumero[3].length === 2 ? `20${barraNumero[3]}` : barraNumero[3]) : 2026;
+    return new Date(ano, Number(barraNumero[2]) - 1, Number(barraNumero[1])).getTime();
+  }
+
+  const barraMes = texto.match(/^(\d{1,2})\/([a-zçãéíóú]+)$/i);
+  if (barraMes && meses[barraMes[2]] !== undefined) {
+    return new Date(2026, meses[barraMes[2]], Number(barraMes[1])).getTime();
+  }
+
+  return ordemPadrao;
+}
+
+function inferirProcessoHistoricoLigia(op, nomeFaccao = "") {
+  const fase = normalizarTexto(op?.faseOriginalLigia || "").toUpperCase();
+  const processos = getProcessosPadraoDaFaccao(nomeFaccao).map(normalizarNomeProcesso);
+
+  // Na planilha da Lígia, a coluna FACÇÃO da primeira ida geralmente representa o bojo.
+  // Quando a OP está em FASE=PRODUÇÃO, ela já passou pela facção inicial e foi para célula.
+  if (processos.includes("ENCAPAR BOJO")) return "ENCAPAR BOJO";
+  if (fase.includes("BOJO") || fase.includes("ENCAP")) return "ENCAPAR BOJO";
+
+  return processos[0] || op?.processoAtualMigracao || op?.faseOriginalLigia || "Processo não informado";
+}
+
+function adicionarEventoRastreamento(eventos, evento) {
+  if (!evento || !evento.titulo) return;
+
+  const chave = normalizarTexto([
+    evento.titulo,
+    evento.tipo,
+    evento.destino,
+    evento.processo,
+    evento.data,
+    evento.status
+  ].join("|"));
+
+  if (eventos.some(item => item._chave === chave)) return;
+  eventos.push({ ...evento, _chave: chave });
+}
+
+function getLinhaTempoRastreamentoOP(op) {
+  const eventos = [];
+  let ordemPadrao = 1;
+
+  if (op?.dataTecidoOriginalLigia) {
+    adicionarEventoRastreamento(eventos, {
+      titulo: "Tecido preenchido",
+      tipo: "Preparação",
+      destino: "Manejo",
+      processo: "Tecido",
+      data: op.dataTecidoOriginalLigia,
+      status: "Informado na planilha",
+      detalhe: "Data de tecido encontrada na planilha da Lígia.",
+      ordem: ordemPadrao++
+    });
+  }
+
+  const faccaoInicial = limparTexto(op?.faccaoOriginalLigia || "").toUpperCase();
+  if (faccaoInicial) {
+    const processoInicial = inferirProcessoHistoricoLigia(op, faccaoInicial);
+    adicionarEventoRastreamento(eventos, {
+      titulo: "Enviado para facção",
+      tipo: "Facção",
+      destino: faccaoInicial,
+      processo: processoInicial,
+      data: op?.dataOriginalLigia || "",
+      status: op?.chegadaOriginalLigia ? "Já retornou" : "Aguardando chegada",
+      detalhe: processoInicial === "ENCAPAR BOJO" ? `${faccaoInicial} encapou o bojo desta OP.` : `Primeira facção registrada: ${faccaoInicial}.`,
+      ordem: ordemPadrao++
+    });
+
+    if (op?.chegadaOriginalLigia) {
+      adicionarEventoRastreamento(eventos, {
+        titulo: "Chegada da facção",
+        tipo: "Retorno",
+        destino: faccaoInicial,
+        processo: processoInicial,
+        data: op.chegadaOriginalLigia,
+        status: "Chegou",
+        detalhe: `Retornou da facção ${faccaoInicial}.`,
+        ordem: ordemPadrao++
+      });
+    }
+  }
+
+  const faseOriginal = normalizarTexto(op?.faseOriginalLigia || "").toUpperCase();
+  const celulaOriginal = limparTexto(op?.celulaOriginalLigia || "").toUpperCase();
+  if (op?.producaoOriginalLigia || faseOriginal === "PRODUCAO" || faseOriginal === "PRODUÇÃO") {
+    adicionarEventoRastreamento(eventos, {
+      titulo: "Foi para produção / célula",
+      tipo: "Célula",
+      destino: celulaOriginal || op?.destinoAtualMigracao || "CÉLULA NÃO INFORMADA",
+      processo: "PRODUÇÃO",
+      data: op?.producaoOriginalLigia || "",
+      status: "Já nas células",
+      detalhe: "Pela regra definida, FASE=PRODUÇÃO fica em relatório separado e não precisa movimentar mais.",
+      ordem: ordemPadrao++
+    });
+  }
+
+  const movimentos = getMovimentacoesDaOrdem(op?.id)
+    .slice()
+    .sort((a, b) => {
+      const dataA = timestampDataRastreamento(a.dataEnvio || a.criadoEm?.toDate?.()?.toISOString?.() || "", a.criadoEm?.seconds || 0);
+      const dataB = timestampDataRastreamento(b.dataEnvio || b.criadoEm?.toDate?.()?.toISOString?.() || "", b.criadoEm?.seconds || 0);
+      return dataA - dataB;
+    });
+
+  movimentos.forEach(mov => {
+    const tipo = mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino);
+    adicionarEventoRastreamento(eventos, {
+      titulo: `Enviado para ${tipo.toLowerCase()}`,
+      tipo,
+      destino: mov.destino || "-",
+      processo: mov.processo || "-",
+      data: mov.dataEnvio || "",
+      status: labelStatusMovimento(mov.status),
+      detalhe: mov.movimentacaoOrigemId ? "Movimento criado por reenvio/continuação." : "Movimento registrado no sistema.",
+      ordem: ordemPadrao++
+    });
+
+    if (mov.dataChegada) {
+      adicionarEventoRastreamento(eventos, {
+        titulo: `Chegada de ${tipo.toLowerCase()}`,
+        tipo: "Retorno",
+        destino: mov.destino || "-",
+        processo: mov.processo || "-",
+        data: mov.dataChegada || "",
+        status: mov.falta ? `Chegou com falta ${mov.falta}` : "Chegou",
+        detalhe: `Quantidade recebida: ${Number(mov.quantidadeRecebida || mov.quantidadeEnviada || 0).toLocaleString("pt-BR")}.`,
+        ordem: ordemPadrao++
+      });
+    }
+  });
+
+  if (op?.ajusteManualMigracao) {
+    const local = getLocalizacaoAtualOrdem(op);
+    adicionarEventoRastreamento(eventos, {
+      titulo: "Correção manual de local",
+      tipo: "Ajuste",
+      destino: local.destino || "-",
+      processo: local.processo || "-",
+      data: op?.dataEnvioAtualMigracao || op?.dataChegadaAtualMigracao || "",
+      status: "Corrigida manualmente",
+      detalhe: `Local atual corrigido para: ${local.local}.`,
+      ordem: ordemPadrao++
+    });
+  }
+
+  const localAtual = getLocalizacaoAtualOrdem(op);
+  adicionarEventoRastreamento(eventos, {
+    titulo: "Local atual",
+    tipo: localAtual.tipo || "Atual",
+    destino: localAtual.destino || "-",
+    processo: localAtual.processo || "-",
+    data: localAtual.dataChegada || localAtual.dataEnvio || "",
+    status: localAtual.status || localAtual.local || "Atual",
+    detalhe: `A OP aparece agora como: ${localAtual.local}.`,
+    ordem: ordemPadrao++
+  });
+
+  return eventos
+    .map((evento, indice) => ({
+      ...evento,
+      ordemFinal: timestampDataRastreamento(evento.data, evento.ordem || indice + 1) || evento.ordem || indice + 1
+    }))
+    .sort((a, b) => a.ordemFinal - b.ordemFinal);
+}
+
+function renderLinhaHistoricoRastreamentoOP(op) {
+  const eventos = getLinhaTempoRastreamentoOP(op);
+  const faccaoInicial = limparTexto(op?.faccaoOriginalLigia || "").toUpperCase();
+  const processoInicial = faccaoInicial ? inferirProcessoHistoricoLigia(op, faccaoInicial) : "";
+  const quemEncapou = processoInicial === "ENCAPAR BOJO" && faccaoInicial ? faccaoInicial : "Não identificado";
+
+  return `
+    <tr class="rastreamento-historico-row">
+      <td colspan="12">
+        <div class="rastreamento-historico-card">
+          <div class="rastreamento-historico-head">
+            <div>
+              <strong>Por onde a OP ${escapeHtml(op.numeroOP || op.id || "-")} passou</strong>
+              <span>Quem encapou: <b>${escapeHtml(quemEncapou)}</b>${processoInicial ? ` · Processo inicial: ${escapeHtml(processoInicial)}` : ""}</span>
+            </div>
+            ${ehAdmin() ? `<button class="btn btn-sm btn-primary" onclick="abrirModalAjusteMigracao('${op.id}')">Mover / corrigir local</button>` : ""}
+          </div>
+          <div class="rastreamento-timeline">
+            ${eventos.map((evento, index) => `
+              <div class="rastreamento-step">
+                <div class="rastreamento-step-dot">${index + 1}</div>
+                <div class="rastreamento-step-body">
+                  <strong>${escapeHtml(evento.titulo)}</strong>
+                  <span>${escapeHtml(evento.tipo || "-")} · ${escapeHtml(evento.destino || "-")} · ${escapeHtml(evento.processo || "-")}</span>
+                  <small>${escapeHtml(formatarDataRastreamento(evento.data) || "Sem data")} · ${escapeHtml(evento.status || "-")}</small>
+                  ${evento.detalhe ? `<p>${escapeHtml(evento.detalhe)}</p>` : ""}
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+function deveMostrarHistoricoRastreamento(op, busca, totalResultados) {
+  if (!busca) return false;
+  const opTexto = normalizarTexto(op?.numeroOP || op?.id || "");
+  return totalResultados <= 3 || opTexto === busca;
+}
+
 function renderLinhaRastreamentoGlobalOP(op) {
   const local = getLocalizacaoAtualOrdem(op);
   const quantidade = Number(op?.quantidade || 0);
@@ -6116,7 +6468,11 @@ function renderRastreamento() {
       return;
     }
 
-    tbody.innerHTML = ordensEncontradas.map(renderLinhaRastreamentoGlobalOP).join("");
+    tbody.innerHTML = ordensEncontradas.map(op => {
+      const linhaPrincipal = renderLinhaRastreamentoGlobalOP(op);
+      const historico = deveMostrarHistoricoRastreamento(op, busca, total) ? renderLinhaHistoricoRastreamentoOP(op) : "";
+      return linhaPrincipal + historico;
+    }).join("");
     return;
   }
 
