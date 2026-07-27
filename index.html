@@ -7,10 +7,10 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-27-resgate-filtros-campo-vazio-1" />
+  <meta name="app-version" content="2026-07-27-resgate-seguro-tecido-celulas-faccoes-1" />
   <script>
     (function() {
-      var RESCUE_VERSION = "2026-07-27-resgate-filtros-campo-vazio-1";
+      var RESCUE_VERSION = "2026-07-27-resgate-seguro-tecido-celulas-faccoes-1";
       var KEY = "op_confeccao_resgate_funcional_aplicado";
       var params = new URLSearchParams(window.location.search);
       if (params.get("resgateOk") === RESCUE_VERSION) return;
@@ -39,7 +39,7 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="style.css?v=2026-07-27-resgate-filtros-campo-vazio-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-27-resgate-seguro-tecido-celulas-faccoes-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -496,7 +496,7 @@
                   <th>Nº OP</th>
                   <th>REF</th>
                   <th>SILK</th>
-                  <th>DATA TECIDO</th>
+                  <th>TECIDO</th>
                   <th>FASE</th>
                   <th>QTI</th>
                   <th>COR</th>
@@ -557,6 +557,7 @@
           <datalist id="manejoFaccaoList"></datalist>
           <datalist id="manejoCeluList"></datalist>
           <datalist id="manejoSilkNomesList"></datalist>
+          <datalist id="manejoTecidoNomesList"></datalist>
         </div>
       </section>
 
@@ -723,6 +724,57 @@
               <p>Movimentações abertas e retornadas de facções externas.</p>
             </div>
             <input id="buscaFaccaoMovimentacoes" class="search" type="text" placeholder="Buscar OP, ref., facção, processo..." />
+          </div>
+
+          <div class="processos-filters faccoes-mov-filters">
+            <label>
+              Facção
+              <select id="faccaoMovFiltroNome">
+                <option value="">Todas</option>
+              </select>
+            </label>
+
+            <label>
+              Processo
+              <select id="faccaoMovFiltroProcesso">
+                <option value="">Todos</option>
+              </select>
+            </label>
+
+            <label>
+              Status
+              <select id="faccaoMovFiltroStatus">
+                <option value="">Todos</option>
+                <option value="em_andamento">Em facção</option>
+                <option value="retornou">Retornou</option>
+                <option value="encaminhado">Saiu da facção</option>
+                <option value="finalizado">Bipado</option>
+              </select>
+            </label>
+
+            <label>
+              Filtrar data por
+              <select id="faccaoMovFiltroDataTipo">
+                <option value="envio">Data de envio</option>
+                <option value="chegada">Data de chegada</option>
+              </select>
+            </label>
+
+            <label>
+              De
+              <input id="faccaoMovFiltroDataInicio" type="date" />
+            </label>
+
+            <label>
+              Até
+              <input id="faccaoMovFiltroDataFim" type="date" />
+            </label>
+
+            <button class="btn" id="btnLimparFiltrosFaccaoMovimentacoes" type="button">Limpar filtros</button>
+          </div>
+
+          <div id="resumoFaccoesPeriodo" class="filter-summary faccao-filter-summary">
+            Use os filtros acima para ver quantas peças saíram/chegaram por facção e período.
           </div>
 
           <div class="table-wrap">
@@ -923,7 +975,10 @@
                 <h3>Gerenciar células</h3>
                 <p>Cadastre, edite ou inative células. Esta área fica escondida para não poluir a movimentação.</p>
               </div>
-              <button class="btn btn-primary" id="btnAbrirCadastroCelula" type="button">Cadastrar célula</button>
+              <div class="actions">
+                <button class="btn btn-warning" id="btnOrganizarCelulasDuplicadas" type="button">Organizar duplicadas</button>
+                <button class="btn btn-primary" id="btnAbrirCadastroCelula" type="button">Cadastrar célula</button>
+              </div>
             </div>
 
             <form class="form admin-only-block celula-form-inline hidden" id="formCelula">
@@ -1803,8 +1858,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-27-resgate-filtros-campo-vazio-1"></script>
-  <script type="module" src="app.js?v=2026-07-27-resgate-filtros-campo-vazio-1"></script>
+  <script src="update.js?v=2026-07-27-resgate-seguro-tecido-celulas-faccoes-1"></script>
+  <script type="module" src="app.js?v=2026-07-27-resgate-seguro-tecido-celulas-faccoes-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">

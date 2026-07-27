@@ -4070,3 +4070,22 @@ table td {
 #dashboard.hidden {
   display: none !important;
 }
+
+/* Ajustes seguros - tecido, resumo de facções e células duplicadas */
+.tecido-fields input,
+.silk-fields input {
+  min-width: 120px;
+}
+.filter-summary,
+.faccao-filter-summary {
+  margin: 10px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  border-radius: 10px;
+  color: #0f172a;
+  line-height: 1.45;
+}
+.filter-summary small {
+  color: #475569;
+}

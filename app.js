@@ -553,7 +553,7 @@ function iniciarDadosEssenciais() {
   }));
 
   registrarListenerChave("ordens", onSnapshot(ordensQuery, snapshot => {
-    state.ordens = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    state.ordens = snapshot.docs.map(item => ({ id: item.id, ...item.data() })).filter(op => op.excluida !== true);
     marcarCarregado("ordens");
     renderPaginaAtiva();
   }, error => {
@@ -1354,13 +1354,28 @@ async function excluirOrdem(id) {
     return;
   }
 
-  if (!confirm("Deseja excluir esta ordem de produção?")) return;
+  const ordem = state.ordens.find(op => op.id === id);
+  if (!ordem) {
+    toast("OP não encontrada.");
+    return;
+  }
+
+  const confirmar = confirm(`Excluir a OP ${ordem.numeroOP || id} do uso normal?\n\nPor segurança, o sistema vai ocultar a OP e manter histórico/movimentações no Firebase.`);
+  if (!confirmar) return;
 
   try {
-    const ordem = state.ordens.find(op => op.id === id);
-    await deleteDoc(doc(db, "ordensProducao", id));
-    await registrarLog("ordem_excluida", "ordemProducao", id, `${ordem?.numeroOP || id} | Ref. ${ordem?.referencia || "-"} | Cor ${ordem?.cor || "-"}`);
-    toast("OP excluída.");
+    await setDoc(doc(db, "ordensProducao", id), {
+      excluida: true,
+      ocultarDoManejo: true,
+      status: "excluida",
+      excluidaPor: state.currentUser.uid,
+      excluidaEm: serverTimestamp(),
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+
+    await registrarLog("ordem_excluida_segura", "ordemProducao", id, `${ordem.numeroOP || id} | Ref. ${ordem.referencia || "-"} | Cor ${ordem.cor || "-"}`);
+    toast("OP excluída do uso normal com segurança. O histórico foi preservado.");
   } catch (error) {
     console.error(error);
     toast("Erro ao excluir OP.");
@@ -1724,6 +1739,7 @@ function getLinhasManejoParaImpressao() {
       referencia: op.referencia || "",
       silkNome: valorManejoParaImpressao(op, "silkNome") || getSilkNomeManejo(manejo),
       silkData: valorManejoParaImpressao(op, "silkData"),
+      tecidoNome: valorManejoParaImpressao(op, "tecidoNome"),
       dataTecido: valorManejoParaImpressao(op, "dataTecido"),
       fase: valorManejoParaImpressao(op, "fase"),
       quantidade: numeroQuantidadeOP(op),
@@ -2168,7 +2184,18 @@ function renderManejoInline() {
             </label>
           </div>
         </td>
-        <td><input id="${rowId}-dataTecido" type="date" value="${escapeHtml(manejo?.dataTecido || "")}" /></td>
+        <td>
+          <div class="silk-fields tecido-fields">
+            <label class="mini-field">
+              <span>Nome</span>
+              <input id="${rowId}-tecidoNome" value="${escapeHtml(manejo?.tecidoNome || manejo?.tecido || "")}" list="manejoTecidoNomesList" placeholder="Quem fez" />
+            </label>
+            <label class="mini-field">
+              <span>Data</span>
+              <input id="${rowId}-dataTecido" type="date" value="${escapeHtml(manejo?.dataTecido || "")}" title="Data do tecido" />
+            </label>
+          </div>
+        </td>
         <td>
           <div class="fase-plus">
             <input id="${rowId}-fase" value="${escapeHtml(manejo?.fase || "")}" list="manejoFasesList" placeholder="Digite a fase" />
@@ -2247,15 +2274,18 @@ function getDadosLinhaOuManejoObrigatorios(op, setor = getManejoSetorAtual()) {
   const manejo = getManejoDaOrdem(op, setor) || {};
   const silkNomeLinha = limparTexto(valorLinhaManejo(op, "silkNome")).toUpperCase();
   const silkDataLinha = valorLinhaManejo(op, "silkData") || "";
+  const tecidoNomeLinha = limparTexto(valorLinhaManejo(op, "tecidoNome")).toUpperCase();
   const dataTecidoLinha = valorLinhaManejo(op, "dataTecido") || "";
 
   const silkNome = silkNomeLinha || getSilkNomeManejo(manejo);
   const silkData = silkDataLinha || manejo.silkData || manejo.dataSilk || "";
+  const tecidoNome = tecidoNomeLinha || manejo.tecidoNome || manejo.tecido || "";
   const dataTecido = dataTecidoLinha || manejo.dataTecido || "";
 
   return {
     silkNome,
     silkData,
+    tecidoNome,
     dataTecido,
     silkPreenchido: Boolean(silkNome || silkData),
     tecidoPreenchido: Boolean(dataTecido)
@@ -2292,6 +2322,8 @@ async function salvarSilkETecidoAntesDeMovimentar(op, setor = getManejoSetorAtua
     silk: dados.silkNome || manejoExistente.silk || "",
     silkNome: dados.silkNome || manejoExistente.silkNome || manejoExistente.silk || "",
     silkData: dados.silkData || manejoExistente.silkData || "",
+    tecido: dados.tecidoNome || manejoExistente.tecido || "",
+    tecidoNome: dados.tecidoNome || manejoExistente.tecidoNome || manejoExistente.tecido || "",
     dataTecido: dados.dataTecido || manejoExistente.dataTecido || "",
     fase,
     faccao: limparTexto(valorLinhaManejo(op, "faccao")).toUpperCase() || manejoExistente.faccao || "",
@@ -2317,6 +2349,12 @@ async function salvarSilkETecidoAntesDeMovimentar(op, setor = getManejoSetorAtua
   await setDoc(doc(db, "ordensProducao", op.id), patch, { merge: true });
 }
 
+
+function getValorTecidoManejoParaFiltro(manejo) {
+  if (!manejo) return "";
+  return [manejo.tecidoNome || manejo.tecido || "", manejo.dataTecido || ""].filter(Boolean).join(" ").trim();
+}
+
 function getValorManejoParaFiltro(op, campo, setor = getManejoSetorAtual()) {
   const manejo = getManejoDaOrdem(op, setor);
 
@@ -2325,7 +2363,7 @@ function getValorManejoParaFiltro(op, campo, setor = getManejoSetorAtual()) {
     op: op.numeroOP || "",
     referencia: op.referencia || "",
     silk: getValorSilkManejoParaFiltro(manejo),
-    dataTecido: manejo?.dataTecido || "",
+    dataTecido: getValorTecidoManejoParaFiltro(manejo),
     fase: manejo?.fase || "",
     quantidade: op.quantidade ?? "",
     cor: op.cor || "",
@@ -3086,6 +3124,7 @@ async function salvarManejoLinha(ordemId) {
 
   const silkNome = limparTexto(valorLinhaManejo(ordem, "silkNome")).toUpperCase();
   const silkData = valorLinhaManejo(ordem, "silkData") || "";
+  const tecidoNome = limparTexto(valorLinhaManejo(ordem, "tecidoNome")).toUpperCase();
   const necessidadeLinha = normalizarNecessidadeOrdem(valorLinhaManejo(ordem, "necessidade"));
   const periodoNecessidadeLinha = extrairPeriodoNecessidade(necessidadeLinha);
 
@@ -3093,6 +3132,8 @@ async function salvarManejoLinha(ordemId) {
     silk: silkNome,
     silkNome,
     silkData,
+    tecido: tecidoNome,
+    tecidoNome,
     setor,
     setorLabel: infoSetor.label,
     dataTecido: valorLinhaManejo(ordem, "dataTecido") || "",
@@ -3168,6 +3209,7 @@ async function biparManejoLinha(ordemId) {
 
   const silkNome = limparTexto(valorLinhaManejo(ordem, "silkNome")).toUpperCase() || manejoExistente.silkNome || manejoExistente.silk || "";
   const silkData = valorLinhaManejo(ordem, "silkData") || manejoExistente.silkData || "";
+  const tecidoNome = limparTexto(valorLinhaManejo(ordem, "tecidoNome")).toUpperCase() || manejoExistente.tecidoNome || manejoExistente.tecido || "";
   const necessidadeLinha = normalizarNecessidadeOrdem(valorLinhaManejo(ordem, "necessidade"));
   const periodoNecessidadeLinha = extrairPeriodoNecessidade(necessidadeLinha);
 
@@ -3176,6 +3218,8 @@ async function biparManejoLinha(ordemId) {
     silk: silkNome,
     silkNome,
     silkData,
+    tecido: tecidoNome,
+    tecidoNome,
     setor,
     setorLabel: infoSetor.label,
     dataTecido: valorLinhaManejo(ordem, "dataTecido") || manejoExistente.dataTecido || "",
@@ -3377,6 +3421,7 @@ function renderDatalistManejo() {
   const faccaoList = document.getElementById("manejoFaccaoList");
   const celuList = document.getElementById("manejoCeluList");
   const silkNomesList = document.getElementById("manejoSilkNomesList");
+  const tecidoNomesList = document.getElementById("manejoTecidoNomesList");
 
   if (fasesList) {
     const fases = new Set();
@@ -3434,11 +3479,26 @@ function renderDatalistManejo() {
     const nomes = new Set();
 
     state.ordens.forEach(op => {
-      const nome = getSilkNomeManejo(op.manejo);
-      if (nome) nomes.add(nome);
+      getTodosManejosDaOrdem(op).forEach(manejo => {
+        const nome = getSilkNomeManejo(manejo);
+        if (nome) nomes.add(nome);
+      });
     });
 
     silkNomesList.innerHTML = [...nomes].sort().map(nome => `<option value="${escapeHtml(nome)}"></option>`).join("");
+  }
+
+  if (tecidoNomesList) {
+    const nomes = new Set();
+
+    state.ordens.forEach(op => {
+      getTodosManejosDaOrdem(op).forEach(manejo => {
+        const nome = limparTexto(manejo?.tecidoNome || manejo?.tecido || "").toUpperCase();
+        if (nome) nomes.add(nome);
+      });
+    });
+
+    tecidoNomesList.innerHTML = [...nomes].sort().map(nome => `<option value="${escapeHtml(nome)}"></option>`).join("");
   }
 }
 
@@ -3854,6 +3914,26 @@ function configurarFaccoes() {
   const buscaMovimentacoes = document.getElementById("buscaFaccaoMovimentacoes");
   if (buscaMovimentacoes) {
     buscaMovimentacoes.addEventListener("input", renderFaccoesMovimentacoes);
+  }
+
+  [
+    "faccaoMovFiltroNome",
+    "faccaoMovFiltroProcesso",
+    "faccaoMovFiltroStatus",
+    "faccaoMovFiltroDataTipo",
+    "faccaoMovFiltroDataInicio",
+    "faccaoMovFiltroDataFim"
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", renderFaccoesMovimentacoes);
+  });
+
+  const limparFiltrosFaccaoMov = document.getElementById("btnLimparFiltrosFaccaoMovimentacoes");
+  if (limparFiltrosFaccaoMov) {
+    limparFiltrosFaccaoMov.addEventListener("click", () => {
+      limparFiltrosFaccoesMovimentacoes();
+      renderFaccoesMovimentacoes();
+    });
   }
 
   const toggleGerenciar = document.getElementById("btnToggleGerenciarFaccoes");
@@ -4880,26 +4960,145 @@ async function importarFaccoesExtraidasPlanilha() {
 
 
 
+function normalizarDataMovimentacaoParaISO(valor) {
+  const texto = limparTexto(valor);
+  if (!texto) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) return texto;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(texto)) return dataBrasileiraParaISO(texto);
+  const curta = dataBRCurtaParaISO(texto);
+  if (curta) return curta;
+
+  const meses = {
+    JAN: "01", JANEIRO: "01", FEV: "02", FEVEREIRO: "02", MAR: "03", MARCO: "03", MARÇO: "03",
+    ABR: "04", ABRIL: "04", MAI: "05", MAIO: "05", JUN: "06", JUNHO: "06", JUL: "07", JULHO: "07",
+    AGO: "08", AGOSTO: "08", SET: "09", SETEMBRO: "09", OUT: "10", OUTUBRO: "10", NOV: "11", NOVEMBRO: "11",
+    DEZ: "12", DEZEMBRO: "12"
+  };
+
+  const match = texto.toUpperCase().match(/^(\d{1,2})\s*\/\s*([A-ZÀ-ÿ]{3,})$/);
+  if (match) {
+    const dia = String(match[1]).padStart(2, "0");
+    const mes = meses[normalizarTexto(match[2]).toUpperCase()];
+    if (mes) return `${new Date().getFullYear()}-${mes}-${dia}`;
+  }
+
+  return "";
+}
+
+function getDataMovimentacaoFaccoes(mov, tipoData) {
+  const campo = tipoData === "chegada" ? mov?.dataChegada : mov?.dataEnvio;
+  return normalizarDataMovimentacaoParaISO(campo);
+}
+
+function preencherFiltrosFaccoesMovimentacoes(movimentosBase) {
+  preencherSelectProcessos("faccaoMovFiltroNome", movimentosBase.map(mov => mov.destino), "Todas");
+  preencherSelectProcessos("faccaoMovFiltroProcesso", movimentosBase.map(mov => mov.processo), "Todos");
+}
+
+function getFiltrosFaccoesMovimentacoes() {
+  return {
+    busca: normalizarTexto(document.getElementById("buscaFaccaoMovimentacoes")?.value || ""),
+    faccao: document.getElementById("faccaoMovFiltroNome")?.value || "",
+    processo: document.getElementById("faccaoMovFiltroProcesso")?.value || "",
+    status: document.getElementById("faccaoMovFiltroStatus")?.value || "",
+    tipoData: document.getElementById("faccaoMovFiltroDataTipo")?.value || "envio",
+    dataInicio: document.getElementById("faccaoMovFiltroDataInicio")?.value || "",
+    dataFim: document.getElementById("faccaoMovFiltroDataFim")?.value || ""
+  };
+}
+
+function limparFiltrosFaccoesMovimentacoes() {
+  [
+    "buscaFaccaoMovimentacoes",
+    "faccaoMovFiltroNome",
+    "faccaoMovFiltroProcesso",
+    "faccaoMovFiltroStatus",
+    "faccaoMovFiltroDataInicio",
+    "faccaoMovFiltroDataFim"
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+
+  const tipoData = document.getElementById("faccaoMovFiltroDataTipo");
+  if (tipoData) tipoData.value = "envio";
+}
+
+
+function renderResumoFiltroFaccoes(movimentos, filtros) {
+  const box = document.getElementById("resumoFaccoesPeriodo");
+  if (!box) return;
+
+  const totalOps = movimentos.length;
+  const usandoChegada = filtros.tipoData === "chegada";
+  const totalPecas = movimentos.reduce((soma, mov) => {
+    return soma + Number(usandoChegada ? quantidadeRecebidaMovimentacao(mov) : (mov.quantidadeEnviada || 0));
+  }, 0);
+  const totalRecebidas = movimentos.reduce((soma, mov) => soma + Number(quantidadeRecebidaMovimentacao(mov) || 0), 0);
+  const emAberto = movimentos.filter(mov => (mov.status || "em_andamento") === "em_andamento").length;
+  const retornaram = movimentos.filter(mov => mov.status === "retornou" || mov.status === "encaminhado" || mov.status === "finalizado").length;
+
+  const porDia = new Map();
+  movimentos.forEach(mov => {
+    const data = getDataMovimentacaoFaccoes(mov, filtros.tipoData) || "SEM DATA";
+    const atual = porDia.get(data) || { ops: 0, pecas: 0 };
+    atual.ops += 1;
+    atual.pecas += Number(usandoChegada ? quantidadeRecebidaMovimentacao(mov) : (mov.quantidadeEnviada || 0));
+    porDia.set(data, atual);
+  });
+
+  const dias = [...porDia.entries()]
+    .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+    .slice(0, 8)
+    .map(([data, dados]) => `${data === "SEM DATA" ? "Sem data" : dataISOParaBR(data)}: ${dados.pecas.toLocaleString("pt-BR")} peças`)
+    .join(" | ");
+
+  const periodo = filtros.dataInicio || filtros.dataFim
+    ? `${filtros.dataInicio ? dataISOParaBR(filtros.dataInicio) : "início"} até ${filtros.dataFim ? dataISOParaBR(filtros.dataFim) : "hoje"}`
+    : "todos os períodos";
+
+  const nomeData = filtros.tipoData === "chegada" ? "chegaram" : "saíram para facção";
+  box.innerHTML = `
+    <strong>Resumo do filtro:</strong>
+    ${totalOps.toLocaleString("pt-BR")} OPs | ${totalPecas.toLocaleString("pt-BR")} peças ${nomeData} | ${totalRecebidas.toLocaleString("pt-BR")} recebidas | ${emAberto.toLocaleString("pt-BR")} em aberto | ${retornaram.toLocaleString("pt-BR")} retornadas/encaminhadas<br>
+    <small>Período: ${escapeHtml(periodo)}${filtros.faccao ? ` | Facção: ${escapeHtml(filtros.faccao)}` : ""}${filtros.processo ? ` | Processo: ${escapeHtml(filtros.processo)}` : ""}</small>
+    ${dias ? `<br><small><strong>Por dia:</strong> ${escapeHtml(dias)}</small>` : ""}
+  `;
+}
+
 function renderFaccoesMovimentacoes() {
   const tbody = document.getElementById("listaFaccoesMovimentacoes");
   if (!tbody) return;
 
-  const busca = normalizarTexto(document.getElementById("buscaFaccaoMovimentacoes")?.value || "");
-  let movimentos = state.movimentacoesProducao.filter(mov => mov.tipoDestino === "faccao");
+  const movimentosBase = state.movimentacoesProducao.filter(mov => mov.tipoDestino === "faccao");
+  preencherFiltrosFaccoesMovimentacoes(movimentosBase);
 
-  if (busca) {
-    movimentos = movimentos.filter(mov => {
-      const texto = normalizarTexto([
-        mov.numeroOP,
-        mov.referencia,
-        mov.cor,
-        mov.destino,
-        mov.processo,
-        mov.status
-      ].join(" "));
-      return texto.includes(busca);
-    });
-  }
+  const filtros = getFiltrosFaccoesMovimentacoes();
+  let movimentos = movimentosBase.filter(mov => {
+    const status = mov.status || "em_andamento";
+    const dataFiltro = getDataMovimentacaoFaccoes(mov, filtros.tipoData);
+
+    const texto = normalizarTexto([
+      mov.numeroOP,
+      mov.referencia,
+      mov.cor,
+      mov.destino,
+      mov.processo,
+      status,
+      labelStatusMovimento(status),
+      mov.dataEnvio,
+      mov.dataChegada
+    ].join(" "));
+
+    if (filtros.busca && !texto.includes(filtros.busca)) return false;
+    if (filtros.faccao && String(mov.destino || "") !== filtros.faccao) return false;
+    if (filtros.processo && String(mov.processo || "") !== filtros.processo) return false;
+    if (filtros.status && status !== filtros.status) return false;
+    if (filtros.dataInicio && (!dataFiltro || dataFiltro < filtros.dataInicio)) return false;
+    if (filtros.dataFim && (!dataFiltro || dataFiltro > filtros.dataFim)) return false;
+
+    return true;
+  });
 
   const emFaccoes = movimentos.filter(mov => mov.status === "em_andamento" || !mov.status);
   const pecasEnviadas = movimentos.reduce((soma, mov) => soma + Number(mov.quantidadeEnviada || 0), 0);
@@ -4917,13 +5116,14 @@ function renderFaccoesMovimentacoes() {
   setText("faccoesPecasRecebidas", pecasRecebidas);
   const descontoDefeitoEl = document.getElementById("faccoesPecasDefeito");
   if (descontoDefeitoEl) descontoDefeitoEl.textContent = formatarMoedaBR(descontoDefeito);
+  renderResumoFiltroFaccoes(movimentos, filtros);
 
   const movimentosFiltrados = movimentos;
   const chaveRender = "faccoes-movimentacoes";
   movimentos = limitarItensRenderTabela(chaveRender, movimentosFiltrados);
 
   if (!movimentosFiltrados.length) {
-    tbody.innerHTML = `<tr><td colspan="12" class="empty">Nenhuma OP enviada para facção ainda.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" class="empty">Nenhuma movimentação de facção encontrada com os filtros selecionados.</td></tr>`;
     limparControleRenderTabela(chaveRender);
     return;
   }
@@ -5031,6 +5231,150 @@ async function excluirFaccao(id) {
 
 
 
+
+function nomeCelulaCanonico(valor) {
+  const limpo = limparTexto(valor).toUpperCase().replace(/\bCÉLULA\b/g, "CELULA").replace(/\s+/g, " ").trim();
+  if (!limpo) return "";
+
+  const semAcento = normalizarTexto(limpo).toUpperCase().replace(/[^A-Z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+  return semAcento.replace(/\b0+(\d+)\b/g, "$1");
+}
+
+function chaveCelulaCanonica(valor) {
+  return normalizarTexto(nomeCelulaCanonico(valor))
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function scoreCelulaParaUnificar(celula) {
+  let score = 0;
+  if (celula?.ativo !== false) score += 20;
+  if (!celula?.duplicadaDe && celula?.statusImportacao !== "duplicada_consolidada") score += 10;
+  if (celula?.criadoEm) score += 2;
+  return score;
+}
+
+function mergeCelulasCadastro(base, item) {
+  const nome = nomeCelulaCanonico(base?.nome || item?.nome || "");
+  return {
+    ...base,
+    id: base?.id || item?.id || docIdSeguro(nome),
+    nome,
+    ativo: base?.ativo !== false || item?.ativo !== false,
+    unificadoVisualmente: Boolean(base?.id && item?.id && base.id !== item.id)
+  };
+}
+
+function getCelulasUnicas(opcoes = {}) {
+  const incluirInativas = Boolean(opcoes.incluirInativas);
+
+  const ordenadas = [...(state.celulas || [])].sort((a, b) => {
+    const scoreDiff = scoreCelulaParaUnificar(b) - scoreCelulaParaUnificar(a);
+    if (scoreDiff) return scoreDiff;
+    return String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true });
+  });
+
+  const mapa = new Map();
+  ordenadas.forEach(item => {
+    if (!item?.nome) return;
+    if (!incluirInativas && item.ativo === false) return;
+    if (item.statusImportacao === "duplicada_consolidada" || item.duplicadaDe) return;
+
+    const chave = chaveCelulaCanonica(item.nome);
+    if (!chave) return;
+
+    const atual = mapa.get(chave);
+    mapa.set(chave, atual ? mergeCelulasCadastro(atual, item) : mergeCelulasCadastro(item, item));
+  });
+
+  return [...mapa.values()].sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true }));
+}
+
+async function organizarCelulasDuplicadas() {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode organizar células duplicadas.");
+    return;
+  }
+
+  const grupos = new Map();
+  (state.celulas || []).forEach(celula => {
+    if (!celula?.nome) return;
+    if (celula.statusImportacao === "duplicada_consolidada" || celula.duplicadaDe) return;
+    const chave = chaveCelulaCanonica(celula.nome);
+    if (!chave) return;
+    if (!grupos.has(chave)) grupos.set(chave, []);
+    grupos.get(chave).push(celula);
+  });
+
+  const duplicadas = [...grupos.values()].filter(grupo => grupo.length > 1);
+
+  if (!duplicadas.length) {
+    toast("Nenhuma célula duplicada encontrada. A lista visual já está unificada.");
+    return;
+  }
+
+  const totalDuplicadas = duplicadas.reduce((soma, grupo) => soma + grupo.length - 1, 0);
+  if (!confirm(`Encontramos ${totalDuplicadas} cadastro(s) duplicado(s) de células. Vou manter um cadastro principal ativo e marcar os repetidos como duplicados/inativos, sem apagar movimentações. Continuar?`)) {
+    return;
+  }
+
+  try {
+    let batch = writeBatch(db);
+    let contador = 0;
+    let gruposCorrigidos = 0;
+
+    for (const grupo of duplicadas) {
+      const ordenado = [...grupo].sort((a, b) => scoreCelulaParaUnificar(b) - scoreCelulaParaUnificar(a));
+      const principal = ordenado[0];
+      const nomePrincipal = nomeCelulaCanonico(principal.nome);
+      const principalId = principal.id || docIdSeguro(nomePrincipal);
+      const consolidado = ordenado.reduce((acc, item) => mergeCelulasCadastro(acc, item), principal);
+
+      batch.set(doc(db, "celulas", principalId), {
+        ...consolidado,
+        nome: nomePrincipal,
+        ativo: true,
+        consolidadoDuplicadas: true,
+        quantidadeDuplicadasConsolidadas: grupo.length - 1,
+        atualizadoPor: state.currentUser.uid,
+        atualizadoEm: serverTimestamp()
+      }, { merge: true });
+      contador++;
+
+      for (const duplicada of ordenado.slice(1)) {
+        if (!duplicada.id || duplicada.id === principalId) continue;
+        batch.set(doc(db, "celulas", duplicada.id), {
+          ativo: false,
+          statusImportacao: "duplicada_consolidada",
+          pendenciaImportacao: `Cadastro duplicado consolidado em ${nomePrincipal}`,
+          duplicadaDe: principalId,
+          duplicadaDeNome: nomePrincipal,
+          atualizadoPor: state.currentUser.uid,
+          atualizadoEm: serverTimestamp()
+        }, { merge: true });
+        contador++;
+      }
+
+      gruposCorrigidos++;
+      if (contador >= 430) {
+        await batch.commit();
+        batch = writeBatch(db);
+        contador = 0;
+      }
+    }
+
+    if (contador > 0) await batch.commit();
+
+    await registrarLog("celulas_duplicadas_consolidadas", "celula", "duplicadas", `${gruposCorrigidos} grupos corrigidos | ${totalDuplicadas} duplicadas marcadas`);
+    renderCelulas();
+    renderCelulasMovimentacoes();
+    toast(`${gruposCorrigidos} grupo(s) de células duplicadas organizado(s).`);
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao organizar células duplicadas.");
+  }
+}
+
 function configurarCelulas() {
   const form = document.getElementById("formCelula");
   if (form) {
@@ -5057,6 +5401,11 @@ function configurarCelulas() {
       painel.classList.toggle("hidden");
       toggleGerenciar.textContent = abrindo ? "Ocultar gerenciamento" : "Gerenciar células";
     });
+  }
+
+  const organizarDuplicadas = document.getElementById("btnOrganizarCelulasDuplicadas");
+  if (organizarDuplicadas) {
+    organizarDuplicadas.addEventListener("click", organizarCelulasDuplicadas);
   }
 
   const abrirCadastro = document.getElementById("btnAbrirCadastroCelula");
@@ -5137,7 +5486,7 @@ function renderCelulas() {
   if (!tbody) return;
 
   const busca = normalizarTexto(document.getElementById("buscaCelula")?.value || "");
-  let celulas = [...state.celulas];
+  let celulas = getCelulasUnicas();
 
   if (busca) {
     celulas = celulas.filter(celula => normalizarTexto(celula.nome || "").includes(busca));
@@ -5206,7 +5555,7 @@ function renderCelulasMovimentacoes() {
     if (el) el.textContent = Number(valor || 0).toLocaleString("pt-BR");
   };
 
-  setText("celulasTotalCadastradas", state.celulas.length);
+  setText("celulasTotalCadastradas", getCelulasUnicas().length);
   setText("celulasOpsEmAndamento", emCelulas.length);
   setText("celulasPecasEnviadas", pecasEnviadas);
   setText("celulasPecasRecebidas", pecasRecebidas);
@@ -5328,7 +5677,7 @@ function getMovimentacoesDaOrdem(opId) {
 }
 
 function getDestinoMovimento(tipo, nome) {
-  const lista = tipo === "faccao" ? getFaccoesUnicas() : state.celulas;
+  const lista = tipo === "faccao" ? getFaccoesUnicas() : getCelulasUnicas({ incluirInativas: true });
   const texto = chaveFaccaoCanonica(nome);
   return lista.find(item => tipo === "faccao" ? chaveFaccaoCanonica(item.nome || "") === texto : limparTexto(item.nome || "").toUpperCase() === limparTexto(nome).toUpperCase()) || null;
 }
@@ -5618,7 +5967,7 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
 
   const destinosBase = tipoDestino === "faccao"
     ? getFaccoesUnicas()
-    : state.celulas.filter(item => item.ativo !== false);
+    : getCelulasUnicas().filter(item => item.ativo !== false);
 
   if (!destinosBase.length) {
     if (state.carregandoDados?.[tipoDestino === "faccao" ? "faccoes" : "celulas"]) {
@@ -10403,6 +10752,7 @@ window.excluirPrecoReferencia = excluirPrecoReferencia;
 window.editarCelula = editarCelula;
 window.alternarCelula = alternarCelula;
 window.excluirCelula = excluirCelula;
+window.organizarCelulasDuplicadas = organizarCelulasDuplicadas;
 window.mandarParaFaccao = mandarParaFaccao;
 window.mandarParaCelula = mandarParaCelula;
 
