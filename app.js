@@ -10,6 +10,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
   initializeFirestore,
+  getFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
   doc,
@@ -42,13 +43,26 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
-});
 
-const secondaryApp = initializeApp(firebaseConfig, "SecondaryUserCreator");
+let db;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  });
+} catch (error) {
+  console.warn("Cache persistente do Firestore não pôde iniciar. Usando Firestore normal para não quebrar o login.", error);
+  db = getFirestore(app);
+}
+
+let secondaryApp;
+try {
+  secondaryApp = initializeApp(firebaseConfig, "SecondaryUserCreator");
+} catch (error) {
+  console.warn("App secundário já existia ou não pôde iniciar. Reusando instância principal para não travar a tela.", error);
+  secondaryApp = app;
+}
 const secondaryAuth = getAuth(secondaryApp);
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.mjs";
@@ -361,30 +375,41 @@ function configurarSidebarRetratil() {
 
 
 document.addEventListener("DOMContentLoaded", () => {
-  carregarSugestoesFaccoesCelus();
-  carregarSugestoesExtrasManejo();
-  configurarVisibilidadeSenhas();
-  configurarSidebarRetratil();
-  configurarAuth();
-  configurarNavegacao();
-  document.getElementById("btnAtualizarServidor")?.addEventListener("click", atualizarDadosServidorAgora);
-  configurarProduto();
-  configurarOrdem();
-  configurarManejo();
-  configurarProcessos();
-  configurarFaccoes();
-  configurarCelulas();
-  configurarRastreamento();
-  configurarModalMovimentacao();
-  configurarModalChegadaMovimentacao();
-  configurarPagamentos();
-  configurarRelatorios();
-  configurarUsuarios();
-  configurarLogs();
-  configurarImportadorPDF();
-  configurarBackup();
-  preencherAnoAtual();
-  preencherCamposPDFImportacao();
+  const iniciarParte = (nome, fn) => {
+    try {
+      fn();
+    } catch (error) {
+      console.error(`Erro ao iniciar ${nome}:`, error);
+      try { toast(`A parte ${nome} encontrou erro, mas o login foi preservado.`); } catch (_) {}
+    }
+  };
+
+  // Login e senha são configurados primeiro para nunca ficarem travados por erro em outra tela.
+  iniciarParte("sugestões de facções", carregarSugestoesFaccoesCelus);
+  iniciarParte("sugestões do manejo", carregarSugestoesExtrasManejo);
+  iniciarParte("mostrar senha", configurarVisibilidadeSenhas);
+  iniciarParte("login", configurarAuth);
+
+  iniciarParte("menu lateral", configurarSidebarRetratil);
+  iniciarParte("navegação", configurarNavegacao);
+  iniciarParte("atualização manual", () => document.getElementById("btnAtualizarServidor")?.addEventListener("click", atualizarDadosServidorAgora));
+  iniciarParte("produtos", configurarProduto);
+  iniciarParte("ordens", configurarOrdem);
+  iniciarParte("manejo", configurarManejo);
+  iniciarParte("processos", configurarProcessos);
+  iniciarParte("facções", configurarFaccoes);
+  iniciarParte("células", configurarCelulas);
+  iniciarParte("rastreamento", configurarRastreamento);
+  iniciarParte("movimentação", configurarModalMovimentacao);
+  iniciarParte("chegada", configurarModalChegadaMovimentacao);
+  iniciarParte("pagamentos", configurarPagamentos);
+  iniciarParte("relatórios", configurarRelatorios);
+  iniciarParte("usuários", configurarUsuarios);
+  iniciarParte("logs", configurarLogs);
+  iniciarParte("importador PDF", configurarImportadorPDF);
+  iniciarParte("backup", configurarBackup);
+  iniciarParte("ano atual", preencherAnoAtual);
+  iniciarParte("campos PDF", preencherCamposPDFImportacao);
 });
 
 
@@ -403,7 +428,8 @@ function configurarVisibilidadeSenhas() {
 }
 
 function configurarAuth() {
-  document.getElementById("loginForm").addEventListener("submit", async event => {
+  window.OP_APP_AUTH_READY = true;
+  document.getElementById("loginForm")?.addEventListener("submit", async event => {
     event.preventDefault();
 
     const email = document.getElementById("loginEmail").value.trim();
@@ -417,7 +443,7 @@ function configurarAuth() {
     }
   });
 
-  document.getElementById("btnResetSenha").addEventListener("click", async () => {
+  document.getElementById("btnResetSenha")?.addEventListener("click", async () => {
     const email = document.getElementById("loginEmail").value.trim();
 
     if (!email) {
@@ -434,7 +460,7 @@ function configurarAuth() {
     }
   });
 
-  document.getElementById("btnLogout").addEventListener("click", async () => {
+  document.getElementById("btnLogout")?.addEventListener("click", async () => {
     await signOut(auth);
   });
 

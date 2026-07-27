@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-login-estavel-1",
+  "version": "2026-07-27-login-blindado-2",
   "updatedAt": "2026-07-27T00:00:00-03:00",
-  "notes": "Correção de estabilidade do login: erro de renderização de tela não derruba mais a autenticação. Mantém relatórios e auditoria sob demanda."
+  "notes": "Correção blindada do login: formulário não recarrega a página, mostrar senha funciona e o Firestore cai para modo normal se o cache persistente falhar."
 }

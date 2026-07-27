@@ -7,8 +7,45 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-27-login-estavel-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-27-login-estavel-1" />
+  <meta name="app-version" content="2026-07-27-login-blindado-2" />
+  <link rel="stylesheet" href="style.css?v=2026-07-27-login-blindado-2" />
+
+  <script>
+    // Proteção mínima do login: evita recarregar a página mesmo se algum módulo atrasar.
+    window.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll(".toggle-password").forEach(function (botao) {
+        if (botao.dataset.loginFallbackReady === "1") return;
+        botao.dataset.loginFallbackReady = "1";
+        botao.addEventListener("click", function () {
+          var input = document.getElementById(botao.dataset.target);
+          if (!input) return;
+          var mostrando = input.type === "text";
+          input.type = mostrando ? "password" : "text";
+          botao.textContent = mostrando ? "Mostrar" : "Ocultar";
+        });
+      });
+
+      var form = document.getElementById("loginForm");
+      if (form && form.dataset.loginFallbackReady !== "1") {
+        form.dataset.loginFallbackReady = "1";
+        form.addEventListener("submit", function (event) {
+          event.preventDefault();
+          setTimeout(function () {
+            if (!window.OP_APP_AUTH_READY) {
+              var aviso = document.getElementById("loginFallbackAviso");
+              if (!aviso) {
+                aviso = document.createElement("div");
+                aviso.id = "loginFallbackAviso";
+                aviso.className = "notice small";
+                aviso.textContent = "O módulo do sistema ainda está carregando. Aguarde alguns segundos e clique em Entrar novamente. Se persistir, use Ctrl + F5.";
+                form.appendChild(aviso);
+              }
+            }
+          }, 800);
+        }, true);
+      }
+    });
+  </script>
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -1774,8 +1811,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-27-login-estavel-1"></script>
-  <script type="module" src="app.js?v=2026-07-27-login-estavel-1"></script>
+  <script src="update.js?v=2026-07-27-login-blindado-2"></script>
+  <script type="module" src="app.js?v=2026-07-27-login-blindado-2"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
