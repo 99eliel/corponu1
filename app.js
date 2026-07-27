@@ -2056,6 +2056,62 @@ function getValorManejoParaFiltro(op, campo, setor = getManejoSetorAtual()) {
   return String(mapa[campo] ?? "");
 }
 
+const CAMPOS_FILTRO_MANEJO_EXATO_QUANDO_OPCAO = new Set([
+  "op",
+  "referencia",
+  "silk",
+  "dataTecido",
+  "fase",
+  "quantidade",
+  "cor",
+  "faccao",
+  "chegada",
+  "falta",
+  "celu",
+  "necessidade"
+]);
+
+function getOpcoesFiltroManejoNormalizadas(campo, setor = getManejoSetorAtual()) {
+  const ordens = getOrdensDoSetorManejo(setor);
+  const extrasPorCampo = {
+    fase: state.fasesManejoExtras || [],
+    faccao: state.faccoesManejoExtras || [],
+    celu: state.celusManejoExtras || []
+  };
+
+  return new Set([
+    ...ordens.map(op => getValorManejoParaFiltro(op, campo, setor)),
+    ...(extrasPorCampo[campo] || [])
+  ]
+    .map(valor => normalizarTexto(valor).trim())
+    .filter(Boolean));
+}
+
+function filtroManejoCombina(campo, valorFiltroOriginal, valorItemOriginal, setor = getManejoSetorAtual()) {
+  if (!valorFiltroOriginal) return true;
+
+  if (campo === "status") {
+    return String(valorItemOriginal || "") === String(valorFiltroOriginal || "");
+  }
+
+  const valorFiltro = normalizarTexto(valorFiltroOriginal).trim();
+  const valorItem = normalizarTexto(valorItemOriginal).trim();
+
+  if (!valorFiltro) return true;
+
+  // Quando o valor digitado existe exatamente nas opções do filtro, compara exato.
+  // Isso impede o bug: filtrar FASE = CASA trazendo também DISPONIVEL P CASA.
+  // Se digitar só parte do texto, continua funcionando como busca parcial.
+  if (CAMPOS_FILTRO_MANEJO_EXATO_QUANDO_OPCAO.has(campo)) {
+    const opcoes = getOpcoesFiltroManejoNormalizadas(campo, setor);
+    if (opcoes.has(valorFiltro)) {
+      return valorItem === valorFiltro;
+    }
+  }
+
+  return valorItem.includes(valorFiltro);
+}
+
 function filtrarOrdensManejoPorColunas() {
   const setor = getManejoSetorAtual();
   const busca = normalizarTexto(document.getElementById("buscaManejoLinha")?.value || "");
@@ -2102,14 +2158,8 @@ function filtrarOrdensManejoPorColunas() {
     return Object.entries(filtros).every(([campo, valor]) => {
       if (!valor) return true;
 
-      const valorFiltro = normalizarTexto(valor);
-      const valorItem = normalizarTexto(getValorManejoParaFiltro(op, campo, setor));
-
-      if (campo === "status") {
-        return getValorManejoParaFiltro(op, campo, setor) === valor;
-      }
-
-      return valorItem.includes(valorFiltro);
+      const valorItem = getValorManejoParaFiltro(op, campo, setor);
+      return filtroManejoCombina(campo, valor, valorItem, setor);
     });
   });
 }
@@ -3492,12 +3542,14 @@ async function mostrarResumoLigiaNovaLogica() {
       OPs: ${Number(dados.meta?.totalOPs || 0).toLocaleString("pt-BR")}<br>
       Movimentações ativas: ${Number(resumo.movimentacoes || 0).toLocaleString("pt-BR")}<br>
       Relatórios separados: ${Number(resumo.relatoriosSeparados || 0).toLocaleString("pt-BR")}<br>
-      Referências únicas: ${Number(resumo.produtos || 0).toLocaleString("pt-BR")} <small>(normal aparecer 50; isso não é limite de OP)</small><br>
+      Referências únicas: ${Number(resumo.produtos || 0).toLocaleString("pt-BR")} <small>(referências únicas; isso não é limite de OP)</small><br>
       Facções: ${Number(resumo.faccoes || 0).toLocaleString("pt-BR")}<br>
       Células: ${Number(resumo.celulas || 0).toLocaleString("pt-BR")}<br>
       Datas incoerentes para conferência: ${Number(resumo.datasIncoerentes || 0).toLocaleString("pt-BR")}<br>
+      BOJOS ENCAPADOS: ${Number(resumo.bojosEncapadosPecas || resumo.faseSomas?.["BOJOS ENCAPADOS"] || 0).toLocaleString("pt-BR")} peças<br>
       <br><strong>Importante:</strong> esta versão não importa pagamentos históricos.<br>
-      <strong>Conferência:</strong> depois de importar, o Dashboard deve mostrar 746 OPs cadastradas e 50 referências únicas.
+      <strong>Conferência:</strong> depois de importar, o Dashboard deve mostrar ${Number(dados.meta?.totalOPs || 0).toLocaleString("pt-BR")} OPs cadastradas e BOJOS ENCAPADOS = ${Number(resumo.bojosEncapadosPecas || 0).toLocaleString("pt-BR")} peças.<br>
+      <strong>Correção:</strong> esta versão limpa a migração anterior da Lígia antes de reimportar, para não sobrar OP antiga.
     `;
   } catch (error) {
     console.error(error);
@@ -3596,6 +3648,49 @@ async function importarColecaoLigiaIndependente(colecao, itens, contadorGeral, e
   }
 }
 
+
+async function limparColecaoMigracaoLigiaAnterior(colecao) {
+  const q = query(collection(db, colecao), where("importadoLigiaNovaLogica", "==", true));
+  const snap = await getDocs(q);
+
+  let batch = writeBatch(db);
+  let contador = 0;
+  let total = 0;
+
+  for (const documento of snap.docs) {
+    batch.delete(doc(db, colecao, documento.id));
+    contador++;
+    total++;
+
+    if (contador >= 420) {
+      await batch.commit();
+      batch = writeBatch(db);
+      contador = 0;
+    }
+  }
+
+  if (contador > 0) await batch.commit();
+  return total;
+}
+
+async function limparMigracaoLigiaAnterior() {
+  const colecoes = [
+    "ordensProducao",
+    "movimentacoesProducao",
+    "relatoriosMigracaoLigia",
+    "datasIncoerentesLigia",
+    "processosMigracao"
+  ];
+
+  const resultado = {};
+
+  for (const colecao of colecoes) {
+    resultado[colecao] = await limparColecaoMigracaoLigiaAnterior(colecao);
+  }
+
+  return resultado;
+}
+
 async function importarLigiaNovaLogicaObjeto(dados, origem = "Planilha Lígia") {
   if (!dados || !Array.isArray(dados.ordensProducao)) {
     throw new Error("Arquivo da Lígia inválido: ordensProducao não encontrado.");
@@ -3604,8 +3699,17 @@ async function importarLigiaNovaLogicaObjeto(dados, origem = "Planilha Lígia") 
   const contador = { total: 0, porColecao: {} };
   const erros = [];
 
+  try {
+    const limpeza = await limparMigracaoLigiaAnterior();
+    contador.limpezaAnterior = limpeza;
+    console.info("Migração antiga da Lígia limpa antes da nova importação:", limpeza);
+  } catch (error) {
+    console.error("Erro ao limpar migração antiga da Lígia.", error);
+    throw new Error("Não foi possível limpar a migração antiga da Lígia. Publique as regras do Firebase e tente novamente.");
+  }
+
   // Ordem proposital: OPs primeiro. Assim, mesmo se alguma coleção auxiliar estiver sem regra no Firebase,
-  // as 746 OPs não ficam escondidas atrás dos 50 produtos/referências.
+  // as OPs não ficam escondidas atrás das referências/produtos.
   await importarColecaoLigiaIndependente("ordensProducao", dados.ordensProducao || [], contador, erros);
   await importarColecaoLigiaIndependente("produtos", dados.produtos || [], contador, erros);
   await importarColecaoLigiaIndependente("faccoes", dados.faccoes || [], contador, erros);
