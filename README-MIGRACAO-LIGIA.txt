@@ -1,4 +1,4 @@
-Sistema OP Confecção - versão 2026-07-24-ligia-nova-logica-1
+Sistema OP Confecção - versão 2026-07-24-ligia-corrige-50-2
 
 Esta versão usa somente a planilha da Lígia para teste de migração.
 Não inclui a planilha de pagamentos históricos.

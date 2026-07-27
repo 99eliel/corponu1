@@ -1,25 +1,9 @@
 (() => {
-  const APP_VERSION = "2026-07-26-sistema-economico-filtro-global-1";
+  const APP_VERSION = "2026-07-24-ligia-corrige-50-2";
   const STORAGE_KEY = "op_confeccao_app_version";
-  const PROMPT_KEY = "op_confeccao_update_prompt_version";
   let refreshing = false;
-  let updateBannerShown = false;
 
-  function createButton(text, primary = false) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = text;
-    button.style.border = primary ? "1px solid #2563eb" : "1px solid #d1d5db";
-    button.style.background = primary ? "#2563eb" : "#ffffff";
-    button.style.color = primary ? "#ffffff" : "#111827";
-    button.style.borderRadius = "10px";
-    button.style.padding = "8px 10px";
-    button.style.fontWeight = "800";
-    button.style.cursor = "pointer";
-    return button;
-  }
-
-  function showToast(message) {
+  function showUpdateToast(message) {
     const toast = document.createElement("div");
     toast.textContent = message;
     toast.style.position = "fixed";
@@ -38,69 +22,13 @@
     setTimeout(() => toast.remove(), 4500);
   }
 
-  function showUpdateBanner({ message, registration, worker, remoteVersion }) {
-    if (updateBannerShown) return;
-    updateBannerShown = true;
-
-    try {
-      if (remoteVersion) localStorage.setItem(PROMPT_KEY, remoteVersion);
-    } catch (_) {}
-
-    const banner = document.createElement("div");
-    banner.id = "manual-update-banner";
-    banner.style.position = "fixed";
-    banner.style.left = "16px";
-    banner.style.right = "16px";
-    banner.style.bottom = "16px";
-    banner.style.zIndex = "100000";
-    banner.style.background = "#111827";
-    banner.style.color = "#ffffff";
-    banner.style.borderRadius = "18px";
-    banner.style.boxShadow = "0 18px 48px rgba(15, 23, 42, 0.35)";
-    banner.style.padding = "14px";
-    banner.style.display = "flex";
-    banner.style.gap = "12px";
-    banner.style.alignItems = "center";
-    banner.style.justifyContent = "space-between";
-    banner.style.flexWrap = "wrap";
-    banner.style.fontFamily = "Arial, sans-serif";
-
-    const text = document.createElement("div");
-    text.innerHTML = `<strong style="display:block;font-size:14px;margin-bottom:2px;">Atualização disponível</strong><span style="font-size:13px;opacity:.9;">${message}</span>`;
-
-    const actions = document.createElement("div");
-    actions.style.display = "flex";
-    actions.style.gap = "8px";
-    actions.style.alignItems = "center";
-
-    const later = createButton("Depois", false);
-    later.onclick = () => banner.remove();
-
-    const update = createButton("Atualizar agora", true);
-    update.onclick = () => {
-      update.disabled = true;
-      update.textContent = "Atualizando...";
-      if (worker) {
-        worker.postMessage({ type: "SKIP_WAITING" });
-      } else if (registration && registration.waiting) {
-        registration.waiting.postMessage({ type: "SKIP_WAITING" });
-      } else {
-        window.location.reload();
-      }
-      setTimeout(() => window.location.reload(), 1200);
-    };
-
-    actions.append(later, update);
-    banner.append(text, actions);
-    document.body.appendChild(banner);
-  }
-
   function rememberVersion() {
     try {
       const previous = localStorage.getItem(STORAGE_KEY);
       localStorage.setItem(STORAGE_KEY, APP_VERSION);
+
       if (previous && previous !== APP_VERSION) {
-        showToast("Sistema atualizado. Recarregamento automático desativado para evitar loop.");
+        showUpdateToast("Sistema atualizado para a versão mais recente.");
       }
     } catch (error) {
       console.warn("Não foi possível salvar versão do sistema.", error);
@@ -122,12 +50,7 @@
       });
 
       if (registration.waiting) {
-        showUpdateBanner({
-          message: "Existe uma versão nova pronta. Ela só será aplicada se você clicar.",
-          registration,
-          worker: registration.waiting,
-          remoteVersion: APP_VERSION
-        });
+        registration.waiting.postMessage({ type: "SKIP_WAITING" });
       }
 
       registration.addEventListener("updatefound", () => {
@@ -136,18 +59,14 @@
 
         newWorker.addEventListener("statechange", () => {
           if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-            showUpdateBanner({
-              message: "Clique para aplicar a nova versão. O sistema não recarrega sozinho.",
-              registration,
-              worker: newWorker,
-              remoteVersion: APP_VERSION
-            });
+            newWorker.postMessage({ type: "SKIP_WAITING" });
           }
         });
       });
 
-      // Checagem leve, sem recarregar e sem skipWaiting automático.
-      setInterval(() => registration.update().catch(() => {}), 30 * 60 * 1000);
+      setInterval(() => {
+        registration.update().catch(() => {});
+      }, 5 * 60 * 1000);
     } catch (error) {
       console.warn("Service Worker não registrado.", error);
     }
@@ -155,16 +74,19 @@
 
   async function checkVersionFile() {
     try {
-      const response = await fetch(`version.json?ts=${Date.now()}`, { cache: "no-store" });
+      const response = await fetch(`version.json?ts=${Date.now()}`, {
+        cache: "no-store"
+      });
       if (!response.ok) return;
+
       const data = await response.json();
       const remoteVersion = data?.version;
 
       if (remoteVersion && remoteVersion !== APP_VERSION) {
-        showUpdateBanner({
-          message: `Foi encontrada a versão ${remoteVersion}. Ela não será aplicada automaticamente.`,
-          remoteVersion
-        });
+        showUpdateToast("Nova versão encontrada. Atualizando...");
+        setTimeout(() => {
+          window.location.reload();
+        }, 700);
       }
     } catch (error) {
       console.warn("Não foi possível verificar atualização.", error);

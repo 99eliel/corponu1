@@ -1649,7 +1649,7 @@ version.json
 Versão atual:
 
 ```txt
-2026-07-26-sistema-economico-filtro-global-1
+2026-07-01-auto-update-1
 ```
 
 O que foi aplicado:
@@ -2695,10 +2695,3 @@ Origem
 Observações
 Pendência
 ```
-
-
-## Ajuste de Manejo
-
-- Coluna QTI renomeada para QUANTIDADE.
-- FACÇÃO/LOCAL removida da tabela de Manejo.
-- Envio para facção/célula deve ser feito pelo menu ⋮, para gerar movimentação e pagamento corretamente.

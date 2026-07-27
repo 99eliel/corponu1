@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-26-sistema-economico-filtro-global-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-26-sistema-economico-filtro-global-1" />
+  <meta name="app-version" content="2026-07-24-ligia-corrige-50-2" />
+  <link rel="stylesheet" href="style.css?v=2026-07-24-ligia-corrige-50-2" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -104,13 +104,14 @@
 
       <section id="dashboard" class="page active">
         <div class="cards">
-          <div class="card">
-            <span>Referências</span>
-            <strong id="totalProdutos">0</strong>
-          </div>
-          <div class="card">
+          <div class="card card-highlight">
             <span>OPs cadastradas</span>
             <strong id="totalOrdens">0</strong>
+          </div>
+          <div class="card">
+            <span>Referências únicas</span>
+            <strong id="totalProdutos">0</strong>
+            <small class="card-hint">Na Lígia é normal aparecer 50 referências para 746 OPs.</small>
           </div>
           <div class="card">
             <span>Facções em andamento</span>
@@ -232,14 +233,10 @@
             <div class="panel-header">
               <div>
                 <h3>Produtos cadastrados</h3>
-                <p>Lista de referências disponíveis para criar OP.</p>
+                <p>Lista de referências únicas disponíveis para criar OP. A planilha da Lígia tem 50 referências e 746 OPs.</p>
               </div>
-              <div class="search-actions">
-                <input id="buscaProduto" class="search" type="text" placeholder="Buscar referência..." />
-                <button class="btn btn-sm" id="btnBuscarProdutoBanco" type="button">Buscar no banco</button>
-              </div>
+              <input id="buscaProduto" class="search" type="text" placeholder="Buscar referência..." />
             </div>
-            <p class="load-status" id="produtosStatusCarga">Modo econômico: carregando lista inicial.</p>
 
             <div class="table-wrap">
               <table>
@@ -320,12 +317,8 @@
                 <h3>Ordens cadastradas</h3>
                 <p>Usuário comum pode criar e editar OP. Exclusão fica para admin.</p>
               </div>
-              <div class="search-actions">
-                <input id="buscaOrdem" class="search" type="text" placeholder="Buscar OP, referência ou cor..." />
-                <button class="btn btn-sm" id="btnBuscarOrdemBanco" type="button">Buscar no banco</button>
-              </div>
+              <input id="buscaOrdem" class="search" type="text" placeholder="Buscar OP, referência ou cor..." />
             </div>
-            <p class="load-status" id="ordensStatusCarga">Modo econômico: carregando lista inicial.</p>
 
             <div class="table-wrap">
               <table>
@@ -358,26 +351,13 @@
           <div class="panel-header">
             <div>
               <h3>Manejo das ordens de produção</h3>
-              <p>Toda OP que entra no sistema aparece aqui automaticamente. O Manejo agora é separado por Sutiã e Calcinha; a facção/local não fica como coluna do manejo, ela é registrada somente ao enviar para facção/célula.</p>
+              <p>Toda OP que entra no sistema aparece aqui automaticamente. O Manejo agora é separado por Sutiã e Calcinha; facções e células ficam em movimentações separadas.</p>
             </div>
             <input id="buscaManejoLinha" class="search" type="text" placeholder="Buscar OP, ref., cor ou fase..." />
           </div>
 
           <div class="notice small">
-            <strong>Funcionamento:</strong> Nº OP, REF, QTD, COR, NECESSIDADE e o tipo da peça vêm da importação. Aqui ficam Silk, Tecido e Fase. Para gerar movimentação e pagamento, use o botão ⋮ e envie para Facção ou Célula.
-          </div>
-
-          <div class="load-control manejo-load-control">
-            <div>
-              <strong>Manejo econômico</strong>
-              <span id="manejoStatusCarga">Abrindo 50 itens. Ao buscar no banco, o sistema carrega todos os resultados encontrados.</span>
-            </div>
-            <div class="load-control-actions">
-              <button class="btn btn-sm" id="btnManejoCarregarMais" type="button">Use filtros para buscar</button>
-              <button class="btn btn-sm" id="btnManejoBuscarBanco" type="button">Buscar filtros no banco</button>
-              <button class="btn btn-sm" id="btnManejoAtualizarLista" type="button">Limpar busca global</button>
-            </div>
-            <small class="muted manejo-global-help">Os filtros digitados funcionam na tela carregada. Para pesquisar em todos os pedidos, preencha o filtro e clique em <strong>Buscar filtros no banco</strong>. A busca não limita em 50 resultados.</small>
+            <strong>Funcionamento:</strong> Nº OP, REF, QTI, COR, NECESSIDADE e o tipo da peça vêm da importação. Aqui ficam Silk, Tecido, Fase e encaminhamentos. Use os botões para mandar a OP para Facção ou Célula.
           </div>
 
 
@@ -414,7 +394,7 @@
                 <strong id="somaManejoOps">0</strong>
               </div>
               <div class="soma-card">
-                <span>Total de peças / QTD</span>
+                <span>Total de peças / QTI</span>
                 <strong id="somaManejoPecas">0</strong>
               </div>
               <div class="soma-card">
@@ -471,9 +451,9 @@
                   <th>Nº OP</th>
                   <th>REF</th>
                   <th>SILK</th>
-                  <th title="Data do tecido">TECIDO</th>
+                  <th>DATA TECIDO</th>
                   <th>FASE</th>
-                  <th>QTD</th>
+                  <th>QTI</th>
                   <th>COR</th>
                   <th>NECESSIDADE</th>
                   <th>STATUS</th>
@@ -497,11 +477,7 @@
                     <datalist id="filtroManejoDataTecidoList"></datalist>
                   </th>
                   <th>
-                    <div class="excel-filter-cell">
-                      <input id="filtroManejoFase" class="filtro-digitavel" type="text" list="filtroManejoFaseList" placeholder="Todas" autocomplete="off" />
-                      <button id="btnFiltroFaseExcel" class="excel-filter-button" type="button" title="Filtrar fases como no Excel">▾</button>
-                    </div>
-                    <small id="labelFiltroFaseExcel" class="excel-filter-label">Todas as fases</small>
+                    <input id="filtroManejoFase" class="filtro-digitavel" type="text" list="filtroManejoFaseList" placeholder="Todas" autocomplete="off" />
                     <datalist id="filtroManejoFaseList"></datalist>
                   </th>
                   <th>
@@ -536,20 +512,6 @@
           <datalist id="manejoFaccaoList"></datalist>
           <datalist id="manejoCeluList"></datalist>
           <datalist id="manejoSilkNomesList"></datalist>
-
-          <div id="painelFiltroFaseExcel" class="excel-filter-popover hidden">
-            <div class="excel-filter-title">
-              <strong>Filtrar fases</strong>
-              <span>Igual no Excel: pesquise e marque as fases desejadas.</span>
-            </div>
-            <input id="buscaFiltroFaseExcel" class="excel-filter-search" type="text" placeholder="Pesquisar fase..." autocomplete="off" />
-            <div id="listaFiltroFaseExcel" class="excel-filter-list"></div>
-            <div class="excel-filter-actions">
-              <button id="btnSelecionarTodasFasesExcel" class="btn btn-sm" type="button">Selecionar todas</button>
-              <button id="btnLimparSelecaoFasesExcel" class="btn btn-sm" type="button">Limpar seleção</button>
-              <button id="btnAplicarFiltroFaseExcel" class="btn btn-primary btn-sm" type="button">Aplicar</button>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -559,7 +521,7 @@
           <div class="panel-header">
             <div>
               <h3>Visualizar processos</h3>
-              <p>Tela de acompanhamento das movimentações com carregamento por lote para economizar leituras do Firestore.</p>
+              <p>Tela de acompanhamento em tempo real das movimentações. Use os filtros para acompanhar etapa, destino, processo e status.</p>
             </div>
             <input id="buscaProcessos" class="search" type="text" placeholder="Buscar OP, ref., cor, destino, processo..." />
           </div>
@@ -646,19 +608,7 @@
             </label>
 
             <button class="btn" id="btnLimparFiltrosProcessos" type="button">Limpar filtros</button>
-            <button class="btn btn-primary" id="btnProcessosBuscarBanco" type="button">Buscar filtros no banco</button>
             <button class="btn btn-print" id="btnImprimirProcessosFiltrados" type="button">Imprimir processos</button>
-          </div>
-
-          <div class="load-control processos-load-control">
-            <div>
-              <strong>Processos econômico</strong>
-              <span id="processosStatusCarga">Abre por lote. Buscas no banco carregam todos os resultados encontrados.</span>
-            </div>
-            <div class="load-control-actions">
-              <button class="btn btn-sm" id="btnProcessosCarregarMais" type="button">Carregar mais 80</button>
-              <button class="btn btn-sm" id="btnProcessosAtualizar" type="button">Atualizar lista</button>
-            </div>
           </div>
 
           <div class="table-wrap processos-table-wrap">
@@ -695,7 +645,7 @@
               <p>Acompanhe tudo que está nas facções externas. O cadastro fica separado em Gerenciar facções.</p>
             </div>
             <div class="actions">
-              <button class="btn" id="btnToggleGerenciarFaccoes" type="button">Abrir gerenciamento</button>
+              <button class="btn" id="btnToggleGerenciarFaccoes" type="button">Gerenciar facções</button>
             </div>
           </div>
 
@@ -727,12 +677,8 @@
               <h3>O que está nas facções</h3>
               <p>Movimentações abertas e retornadas de facções externas.</p>
             </div>
-            <div class="search-actions">
-              <input id="buscaFaccaoMovimentacoes" class="search" type="text" placeholder="Buscar OP, ref., facção, processo..." />
-              <button class="btn btn-sm" id="btnBuscarFaccoesMovBanco" type="button">Buscar no banco</button>
-            </div>
+            <input id="buscaFaccaoMovimentacoes" class="search" type="text" placeholder="Buscar OP, ref., facção, processo..." />
           </div>
-          <p class="load-status" id="faccoesMovStatusCarga">Modo econômico: carregando movimentações iniciais.</p>
 
           <div class="table-wrap">
             <table class="faccoes-mov-table">
@@ -763,18 +709,17 @@
                 <p>Cadastre, edite ou inative facções. Esta área fica escondida para não poluir a movimentação.</p>
               </div>
               <div class="actions">
-                <button class="btn btn-success" id="btnImportarFaccoesExtraidas" type="button">Importar facções oficiais</button>
+                <button class="btn btn-success" id="btnImportarFaccoesExtraidas" type="button">Importar facções da planilha</button>
                 <button class="btn btn-primary" id="btnAbrirCadastroFaccao" type="button">Cadastrar facção</button>
-                <button class="btn" id="btnFecharGerenciarFaccoes" type="button">Voltar para facções</button>
               </div>
             </div>
 
             <div class="faccoes-import-box admin-only-block">
               <div>
-                <strong>Divisão oficial preparada</strong>
-                <span>47 facções serão importadas conforme a divisão correta: Bojo, Alça, Sutiã montagem, Sutiã completo, Calcinha montagem e Calcinha completa.</span>
+                <strong>Importação preparada</strong>
+                <span>20 facções OK serão importadas como ativas. 15 ficam em pendentes para revisão.</span>
               </div>
-              <small>Ao enviar para facção, escolha primeiro o processo; o sistema mostra somente as facções daquele processo.</small>
+              <small>Depois de revisar uma pendente, clique em Editar, complete os dados e salve. Ela vira facção normal.</small>
             </div>
 
             <form class="form admin-only-block faccao-form-inline hidden" id="formFaccao">
@@ -814,7 +759,7 @@
             <div class="panel-subheader faccoes-pendentes-header">
               <div>
                 <h3>Facções pendentes</h3>
-                <p>Facções que precisam de conferência antes de usar no envio.</p>
+                <p>Dados extraídos da planilha que precisam de conferência antes de usar no envio.</p>
               </div>
             </div>
 
@@ -837,9 +782,9 @@
             <div class="panel-subheader faccoes-list-header">
               <div>
                 <h3>Facções cadastradas</h3>
-                <p>Lista oficial disponível para envio, separada por grupo e processo.</p>
+                <p>Lista de nomes disponíveis para envio no Manejo.</p>
               </div>
-              <input id="buscaFaccao" class="search" type="text" placeholder="Buscar facção, grupo, processo, cidade, PIX ou celular..." />
+              <input id="buscaFaccao" class="search" type="text" placeholder="Buscar facção, cidade, PIX ou celular..." />
             </div>
 
             <div class="table-wrap">
@@ -847,8 +792,6 @@
                 <thead>
                   <tr>
                     <th>Nome</th>
-                    <th>Grupo</th>
-                    <th>Processos permitidos</th>
                     <th>Cidade</th>
                     <th>Chave PIX</th>
                     <th>Celular</th>
@@ -904,12 +847,8 @@
               <h3>O que está nas células</h3>
               <p>Movimentações abertas e retornadas de células internas.</p>
             </div>
-            <div class="search-actions">
-              <input id="buscaCelulaMovimentacoes" class="search" type="text" placeholder="Buscar OP, ref., célula, processo..." />
-              <button class="btn btn-sm" id="btnBuscarCelulasMovBanco" type="button">Buscar no banco</button>
-            </div>
+            <input id="buscaCelulaMovimentacoes" class="search" type="text" placeholder="Buscar OP, ref., célula, processo..." />
           </div>
-          <p class="load-status" id="celulasMovStatusCarga">Modo econômico: carregando movimentações iniciais.</p>
 
           <div class="table-wrap">
             <table class="celulas-mov-table">
@@ -958,7 +897,7 @@
             <div class="panel-subheader celulas-list-header">
               <div>
                 <h3>Células cadastradas</h3>
-                <p>Lista oficial disponível para envio, separada por grupo e processo.</p>
+                <p>Lista de nomes disponíveis para envio no Manejo.</p>
               </div>
               <input id="buscaCelula" class="search" type="text" placeholder="Buscar célula..." />
             </div>
@@ -985,14 +924,10 @@
           <div class="panel-header">
             <div>
               <h3>Rastreamento da peça</h3>
-              <p>Use o rastreamento para se localizar e abrir a aba onde a peça está para mexer nela.</p>
+              <p>Veja para onde cada OP foi enviada: facção, célula, retorno e finalização.</p>
             </div>
-            <div class="search-actions">
-              <input id="buscaRastreamento" class="search" type="text" placeholder="Buscar OP, ref., cor, facção, célula ou processo..." />
-              <button class="btn btn-sm" id="btnBuscarRastreamentoBanco" type="button">Buscar no banco</button>
-            </div>
+            <input id="buscaRastreamento" class="search" type="text" placeholder="Buscar OP, ref., cor, facção, célula ou processo..." />
           </div>
-          <p class="load-status" id="rastreamentoStatusCarga">Modo econômico: carregando movimentações iniciais.</p>
 
           <div class="rastreamento-cards">
             <div class="processo-card">
@@ -1046,7 +981,7 @@
               <p>Feche o pagamento usando as chegadas registradas. Os dados desta tela só são carregados quando você abre Pagamentos.</p>
             </div>
             <div class="actions">
-              <button class="btn btn-primary" id="btnToggleGerenciarValores" type="button">Abrir gerenciamento</button>
+              <button class="btn btn-primary" id="btnToggleGerenciarValores" type="button">Gerenciar valores</button>
             </div>
           </div>
 
@@ -1092,12 +1027,9 @@
             </label>
 
             <button class="btn" id="btnLimparFiltrosPagamento" type="button">Limpar</button>
-            <button class="btn btn-primary" id="btnBuscarPagamentosBanco" type="button">Buscar no banco</button>
             <button class="btn btn-success" id="btnMarcarPagamentosFiltrados" type="button">Marcar filtrados como pagos</button>
             <button class="btn btn-print" id="btnImprimirPagamento" type="button">Imprimir pagamento</button>
           </div>
-
-          <p class="load-status" id="pagamentosStatusCarga">Modo econômico: carregando pagamentos iniciais.</p>
 
           <div class="pagamento-cards">
             <div class="pagamento-card">
@@ -1169,7 +1101,7 @@
               <p>Escolha um processo e organize todas as referências e valores dele. A organização agora é por referência + processo.</p>
             </div>
             <div class="actions">
-              <button class="btn" id="btnFecharGerenciarValores" type="button">Voltar para pagamentos</button>
+              <button class="btn" id="btnFecharGerenciarValores" type="button">Ocultar valores</button>
             </div>
           </div>
 
@@ -1407,14 +1339,12 @@
             </label>
 
             <div class="filter-actions">
-              <button class="btn btn-primary" id="btnAplicarFiltros">Buscar relatório no banco</button>
+              <button class="btn btn-primary" id="btnAplicarFiltros">Aplicar filtros</button>
               <button class="btn" id="btnLimparFiltros">Limpar</button>
               <button class="btn btn-success" id="btnExportarCSV">Exportar CSV</button>
               <button class="btn" id="btnImprimir">Imprimir</button>
             </div>
           </div>
-
-          <p class="load-status" id="relatoriosStatusCarga">Modo econômico: aplique filtro para buscar o relatório completo no banco.</p>
 
           <div class="report-title">
             <h3 id="tituloRelatorio">Relatório de Enfesto</h3>
@@ -1744,7 +1674,7 @@
           <div class="panel-header">
             <div>
               <h3>Migração Lígia — nova lógica</h3>
-              <p>Importa somente a planilha da Lígia, com manejo editável, relatórios separados e movimentos sequenciais.</p>
+              <p>Importa somente a planilha da Lígia: 746 OPs, 50 referências únicas, manejo editável, relatórios separados e movimentos sequenciais.</p>
             </div>
           </div>
 
@@ -1752,16 +1682,9 @@
             <strong>Regras desta versão:</strong> FASE=PRODUÇÃO vai para relatório de células; BOJOS ENCAPADOS aguarda destino; CASA fica aguardando chegada da facção; PRODUÇÃO só vira data de reenvio quando a FASE indica uma facção.
           </div>
 
-          <div class="notice small ligia-file-status" id="ligiaArquivoStatus">
-            Nenhum JSON da Lígia selecionado ainda. Clique em <strong>Selecionar JSON da Lígia</strong> e escolha o arquivo no seu computador.
-          </div>
-
-          <input id="inputImportarLigiaJson" type="file" accept=".json,application/json" class="hidden" />
-
           <div class="backup-pro-actions">
-            <button class="btn" id="btnSelecionarLigiaJson" type="button">Selecionar JSON da Lígia</button>
+            <button class="btn btn-success" id="btnImportarLigiaNovaLogica" type="button">Importar dados da Lígia embutidos</button>
             <button class="btn" id="btnResumoLigiaNovaLogica" type="button">Ver resumo dos dados</button>
-            <button class="btn btn-success" id="btnImportarLigiaNovaLogica" type="button">Importar dados da Lígia</button>
           </div>
 
           <div id="resumoLigiaNovaLogica" class="preview hidden"></div>
@@ -1834,8 +1757,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-26-sistema-economico-filtro-global-1"></script>
-  <script type="module" src="app.js?v=2026-07-26-sistema-economico-filtro-global-1"></script>
+  <script src="update.js?v=2026-07-24-ligia-corrige-50-2"></script>
+  <script type="module" src="app.js?v=2026-07-24-ligia-corrige-50-2"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
@@ -1854,19 +1777,19 @@
           OP selecionada
         </div>
 
-        <label id="grupoMovimentacaoProcesso">
-          1. Processo / etapa
-          <select id="movimentacaoProcessoSelect">
-            <option value="">Selecione o processo</option>
+        <label>
+          Destino
+          <select id="movimentacaoDestino" required>
+            <option value="">Selecione</option>
           </select>
-          <input id="movimentacaoProcesso" type="text" placeholder="Ex: ENCAPAR BOJO, SUTIÃ MONTAGEM..." required />
         </label>
 
-        <label>
-          2. Para qual facção/célula vai
-          <select id="movimentacaoDestino" required>
-            <option value="">Selecione primeiro o processo</option>
+        <label id="grupoMovimentacaoProcesso">
+          Processo / etapa
+          <select id="movimentacaoProcessoSelect">
+            <option value="">Selecione ou digite abaixo</option>
           </select>
+          <input id="movimentacaoProcesso" type="text" placeholder="Ex: ENCAPAR BOJO, MONTAGEM..." required />
         </label>
 
         <label>
@@ -1902,27 +1825,6 @@
 
         <div class="movimentacao-op-info" id="chegadaMovimentacaoInfo">
           Movimentação selecionada
-        </div>
-
-        <div id="grupoChegadaConferenciaFaccao" class="chegada-conferencia-box hidden">
-          <div class="chegada-alerta-conferencia">
-            Confira antes de gerar o pagamento. Se o processo ou a facção estiverem errados, corrija aqui.
-          </div>
-
-          <label>
-            Processo feito
-            <select id="chegadaProcessoSelect"></select>
-          </label>
-
-          <label>
-            Quem fez / facção
-            <select id="chegadaDestino"></select>
-          </label>
-
-          <label>
-            Observação da conferência
-            <textarea id="chegadaConferenciaObs" rows="2" placeholder="Ex: conferido na chegada; estava como Casa na planilha, mas voltou da Graciane"></textarea>
-          </label>
         </div>
 
         <label>

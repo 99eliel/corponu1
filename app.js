@@ -23,10 +23,9 @@ import {
   runTransaction,
   writeBatch,
   getDocs,
+  getCountFromServer,
   addDoc,
-  where,
-  limit as firestoreLimit,
-  startAfter
+  where
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -48,43 +47,16 @@ const secondaryAuth = getAuth(secondaryApp);
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.mjs";
 
-const PROCESSOS_PAGE_SIZE = 80;
-const MANEJO_PAGE_SIZE = 50; // abre econômico; filtros/buscas no banco carregam todos os resultados encontrados
-const SISTEMA_LISTA_INICIAL = 50;
-const MOVIMENTACOES_LISTA_INICIAL = 80;
-const PAGAMENTOS_LISTA_INICIAL = 80;
-const LOGS_LISTA_INICIAL = 100;
-
 const state = {
   currentUser: null,
   perfil: null,
   produtos: [],
   ordens: [],
-  ordensUltimoDoc: null,
-  ordensTemMais: true,
-  ordensCarregando: false,
-  manejoBuscaGlobalAtiva: false,
-  manejoBuscaGlobalDescricao: "",
-  manejoBuscaGlobalPrimaria: null,
-  manejoBuscaGlobalUltimoDoc: null,
-  manejoBuscaGlobalTemMais: false,
   faccoes: [],
   celulas: [],
   movimentacoesProducao: [],
-  processosMovimentacoes: [],
-  processosUltimoDoc: null,
-  processosTemMais: true,
-  processosCarregando: false,
-  processosPaginaTamanho: 80,
-  produtosBuscaGlobalAtiva: false,
-  ordensBuscaGlobalAtiva: false,
-  movimentacoesBuscaGlobalAtiva: false,
-  pagamentosBuscaGlobalAtiva: false,
-  relatorioBuscaGlobalAtiva: false,
-  logsBuscaGlobalAtiva: false,
   manejos: [],
   fasesManejoExtras: [],
-  filtroFasesManejoSelecionadas: null,
   faccoesManejoExtras: [],
   celusManejoExtras: [],
   precosReferencia: [],
@@ -97,8 +69,6 @@ const state = {
   dadosCarregados: {},
   carregandoDados: {},
   listenersPorChave: {},
-  rastreamentoMovimentoDestacado: "",
-  rastreamentoOrigemBusca: "",
   unsubscribers: []
 };
 
@@ -117,11 +87,11 @@ const pageInfo = {
   },
   manejo: {
     title: "Manejo",
-    subtitle: "Preparação interna da OP: abre 50 itens; filtros/busca no banco carregam todos os resultados encontrados."
+    subtitle: "Preparação interna da OP e encaminhamento para facção ou célula."
   },
   processos: {
     title: "Processos",
-    subtitle: "Visualização dos processos: abre por lote, mas buscas/filtros no banco não limitam resultados."
+    subtitle: "Visualização em tempo real das informações do manejo."
   },
   faccoes: {
     title: "Facções",
@@ -208,83 +178,8 @@ const reportInfo = {
 };
 
 
-const FACCOES_OFICIAIS_DIVISAO = [
-  { grupo: "Bojo", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO"], nome: "DIVINA" },
-  { grupo: "Bojo", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO"], nome: "GRACIANE" },
-  { grupo: "Bojo", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO"], nome: "JESSICA" },
-  { grupo: "Bojo", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO"], nome: "LARISSA" },
-  { grupo: "Bojo", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO"], nome: "ALINE BATISTA" },
-  { grupo: "Bojo", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO"], nome: "DAIANY" },
-  { grupo: "Bojo / Sutiã", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO", "SUTIÃ MONTAGEM"], nome: "NAGILA" },
-  { grupo: "Bojo", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO"], nome: "DELMA" },
-  { grupo: "Bojo / Sutiã", processoPadrao: "ENCAPAR BOJO", processosPermitidos: ["ENCAPAR BOJO", "SUTIÃ MONTAGEM"], nome: "GIRLAINE" },
-
-  { grupo: "Alça", processoPadrao: "ALÇA", processosPermitidos: ["ALÇA"], nome: "JANAINA" },
-  { grupo: "Alça", processoPadrao: "ALÇA", processosPermitidos: ["ALÇA"], nome: "IVONE" },
-  { grupo: "Alça", processoPadrao: "ALÇA", processosPermitidos: ["ALÇA"], nome: "LUANA" },
-  { grupo: "Alça", processoPadrao: "ALÇA", processosPermitidos: ["ALÇA"], nome: "KARYTA" },
-  { grupo: "Alça", processoPadrao: "ALÇA", processosPermitidos: ["ALÇA"], nome: "SIMEI" },
-  { grupo: "Alça", processoPadrao: "ALÇA", processosPermitidos: ["ALÇA"], nome: "SIMONE" },
-
-  { grupo: "Calcinha", processoPadrao: "CALCINHA MONTAGEM", processosPermitidos: ["CALCINHA MONTAGEM"], nome: "ANA FLAVIA" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA MONTAGEM", processosPermitidos: ["CALCINHA MONTAGEM"], nome: "KAUANE" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA MONTAGEM", processosPermitidos: ["CALCINHA MONTAGEM"], nome: "LIANA" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA MONTAGEM", processosPermitidos: ["CALCINHA MONTAGEM"], nome: "DAIANA" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA MONTAGEM", processosPermitidos: ["CALCINHA MONTAGEM"], nome: "LEIDIANE" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA MONTAGEM", processosPermitidos: ["CALCINHA MONTAGEM"], nome: "ANDREZA" },
-
-  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "LORENA" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "JEAN" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "SCHENEIDER" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "DANIELA" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "KAMILA" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "LIANDRA" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "JUZENI" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "THEILLOR" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "SILVANY" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "LEONARDO" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "MATHEUS" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "BEATRIZ" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "MARILIA" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "DARLLEN" },
-  { grupo: "Calcinha", processoPadrao: "CALCINHA COMPLETA", processosPermitidos: ["CALCINHA COMPLETA"], nome: "RONEIDIA" },
-
-  { grupo: "Sutiã", processoPadrao: "SUTIÃ MONTAGEM", processosPermitidos: ["SUTIÃ MONTAGEM"], nome: "LIVIA" },
-  { grupo: "Sutiã", processoPadrao: "SUTIÃ MONTAGEM", processosPermitidos: ["SUTIÃ MONTAGEM"], nome: "FRACEILDA" },
-  { grupo: "Sutiã", processoPadrao: "SUTIÃ MONTAGEM", processosPermitidos: ["SUTIÃ MONTAGEM"], nome: "MOCINHA" },
-  { grupo: "Sutiã", processoPadrao: "SUTIÃ MONTAGEM", processosPermitidos: ["SUTIÃ MONTAGEM"], nome: "NAYARA" },
-  { grupo: "Sutiã", processoPadrao: "SUTIÃ MONTAGEM", processosPermitidos: ["SUTIÃ MONTAGEM"], nome: "JHENIFER" },
-
-  { grupo: "Sutiã", processoPadrao: "SUTIÃ COMPLETO", processosPermitidos: ["SUTIÃ COMPLETO"], nome: "DANUBIA", valorManualNoFechamento: true },
-  { grupo: "Sutiã", processoPadrao: "SUTIÃ COMPLETO", processosPermitidos: ["SUTIÃ COMPLETO"], nome: "LARA CRISTINA (KAKA)", valorManualNoFechamento: true },
-  { grupo: "Sutiã", processoPadrao: "SUTIÃ COMPLETO", processosPermitidos: ["SUTIÃ COMPLETO"], nome: "GISLAINY", valorManualNoFechamento: true },
-  { grupo: "Sutiã", processoPadrao: "SUTIÃ COMPLETO", processosPermitidos: ["SUTIÃ COMPLETO"], nome: "ITAMAR", valorManualNoFechamento: true },
-  { grupo: "Sutiã", processoPadrao: "SUTIÃ COMPLETO", processosPermitidos: ["SUTIÃ COMPLETO"], nome: "LUCIA", valorManualNoFechamento: true },
-  { grupo: "Sutiã", processoPadrao: "SUTIÃ COMPLETO", processosPermitidos: ["SUTIÃ COMPLETO"], nome: "GOIANIRA", valorManualNoFechamento: true }
-];
-
-const PROCESSOS_OFICIAIS_FACCAO = [
-  "ENCAPAR BOJO",
-  "ALÇA",
-  "SUTIÃ MONTAGEM",
-  "SUTIÃ COMPLETO",
-  "CALCINHA MONTAGEM",
-  "CALCINHA COMPLETA"
-];
-
-const FACCOES_EXTRAIDAS_PLANILHA = FACCOES_OFICIAIS_DIVISAO.map(item => ({
-  ...item,
-  status: "ok",
-  cidade: "",
-  pix: "",
-  celular: "",
-  origem: `Divisão oficial: ${item.grupo} / ${item.processoPadrao}`,
-  observacoes: `Facção oficial da divisão ${item.grupo}. Processo: ${item.processosPermitidos.join(", ")}.`
-}));
-
+const FACCOES_EXTRAIDAS_PLANILHA = [];
 const LIGIA_MIGRACAO_DADOS_URL = 'dados-ligia-migracao.json';
-let ligiaMigracaoDadosLocal = null;
-let ligiaImportarAposSelecionarArquivo = false;
 
 
 function carregarSugestoesFaccoesCelus() {
@@ -363,7 +258,6 @@ document.addEventListener("DOMContentLoaded", () => {
   configurarProduto();
   configurarOrdem();
   configurarManejo();
-  configurarFiltroExcelFasesManejo();
   configurarProcessos();
   configurarFaccoes();
   configurarCelulas();
@@ -513,15 +407,6 @@ function limparListeners() {
   state.listenersPorChave = {};
   state.dadosCarregados = {};
   state.carregandoDados = {};
-  state.processosMovimentacoes = [];
-  state.processosUltimoDoc = null;
-  state.processosTemMais = true;
-  state.processosCarregando = false;
-  state.manejoBuscaGlobalAtiva = false;
-  state.manejoBuscaGlobalDescricao = "";
-  state.manejoBuscaGlobalPrimaria = null;
-  state.manejoBuscaGlobalUltimoDoc = null;
-  state.manejoBuscaGlobalTemMais = false;
 }
 
 function registrarListenerChave(chave, unsubscribe) {
@@ -549,15 +434,12 @@ function iniciarListenersFirestore() {
 }
 
 function iniciarDadosEssenciais() {
-  const produtosQuery = query(collection(db, "produtos"), orderBy("referencia", "asc"), firestoreLimit(SISTEMA_LISTA_INICIAL));
-  // Economia real de leitura: ao abrir o Manejo, carrega somente 50 OPs.
-  // Quando o usuário usa filtro/busca no banco, aí sim o sistema carrega todos os resultados encontrados.
-  const ordensQuery = query(collection(db, "ordensProducao"), orderBy("criadoEm", "desc"), firestoreLimit(MANEJO_PAGE_SIZE));
+  const produtosQuery = query(collection(db, "produtos"), orderBy("referencia", "asc"));
+  const ordensQuery = query(collection(db, "ordensProducao"), orderBy("criadoEm", "desc"));
 
   registrarListenerChave("produtos", onSnapshot(produtosQuery, snapshot => {
     state.produtos = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     marcarCarregado("produtos");
-    atualizarAvisosEconomiaGeral();
     renderTudo();
   }, error => {
     console.error(error);
@@ -565,15 +447,8 @@ function iniciarDadosEssenciais() {
   }));
 
   registrarListenerChave("ordens", onSnapshot(ordensQuery, snapshot => {
-    const primeiras = snapshot.docs.map(item => ({ id: item.id, ...item.data(), __loteManejo: "inicial" }));
-    const idsPrimeiras = new Set(primeiras.map(item => item.id));
-    const extrasMantidos = state.ordens.filter(item => item.__loteManejo === "extra" && !idsPrimeiras.has(item.id));
-
-    state.ordens = [...primeiras, ...extrasMantidos];
-    state.ordensUltimoDoc = snapshot.docs[snapshot.docs.length - 1] || state.ordensUltimoDoc;
-    state.ordensTemMais = snapshot.docs.length >= MANEJO_PAGE_SIZE;
+    state.ordens = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     marcarCarregado("ordens");
-    atualizarStatusCargaManejo();
     renderTudo();
   }, error => {
     console.error(error);
@@ -583,376 +458,6 @@ function iniciarDadosEssenciais() {
   // Dados pequenos/operacionais usados no Manejo para envio.
   carregarFaccoesSeNecessario();
   carregarCelulasSeNecessario();
-}
-
-
-function atualizarStatusCargaManejo(mensagem = "") {
-  const status = document.getElementById("manejoStatusCarga");
-  const btnMais = document.getElementById("btnManejoCarregarMais");
-  const btnBuscar = document.getElementById("btnManejoBuscarBanco");
-  const btnAtualizar = document.getElementById("btnManejoAtualizarLista");
-
-  const carregadas = state.ordens.length.toLocaleString("pt-BR");
-  const buscaGlobal = !!state.manejoBuscaGlobalAtiva;
-  const textoPadrao = buscaGlobal
-    ? `${carregadas} OPs carregadas na busca global${state.manejoBuscaGlobalDescricao ? ` (${state.manejoBuscaGlobalDescricao})` : ""}. Todos os resultados encontrados foram carregados.`
-    : `${carregadas} OPs iniciais carregadas para economizar leituras. Para procurar fora desses 50, use os filtros e clique em “Buscar filtros no banco”.`;
-
-  if (status) status.textContent = mensagem || textoPadrao;
-
-  if (btnMais) {
-    btnMais.disabled = true;
-    btnMais.textContent = buscaGlobal ? "Busca completa carregada" : "Use filtros para buscar no banco";
-  }
-
-  if (btnBuscar) btnBuscar.disabled = !!state.ordensCarregando;
-  if (btnAtualizar) btnAtualizar.disabled = !!state.ordensCarregando;
-}
-
-function mesclarOrdensCarregadas(novas, marcador = "extra") {
-  const existentes = new Map(state.ordens.map(item => [item.id, item]));
-  novas.forEach(item => {
-    existentes.set(item.id, { ...existentes.get(item.id), ...item, __loteManejo: marcador });
-  });
-  state.ordens = [...existentes.values()].sort((a, b) => {
-    const dataA = getTimestampOrdenacao(a.criadoEm || a.atualizadoEm || a.numeroOP || "");
-    const dataB = getTimestampOrdenacao(b.criadoEm || b.atualizadoEm || b.numeroOP || "");
-    return dataB - dataA;
-  });
-}
-
-function getTimestampOrdenacao(valor) {
-  if (valor && typeof valor.toDate === "function") return valor.toDate().getTime();
-  if (valor instanceof Date) return valor.getTime();
-  const n = Number(valor || 0);
-  if (Number.isFinite(n)) return n;
-  const parsed = Date.parse(String(valor || ""));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-
-function normalizarBuscaFirestore(valor) {
-  return normalizarTexto(valor).trim().replace(/\s+/g, " ");
-}
-
-function gerarVariantesBuscaExata(valor) {
-  const original = String(valor || "").trim();
-  const normalizado = normalizarBuscaFirestore(original);
-  const upper = original.toUpperCase();
-  const semAcentoUpper = normalizado.toUpperCase();
-  const variantes = new Set([original, upper, semAcentoUpper]);
-
-  const mapaFases = {
-    producao: "PRODUÇÃO",
-    "bojos encapados": "BOJOS ENCAPADOS",
-    casa: "CASA",
-    "pegar bojo": "PEGAR BOJO",
-    "nao usa bojo": "NAO USA BOJO",
-    preparar: "PREPARAR",
-    "desceu preparar": "DESCEU PREPARAR",
-    bipados: "BIPADOS",
-    "disponivel p casa": "DISPONIVEL P CASA",
-    "cancelada no sistema": "CANCELADA NO SISTEMA",
-    "nagila/itamar": "NAGILA/ITAMAR"
-  };
-
-  if (mapaFases[normalizado]) variantes.add(mapaFases[normalizado]);
-
-  return [...variantes].filter(Boolean);
-}
-
-function tokensBuscaManejo(item = {}, manejoOverride = null, setor = getManejoSetorAtual()) {
-  const manejo = manejoOverride || getManejoDaOrdem(item, setor) || {};
-  const valores = [
-    item.numeroOP,
-    item.numeroOPExterno,
-    item.referencia,
-    item.cor,
-    item.produtoNome,
-    item.tipoPeca,
-    item.tipoPecaLabel,
-    item.necessidadeLigia,
-    item.statusMigracaoLigia,
-    item.localAtualMigracao,
-    item.faseOriginalLigia,
-    item.silkOriginalLigia,
-    item.silkLigia,
-    item.dataTecidoOriginalLigia,
-    item.dataTecidoLigia,
-    item.celulaOriginalLigia,
-    manejo.silkNome,
-    manejo.silk,
-    manejo.fase,
-    manejo.dataTecido,
-    manejo.celu,
-    manejo.necessidade
-  ];
-
-  const tokens = new Set();
-  valores.forEach(valor => {
-    const limpo = normalizarBuscaFirestore(valor);
-    if (!limpo) return;
-    tokens.add(limpo);
-    limpo.split(/[^a-z0-9]+/i).forEach(parte => {
-      if (parte && parte.length >= 2) tokens.add(parte);
-    });
-  });
-  return [...tokens].slice(0, 100);
-}
-
-function gerarCamposBuscaManejo(item = {}, manejoOverride = null, setor = getManejoSetorAtual()) {
-  const manejo = manejoOverride || getManejoDaOrdem(item, setor) || {};
-  const fase = manejo.fase || item.faseOriginalLigia || item.statusMigracaoLigia || "";
-  const necessidade = manejo.necessidade || item.necessidadeLigia || "";
-
-  return {
-    numeroOPBusca: normalizarBuscaFirestore(item.numeroOP || item.numeroOPExterno || ""),
-    referenciaBusca: normalizarBuscaFirestore(item.referencia || ""),
-    corBusca: normalizarBuscaFirestore(item.cor || ""),
-    faseBusca: normalizarBuscaFirestore(fase),
-    necessidadeBusca: normalizarBuscaFirestore(necessidade),
-    tipoPecaBusca: normalizarBuscaFirestore(item.tipoPeca || ""),
-    statusMigracaoBusca: normalizarBuscaFirestore(item.statusMigracaoLigia || item.localAtualMigracao || ""),
-    termosBuscaManejo: tokensBuscaManejo(item, manejoOverride, setor)
-  };
-}
-
-function limparEstadoBuscaGlobalManejo() {
-  state.manejoBuscaGlobalAtiva = false;
-  state.manejoBuscaGlobalDescricao = "";
-  state.manejoBuscaGlobalPrimaria = null;
-  state.manejoBuscaGlobalUltimoDoc = null;
-  state.manejoBuscaGlobalTemMais = false;
-}
-
-function criterioFiltroManejo(id) {
-  return String(document.getElementById(id)?.value || "").trim();
-}
-
-function getCriteriosBuscaGlobalManejo() {
-  const buscaGeral = criterioFiltroManejo("buscaManejoLinha");
-  const criterios = {
-    buscaGeral,
-    op: criterioFiltroManejo("filtroManejoOP"),
-    referencia: criterioFiltroManejo("filtroManejoReferencia"),
-    silk: criterioFiltroManejo("filtroManejoSilk"),
-    dataTecido: criterioFiltroManejo("filtroManejoDataTecido"),
-    fase: criterioFiltroManejo("filtroManejoFase"),
-    quantidade: criterioFiltroManejo("filtroManejoQuantidade"),
-    cor: criterioFiltroManejo("filtroManejoCor"),
-    necessidade: criterioFiltroManejo("filtroManejoNecessidade"),
-    status: criterioFiltroManejo("filtroManejoStatus")
-  };
-
-  const fasesExcel = state.filtroFasesManejoSelecionadas instanceof Set
-    ? [...state.filtroFasesManejoSelecionadas].filter(Boolean)
-    : [];
-
-  return { ...criterios, fasesExcel };
-}
-
-function temCriterioBuscaGlobalManejo(criterios) {
-  return Boolean(
-    criterios.buscaGeral || criterios.op || criterios.referencia || criterios.fase ||
-    criterios.cor || criterios.necessidade || criterios.status || criterios.quantidade ||
-    criterios.silk || criterios.dataTecido || criterios.fasesExcel?.length
-  );
-}
-
-function descricaoBuscaGlobalManejo(criterios) {
-  const partes = [];
-  if (criterios.buscaGeral) partes.push(`busca: ${criterios.buscaGeral}`);
-  if (criterios.op) partes.push(`OP: ${criterios.op}`);
-  if (criterios.referencia) partes.push(`ref.: ${criterios.referencia}`);
-  if (criterios.fase) partes.push(`fase: ${criterios.fase}`);
-  if (criterios.fasesExcel?.length) partes.push(`${criterios.fasesExcel.length} fase(s)`);
-  if (criterios.cor) partes.push(`cor: ${criterios.cor}`);
-  if (criterios.necessidade) partes.push(`necessidade: ${criterios.necessidade}`);
-  if (criterios.status) partes.push(`status: ${criterios.status}`);
-  if (criterios.quantidade) partes.push(`qtd: ${criterios.quantidade}`);
-  if (criterios.silk) partes.push(`silk: ${criterios.silk}`);
-  if (criterios.dataTecido) partes.push(`tecido: ${criterios.dataTecido}`);
-  return partes.join(" | ");
-}
-
-function montarConsultasPrimariasManejo(criterios) {
-  const base = collection(db, "ordensProducao");
-  const normalizado = valor => normalizarBuscaFirestore(valor);
-  const consultas = [];
-
-  const adicionar = (consulta, descricao) => {
-    consultas.push({ consulta, descricao });
-  };
-
-  if (criterios.op || /^\d+$/.test(criterios.buscaGeral || "")) {
-    const op = criterios.op || criterios.buscaGeral;
-    adicionar(query(base, where("numeroOPBusca", "==", normalizado(op))), `OP ${op}`);
-  } else if (criterios.referencia) {
-    adicionar(query(base, where("referenciaBusca", "==", normalizado(criterios.referencia))), `referência ${criterios.referencia}`);
-  } else if (criterios.fase) {
-    adicionar(query(base, where("faseBusca", "==", normalizado(criterios.fase))), `fase ${criterios.fase}`);
-  } else if (criterios.fasesExcel?.length) {
-    const fases = criterios.fasesExcel.map(item => normalizado(item)).filter(Boolean);
-    for (let i = 0; i < fases.length; i += 10) {
-      const lote = fases.slice(i, i + 10);
-      if (lote.length === 1) {
-        adicionar(query(base, where("faseBusca", "==", lote[0])), `fase ${lote[0]}`);
-      } else {
-        adicionar(query(base, where("faseBusca", "in", lote)), `${lote.length} fases selecionadas`);
-      }
-    }
-  } else if (criterios.cor) {
-    adicionar(query(base, where("corBusca", "==", normalizado(criterios.cor))), `cor ${criterios.cor}`);
-  } else if (criterios.necessidade) {
-    adicionar(query(base, where("necessidadeBusca", "==", normalizado(criterios.necessidade))), `necessidade ${criterios.necessidade}`);
-  } else if (criterios.status) {
-    adicionar(query(base, where("status", "==", criterios.status)), `status ${criterios.status}`);
-  } else if (criterios.buscaGeral) {
-    adicionar(query(base, where("termosBuscaManejo", "array-contains", normalizado(criterios.buscaGeral))), `busca ${criterios.buscaGeral}`);
-  }
-
-  // Quando o filtro não tem campo indexado direto, o sistema busca tudo e filtra na tela.
-  // Isso só acontece quando o usuário pede a busca no banco; a abertura normal continua econômica com 50 itens.
-  if (!consultas.length && temCriterioBuscaGlobalManejo(criterios)) {
-    adicionar(query(base, orderBy("criadoEm", "desc")), "busca completa sem limite");
-  }
-
-  return consultas;
-}
-
-function montarConsultaPrimariaManejo(criterios, cursor = null) {
-  // Mantida para compatibilidade com versões anteriores do código.
-  // A busca global atual não usa paginação: quando pesquisa no banco, carrega todos os resultados encontrados.
-  const consultas = montarConsultasPrimariasManejo(criterios);
-  return consultas[0] || null;
-}
-
-async function buscarFallbackManejoSemCamposNovos(criterios) {
-  const base = collection(db, "ordensProducao");
-  const consultas = [];
-
-  if (criterios.op || /^\d+$/.test(criterios.buscaGeral || "")) {
-    const op = criterios.op || criterios.buscaGeral;
-    consultas.push(getDocs(query(base, where("numeroOP", "==", op))));
-    consultas.push(getDocs(query(base, where("numeroOPExterno", "==", op))));
-  }
-
-  if (criterios.referencia) {
-    gerarVariantesBuscaExata(criterios.referencia).forEach(valor => {
-      consultas.push(getDocs(query(base, where("referencia", "==", valor))));
-    });
-  }
-
-  const fases = criterios.fase
-    ? gerarVariantesBuscaExata(criterios.fase)
-    : (criterios.fasesExcel || []);
-
-  fases.forEach(fase => {
-    gerarVariantesBuscaExata(fase).forEach(valor => {
-      consultas.push(getDocs(query(base, where("faseOriginalLigia", "==", valor))));
-    });
-  });
-
-  if (criterios.cor) {
-    gerarVariantesBuscaExata(criterios.cor).forEach(valor => {
-      consultas.push(getDocs(query(base, where("cor", "==", valor))));
-    });
-  }
-
-  // Para filtros antigos que não têm índice próprio, busca completa sem limite e filtra na tela.
-  if (!consultas.length && temCriterioBuscaGlobalManejo(criterios)) {
-    consultas.push(getDocs(query(base, orderBy("criadoEm", "desc"))));
-  }
-
-  if (!consultas.length) return [];
-
-  const resultados = await Promise.allSettled(consultas);
-  const docs = [];
-  resultados.forEach(resultado => {
-    if (resultado.status !== "fulfilled") return;
-    resultado.value.docs.forEach(item => docs.push({ id: item.id, ...item.data(), __loteManejo: "extra" }));
-  });
-  return docs;
-}
-
-async function carregarMaisOrdensManejo() {
-  atualizarStatusCargaManejo("Para economizar leituras, o Manejo abre só 50 OPs. Use os filtros e clique em Buscar filtros no banco para carregar todos os resultados daquela busca.");
-  toast("Use os filtros para buscar no banco. Assim o sistema não carrega tudo sem necessidade.");
-}
-
-async function buscarOrdemManejoNoBanco() {
-  const criterios = getCriteriosBuscaGlobalManejo();
-
-  if (!temCriterioBuscaGlobalManejo(criterios)) {
-    toast("Digite uma busca ou preencha algum filtro para pesquisar no banco.");
-    document.getElementById("buscaManejoLinha")?.focus();
-    return;
-  }
-
-  state.ordensCarregando = true;
-  atualizarStatusCargaManejo("Buscando todos os resultados no banco, sem limite de 50...");
-
-  try {
-    const consultasPrimarias = montarConsultasPrimariasManejo(criterios);
-    const encontrados = [];
-
-    if (consultasPrimarias.length) {
-      const resultados = await Promise.allSettled(consultasPrimarias.map(item => getDocs(item.consulta)));
-      resultados.forEach(resultado => {
-        if (resultado.status !== "fulfilled") return;
-        resultado.value.docs.forEach(item => encontrados.push({ id: item.id, ...item.data(), __loteManejo: "extra" }));
-      });
-    }
-
-    // Fallback para dados importados antes dos campos de busca global.
-    // Ajuda na transição sem obrigar apagar o banco só para testar.
-    if (!encontrados.length) {
-      const fallback = await buscarFallbackManejoSemCamposNovos(criterios);
-      encontrados.push(...fallback);
-    }
-
-    const unicos = [...new Map(encontrados.map(item => [item.id, item])).values()];
-    if (!unicos.length) {
-      limparEstadoBuscaGlobalManejo();
-      toast("Nenhum pedido encontrado no banco com esses filtros.");
-      atualizarStatusCargaManejo(`Nenhum resultado encontrado para ${descricaoBuscaGlobalManejo(criterios)}.`);
-      atualizarManejoComSoma();
-      return;
-    }
-
-    // Limpa a lista anterior para mostrar uma busca verdadeira no banco.
-    // A busca global agora não é paginada: se houver 80, carrega 80; se houver 200, carrega 200.
-    state.ordens = [];
-    mesclarOrdensCarregadas(unicos, "extra");
-    state.manejoBuscaGlobalAtiva = true;
-    state.manejoBuscaGlobalDescricao = descricaoBuscaGlobalManejo(criterios);
-    state.manejoBuscaGlobalPrimaria = criterios;
-    state.manejoBuscaGlobalUltimoDoc = null;
-    state.manejoBuscaGlobalTemMais = false;
-
-    renderFiltrosColunasManejo();
-    atualizarManejoComSoma();
-    toast(`${unicos.length} pedido(s) encontrado(s) no banco.`);
-    atualizarStatusCargaManejo(`${unicos.length} pedido(s) carregado(s) para: ${state.manejoBuscaGlobalDescricao}. Busca sem limite aplicada.`);
-  } catch (error) {
-    console.error(error);
-    toast("Erro ao buscar filtros no banco. Verifique se a migração foi feita com esta versão atualizada.");
-    atualizarStatusCargaManejo("Não foi possível buscar os filtros no banco agora.");
-  } finally {
-    state.ordensCarregando = false;
-    atualizarStatusCargaManejo();
-  }
-}
-
-async function atualizarPrimeiroLoteManejo() {
-  limparEstadoBuscaGlobalManejo();
-  state.ordens = state.ordens.filter(item => item.__loteManejo === "inicial");
-  state.ordensUltimoDoc = null;
-  state.ordensTemMais = true;
-  atualizarStatusCargaManejo("Busca global limpa. O Manejo voltou para os 50 itens iniciais econômicos.");
-  renderFiltrosColunasManejo();
-  atualizarManejoComSoma();
-  toast("Busca global limpa. Para procurar mais OPs, use os filtros e Buscar filtros no banco.");
 }
 
 function carregarFaccoesSeNecessario() {
@@ -999,13 +504,11 @@ function carregarMovimentacoesSeNecessario() {
   if (state.dadosCarregados.movimentacoes || state.carregandoDados.movimentacoes || state.listenersPorChave.movimentacoes) return;
   state.carregandoDados.movimentacoes = true;
 
-  const movimentacoesQuery = query(collection(db, "movimentacoesProducao"), orderBy("criadoEm", "desc"), firestoreLimit(MOVIMENTACOES_LISTA_INICIAL));
+  const movimentacoesQuery = query(collection(db, "movimentacoesProducao"), orderBy("criadoEm", "desc"));
 
   registrarListenerChave("movimentacoes", onSnapshot(movimentacoesQuery, snapshot => {
     state.movimentacoesProducao = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
-    state.processosMovimentacoes = mesclarColecaoPorId(state.processosMovimentacoes, state.movimentacoesProducao);
     marcarCarregado("movimentacoes");
-    atualizarAvisosEconomiaGeral();
     renderRastreamento();
     renderFaccoesMovimentacoes();
     renderCelulasMovimentacoes();
@@ -1015,423 +518,6 @@ function carregarMovimentacoesSeNecessario() {
     console.error(error);
     toast("Erro ao carregar movimentações. Verifique as permissões.");
   }));
-}
-
-
-
-
-function setTextoStatusCarga(id, texto) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = texto || "";
-}
-
-function mesclarColecaoPorId(listaAtual = [], novos = []) {
-  const mapa = new Map(listaAtual.map(item => [item.id, item]));
-  novos.forEach(item => mapa.set(item.id, { ...mapa.get(item.id), ...item }));
-  return [...mapa.values()];
-}
-
-function getStatusEconomiaInicial(nome, total, limite) {
-  return `${Number(total || 0).toLocaleString("pt-BR")} ${nome} carregado(s) no modo econômico. Use a busca/filtro no banco para trazer todos os resultados.`;
-}
-
-async function buscarProdutosNoBanco() {
-  const buscaOriginal = document.getElementById("buscaProduto")?.value || "";
-  const busca = normalizarTexto(buscaOriginal);
-
-  if (!busca) {
-    setTextoStatusCarga("produtosStatusCarga", getStatusEconomiaInicial("produto(s)", state.produtos.length, SISTEMA_LISTA_INICIAL));
-    toast("Digite uma referência ou nome para buscar todos os produtos no banco.");
-    return;
-  }
-
-  setTextoStatusCarga("produtosStatusCarga", "Buscando produtos no banco, sem limite...");
-
-  try {
-    const base = collection(db, "produtos");
-    let snap;
-
-    if (/^\d+[a-z0-9*\-\/]*$/i.test(String(buscaOriginal).trim())) {
-      snap = await getDocs(query(base, where("referencia", "==", normalizarReferencia(buscaOriginal))));
-      if (snap.empty) snap = await getDocs(query(base, orderBy("referencia", "asc")));
-    } else {
-      snap = await getDocs(query(base, orderBy("referencia", "asc")));
-    }
-
-    const encontrados = snap.docs.map(item => ({ id: item.id, ...item.data() }));
-    state.produtos = mesclarColecaoPorId(state.produtos, encontrados);
-    state.produtosBuscaGlobalAtiva = true;
-    renderProdutos();
-    renderProdutosPendentes();
-    renderDatalistReferencias();
-
-    const exibidos = state.produtos.filter(p => {
-      const texto = normalizarTexto(`${p.referencia || ""} ${p.nome || ""} ${p.statusCadastro || ""}`);
-      return texto.includes(busca);
-    }).length;
-
-    setTextoStatusCarga("produtosStatusCarga", `${exibidos.toLocaleString("pt-BR")} produto(s) exibido(s). Busca completa aplicada.`);
-    toast(`${exibidos.toLocaleString("pt-BR")} produto(s) encontrado(s).`);
-  } catch (error) {
-    console.error(error);
-    setTextoStatusCarga("produtosStatusCarga", "Erro ao buscar produtos no banco.");
-    toast("Erro ao buscar produtos no banco.");
-  }
-}
-
-function getBuscaOrdemPagina() {
-  return String(document.getElementById("buscaOrdem")?.value || "").trim();
-}
-
-async function buscarOrdensPaginaNoBanco() {
-  const termoOriginal = getBuscaOrdemPagina();
-  const termo = normalizarTexto(termoOriginal);
-
-  if (!termo) {
-    toast("Digite OP, referência, cor ou necessidade para buscar todas as OPs no banco.");
-    setTextoStatusCarga("ordensStatusCarga", getStatusEconomiaInicial("OP(s)", state.ordens.length, MANEJO_PAGE_SIZE));
-    return;
-  }
-
-  setTextoStatusCarga("ordensStatusCarga", "Buscando OPs no banco, sem limite...");
-
-  try {
-    const base = collection(db, "ordensProducao");
-    const consultas = [];
-
-    if (/^\d+$/.test(termoOriginal)) {
-      consultas.push(getDocs(query(base, where("numeroOPBusca", "==", normalizarBuscaFirestore(termoOriginal)))));
-      consultas.push(getDocs(query(base, where("numeroOP", "==", termoOriginal))));
-    } else {
-      consultas.push(getDocs(query(base, where("referenciaBusca", "==", normalizarBuscaFirestore(termoOriginal)))));
-      consultas.push(getDocs(query(base, where("corBusca", "==", normalizarBuscaFirestore(termoOriginal)))));
-      consultas.push(getDocs(query(base, where("faseBusca", "==", normalizarBuscaFirestore(termoOriginal)))));
-      consultas.push(getDocs(query(base, where("termosBuscaManejo", "array-contains", normalizarBuscaFirestore(termoOriginal)))));
-    }
-
-    let encontrados = [];
-    const resultados = await Promise.allSettled(consultas);
-    resultados.forEach(resultado => {
-      if (resultado.status === "fulfilled") {
-        encontrados.push(...resultado.value.docs.map(item => ({ id: item.id, ...item.data(), __loteManejo: "busca_ordens" })));
-      }
-    });
-
-    // Se nenhum índice/campo de busca encontrou, faz busca completa apenas quando o usuário realmente procurou algo.
-    if (!encontrados.length) {
-      const snap = await getDocs(query(base, orderBy("criadoEm", "desc")));
-      encontrados = snap.docs.map(item => ({ id: item.id, ...item.data(), __loteManejo: "busca_ordens" }));
-    }
-
-    state.ordens = mesclarColecaoPorId(state.ordens, encontrados);
-    state.ordensBuscaGlobalAtiva = true;
-    renderOrdens();
-    renderDatalistCores();
-
-    const exibidas = state.ordens.filter(op => {
-      const texto = normalizarTexto(`${op.numeroOP || ""} ${op.numeroOPExterno || ""} ${op.referencia || ""} ${op.cor || ""} ${op.produtoNome || ""} ${getNecessidadeDaOrdem(op) || ""}`);
-      return texto.includes(termo);
-    }).length;
-
-    setTextoStatusCarga("ordensStatusCarga", `${exibidas.toLocaleString("pt-BR")} OP(s) exibida(s). Busca completa aplicada.`);
-    toast(`${exibidas.toLocaleString("pt-BR")} OP(s) encontrada(s).`);
-  } catch (error) {
-    console.error(error);
-    setTextoStatusCarga("ordensStatusCarga", "Erro ao buscar OPs no banco.");
-    toast("Erro ao buscar OPs no banco.");
-  }
-}
-
-async function buscarMovimentacoesNoBancoPorTermo(termoOriginal = "", origem = "rastreamento") {
-  const termo = normalizarTexto(termoOriginal);
-
-  if (!termo) {
-    toast("Digite OP, referência, facção, célula, cor ou processo para buscar no banco.");
-    return false;
-  }
-
-  const statusId = origem === "rastreamento" ? "rastreamentoStatusCarga"
-    : origem === "faccoes" ? "faccoesMovStatusCarga"
-    : origem === "celulas" ? "celulasMovStatusCarga"
-    : "processosStatusCarga";
-
-  setTextoStatusCarga(statusId, "Buscando movimentações no banco, sem limite...");
-
-  try {
-    const base = collection(db, "movimentacoesProducao");
-    let snap;
-
-    let encontrados = [];
-
-    if (/^\d+$/.test(String(termoOriginal).trim())) {
-      const resultados = await Promise.allSettled([
-        getDocs(query(base, where("numeroOP", "==", String(termoOriginal).trim()))),
-        getDocs(query(base, where("referencia", "==", String(termoOriginal).trim())))
-      ]);
-      resultados.forEach(resultado => {
-        if (resultado.status === "fulfilled") {
-          encontrados.push(...resultado.value.docs.map(item => ({ id: item.id, ...item.data() })));
-        }
-      });
-    } else {
-      // Busca flexível: só lê tudo quando o usuário digitou algo, para não gastar leitura ao abrir a tela.
-      snap = await getDocs(query(base, orderBy("criadoEm", "desc")));
-      encontrados = snap.docs.map(item => ({ id: item.id, ...item.data() }));
-    }
-
-    state.movimentacoesProducao = mesclarColecaoPorId(state.movimentacoesProducao, encontrados);
-    state.processosMovimentacoes = mesclarColecaoPorId(state.processosMovimentacoes, encontrados);
-    state.movimentacoesBuscaGlobalAtiva = true;
-
-    renderRastreamento();
-    renderFaccoesMovimentacoes();
-    renderCelulasMovimentacoes();
-    renderProcessos();
-
-    const total = encontrados.length.toLocaleString("pt-BR");
-    setTextoStatusCarga(statusId, `${total} movimentação(ões) carregada(s) do banco para esta busca.`);
-    return true;
-  } catch (error) {
-    console.error(error);
-    setTextoStatusCarga(statusId, "Erro ao buscar movimentações no banco.");
-    toast("Erro ao buscar movimentações no banco.");
-    return false;
-  }
-}
-
-async function buscarRastreamentoNoBanco() {
-  const termo = document.getElementById("buscaRastreamento")?.value || "";
-  await buscarMovimentacoesNoBancoPorTermo(termo, "rastreamento");
-}
-
-async function buscarFaccoesMovimentacoesNoBanco() {
-  const termo = document.getElementById("buscaFaccaoMovimentacoes")?.value || "";
-  await buscarMovimentacoesNoBancoPorTermo(termo, "faccoes");
-}
-
-async function buscarCelulasMovimentacoesNoBanco() {
-  const termo = document.getElementById("buscaCelulaMovimentacoes")?.value || "";
-  await buscarMovimentacoesNoBancoPorTermo(termo, "celulas");
-}
-
-function getFiltrosPagamentoAtivos() {
-  return {
-    inicio: document.getElementById("pagamentoDataInicio")?.value || "",
-    fim: document.getElementById("pagamentoDataFim")?.value || "",
-    faccao: document.getElementById("pagamentoFiltroFaccao")?.value || "",
-    referencia: document.getElementById("pagamentoFiltroReferencia")?.value || "",
-    preco: document.getElementById("pagamentoFiltroPreco")?.value || "",
-    status: document.getElementById("pagamentoFiltroStatus")?.value || "pendente"
-  };
-}
-
-function temFiltroPagamentoAtivo(filtros) {
-  return Boolean(filtros.inicio || filtros.fim || filtros.faccao || filtros.referencia || filtros.preco || filtros.status);
-}
-
-async function buscarPagamentosNoBanco() {
-  const filtros = getFiltrosPagamentoAtivos();
-  if (!temFiltroPagamentoAtivo(filtros)) {
-    toast("Escolha pelo menos um filtro para buscar pagamentos completos no banco.");
-    return;
-  }
-
-  setTextoStatusCarga("pagamentosStatusCarga", "Buscando pagamentos no banco, sem limite...");
-
-  try {
-    const base = collection(db, "entregasPagamento");
-    let consulta = query(base, orderBy("dataEntrega", "desc"));
-
-    if (filtros.referencia) consulta = query(base, where("referencia", "==", filtros.referencia));
-    else if (filtros.faccao) consulta = query(base, where("faccao", "==", filtros.faccao));
-    else if (filtros.status) consulta = query(base, where("statusPagamento", "==", filtros.status));
-
-    const snap = await getDocs(consulta);
-    const encontrados = snap.docs.map(item => ({ id: item.id, ...item.data() }));
-    state.entregasPagamento = mesclarColecaoPorId(state.entregasPagamento, encontrados);
-    state.pagamentosBuscaGlobalAtiva = true;
-    renderPagamentos();
-
-    const total = getEntregasPagamentoFiltradas().length;
-    setTextoStatusCarga("pagamentosStatusCarga", `${total.toLocaleString("pt-BR")} pagamento(s) exibido(s). Busca completa aplicada.`);
-    toast(`${total.toLocaleString("pt-BR")} pagamento(s) carregado(s).`);
-  } catch (error) {
-    console.error(error);
-    setTextoStatusCarga("pagamentosStatusCarga", "Erro ao buscar pagamentos no banco.");
-    toast("Erro ao buscar pagamentos no banco.");
-  }
-}
-
-function getFiltrosRelatorioAtivos() {
-  return {
-    semana: document.getElementById("filtroSemana")?.value || "",
-    mes: document.getElementById("filtroMes")?.value || "",
-    ano: document.getElementById("filtroAno")?.value || "",
-    referencia: document.getElementById("filtroReferencia")?.value || "",
-    cor: document.getElementById("filtroCor")?.value || ""
-  };
-}
-
-function temFiltroRelatorioAtivo(filtros) {
-  return Boolean(filtros.semana || filtros.mes || filtros.ano || filtros.referencia || filtros.cor);
-}
-
-async function buscarRelatorioNoBanco() {
-  const filtros = getFiltrosRelatorioAtivos();
-
-  if (!temFiltroRelatorioAtivo(filtros)) {
-    setTextoStatusCarga("relatoriosStatusCarga", `Relatório usando os dados econômicos já carregados (${state.ordens.length.toLocaleString("pt-BR")} OPs). Aplique filtro para buscar no banco inteiro.`);
-    renderRelatorio();
-    return;
-  }
-
-  setTextoStatusCarga("relatoriosStatusCarga", "Buscando relatório no banco, sem limite...");
-
-  try {
-    const base = collection(db, "ordensProducao");
-    let consulta = query(base, orderBy("criadoEm", "desc"));
-
-    if (filtros.referencia) consulta = query(base, where("referenciaBusca", "==", normalizarBuscaFirestore(filtros.referencia)));
-    else if (filtros.cor) consulta = query(base, where("corBusca", "==", normalizarBuscaFirestore(filtros.cor)));
-
-    const snap = await getDocs(consulta);
-    const encontrados = snap.docs.map(item => ({ id: item.id, ...item.data(), __loteManejo: "relatorio" }));
-    state.ordens = mesclarColecaoPorId(state.ordens, encontrados);
-    state.relatorioBuscaGlobalAtiva = true;
-
-    renderRelatorio();
-    const total = getOrdensRelatorio().length;
-    setTextoStatusCarga("relatoriosStatusCarga", `${total.toLocaleString("pt-BR")} OP(s) no relatório. Busca completa aplicada.`);
-  } catch (error) {
-    console.error(error);
-    setTextoStatusCarga("relatoriosStatusCarga", "Erro ao buscar relatório no banco.");
-    toast("Erro ao buscar relatório no banco.");
-  }
-}
-
-async function buscarLogsNoBanco() {
-  const termo = document.getElementById("buscaLogs")?.value || "";
-  if (!termo) {
-    toast("Digite algo para buscar logs completos no banco.");
-    return;
-  }
-
-  setTextoStatusCarga("logsStatusCarga", "Buscando logs no banco, sem limite...");
-
-  try {
-    const snap = await getDocs(query(collection(db, "logsAlteracoes"), orderBy("criadoEm", "desc")));
-    state.logs = snap.docs.map(item => ({ id: item.id, ...item.data() }));
-    state.logsBuscaGlobalAtiva = true;
-    renderLogs();
-    setTextoStatusCarga("logsStatusCarga", "Busca completa de logs aplicada.");
-  } catch (error) {
-    console.error(error);
-    setTextoStatusCarga("logsStatusCarga", "Erro ao buscar logs no banco.");
-  }
-}
-
-function atualizarAvisosEconomiaGeral() {
-  setTextoStatusCarga("produtosStatusCarga", getStatusEconomiaInicial("produto(s)", state.produtos.length, SISTEMA_LISTA_INICIAL));
-  setTextoStatusCarga("ordensStatusCarga", getStatusEconomiaInicial("OP(s)", state.ordens.length, MANEJO_PAGE_SIZE));
-  if (!state.movimentacoesBuscaGlobalAtiva) {
-    setTextoStatusCarga("rastreamentoStatusCarga", getStatusEconomiaInicial("movimentação(ões)", state.movimentacoesProducao.length, MOVIMENTACOES_LISTA_INICIAL));
-    setTextoStatusCarga("faccoesMovStatusCarga", getStatusEconomiaInicial("movimentação(ões)", state.movimentacoesProducao.length, MOVIMENTACOES_LISTA_INICIAL));
-    setTextoStatusCarga("celulasMovStatusCarga", getStatusEconomiaInicial("movimentação(ões)", state.movimentacoesProducao.length, MOVIMENTACOES_LISTA_INICIAL));
-  }
-  if (!state.pagamentosBuscaGlobalAtiva) {
-    setTextoStatusCarga("pagamentosStatusCarga", getStatusEconomiaInicial("pagamento(s)", state.entregasPagamento.length, PAGAMENTOS_LISTA_INICIAL));
-  }
-  if (!state.logsBuscaGlobalAtiva) {
-    setTextoStatusCarga("logsStatusCarga", getStatusEconomiaInicial("log(s)", state.logs.length, LOGS_LISTA_INICIAL));
-  }
-}
-
-function setStatusCargaProcessos(mensagem) {
-  const el = document.getElementById("processosStatusCarga");
-  if (el) el.textContent = mensagem || "";
-}
-
-function atualizarBotoesCargaProcessos() {
-  const btnMais = document.getElementById("btnProcessosCarregarMais");
-  const btnAtualizar = document.getElementById("btnProcessosAtualizar");
-
-  if (btnMais) {
-    btnMais.disabled = !!state.processosCarregando || !state.processosTemMais;
-    btnMais.textContent = state.processosTemMais ? `Carregar mais ${PROCESSOS_PAGE_SIZE}` : "Tudo carregado";
-  }
-
-  if (btnAtualizar) {
-    btnAtualizar.disabled = !!state.processosCarregando;
-  }
-}
-
-async function carregarProcessosPaginadosSeNecessario() {
-  if (state.processosMovimentacoes.length || state.processosCarregando) {
-    atualizarBotoesCargaProcessos();
-    return;
-  }
-  await carregarProcessosPaginados(true);
-}
-
-async function carregarProcessosPaginados(reset = false) {
-  if (state.processosCarregando) return;
-
-  if (reset) {
-    state.processosMovimentacoes = [];
-    state.processosUltimoDoc = null;
-    state.processosTemMais = true;
-  }
-
-  if (!state.processosTemMais && !reset) {
-    atualizarBotoesCargaProcessos();
-    return;
-  }
-
-  state.processosCarregando = true;
-  atualizarBotoesCargaProcessos();
-  setStatusCargaProcessos(reset ? "Carregando primeiras movimentações..." : "Carregando mais movimentações...");
-  renderProcessos();
-
-  try {
-    let processosQuery = query(
-      collection(db, "movimentacoesProducao"),
-      orderBy("criadoEm", "desc"),
-      firestoreLimit(PROCESSOS_PAGE_SIZE)
-    );
-
-    if (state.processosUltimoDoc && !reset) {
-      processosQuery = query(
-        collection(db, "movimentacoesProducao"),
-        orderBy("criadoEm", "desc"),
-        startAfter(state.processosUltimoDoc),
-        firestoreLimit(PROCESSOS_PAGE_SIZE)
-      );
-    }
-
-    const snapshot = await getDocs(processosQuery);
-    const novos = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
-    const existentes = new Set(state.processosMovimentacoes.map(mov => mov.id));
-    const semDuplicar = novos.filter(mov => !existentes.has(mov.id));
-
-    state.processosMovimentacoes = reset ? novos : [...state.processosMovimentacoes, ...semDuplicar];
-    state.processosUltimoDoc = snapshot.docs[snapshot.docs.length - 1] || state.processosUltimoDoc;
-    state.processosTemMais = snapshot.docs.length === PROCESSOS_PAGE_SIZE;
-
-    const carregadas = state.processosMovimentacoes.length.toLocaleString("pt-BR");
-    setStatusCargaProcessos(
-      state.processosTemMais
-        ? `${carregadas} movimentações carregadas. Clique em carregar mais para buscar o próximo lote.`
-        : `${carregadas} movimentações carregadas. Não há mais registros neste lote de consulta.`
-    );
-  } catch (error) {
-    console.error(error);
-    toast("Erro ao carregar processos. Verifique permissões e conexão.");
-    setStatusCargaProcessos("Não foi possível carregar os processos agora.");
-  } finally {
-    state.processosCarregando = false;
-    atualizarBotoesCargaProcessos();
-    renderProcessos();
-  }
 }
 
 function carregarPrecosReferenciaSeNecessario() {
@@ -1461,12 +547,11 @@ function carregarEntregasPagamentoSeNecessario() {
   if (state.dadosCarregados.entregasPagamento || state.carregandoDados.entregasPagamento || state.listenersPorChave.entregasPagamento) return;
   state.carregandoDados.entregasPagamento = true;
 
-  const entregasPagamentoQuery = query(collection(db, "entregasPagamento"), orderBy("dataEntrega", "desc"), firestoreLimit(PAGAMENTOS_LISTA_INICIAL));
+  const entregasPagamentoQuery = query(collection(db, "entregasPagamento"), orderBy("dataEntrega", "desc"));
 
   registrarListenerChave("entregasPagamento", onSnapshot(entregasPagamentoQuery, snapshot => {
     state.entregasPagamento = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     marcarCarregado("entregasPagamento");
-    atualizarAvisosEconomiaGeral();
     renderPagamentos();
   }, error => {
     state.carregandoDados.entregasPagamento = false;
@@ -1498,12 +583,11 @@ function carregarLogsSeNecessario() {
   if (state.dadosCarregados.logs || state.carregandoDados.logs || state.listenersPorChave.logs) return;
   state.carregandoDados.logs = true;
 
-  const logsQuery = query(collection(db, "logsAlteracoes"), orderBy("criadoEm", "desc"), firestoreLimit(LOGS_LISTA_INICIAL));
+  const logsQuery = query(collection(db, "logsAlteracoes"), orderBy("criadoEm", "desc"));
 
   registrarListenerChave("logs", onSnapshot(logsQuery, snapshot => {
     state.logs = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     marcarCarregado("logs");
-    atualizarAvisosEconomiaGeral();
     renderLogs();
   }, error => {
     state.carregandoDados.logs = false;
@@ -1515,18 +599,12 @@ function carregarLogsSeNecessario() {
 function carregarDadosDaPagina(page) {
   if (page === "manejo") {
     carregarPrecosReferenciaSeNecessario();
-    // Economia de leitura: não carrega todas as movimentações ao abrir o manejo.
-    // Movimentações completas ficam nas abas Processos/Rastreamento, também com carregamento controlado.
+    carregarMovimentacoesSeNecessario();
     carregarFaccoesSeNecessario();
     carregarCelulasSeNecessario();
-    atualizarStatusCargaManejo();
   }
 
-  if (page === "processos") {
-    carregarProcessosPaginadosSeNecessario();
-  }
-
-  if (page === "rastreamento") {
+  if (page === "processos" || page === "rastreamento") {
     carregarMovimentacoesSeNecessario();
     carregarFaccoesSeNecessario();
     carregarCelulasSeNecessario();
@@ -1557,10 +635,8 @@ function carregarDadosDaPagina(page) {
   }
 
   if (page === "relatorios") {
-    setTextoStatusCarga("relatoriosStatusCarga", `Modo econômico: relatório usando dados já carregados (${state.ordens.length.toLocaleString("pt-BR")} OPs). Aplique filtro para buscar no banco inteiro.`);
+    // Relatórios só usam o que já estiver carregado. Consultas maiores devem ser feitas por filtro/período em versões futuras.
   }
-
-  atualizarAvisosEconomiaGeral();
 }
 
 
@@ -1727,7 +803,6 @@ function configurarProduto() {
   });
 
   document.getElementById("buscaProduto").addEventListener("input", renderProdutos);
-  document.getElementById("btnBuscarProdutoBanco")?.addEventListener("click", buscarProdutosNoBanco);
   document.getElementById("btnCancelarProduto").addEventListener("click", limparFormProduto);
 }
 
@@ -1906,7 +981,6 @@ function configurarOrdem() {
   });
 
   document.getElementById("buscaOrdem").addEventListener("input", renderOrdens);
-  document.getElementById("btnBuscarOrdemBanco")?.addEventListener("click", buscarOrdensPaginaNoBanco);
   document.getElementById("btnCancelarOrdem").addEventListener("click", limparFormOrdem);
 }
 
@@ -2143,9 +1217,9 @@ const MANEJOS_PERMISSAO = {
 };
 
 const RECURSOS_PERMISSAO = {
-  gerenciarValores: "Abrir gerenciamento",
+  gerenciarValores: "Gerenciar valores",
   marcarPagamentos: "Marcar pagamentos como pagos",
-  gerenciarFaccoes: "Abrir gerenciamento",
+  gerenciarFaccoes: "Gerenciar facções",
   gerenciarCelulas: "Gerenciar células"
 };
 
@@ -2375,18 +1449,9 @@ function montarPatchManejoSetor(setor, manejo, status, extras = {}) {
 }
 
 
-let timerFiltroManejo = null;
-
 function atualizarManejoComSoma() {
   renderManejoInline();
   setTimeout(renderResumoSomasManejoPeloDOM, 0);
-}
-
-function atualizarManejoComSomaLeve() {
-  clearTimeout(timerFiltroManejo);
-  timerFiltroManejo = setTimeout(() => {
-    atualizarManejoComSoma();
-  }, 180);
 }
 
 function configurarManejo() {
@@ -2396,7 +1461,7 @@ function configurarManejo() {
 
   const busca = document.getElementById("buscaManejoLinha");
   if (busca) {
-    busca.addEventListener("input", atualizarManejoComSomaLeve);
+    busca.addEventListener("input", atualizarManejoComSoma);
   }
 
   [
@@ -2408,6 +1473,7 @@ function configurarManejo() {
     "filtroManejoFase",
     "filtroManejoQuantidade",
     "filtroManejoCor",
+    "filtroManejoFaccao",
     "filtroManejoChegada",
     "filtroManejoFalta",
     "filtroManejoCelu",
@@ -2415,8 +1481,9 @@ function configurarManejo() {
   ].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.addEventListener("input", atualizarManejoComSomaLeve);
-    el.addEventListener("change", atualizarManejoComSoma);
+    ["input", "change"].forEach(evento => {
+      el.addEventListener(evento, atualizarManejoComSoma);
+    });
   });
 
   const limpar = document.getElementById("btnLimparFiltrosManejo");
@@ -2439,23 +1506,7 @@ function configurarManejo() {
   if (imprimir) {
     imprimir.addEventListener("click", imprimirManejoFiltrado);
   }
-
-  const carregarMais = document.getElementById("btnManejoCarregarMais");
-  if (carregarMais) {
-    carregarMais.addEventListener("click", carregarMaisOrdensManejo);
-  }
-
-  const buscarBanco = document.getElementById("btnManejoBuscarBanco");
-  if (buscarBanco) {
-    buscarBanco.addEventListener("click", buscarOrdemManejoNoBanco);
-  }
-
-  const atualizarLista = document.getElementById("btnManejoAtualizarLista");
-  if (atualizarLista) {
-    atualizarLista.addEventListener("click", atualizarPrimeiroLoteManejo);
-  }
 }
-
 
 
 function valorManejoParaImpressao(op, campo) {
@@ -2514,8 +1565,11 @@ function imprimirManejoFiltrado() {
       <td>${escapeHtml(item.fase || "-")}</td>
       <td class="num">${escapeHtml(item.quantidade)}</td>
       <td>${escapeHtml(item.cor || "-")}</td>
+      <td>${escapeHtml(formatarDataSimples(item.data))}</td>
+      <td>${escapeHtml(item.faccao || "-")}</td>
       <td>${escapeHtml(formatarDataSimples(item.chegada))}</td>
       <td class="num">${escapeHtml(item.falta || 0)}</td>
+      <td>${escapeHtml(formatarDataSimples(item.producao))}</td>
       <td>${escapeHtml(item.celu || "-")}</td>
       <td>${escapeHtml(item.necessidade || "-")}</td>
       <td>${escapeHtml(item.status)}</td>
@@ -2641,10 +1695,13 @@ function imprimirManejoFiltrado() {
               <th>Silk data</th>
               <th>Data tecido</th>
               <th>Fase</th>
-              <th>Quantidade</th>
+              <th>QTI</th>
               <th>Cor</th>
+              
+              <th>Facção</th>
               <th>Chegada</th>
               <th>Falta</th>
+              
               <th>CELU</th>
               <th>Necessidade</th>
               <th>Status</th>
@@ -2882,7 +1939,6 @@ function renderManejoInline() {
   const ordens = filtrarOrdensManejoPorColunas();
 
   renderResumoSomasManejo(ordens);
-  atualizarStatusCargaManejo();
 
   if (!ordens.length) {
     tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma ordem de produção encontrada para o manejo.</td></tr>`;
@@ -2898,16 +1954,25 @@ function renderManejoInline() {
       .filter(mov => mov.status !== "finalizado" && mov.status !== "retornou").length;
 
     return `
-      <tr id="manejo-row-${escapeHtml(op.id || "")}" class="${rowClass} ${state.rastreamentoMovimentoDestacado === op.id ? "linha-destaque-rastreamento" : ""}" data-manejo-row="1" data-qtd="${escapeHtml(numeroQuantidadeOP(op))}" data-falta="0" data-status="${escapeHtml(status)}" data-fase="${escapeHtml(manejo?.fase || faseExibicaoMigracaoLigia(op) || "Sem fase")}" data-cor="${escapeHtml(op.cor || "Sem cor")}">
+      <tr class="${rowClass}" data-manejo-row="1" data-qti="${escapeHtml(numeroQuantidadeOP(op))}" data-falta="0" data-status="${escapeHtml(status)}" data-fase="${escapeHtml(manejo?.fase || "Sem fase")}" data-cor="${escapeHtml(op.cor || "Sem cor")}">
         <td><input class="manejo-readonly" value="${escapeHtml(op.numeroOP || "")}" readonly /></td>
         <td><input class="manejo-readonly" value="${escapeHtml(op.referencia || "")}" readonly /></td>
         <td>
-          <input id="${rowId}-silkNome" class="silk-nome-compacto" value="${escapeHtml(getSilkNomeManejo(manejo))}" list="manejoSilkNomesList" placeholder="Nome" title="Nome de quem fez o silk" />
+          <div class="silk-fields">
+            <label class="mini-field">
+              <span>Nome</span>
+              <input id="${rowId}-silkNome" value="${escapeHtml(getSilkNomeManejo(manejo))}" list="manejoSilkNomesList" placeholder="Quem fez" />
+            </label>
+            <label class="mini-field">
+              <span>Data</span>
+              <input id="${rowId}-silkData" type="date" value="${escapeHtml(manejo?.silkData || "")}" title="Data do silk" />
+            </label>
+          </div>
         </td>
-        <td><input id="${rowId}-dataTecido" type="text" value="${escapeHtml(manejo?.dataTecido || "")}" placeholder="Tecido" title="Data/status do tecido vindo da planilha" /></td>
+        <td><input id="${rowId}-dataTecido" type="date" value="${escapeHtml(manejo?.dataTecido || "")}" /></td>
         <td>
           <div class="fase-plus">
-            <input id="${rowId}-fase" value="${escapeHtml(manejo?.fase || faseExibicaoMigracaoLigia(op) || "")}" list="manejoFasesList" placeholder="Digite a fase" />
+            <input id="${rowId}-fase" value="${escapeHtml(manejo?.fase || "")}" list="manejoFasesList" placeholder="Digite a fase" />
             <button class="btn-plus" type="button" onclick="adicionarFaseSugestao('${op.id}')" title="Adicionar fase às sugestões">+</button>
           </div>
         </td>
@@ -2978,9 +2043,10 @@ function getValorManejoParaFiltro(op, campo, setor = getManejoSetorAtual()) {
     referencia: op.referencia || "",
     silk: getSilkNomeManejo(manejo),
     dataTecido: manejo?.dataTecido || "",
-    fase: manejo?.fase || faseExibicaoMigracaoLigia(op) || op.faseOriginalLigia || op.statusMigracaoLigia || "",
+    fase: manejo?.fase || "",
     quantidade: op.quantidade ?? "",
     cor: op.cor || "",
+    faccao: manejo?.faccao || "",
     chegada: manejo?.chegada || "",
     falta: manejo?.falta ?? "",
     celu: manejo?.celu || "",
@@ -2992,7 +2058,6 @@ function getValorManejoParaFiltro(op, campo, setor = getManejoSetorAtual()) {
 
 function filtrarOrdensManejoPorColunas() {
   const setor = getManejoSetorAtual();
-  const ordensSetor = getOrdensDoSetorManejo(setor);
   const busca = normalizarTexto(document.getElementById("buscaManejoLinha")?.value || "");
 
   const filtros = {
@@ -3004,18 +2069,14 @@ function filtrarOrdensManejoPorColunas() {
     fase: document.getElementById("filtroManejoFase")?.value || "",
     quantidade: document.getElementById("filtroManejoQuantidade")?.value || "",
     cor: document.getElementById("filtroManejoCor")?.value || "",
+    faccao: document.getElementById("filtroManejoFaccao")?.value || "",
     chegada: document.getElementById("filtroManejoChegada")?.value || "",
     falta: document.getElementById("filtroManejoFalta")?.value || "",
     celu: document.getElementById("filtroManejoCelu")?.value || "",
     necessidade: document.getElementById("filtroManejoNecessidade")?.value || ""
   };
 
-  const fasesSelecionadasExcel = state.filtroFasesManejoSelecionadas;
-  const faseFiltroChave = filtros.fase ? chaveFiltroFaseManejo(filtros.fase) : "";
-  const fasesConhecidas = new Set(getFasesDisponiveisFiltroManejo(ordensSetor, setor).map(fase => chaveFiltroFaseManejo(fase)));
-  const filtroFaseEhExato = !!faseFiltroChave && fasesConhecidas.has(faseFiltroChave);
-
-  return ordensSetor.filter(op => {
+  return getOrdensDoSetorManejo(setor).filter(op => {
     const manejo = getManejoDaOrdem(op, setor);
 
     const textoGeral = normalizarTexto([
@@ -3030,9 +2091,7 @@ function filtrarOrdensManejoPorColunas() {
       manejo?.silkData,
       manejo?.dataTecido,
       manejo?.fase,
-      faseExibicaoMigracaoLigia(op),
-      op.faseOriginalLigia,
-      op.statusMigracaoLigia,
+      manejo?.faccao,
       manejo?.chegada,
       manejo?.falta,
       manejo?.celu
@@ -3040,32 +2099,22 @@ function filtrarOrdensManejoPorColunas() {
 
     if (busca && !textoGeral.includes(busca)) return false;
 
-    const faseItemChave = chaveFiltroFaseManejo(getValorManejoParaFiltro(op, "fase", setor));
-
-    if (fasesSelecionadasExcel instanceof Set && !fasesSelecionadasExcel.has(faseItemChave)) {
-      return false;
-    }
-
     return Object.entries(filtros).every(([campo, valor]) => {
       if (!valor) return true;
+
+      const valorFiltro = normalizarTexto(valor);
+      const valorItem = normalizarTexto(getValorManejoParaFiltro(op, campo, setor));
 
       if (campo === "status") {
         return getValorManejoParaFiltro(op, campo, setor) === valor;
       }
 
-      if (campo === "fase" && filtroFaseEhExato) {
-        return faseItemChave === faseFiltroChave;
-      }
-
-      const valorFiltro = normalizarTexto(valor);
-      const valorItem = normalizarTexto(getValorManejoParaFiltro(op, campo, setor));
       return valorItem.includes(valorFiltro);
     });
   });
 }
 
 function limparFiltrosColunasManejo() {
-  state.filtroFasesManejoSelecionadas = null;
   [
     "buscaManejoLinha",
     "filtroManejoStatus",
@@ -3076,6 +2125,7 @@ function limparFiltrosColunasManejo() {
     "filtroManejoFase",
     "filtroManejoQuantidade",
     "filtroManejoCor",
+    "filtroManejoFaccao",
     "filtroManejoChegada",
     "filtroManejoFalta",
     "filtroManejoCelu",
@@ -3084,7 +2134,6 @@ function limparFiltrosColunasManejo() {
     const el = document.getElementById(id);
     if (el) el.value = "";
   });
-  atualizarIndicadorFiltroExcelFasesManejo();
 }
 
 function preencherSelectFiltroManejo(id, valores, labelTodos = "Todos") {
@@ -3115,180 +2164,6 @@ function preencherSelectFiltroManejo(id, valores, labelTodos = "Todos") {
   }
 }
 
-
-function chaveFiltroFaseManejo(valor) {
-  const texto = String(valor || "").trim() || "Sem fase";
-  return normalizarTexto(texto);
-}
-
-function getValorFaseManejoParaFiltro(op, setor = getManejoSetorAtual()) {
-  const valor = getValorManejoParaFiltro(op, "fase", setor);
-  return String(valor || "").trim() || "Sem fase";
-}
-
-function getFasesDisponiveisFiltroManejo(ordensBase = null, setorBase = null) {
-  const setor = setorBase || getManejoSetorAtual();
-  const fases = new Map();
-  const ordens = ordensBase || getOrdensDoSetorManejo(setor);
-
-  ordens.forEach(op => {
-    const fase = getValorFaseManejoParaFiltro(op, setor);
-    fases.set(chaveFiltroFaseManejo(fase), fase);
-  });
-
-  state.fasesManejoExtras.forEach(faseExtra => {
-    const fase = String(faseExtra || "").trim();
-    if (fase) fases.set(chaveFiltroFaseManejo(fase), fase.toUpperCase());
-  });
-
-  return [...fases.values()].sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
-}
-
-function getFasesSelecionadasTextoManejo() {
-  const selecionadas = state.filtroFasesManejoSelecionadas;
-  if (!(selecionadas instanceof Set)) return "";
-  if (!selecionadas.size) return "Nenhuma fase";
-
-  const fases = getFasesDisponiveisFiltroManejo().filter(fase => selecionadas.has(chaveFiltroFaseManejo(fase)));
-  if (fases.length <= 3) return fases.join(", ");
-  return `${fases.slice(0, 3).join(", ")} +${fases.length - 3}`;
-}
-
-function atualizarIndicadorFiltroExcelFasesManejo() {
-  const btn = document.getElementById("btnFiltroFaseExcel");
-  const texto = document.getElementById("labelFiltroFaseExcel");
-  const selecionadas = state.filtroFasesManejoSelecionadas;
-  const ativo = selecionadas instanceof Set;
-
-  if (btn) {
-    btn.classList.toggle("active", ativo);
-    btn.title = ativo ? `Filtro de fases ativo: ${getFasesSelecionadasTextoManejo()}` : "Filtrar fases como no Excel";
-  }
-
-  if (texto) {
-    texto.textContent = ativo ? `Fases: ${getFasesSelecionadasTextoManejo()}` : "Todas as fases";
-  }
-}
-
-function esconderFiltroExcelFasesManejo() {
-  const painel = document.getElementById("painelFiltroFaseExcel");
-  if (painel) painel.classList.add("hidden");
-}
-
-function configurarFiltroExcelFasesManejo() {
-  const btn = document.getElementById("btnFiltroFaseExcel");
-  const painel = document.getElementById("painelFiltroFaseExcel");
-  const busca = document.getElementById("buscaFiltroFaseExcel");
-  const selecionarTodos = document.getElementById("btnSelecionarTodasFasesExcel");
-  const limparSelecao = document.getElementById("btnLimparSelecaoFasesExcel");
-  const fechar = document.getElementById("btnAplicarFiltroFaseExcel");
-
-  if (btn && painel) {
-    btn.addEventListener("click", event => {
-      event.stopPropagation();
-      const aberto = !painel.classList.contains("hidden");
-
-      if (aberto) {
-        painel.classList.add("hidden");
-        return;
-      }
-
-      const rect = btn.getBoundingClientRect();
-      painel.style.top = `${Math.min(window.innerHeight - 80, rect.bottom + 8)}px`;
-      painel.style.left = `${Math.max(12, Math.min(window.innerWidth - 360, rect.left - 260))}px`;
-      painel.classList.remove("hidden");
-      if (busca) busca.value = "";
-      renderListaFiltroExcelFasesManejo();
-      setTimeout(() => busca?.focus(), 30);
-    });
-  }
-
-  if (busca) busca.addEventListener("input", renderListaFiltroExcelFasesManejo);
-
-  if (selecionarTodos) {
-    selecionarTodos.addEventListener("click", () => {
-      state.filtroFasesManejoSelecionadas = null;
-      renderListaFiltroExcelFasesManejo();
-      atualizarManejoComSoma();
-    });
-  }
-
-  if (limparSelecao) {
-    limparSelecao.addEventListener("click", () => {
-      state.filtroFasesManejoSelecionadas = new Set();
-      renderListaFiltroExcelFasesManejo();
-      atualizarManejoComSoma();
-    });
-  }
-
-  if (fechar) fechar.addEventListener("click", esconderFiltroExcelFasesManejo);
-
-  document.addEventListener("click", event => {
-    if (!painel || painel.classList.contains("hidden")) return;
-    if (painel.contains(event.target) || btn?.contains(event.target)) return;
-    esconderFiltroExcelFasesManejo();
-  });
-}
-
-function renderListaFiltroExcelFasesManejo() {
-  const lista = document.getElementById("listaFiltroFaseExcel");
-  if (!lista) return;
-
-  const setor = getManejoSetorAtual();
-  const ordensSetor = getOrdensDoSetorManejo(setor);
-  const busca = normalizarTexto(document.getElementById("buscaFiltroFaseExcel")?.value || "");
-  const fases = getFasesDisponiveisFiltroManejo(ordensSetor, setor);
-  const fasesFiltradas = fases.filter(fase => !busca || normalizarTexto(fase).includes(busca));
-  const selecionadas = state.filtroFasesManejoSelecionadas;
-  const contagemPorFase = new Map();
-
-  ordensSetor.forEach(op => {
-    const chave = chaveFiltroFaseManejo(getValorFaseManejoParaFiltro(op, setor));
-    contagemPorFase.set(chave, (contagemPorFase.get(chave) || 0) + 1);
-  });
-
-  if (!fasesFiltradas.length) {
-    lista.innerHTML = `<div class="empty small">Nenhuma fase encontrada.</div>`;
-    atualizarIndicadorFiltroExcelFasesManejo();
-    return;
-  }
-
-  lista.innerHTML = fasesFiltradas.map(fase => {
-    const chave = chaveFiltroFaseManejo(fase);
-    const checked = !(selecionadas instanceof Set) || selecionadas.has(chave);
-    const qtd = contagemPorFase.get(chave) || 0;
-
-    return `
-      <label class="excel-filter-option">
-        <input type="checkbox" data-fase-excel="${escapeHtml(chave)}" ${checked ? "checked" : ""} />
-        <span>${escapeHtml(fase)}</span>
-        <small>${qtd}</small>
-      </label>
-    `;
-  }).join("");
-
-  lista.querySelectorAll("input[data-fase-excel]").forEach(input => {
-    input.addEventListener("change", () => {
-      const todas = fases.map(fase => chaveFiltroFaseManejo(fase));
-      let novaSelecao = state.filtroFasesManejoSelecionadas instanceof Set
-        ? new Set(state.filtroFasesManejoSelecionadas)
-        : new Set(todas);
-
-      if (input.checked) {
-        novaSelecao.add(input.dataset.faseExcel);
-      } else {
-        novaSelecao.delete(input.dataset.faseExcel);
-      }
-
-      state.filtroFasesManejoSelecionadas = novaSelecao.size === todas.length ? null : novaSelecao;
-      renderListaFiltroExcelFasesManejo();
-      atualizarManejoComSoma();
-    });
-  });
-
-  atualizarIndicadorFiltroExcelFasesManejo();
-}
-
 function renderFiltrosColunasManejo() {
   const setor = getManejoSetorAtual();
   const ordens = getOrdensDoSetorManejo(setor);
@@ -3303,6 +2178,10 @@ function renderFiltrosColunasManejo() {
   ], "Todas");
   preencherSelectFiltroManejo("filtroManejoQuantidade", ordens.map(op => getValorManejoParaFiltro(op, "quantidade")), "Todas");
   preencherSelectFiltroManejo("filtroManejoCor", ordens.map(op => getValorManejoParaFiltro(op, "cor")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoFaccao", [
+    ...ordens.map(op => getValorManejoParaFiltro(op, "faccao")),
+    ...state.faccoesManejoExtras
+  ], "Todas");
   preencherSelectFiltroManejo("filtroManejoChegada", ordens.map(op => getValorManejoParaFiltro(op, "chegada")), "Todas");
   preencherSelectFiltroManejo("filtroManejoFalta", ordens.map(op => getValorManejoParaFiltro(op, "falta")), "Todas");
   preencherSelectFiltroManejo("filtroManejoCelu", [
@@ -3310,9 +2189,6 @@ function renderFiltrosColunasManejo() {
     ...state.celusManejoExtras
   ], "Todos");
   preencherSelectFiltroManejo("filtroManejoNecessidade", ordens.map(op => getValorManejoParaFiltro(op, "necessidade")), "Todas");
-  atualizarIndicadorFiltroExcelFasesManejo();
-  const painel = document.getElementById("painelFiltroFaseExcel");
-  if (painel && !painel.classList.contains("hidden")) renderListaFiltroExcelFasesManejo();
 }
 
 
@@ -3388,9 +2264,10 @@ function getFiltrosManejoAtivosTexto() {
     ["Silk", "filtroManejoSilk"],
     ["Data tecido", "filtroManejoDataTecido"],
     ["Fase", "filtroManejoFase"],
-    ["QTD", "filtroManejoQuantidade"],
+    ["QTI", "filtroManejoQuantidade"],
     ["Cor", "filtroManejoCor"],
     ["Data", "filtroManejoData"],
+    ["Facção", "filtroManejoFaccao"],
     ["Chegada", "filtroManejoChegada"],
     ["Falta", "filtroManejoFalta"],
     ["Produção", "filtroManejoProducao"],
@@ -3405,9 +2282,6 @@ function getFiltrosManejoAtivosTexto() {
       return valor ? `${nome}: ${valor}` : "";
     })
     .filter(Boolean);
-
-  const fasesExcel = getFasesSelecionadasTextoManejo();
-  if (fasesExcel) ativos.push(`Fases selecionadas: ${fasesExcel}`);
 
   if (busca) ativos.unshift(`Busca: ${busca}`);
 
@@ -3439,7 +2313,7 @@ function renderResumoSomasManejo(ordens) {
     `${formatarNumeroInteiro(totalOps)} OPs | ${formatarNumeroInteiro(totalFalta)} falta | ${formatarNumeroInteiro(organizadas)} org. | ${formatarNumeroInteiro(pendentes)} pend.`
   );
 
-  renderTabelaSomaManejo("somaManejoFases", agruparSomaManejo(ordens, op => getManejoDaOrdem(op, setor)?.fase || faseExibicaoMigracaoLigia(op) || "Sem fase"));
+  renderTabelaSomaManejo("somaManejoFases", agruparSomaManejo(ordens, op => op.manejo?.fase || getManejoDaOrdem(op)?.fase || "Sem fase"));
   renderTabelaSomaManejo("somaManejoCores", agruparSomaManejo(ordens, op => op.cor || "Sem cor"));
 }
 
@@ -3454,14 +2328,14 @@ function renderResumoSomasManejoPeloDOM() {
   }
 
   const ordensVisiveis = linhas.map(linha => {
-    const qtd = Number(linha.dataset.qtd || 0);
+    const qti = Number(linha.dataset.qti || 0);
     const falta = Number(linha.dataset.falta || 0);
     const status = linha.dataset.status || "pendente";
     const fase = linha.dataset.fase || "Sem fase";
     const cor = linha.dataset.cor || "Sem cor";
 
     return {
-      quantidade: Number.isFinite(qtd) ? qtd : 0,
+      quantidade: Number.isFinite(qti) ? qti : 0,
       cor,
       manejo: {
         falta: Number.isFinite(falta) ? falta : 0,
@@ -3479,7 +2353,6 @@ function getNecessidadeDaOrdem(op) {
   if (!op) return "";
 
   if (op.necessidade) return op.necessidade;
-  if (op.necessidadeLigia) return op.necessidadeLigia;
   if (op.previsaoEntrega) return op.previsaoEntrega;
   if (op.dataNecessidade) return op.dataNecessidade;
   if (op.dataEntrega) return op.dataEntrega;
@@ -3493,105 +2366,6 @@ function getNecessidadeDaOrdem(op) {
   }
 
   return "";
-}
-
-
-function dataInputMigracaoLigia(valor) {
-  const texto = String(valor || "").trim();
-  if (!texto || texto === "-" || texto.toUpperCase() === "PRONTO") return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) return texto;
-  const m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) {
-    const dia = m[1].padStart(2, "0");
-    const mes = m[2].padStart(2, "0");
-    return `${m[3]}-${mes}-${dia}`;
-  }
-  return "";
-}
-
-function dataTecidoTextoMigracaoLigia(valor) {
-  const texto = String(valor || "").trim();
-  if (!texto || texto === "-" || texto.toUpperCase() === "PRONTO") return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) return formatarDataSimples(texto);
-  const m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) {
-    const dia = m[1].padStart(2, "0");
-    const mes = m[2].padStart(2, "0");
-    return `${dia}/${mes}/${m[3]}`;
-  }
-  return texto.toUpperCase();
-}
-
-function ehOrdemMigracaoLigia(op) {
-  return Boolean(
-    op && (
-      op.importadoLigiaNovaLogica ||
-      op.origem === "migracao_ligia_final" ||
-      op.origemMigracao?.toLowerCase?.().includes("lígia") ||
-      op.origemMigracao?.toLowerCase?.().includes("ligia") ||
-      op.statusMigracaoLigia ||
-      op.faseOriginalLigia ||
-      op.localAtualMigracao
-    )
-  );
-}
-
-function faseExibicaoMigracaoLigia(op) {
-  const faseOriginal = limparTexto(op?.faseOriginalLigia || "").toUpperCase();
-  if (faseOriginal) return faseOriginal;
-
-  const local = limparTexto(op?.localAtualMigracao || op?.statusMigracaoLigia || "").toUpperCase();
-  const mapa = {
-    DISPONIVEL_CASA: "DISPONÍVEL CASA",
-    MANEJO_AGUARDANDO_DESTINO: "AGUARDANDO DESTINO",
-    EM_FACCAO: "EM FACÇÃO",
-    EM_CELULA: "EM CÉLULA",
-    RELATORIO_CELULAS: "PRODUÇÃO",
-    FINALIZADO_BIPADO: "BIPADOS",
-    CANCELADA: "CANCELADA NO SISTEMA"
-  };
-
-  if (mapa[local]) return mapa[local];
-
-  const status = limparTexto(op?.statusMigracaoLigia || "").toUpperCase();
-  if (status.includes("DISPONIVEL")) return "DISPONÍVEL CASA";
-  if (status.includes("BOJO")) return "BOJOS ENCAPADOS";
-  if (status.includes("PRODUCAO") || status.includes("PRODUÇÃO")) return "PRODUÇÃO";
-  if (status.includes("CANCELADA")) return "CANCELADA NO SISTEMA";
-
-  return "AGUARDANDO DESTINO";
-}
-
-function faccaoExibicaoMigracaoLigia(op) {
-  return limparTexto(
-    op?.destinoAtualMigracao ||
-    op?.faccaoAtual ||
-    op?.faccaoOriginalLigia ||
-    op?.proximoDestinoMigracao ||
-    ""
-  ).toUpperCase();
-}
-
-function criarManejoVirtualMigracaoLigia(op, setor = "sutia") {
-  if (!ehOrdemMigracaoLigia(op)) return null;
-  if (getTipoPecaManejoOP(op) !== getInfoManejoSetor(setor).tipoPeca) return null;
-
-  return {
-    id: op.id,
-    setor,
-    virtualMigracao: true,
-    silk: limparTexto(op.silkOriginalLigia || op.silk || "").toUpperCase(),
-    silkNome: limparTexto(op.silkOriginalLigia || op.silk || "").toUpperCase(),
-    silkData: "",
-    dataTecido: dataTecidoTextoMigracaoLigia(op.dataTecidoOriginalLigia || op.dataTecidoLigia || op.dataTecido || ""),
-    fase: faseExibicaoMigracaoLigia(op),
-    faccao: "",
-    chegada: dataInputMigracaoLigia(op.dataChegadaAtualMigracao || op.chegadaOriginalLigia || ""),
-    falta: Number(op.falta || 0),
-    celu: limparTexto(op.celulaOriginalLigia || op.destinoAtualMigracao || "").toUpperCase(),
-    necessidade: getNecessidadeDaOrdem(op),
-    status: "organizada"
-  };
 }
 
 function getManejoDaOrdem(op, setor = "sutia") {
@@ -3611,26 +2385,14 @@ function getManejoDaOrdem(op, setor = "sutia") {
   }
 
   const manejoSetor = op.manejosSetores?.[setor];
-  const manejoVirtualLigia = criarManejoVirtualMigracaoLigia(op, setor);
 
   if (manejoSetor) {
     return {
       id: op.id,
       setor,
-      ...(manejoVirtualLigia || {}),
-      ...manejoSetor,
-      silk: manejoSetor.silk || manejoSetor.silkNome || manejoVirtualLigia?.silk || "",
-      silkNome: manejoSetor.silkNome || manejoSetor.silk || manejoVirtualLigia?.silkNome || "",
-      dataTecido: manejoSetor.dataTecido || manejoVirtualLigia?.dataTecido || "",
-      fase: manejoSetor.fase || manejoVirtualLigia?.fase || "",
-      necessidade: manejoSetor.necessidade || manejoVirtualLigia?.necessidade || ""
+      ...manejoSetor
     };
   }
-
-  // Fallback obrigatório para itens migrados da planilha da Lígia.
-  // Na migração eles não vêm com manejosSetores preenchido, mas precisam aparecer no Manejo
-  // com a FASE original, SILK e DATA TECIDO igual na planilha.
-  if (manejoVirtualLigia) return manejoVirtualLigia;
 
   return null;
 }
@@ -3759,9 +2521,7 @@ async function salvarManejoLinha(ordemId) {
   }
 
   const silkNome = limparTexto(valorLinhaManejo(ordem, "silkNome")).toUpperCase();
-  const silkData = valorLinhaManejo(ordem, "silkData") || manejoExistente?.silkData || "";
-
-  const manterDadosOperacionais = manejoExistente && !manejoExistente.virtualMigracao;
+  const silkData = valorLinhaManejo(ordem, "silkData") || "";
 
   const manejo = {
     silk: silkNome,
@@ -3771,12 +2531,10 @@ async function salvarManejoLinha(ordemId) {
     setorLabel: infoSetor.label,
     dataTecido: valorLinhaManejo(ordem, "dataTecido") || "",
     fase,
-    // Facção/local não fica mais como campo rápido do Manejo.
-    // Para evitar pagamento incorreto, facção, processo e chegada só entram pela movimentação oficial.
-    faccao: manterDadosOperacionais ? (manejoExistente.faccao || "") : "",
-    chegada: manterDadosOperacionais ? (manejoExistente.chegada || "") : "",
-    falta: manterDadosOperacionais ? Number(manejoExistente.falta || 0) : 0,
-    celu: manterDadosOperacionais ? (manejoExistente.celu || "") : "",
+    faccao: limparTexto(valorLinhaManejo(ordem, "faccao")).toUpperCase(),
+    chegada: valorLinhaManejo(ordem, "chegada") || "",
+    falta: Number(valorLinhaManejo(ordem, "falta") || 0),
+    celu: limparTexto(valorLinhaManejo(ordem, "celu")),
     necessidade: getNecessidadeDaOrdem(ordem),
     coluna: "",
     status: "organizada",
@@ -3791,7 +2549,6 @@ async function salvarManejoLinha(ordemId) {
 
   try {
     const patch = montarPatchManejoSetor(setor, manejo, "organizada", {
-      ...gerarCamposBuscaManejo({ ...ordem, faseOriginalLigia: fase }, manejo, setor),
       atualizadoPor: state.currentUser.uid,
       atualizadoEm: serverTimestamp()
     });
@@ -4031,9 +2788,6 @@ function getTodosManejosDaOrdem(op) {
     if (manejo) lista.push(manejo);
   });
 
-  const virtualLigia = criarManejoVirtualMigracaoLigia(op, getManejoSetorAtual());
-  if (virtualLigia) lista.push(virtualLigia);
-
   return lista;
 }
 
@@ -4191,21 +2945,6 @@ function configurarProcessos() {
   if (imprimir) {
     imprimir.addEventListener("click", imprimirProcessosFiltrados);
   }
-
-  const atualizar = document.getElementById("btnProcessosAtualizar");
-  if (atualizar) {
-    atualizar.addEventListener("click", () => carregarProcessosPaginados(true));
-  }
-
-  const carregarMais = document.getElementById("btnProcessosCarregarMais");
-  if (carregarMais) {
-    carregarMais.addEventListener("click", () => carregarProcessosPaginados(false));
-  }
-
-  const buscarBanco = document.getElementById("btnProcessosBuscarBanco");
-  if (buscarBanco) {
-    buscarBanco.addEventListener("click", buscarProcessosNoBancoSemLimite);
-  }
 }
 
 function preencherSelectProcessos(id, valores, labelTodos = "Todos") {
@@ -4244,7 +2983,7 @@ function quantidadeRecebidaMovimentacao(mov) {
 }
 
 function getMovimentacoesProcessos() {
-  return [...state.processosMovimentacoes].sort((a, b) => {
+  return [...state.movimentacoesProducao].sort((a, b) => {
     const tempo = getMovTimestamp(b) - getMovTimestamp(a);
     if (tempo !== 0) return tempo;
     return String(a.numeroOP || "").localeCompare(String(b.numeroOP || ""), "pt-BR", { numeric: true });
@@ -4310,68 +3049,6 @@ function filtrarOrdensProcessos() {
 
     return true;
   });
-}
-
-function temFiltrosProcessosAtivos(filtros) {
-  return Boolean(
-    filtros.busca || filtros.status || filtros.referencia || filtros.cor ||
-    filtros.processo || filtros.destino || filtros.tipo || filtros.necessidade
-  );
-}
-
-function montarConsultaPrimariaProcessosSemLimite(filtros) {
-  const base = collection(db, "movimentacoesProducao");
-
-  if (filtros.status) return query(base, where("status", "==", filtros.status));
-  if (filtros.referencia) return query(base, where("referencia", "==", filtros.referencia));
-  if (filtros.processo) return query(base, where("processo", "==", filtros.processo));
-  if (filtros.destino) return query(base, where("destino", "==", filtros.destino));
-  if (filtros.cor) return query(base, where("cor", "==", filtros.cor));
-  if (filtros.busca && /^\d+$/.test(filtros.busca)) return query(base, where("numeroOP", "==", filtros.busca));
-
-  // Quando o filtro não tem campo direto ou o usuário quer buscar tudo, carrega sem limitador e filtra na tela.
-  return query(base, orderBy("criadoEm", "desc"));
-}
-
-async function buscarProcessosNoBancoSemLimite() {
-  if (state.processosCarregando) return;
-
-  const filtros = getFiltrosProcessos();
-  const descricao = getTextoFiltrosProcessosAtivos();
-
-  state.processosCarregando = true;
-  atualizarBotoesCargaProcessos();
-  setStatusCargaProcessos(
-    temFiltrosProcessosAtivos(filtros)
-      ? "Buscando todos os processos que batem com os filtros, sem limite de 80..."
-      : "Carregando todos os processos do banco, sem limite de 80..."
-  );
-  renderProcessos();
-
-  try {
-    const consulta = montarConsultaPrimariaProcessosSemLimite(filtros);
-    const snapshot = await getDocs(consulta);
-    const encontrados = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
-
-    state.processosMovimentacoes = encontrados;
-    state.processosUltimoDoc = null;
-    state.processosTemMais = false;
-
-    renderFiltrosProcessos();
-    renderProcessos();
-
-    const filtrados = filtrarOrdensProcessos();
-    setStatusCargaProcessos(`${filtrados.length.toLocaleString("pt-BR")} processo(s) exibido(s). Busca sem limite aplicada. ${descricao}`);
-    toast(`${filtrados.length.toLocaleString("pt-BR")} processo(s) carregado(s) sem limite.`);
-  } catch (error) {
-    console.error(error);
-    toast("Erro ao buscar processos no banco.");
-    setStatusCargaProcessos("Não foi possível buscar todos os processos agora.");
-  } finally {
-    state.processosCarregando = false;
-    atualizarBotoesCargaProcessos();
-    renderProcessos();
-  }
 }
 
 function limparFiltrosProcessos() {
@@ -4545,24 +3222,13 @@ function renderProcessos() {
   const tbody = document.getElementById("listaProcessos");
   if (!tbody) return;
 
-  atualizarBotoesCargaProcessos();
   renderFiltrosProcessos();
 
   const movimentos = filtrarOrdensProcessos();
   renderResumoProcessos(movimentos);
 
-  if (state.processosCarregando && !state.processosMovimentacoes.length) {
-    tbody.innerHTML = `<tr><td colspan="13" class="empty">Carregando primeiro lote de processos...</td></tr>`;
-    return;
-  }
-
-  if (!state.processosMovimentacoes.length) {
-    tbody.innerHTML = `<tr><td colspan="13" class="empty">Clique em Atualizar lista para carregar o primeiro lote de movimentações.</td></tr>`;
-    return;
-  }
-
   if (!movimentos.length) {
-    tbody.innerHTML = `<tr><td colspan="13" class="empty">Nenhuma movimentação encontrada nos registros carregados. Para pesquisar em todo o banco, clique em Buscar filtros no banco.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13" class="empty">Nenhuma movimentação encontrada com os filtros selecionados.</td></tr>`;
     return;
   }
 
@@ -4606,7 +3272,6 @@ function configurarFaccoes() {
   if (buscaMovimentacoes) {
     buscaMovimentacoes.addEventListener("input", renderFaccoesMovimentacoes);
   }
-  document.getElementById("btnBuscarFaccoesMovBanco")?.addEventListener("click", buscarFaccoesMovimentacoesNoBanco);
 
   const toggleGerenciar = document.getElementById("btnToggleGerenciarFaccoes");
   if (toggleGerenciar) {
@@ -4614,25 +3279,19 @@ function configurarFaccoes() {
       const painel = document.getElementById("painelGerenciarFaccoes");
       if (!painel) return;
 
-      if (painel.classList.contains("hidden")) {
-        abrirTelaGerenciarFaccoes();
-      } else {
-        fecharTelaGerenciarFaccoes();
-      }
+      const abrindo = painel.classList.contains("hidden");
+      painel.classList.toggle("hidden");
+      toggleGerenciar.textContent = abrindo ? "Ocultar gerenciamento" : "Gerenciar facções";
     });
-  }
-
-  const fecharGerenciarFaccoes = document.getElementById("btnFecharGerenciarFaccoes");
-  if (fecharGerenciarFaccoes) {
-    fecharGerenciarFaccoes.addEventListener("click", fecharTelaGerenciarFaccoes);
   }
 
   const abrirCadastro = document.getElementById("btnAbrirCadastroFaccao");
   if (abrirCadastro) {
     abrirCadastro.addEventListener("click", () => {
+      const painel = document.getElementById("painelGerenciarFaccoes");
       const formFaccao = document.getElementById("formFaccao");
 
-      abrirTelaGerenciarFaccoes();
+      if (painel) painel.classList.remove("hidden");
 
       if (formFaccao) {
         formFaccao.classList.remove("hidden");
@@ -4649,22 +3308,6 @@ function configurarFaccoes() {
   const importarFaccoes = document.getElementById("btnImportarFaccoesExtraidas");
   if (importarFaccoes) {
     importarFaccoes.addEventListener("click", importarFaccoesExtraidasPlanilha);
-  }
-
-  const inputLigiaJson = document.getElementById("inputImportarLigiaJson");
-  if (inputLigiaJson) {
-    inputLigiaJson.addEventListener("change", lerArquivoLigiaNovaLogica);
-  }
-
-  const selecionarLigia = document.getElementById("btnSelecionarLigiaJson");
-  if (selecionarLigia) {
-    selecionarLigia.addEventListener("click", () => {
-      if (!ehAdmin()) {
-        toast("Apenas admin pode carregar a migração da Lígia.");
-        return;
-      }
-      document.getElementById("inputImportarLigiaJson")?.click();
-    });
   }
 
   const importarLigia = document.getElementById("btnImportarLigiaNovaLogica");
@@ -4689,42 +3332,6 @@ function limparFormFaccao() {
 
   const id = document.getElementById("faccaoId");
   if (id) id.value = "";
-}
-
-function abrirTelaGerenciarFaccoes() {
-  if (!podeUsarRecurso("gerenciarFaccoes")) {
-    toast("Seu usuário não tem permissão para gerenciar facções.");
-    return;
-  }
-
-  const painel = document.getElementById("painelGerenciarFaccoes");
-  const botao = document.getElementById("btnToggleGerenciarFaccoes");
-  if (!painel) return;
-
-  painel.classList.remove("hidden");
-  painel.classList.add("manager-screen-active");
-  document.body.classList.add("manager-open");
-  if (botao) botao.textContent = "Gerenciamento aberto";
-
-  renderFaccoes();
-  renderFaccoesPendentes();
-
-  setTimeout(() => {
-    painel.scrollTo({ top: 0, behavior: "smooth" });
-  }, 50);
-}
-
-function fecharTelaGerenciarFaccoes() {
-  const painel = document.getElementById("painelGerenciarFaccoes");
-  const botao = document.getElementById("btnToggleGerenciarFaccoes");
-
-  if (painel) {
-    painel.classList.add("hidden");
-    painel.classList.remove("manager-screen-active");
-  }
-
-  document.body.classList.remove("manager-open");
-  if (botao) botao.textContent = "Abrir gerenciamento";
 }
 
 async function salvarFaccao(event) {
@@ -4801,25 +3408,20 @@ function renderFaccoes() {
         faccao.celular,
         faccao.observacoes,
         faccao.origemImportacao,
-        faccao.titularPix,
-        faccao.grupo,
-        faccao.processoPadrao,
-        Array.isArray(faccao.processosPermitidos) ? faccao.processosPermitidos.join(" ") : ""
+        faccao.titularPix
       ].join(" "));
       return texto.includes(busca);
     });
   }
 
   if (!faccoes.length) {
-    tbody.innerHTML = `<tr><td colspan="${ehAdmin() ? 8 : 7}" class="empty">Nenhuma facção cadastrada.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${ehAdmin() ? 6 : 5}" class="empty">Nenhuma facção cadastrada.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = faccoes.map(faccao => `
     <tr>
       <td><strong>${escapeHtml(faccao.nome || "-")}</strong></td>
-      <td>${escapeHtml(faccao.grupo || "-")}</td>
-      <td>${escapeHtml(Array.isArray(faccao.processosPermitidos) && faccao.processosPermitidos.length ? faccao.processosPermitidos.join(", ") : (faccao.processoPadrao || "-"))}</td>
       <td>${escapeHtml(faccao.cidade || "-")}</td>
       <td>${escapeHtml(faccao.chavePix || "-")}</td>
       <td>${escapeHtml(faccao.celular || "-")}</td>
@@ -4871,94 +3473,10 @@ function renderFaccoesPendentes() {
 
 
 
-function atualizarStatusArquivoLigia(mensagem, tipo = "info") {
-  const box = document.getElementById("ligiaArquivoStatus");
-  if (!box) return;
-  const classe = tipo === "erro" ? "text-danger" : tipo === "ok" ? "text-success" : "";
-  box.innerHTML = `<span class="${classe}">${mensagem}</span>`;
-}
-
-function abrirSeletorArquivoLigia(importarDepois = false) {
-  const input = document.getElementById("inputImportarLigiaJson");
-  if (!input) {
-    toast("Campo de seleção do JSON da Lígia não encontrado. Suba a versão corrigida do sistema.");
-    return false;
-  }
-  ligiaImportarAposSelecionarArquivo = Boolean(importarDepois);
-  input.value = "";
-  input.click();
-  return true;
-}
-
-function mostrarErroLigiaNaTela(error) {
-  const box = document.getElementById("resumoLigiaNovaLogica");
-  if (box) {
-    box.classList.remove("hidden");
-    box.innerHTML = `
-      <strong>Erro na importação da Lígia</strong><br>
-      ${escapeHtml(error?.message || "Erro desconhecido.")}<br><br>
-      <span class="muted">Confira se o arquivo selecionado é o JSON da migração e não o ZIP.</span>
-    `;
-  }
-}
-
-function validarDadosLigiaNovaLogica(dados) {
-  if (!dados || typeof dados !== "object") {
-    throw new Error("Arquivo inválido: JSON vazio ou mal formatado.");
-  }
-  if (!Array.isArray(dados.ordensProducao) || !Array.isArray(dados.movimentacoesProducao)) {
-    throw new Error("Arquivo inválido: não encontrei ordensProducao/movimentacoesProducao.");
-  }
-  if (dados.meta?.naoIncluiPagamentosHistoricos !== true) {
-    throw new Error("Este arquivo não parece ser a migração final da Lígia sem pagamentos históricos.");
-  }
-  return dados;
-}
-
-async function lerArquivoLigiaNovaLogica(event) {
-  if (!ehAdmin()) {
-    toast("Apenas admin pode carregar a migração da Lígia.");
-    event.target.value = "";
-    return;
-  }
-
-  const arquivo = event.target.files?.[0];
-  if (!arquivo) return;
-
-  try {
-    const texto = await arquivo.text();
-    ligiaMigracaoDadosLocal = validarDadosLigiaNovaLogica(JSON.parse(texto));
-    atualizarStatusArquivoLigia(`JSON carregado: <strong>${escapeHtml(arquivo.name)}</strong>`, "ok");
-    toast("Arquivo da Lígia carregado.");
-    await mostrarResumoLigiaNovaLogica();
-
-    if (ligiaImportarAposSelecionarArquivo) {
-      ligiaImportarAposSelecionarArquivo = false;
-      setTimeout(() => importarLigiaNovaLogica(), 250);
-    }
-  } catch (error) {
-    console.error(error);
-    ligiaMigracaoDadosLocal = null;
-    ligiaImportarAposSelecionarArquivo = false;
-    atualizarStatusArquivoLigia(error.message || "Erro ao ler o arquivo JSON da Lígia.", "erro");
-    mostrarErroLigiaNaTela(error);
-    toast(error.message || "Erro ao ler o arquivo JSON da Lígia.");
-  }
-}
-
 async function carregarDadosLigiaNovaLogica() {
-  if (ligiaMigracaoDadosLocal) return ligiaMigracaoDadosLocal;
-
-  try {
-    const resposta = await fetch(LIGIA_MIGRACAO_DADOS_URL, { cache: "no-store" });
-    if (!resposta.ok) throw new Error("Arquivo embutido indisponível");
-    const dados = validarDadosLigiaNovaLogica(await resposta.json());
-    ligiaMigracaoDadosLocal = dados;
-    atualizarStatusArquivoLigia("JSON embutido carregado automaticamente.", "ok");
-    return dados;
-  } catch (error) {
-    throw new Error("Selecione primeiro o arquivo dados-ligia-migracao-final-segunda-silk-tecido.json no seu computador. Não use o ZIP na importação.");
-  }
+  const resposta = await fetch(LIGIA_MIGRACAO_DADOS_URL, { cache: "no-store" });
+  if (!resposta.ok) throw new Error("Não foi possível carregar dados-ligia-migracao.json");
+  return await resposta.json();
 }
 
 async function mostrarResumoLigiaNovaLogica() {
@@ -4971,21 +3489,19 @@ async function mostrarResumoLigiaNovaLogica() {
     box.classList.remove("hidden");
     box.innerHTML = `
       <strong>Resumo da migração Lígia</strong><br>
-      OPs na aba FACÇÃO: ${Number(dados.meta?.totalOPsFaccao || dados.meta?.totalOPs || 0).toLocaleString("pt-BR")}<br>
+      OPs: ${Number(dados.meta?.totalOPs || 0).toLocaleString("pt-BR")}<br>
       Movimentações ativas: ${Number(resumo.movimentacoes || 0).toLocaleString("pt-BR")}<br>
       Relatórios separados: ${Number(resumo.relatoriosSeparados || 0).toLocaleString("pt-BR")}<br>
-      Produtos/refs: ${Number(resumo.produtos || 0).toLocaleString("pt-BR")}<br>
+      Referências únicas: ${Number(resumo.produtos || 0).toLocaleString("pt-BR")} <small>(normal aparecer 50; isso não é limite de OP)</small><br>
       Facções: ${Number(resumo.faccoes || 0).toLocaleString("pt-BR")}<br>
       Células: ${Number(resumo.celulas || 0).toLocaleString("pt-BR")}<br>
-      SILK preenchidos: ${Number(resumo.silkPreenchidosFaccao || 0).toLocaleString("pt-BR")}<br>
-      DATA TECIDO preenchidas: ${Number(resumo.dataTecidoPreenchidaFaccao || 0).toLocaleString("pt-BR")}<br>
       Datas incoerentes para conferência: ${Number(resumo.datasIncoerentes || 0).toLocaleString("pt-BR")}<br>
-      <br><strong>Importante:</strong> esta versão não importa pagamentos históricos.
+      <br><strong>Importante:</strong> esta versão não importa pagamentos históricos.<br>
+      <strong>Conferência:</strong> depois de importar, o Dashboard deve mostrar 746 OPs cadastradas e 50 referências únicas.
     `;
   } catch (error) {
     console.error(error);
-    mostrarErroLigiaNaTela(error);
-    toast(error.message || "Erro ao carregar o resumo da migração Lígia.");
+    toast("Erro ao carregar o resumo da migração Lígia.");
   }
 }
 
@@ -4993,7 +3509,6 @@ function prepararDocumentoImportacaoLigia(item) {
   const copia = { ...item };
   delete copia.id;
   copia.importadoLigiaNovaLogica = true;
-  Object.assign(copia, gerarCamposBuscaManejo(copia, null, copia.tipoPeca || "sutia"));
   copia.atualizadoPor = state.currentUser.uid;
   copia.atualizadoEm = serverTimestamp();
   if (!copia.criadoPor) copia.criadoPor = state.currentUser.uid;
@@ -5016,67 +3531,145 @@ async function importarColecaoLigia(batch, colecao, itens, contadorRef) {
   return batch;
 }
 
+async function contarDocumentosColecao(nomeColecao) {
+  try {
+    const snap = await getCountFromServer(collection(db, nomeColecao));
+    return Number(snap.data().count || 0);
+  } catch (error) {
+    console.warn(`Não foi possível contar ${nomeColecao}.`, error);
+    return null;
+  }
+}
+
+async function verificarTotaisImportacaoLigia(dados) {
+  const [ordens, produtos, movimentos, relatorios] = await Promise.all([
+    contarDocumentosColecao("ordensProducao"),
+    contarDocumentosColecao("produtos"),
+    contarDocumentosColecao("movimentacoesProducao"),
+    contarDocumentosColecao("relatoriosMigracaoLigia")
+  ]);
+
+  return {
+    ordens,
+    produtos,
+    movimentos,
+    relatorios,
+    esperadoOrdens: Number((dados.ordensProducao || []).length || 0),
+    esperadoProdutos: Number((dados.produtos || []).length || 0),
+    esperadoMovimentos: Number((dados.movimentacoesProducao || []).length || 0),
+    esperadoRelatorios: Number((dados.relatoriosMigracaoLigia || []).length || 0)
+  };
+}
+
+function textoValidacaoImportacaoLigia(validacao) {
+  if (!validacao) return "";
+
+  const linhas = [
+    `OPs no Firestore: ${Number(validacao.ordens || 0).toLocaleString("pt-BR")} / esperado: ${validacao.esperadoOrdens.toLocaleString("pt-BR")}`,
+    `Referências únicas: ${Number(validacao.produtos || 0).toLocaleString("pt-BR")} / esperado: ${validacao.esperadoProdutos.toLocaleString("pt-BR")}`,
+    `Movimentações: ${Number(validacao.movimentos || 0).toLocaleString("pt-BR")} / esperado: ${validacao.esperadoMovimentos.toLocaleString("pt-BR")}`,
+    `Relatórios separados: ${Number(validacao.relatorios || 0).toLocaleString("pt-BR")} / esperado: ${validacao.esperadoRelatorios.toLocaleString("pt-BR")}`
+  ];
+
+  return linhas.join("\n");
+}
+
+async function importarColecaoLigiaIndependente(colecao, itens, contadorGeral, erros) {
+  const lista = Array.isArray(itens) ? itens : [];
+  if (!lista.length) {
+    contadorGeral.porColecao[colecao] = 0;
+    return;
+  }
+
+  let batch = writeBatch(db);
+  const contadorLocal = { total: 0, batch: 0 };
+
+  try {
+    batch = await importarColecaoLigia(batch, colecao, lista, contadorLocal);
+    if (contadorLocal.batch > 0) await batch.commit();
+    contadorGeral.total += contadorLocal.total;
+    contadorGeral.porColecao[colecao] = contadorLocal.total;
+  } catch (error) {
+    console.error(`Erro ao importar coleção ${colecao}.`, error);
+    erros.push({ colecao, mensagem: error?.message || "Erro desconhecido" });
+    contadorGeral.porColecao[colecao] = contadorLocal.total;
+  }
+}
+
+async function importarLigiaNovaLogicaObjeto(dados, origem = "Planilha Lígia") {
+  if (!dados || !Array.isArray(dados.ordensProducao)) {
+    throw new Error("Arquivo da Lígia inválido: ordensProducao não encontrado.");
+  }
+
+  const contador = { total: 0, porColecao: {} };
+  const erros = [];
+
+  // Ordem proposital: OPs primeiro. Assim, mesmo se alguma coleção auxiliar estiver sem regra no Firebase,
+  // as 746 OPs não ficam escondidas atrás dos 50 produtos/referências.
+  await importarColecaoLigiaIndependente("ordensProducao", dados.ordensProducao || [], contador, erros);
+  await importarColecaoLigiaIndependente("produtos", dados.produtos || [], contador, erros);
+  await importarColecaoLigiaIndependente("faccoes", dados.faccoes || [], contador, erros);
+  await importarColecaoLigiaIndependente("celulas", dados.celulas || [], contador, erros);
+  await importarColecaoLigiaIndependente("movimentacoesProducao", dados.movimentacoesProducao || [], contador, erros);
+  await importarColecaoLigiaIndependente("relatoriosMigracaoLigia", dados.relatoriosMigracaoLigia || [], contador, erros);
+  await importarColecaoLigiaIndependente("datasIncoerentesLigia", dados.datasIncoerentes || [], contador, erros);
+  await importarColecaoLigiaIndependente("processosMigracao", dados.processos || [], contador, erros);
+
+  try {
+    await setDoc(doc(db, "configuracoes", "migracaoLigiaNovaLogica"), {
+      ...dados.meta,
+      resumo: dados.resumo || {},
+      regrasAplicadas: dados.regrasAplicadas || [],
+      origemImportacao: origem,
+      totalDocumentosImportados: contador.total,
+      porColecao: contador.porColecao,
+      errosImportacao: erros,
+      importadoPor: state.currentUser.uid,
+      importadoEm: serverTimestamp(),
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+  } catch (error) {
+    console.warn("Não foi possível salvar configuração da migração.", error);
+    erros.push({ colecao: "configuracoes/migracaoLigiaNovaLogica", mensagem: error?.message || "Erro desconhecido" });
+  }
+
+  const validacao = await verificarTotaisImportacaoLigia(dados);
+
+  try {
+    await registrarLog(
+      "migracao_ligia_nova_logica",
+      "importacao",
+      origem,
+      `${contador.total} documentos importados. OPs esperadas: ${(dados.ordensProducao || []).length}. Erros: ${erros.length}. Sem pagamentos históricos.`
+    );
+  } catch (error) {
+    console.warn("Não foi possível registrar log da migração.", error);
+  }
+
+  return { contador, validacao, erros };
+}
+
 async function importarLigiaNovaLogica() {
   if (!ehAdmin()) {
     toast("Apenas admin pode importar a migração da Lígia.");
     return;
   }
 
-  if (!ligiaMigracaoDadosLocal) {
-    toast("Selecione o JSON da Lígia primeiro. Vou abrir o seletor de arquivo.");
-    abrirSeletorArquivoLigia(true);
-    return;
-  }
-
-  const confirmar = confirm("Importar a migração final da planilha da Lígia agora? Esta importação NÃO inclui pagamentos históricos e usará o JSON selecionado/local.");
+  const confirmar = confirm("Importar a planilha da Lígia com a nova lógica? Esta importação NÃO inclui pagamentos históricos. Use em ambiente de teste/implantação.");
   if (!confirmar) return;
 
   try {
     const dados = await carregarDadosLigiaNovaLogica();
-    let batch = writeBatch(db);
-    const contador = { total: 0, batch: 0 };
+    const resultado = await importarLigiaNovaLogicaObjeto(dados, "Botão Importar dados da Lígia");
+    const validacaoTexto = textoValidacaoImportacaoLigia(resultado.validacao);
 
-    batch = await importarColecaoLigia(batch, "produtos", dados.produtos || [], contador);
-    batch = await importarColecaoLigia(batch, "faccoes", dados.faccoes || [], contador);
-    batch = await importarColecaoLigia(batch, "celulas", dados.celulas || [], contador);
-    batch = await importarColecaoLigia(batch, "processosMigracao", dados.processos || [], contador);
-    batch = await importarColecaoLigia(batch, "ordensProducao", dados.ordensProducao || [], contador);
-    batch = await importarColecaoLigia(batch, "movimentacoesProducao", dados.movimentacoesProducao || [], contador);
-    batch = await importarColecaoLigia(batch, "relatoriosMigracaoLigia", dados.relatoriosMigracaoLigia || [], contador);
-    batch = await importarColecaoLigia(batch, "datasIncoerentesLigia", dados.datasIncoerentes || [], contador);
-
-    if (contador.batch > 0) await batch.commit();
-
-    const totalOrdensJson = (dados.ordensProducao || []).length;
-    const totalMovimentosJson = (dados.movimentacoesProducao || []).length;
-    if (totalOrdensJson < 700) {
-      throw new Error(`Arquivo da Lígia incompleto: encontrei apenas ${totalOrdensJson} OPs. Use o JSON completo da migração final.`);
-    }
-
-    // Mostra tudo imediatamente na tela depois da importação, sem depender do lote inicial.
-    state.ordens = (dados.ordensProducao || []).map(item => ({ ...item, id: item.id || docIdSeguro(item.numeroOP || item.numeroOPExterno || ""), __loteManejo: "importacao_completa" }));
-    state.ordensUltimoDoc = null;
-    state.ordensTemMais = false;
-    limparEstadoBuscaGlobalManejo();
-
-    await setDoc(doc(db, "configuracoes", "migracaoLigiaNovaLogica"), {
-      ...dados.meta,
-      resumo: dados.resumo || {},
-      regrasAplicadas: dados.regrasAplicadas || [],
-      importadoPor: state.currentUser.uid,
-      importadoEm: serverTimestamp(),
-      atualizadoEm: serverTimestamp()
-    }, { merge: true });
-
-    await registrarLog("migracao_ligia_nova_logica", "importacao", "Planilha Ligia", `${contador.total} documentos importados. Sem pagamentos históricos.`);
-    renderFiltrosColunasManejo();
-    renderTudo();
-    toast(`Migração completa: ${totalOrdensJson.toLocaleString("pt-BR")} OPs e ${totalMovimentosJson.toLocaleString("pt-BR")} movimentações importadas.`);
+    const avisoErros = resultado.erros?.length ? " Algumas coleções falharam: publique novamente o firebase-rules.txt." : "";
+    toast(`Migração importada. OPs: ${Number(resultado.validacao?.ordens || dados.ordensProducao.length).toLocaleString("pt-BR")}. Referências únicas: ${Number(resultado.validacao?.produtos || dados.produtos?.length || 0).toLocaleString("pt-BR")}.${avisoErros}`);
+    if (validacaoTexto) console.info("Validação da importação Lígia:\n" + validacaoTexto);
     mostrarResumoLigiaNovaLogica();
   } catch (error) {
     console.error(error);
-    mostrarErroLigiaNaTela(error);
-    toast(error.message || "Erro ao importar a migração da Lígia.");
+    toast("Erro ao importar a migração da Lígia. Confira o console para detalhes.");
   }
 }
 
@@ -5105,126 +3698,6 @@ function abrirRastreamentoOP(ordemId) {
     busca.value = ordem.numeroOP || ordem.referencia || "";
     busca.dispatchEvent(new Event("input"));
   }
-}
-
-function normalizarStatusMovimentacaoAtual(status) {
-  return limparTexto(status || "em_andamento").toLowerCase();
-}
-
-function movimentacaoAindaMexivel(mov) {
-  const status = normalizarStatusMovimentacaoAtual(mov?.status);
-  return !["finalizado", "encaminhado", "cancelado", "cancelada"].includes(status);
-}
-
-function valorDataMovimentacaoMillis(mov) {
-  const candidatos = [mov?.atualizadoEm, mov?.criadoEm, mov?.dataChegada, mov?.dataEnvio];
-  for (const valor of candidatos) {
-    if (!valor) continue;
-    if (typeof valor?.toMillis === "function") return valor.toMillis();
-    if (typeof valor?.toDate === "function") return valor.toDate().getTime();
-    if (typeof valor === "string") {
-      const time = Date.parse(valor);
-      if (!Number.isNaN(time)) return time;
-    }
-  }
-  return 0;
-}
-
-function ordenarMovimentacoesMaisRecentes(a, b) {
-  return valorDataMovimentacaoMillis(b) - valorDataMovimentacaoMillis(a);
-}
-
-function movimentacoesDaMesmaOP(movBase) {
-  return state.movimentacoesProducao.filter(item => {
-    if (movBase?.opId && item.opId === movBase.opId) return true;
-    if (movBase?.numeroOP && item.numeroOP === movBase.numeroOP) return true;
-    return false;
-  });
-}
-
-function encontrarMovimentacaoAtualDaPeca(movBase) {
-  const relacionados = movimentacoesDaMesmaOP(movBase);
-  const ativos = relacionados.filter(movimentacaoAindaMexivel).sort(ordenarMovimentacoesMaisRecentes);
-  if (ativos.length) return ativos[0];
-  return movBase;
-}
-
-function destacarLinhaAposNavegar(id, seletorExtra = "") {
-  setTimeout(() => {
-    const alvo = document.getElementById(`mov-row-${id}`) || document.getElementById(`manejo-row-${id}`) || (seletorExtra ? document.querySelector(seletorExtra) : null);
-    if (!alvo) return;
-    alvo.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-    alvo.classList.add("linha-destaque-rastreamento-pulso");
-    setTimeout(() => alvo.classList.remove("linha-destaque-rastreamento-pulso"), 2600);
-  }, 350);
-}
-
-function abrirManejoPelaOP(mov) {
-  const opId = mov?.opId || state.ordens.find(op => op.numeroOP === mov?.numeroOP)?.id || "";
-  state.rastreamentoMovimentoDestacado = opId;
-  abrirPagina("manejo");
-  const busca = document.getElementById("buscaManejoLinha");
-  if (busca) {
-    busca.value = mov?.numeroOP || mov?.referencia || "";
-    busca.dispatchEvent(new Event("input"));
-  }
-  atualizarManejoComSoma();
-  destacarLinhaAposNavegar(opId, opId ? "" : `[data-manejo-row=\"1\"]`);
-}
-
-function abrirLocalDaPeca(movimentacaoId) {
-  const movOriginal = state.movimentacoesProducao.find(item => item.id === movimentacaoId)
-    || state.processosMovimentacoes.find(item => item.id === movimentacaoId);
-
-  if (!movOriginal) {
-    toast("Não encontrei essa movimentação no rastreamento.");
-    return;
-  }
-
-  const movAtual = encontrarMovimentacaoAtualDaPeca(movOriginal);
-  const tipo = limparTexto(movAtual.tipoDestino || "").toLowerCase();
-  state.rastreamentoMovimentoDestacado = movAtual.id || "";
-  state.rastreamentoOrigemBusca = movOriginal.id || "";
-
-  if (tipo === "faccao") {
-    abrirPagina("faccoes");
-    const busca = document.getElementById("buscaFaccaoMovimentacoes");
-    if (busca) {
-      busca.value = movAtual.numeroOP || movAtual.referencia || "";
-      busca.dispatchEvent(new Event("input"));
-    }
-    renderFaccoesMovimentacoes();
-    destacarLinhaAposNavegar(movAtual.id);
-    toast(`OP ${movAtual.numeroOP || ""} aberta na aba Facções.`);
-    return;
-  }
-
-  if (tipo === "celula") {
-    abrirPagina("celulas");
-    const busca = document.getElementById("buscaCelulaMovimentacoes");
-    if (busca) {
-      busca.value = movAtual.numeroOP || movAtual.referencia || "";
-      busca.dispatchEvent(new Event("input"));
-    }
-    renderCelulasMovimentacoes();
-    destacarLinhaAposNavegar(movAtual.id);
-    toast(`OP ${movAtual.numeroOP || ""} aberta na aba Células.`);
-    return;
-  }
-
-  if (normalizarStatusMovimentacaoAtual(movAtual.status) === "finalizado") {
-    abrirPagina("rastreamento");
-    const busca = document.getElementById("buscaRastreamento");
-    if (busca) {
-      busca.value = movAtual.numeroOP || movAtual.referencia || "";
-      busca.dispatchEvent(new Event("input"));
-    }
-    toast("Essa OP já está finalizada/bipada. Mantive no rastreamento para conferência.");
-    return;
-  }
-
-  abrirManejoPelaOP(movAtual);
-  toast(`OP ${movAtual.numeroOP || ""} aberta no Manejo.`);
 }
 
 function configurarModalAjusteMigracao() {
@@ -5324,7 +3797,6 @@ async function salvarAjusteMigracao(event) {
     dataChegadaAtualMigracao: dataChegada,
     proximoDestinoMigracao: proximoDestino,
     ocultarDoManejo,
-    ...gerarCamposBuscaManejo({ ...ordem, statusMigracaoLigia: local, localAtualMigracao: local }, null, getManejoSetorAtual()),
     ajusteManualMigracao: true,
     ultimoMotivoAjusteMigracao: motivo,
     atualizadoPor: state.currentUser.uid,
@@ -5442,11 +3914,6 @@ async function importarFaccoesExtraidasPlanilha() {
         pixConfianca: item.pixConfianca || "",
         origemImportacao: item.origem || "",
         importadoDaPlanilha: true,
-        divisaoOficialLigia: true,
-        grupo: item.grupo || "",
-        processoPadrao: item.processoPadrao || item.processo || "",
-        processosPermitidos: Array.isArray(item.processosPermitidos) ? item.processosPermitidos : [item.processoPadrao || item.processo || "PROCESSO A DEFINIR"].filter(Boolean),
-        valorManualNoFechamento: Boolean(item.valorManualNoFechamento),
         cadastroPendente: pendente,
         statusImportacao: pendente ? "pendente" : "ok",
         pendenciaImportacao: pendente ? (item.pendencia || "Revisar dados") : "",
@@ -5473,7 +3940,7 @@ async function importarFaccoesExtraidasPlanilha() {
     }
 
     await registrarLog("faccoes_importadas_planilha", "faccao", "importacao", `${ok} OK | ${pendentes} pendentes | ${puladas} puladas`);
-    toast(`${ok} facções oficiais importadas pela divisão correta. ${pendentes} ficaram pendentes para revisar.${puladas ? ` ${puladas} já estavam completas e foram mantidas.` : ""}`);
+    toast(`${ok} facções importadas. ${pendentes} ficaram pendentes para revisar.${puladas ? ` ${puladas} já estavam completas e foram mantidas.` : ""}`);
   } catch (error) {
     console.error(error);
     toast("Erro ao importar facções da planilha.");
@@ -5526,7 +3993,7 @@ function renderFaccoesMovimentacoes() {
   }
 
   tbody.innerHTML = movimentos.map(mov => `
-    <tr id="mov-row-${escapeHtml(mov.id || "")}" class="${mov.status === "em_andamento" || !mov.status ? "mov-em-faccao" : ""} ${state.rastreamentoMovimentoDestacado === mov.id ? "linha-destaque-rastreamento" : ""}">
+    <tr class="${mov.status === "em_andamento" || !mov.status ? "mov-em-faccao" : ""}">
       <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
       <td><strong>${escapeHtml(mov.referencia || "-")}</strong></td>
       <td>${escapeHtml(mov.cor || "-")}</td>
@@ -5560,7 +4027,9 @@ function editarFaccao(id) {
   if (!faccao) return;
 
   abrirPagina("faccoes");
-  abrirTelaGerenciarFaccoes();
+  document.getElementById("painelGerenciarFaccoes")?.classList.remove("hidden");
+  const toggleGerenciar = document.getElementById("btnToggleGerenciarFaccoes");
+  if (toggleGerenciar) toggleGerenciar.textContent = "Ocultar gerenciamento";
   document.getElementById("formFaccao")?.classList.remove("hidden");
 
   document.getElementById("faccaoId").value = faccao.id;
@@ -5640,7 +4109,6 @@ function configurarCelulas() {
   if (buscaMovimentacoes) {
     buscaMovimentacoes.addEventListener("input", renderCelulasMovimentacoes);
   }
-  document.getElementById("btnBuscarCelulasMovBanco")?.addEventListener("click", buscarCelulasMovimentacoesNoBanco);
 
   const toggleGerenciar = document.getElementById("btnToggleGerenciarCelulas");
   if (toggleGerenciar) {
@@ -5806,7 +4274,7 @@ function renderCelulasMovimentacoes() {
   }
 
   tbody.innerHTML = movimentos.map(mov => `
-    <tr id="mov-row-${escapeHtml(mov.id || "")}" class="${mov.status === "em_andamento" || !mov.status ? "mov-em-celula" : ""} ${state.rastreamentoMovimentoDestacado === mov.id ? "linha-destaque-rastreamento" : ""}">
+    <tr class="${mov.status === "em_andamento" || !mov.status ? "mov-em-celula" : ""}">
       <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
       <td><strong>${escapeHtml(mov.referencia || "-")}</strong></td>
       <td>${escapeHtml(mov.cor || "-")}</td>
@@ -5896,7 +4364,6 @@ function configurarRastreamento() {
   if (busca) {
     busca.addEventListener("input", renderRastreamento);
   }
-  document.getElementById("btnBuscarRastreamentoBanco")?.addEventListener("click", buscarRastreamentoNoBanco);
 }
 
 function getMovimentacoesDaOrdem(opId) {
@@ -5933,89 +4400,6 @@ function classeStatusMovimento(status) {
 
 let movimentacaoModalContexto = null;
 
-
-function normalizarProcessoOficial(valor) {
-  return limparTexto(valor || "").toUpperCase();
-}
-
-function getProcessosOficiaisPorSetor(setor = getManejoSetorAtual()) {
-  if (setor === "calcinha") {
-    return ["CALCINHA MONTAGEM", "CALCINHA COMPLETA"];
-  }
-  return ["ENCAPAR BOJO", "ALÇA", "SUTIÃ MONTAGEM", "SUTIÃ COMPLETO"];
-}
-
-function getProcessosPermitidosDaFaccao(faccao) {
-  if (!faccao) return [];
-  if (Array.isArray(faccao.processosPermitidos) && faccao.processosPermitidos.length) {
-    return faccao.processosPermitidos.map(normalizarProcessoOficial).filter(Boolean);
-  }
-  if (faccao.processoPadrao) return [normalizarProcessoOficial(faccao.processoPadrao)];
-
-  const oficial = FACCOES_OFICIAIS_DIVISAO.find(item => normalizarProcessoOficial(item.nome) === normalizarProcessoOficial(faccao.nome));
-  return oficial?.processosPermitidos?.map(normalizarProcessoOficial).filter(Boolean) || [];
-}
-
-function faccaoAceitaProcesso(faccaoOuNome, processo) {
-  const processoNorm = normalizarProcessoOficial(processo);
-  if (!processoNorm) return false;
-
-  const faccao = typeof faccaoOuNome === "object"
-    ? faccaoOuNome
-    : state.faccoes.find(item => normalizarProcessoOficial(item.nome) === normalizarProcessoOficial(faccaoOuNome));
-
-  const permitidos = getProcessosPermitidosDaFaccao(faccao);
-  return permitidos.length ? permitidos.includes(processoNorm) : false;
-}
-
-function getFaccoesPermitidasParaProcesso(processo) {
-  const processoNorm = normalizarProcessoOficial(processo);
-  if (!processoNorm) return [];
-
-  return state.faccoes
-    .filter(item => item.ativo !== false && !item.cadastroPendente)
-    .filter(item => faccaoAceitaProcesso(item, processoNorm))
-    .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true }));
-}
-
-function atualizarDestinosMovimentacaoPorProcesso(destinoPadrao = "") {
-  const contexto = movimentacaoModalContexto;
-  const destinoSelect = document.getElementById("movimentacaoDestino");
-  if (!destinoSelect || !contexto) return;
-
-  const tipoDestino = contexto.tipoDestino;
-  if (tipoDestino !== "faccao") {
-    const destinos = state.celulas.filter(item => item.ativo !== false);
-    destinoSelect.innerHTML = `<option value="">Selecione célula</option>` + destinos.map(destino => {
-      return `<option value="${escapeHtml(destino.nome || "")}">${escapeHtml(destino.nome || "")}</option>`;
-    }).join("");
-    if (destinoPadrao) destinoSelect.value = destinoPadrao;
-    return;
-  }
-
-  const processo = normalizarProcessoOficial(document.getElementById("movimentacaoProcesso")?.value || document.getElementById("movimentacaoProcessoSelect")?.value || "");
-  if (!processo) {
-    destinoSelect.innerHTML = `<option value="">Selecione primeiro o processo</option>`;
-    destinoSelect.value = "";
-    return;
-  }
-
-  const destinos = getFaccoesPermitidasParaProcesso(processo);
-  destinoSelect.innerHTML = `<option value="">Selecione a facção de ${escapeHtml(processo)}</option>` + destinos.map(destino => {
-    const processos = getProcessosPermitidosDaFaccao(destino).join(", ");
-    const grupo = destino.grupo ? ` — ${destino.grupo}` : "";
-    return `<option value="${escapeHtml(destino.nome || "")}" title="${escapeHtml(processos)}">${escapeHtml(destino.nome || "")}${escapeHtml(grupo)}</option>`;
-  }).join("");
-
-  if (destinoPadrao && destinos.some(item => normalizarProcessoOficial(item.nome) === normalizarProcessoOficial(destinoPadrao))) {
-    destinoSelect.value = destinoPadrao;
-  }
-
-  if (!destinos.length) {
-    destinoSelect.innerHTML = `<option value="">Nenhuma facção cadastrada para ${escapeHtml(processo)}</option>`;
-  }
-}
-
 function configurarModalMovimentacao() {
   const form = document.getElementById("formMovimentacaoProducao");
   if (form) {
@@ -6040,26 +4424,17 @@ function configurarModalMovimentacao() {
   }
 
   const processoSelect = document.getElementById("movimentacaoProcessoSelect");
-  const processoInput = document.getElementById("movimentacaoProcesso");
   if (processoSelect) {
     processoSelect.addEventListener("change", () => {
-      if (processoInput) {
-        processoInput.value = processoSelect.value || "";
+      const processoInput = document.getElementById("movimentacaoProcesso");
+      if (processoInput && processoSelect.value) {
+        processoInput.value = processoSelect.value;
       }
-      atualizarDestinosMovimentacaoPorProcesso();
     });
-  }
-
-  if (processoInput) {
-    processoInput.addEventListener("input", () => atualizarDestinosMovimentacaoPorProcesso());
   }
 }
 
 function getProcessosSugeridosMovimentacao(op, setor, tipoDestino) {
-  if (tipoDestino === "faccao") {
-    return getProcessosOficiaisPorSetor(setor);
-  }
-
   const referencia = normalizarReferencia(op?.referencia || "");
   const processosTabela = getPrecosReferenciaAtivos()
     .filter(preco => normalizarReferencia(preco.referencia || "") === referencia)
@@ -6069,9 +4444,10 @@ function getProcessosSugeridosMovimentacao(op, setor, tipoDestino) {
     .filter(mov => normalizarReferencia(mov.referencia || "") === referencia)
     .map(mov => mov.processo);
 
+  const padrao = tipoDestino === "faccao" ? "ENCAPAR BOJO" : "MONTAGEM";
+
   return [...new Set([
-    "CÉLULA INTERNA",
-    "MONTAGEM",
+    padrao,
     ...processosTabela,
     ...processosHistorico
   ].map(item => limparTexto(item).toUpperCase()).filter(Boolean))]
@@ -6101,7 +4477,9 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
     abrirPagina(tipoDestino === "faccao" ? "faccoes" : "celulas");
 
     if (tipoDestino === "faccao") {
-      abrirTelaGerenciarFaccoes();
+      document.getElementById("painelGerenciarFaccoes")?.classList.remove("hidden");
+      const toggle = document.getElementById("btnToggleGerenciarFaccoes");
+      if (toggle) toggle.textContent = "Ocultar gerenciamento";
     } else {
       document.getElementById("painelGerenciarCelulas")?.classList.remove("hidden");
       const toggle = document.getElementById("btnToggleGerenciarCelulas");
@@ -6121,7 +4499,6 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
     origem: opcoes.origem || "manejo",
     movimentacaoOrigemId: opcoes.movimentacaoOrigemId || "",
     quantidadeMaxima,
-    destinoPadrao: opcoes.destinoPadrao || "",
     origemResumo: opcoes.origemResumo || ""
   };
 
@@ -6141,7 +4518,7 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
   if (info) {
     info.innerHTML = `
       <strong>OP ${escapeHtml(ordem.numeroOP || "-")}</strong>
-      <span>Ref. ${escapeHtml(ordem.referencia || "-")} | Cor ${escapeHtml(ordem.cor || "-")} | Quantidade ${escapeHtml(numeroQuantidadeOP(ordem))}</span>
+      <span>Ref. ${escapeHtml(ordem.referencia || "-")} | Cor ${escapeHtml(ordem.cor || "-")} | QTI ${escapeHtml(numeroQuantidadeOP(ordem))}</span>
       ${opcoes.origemResumo ? `<span class="origem-mov-info">${escapeHtml(opcoes.origemResumo)} | Disponível: ${escapeHtml(quantidadeMaxima.toLocaleString("pt-BR"))} peças</span>` : ""}
     `;
   }
@@ -6150,10 +4527,10 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
   if (tipoInput) tipoInput.value = tipoDestino;
 
   if (destinoSelect) {
-    destinoSelect.innerHTML = tipoDestino === "faccao"
-      ? `<option value="">Selecione primeiro o processo</option>`
-      : `<option value="">Selecione ${escapeHtml(label.toLowerCase())}</option>` + destinos.map(destino => `<option value="${escapeHtml(destino.nome || "")}">${escapeHtml(destino.nome || "")}</option>`).join("");
-    destinoSelect.value = "";
+    destinoSelect.innerHTML = `<option value="">Selecione ${escapeHtml(label.toLowerCase())}</option>` + destinos.map(destino => {
+      return `<option value="${escapeHtml(destino.nome || "")}">${escapeHtml(destino.nome || "")}</option>`;
+    }).join("");
+    destinoSelect.value = opcoes.destinoPadrao || "";
   }
 
   const grupoProcesso = document.getElementById("grupoMovimentacaoProcesso");
@@ -6170,7 +4547,7 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
   const processos = getProcessosSugeridosMovimentacao(ordem, setor, tipoDestino);
 
   const processoInicial = exigeProcesso
-    ? (opcoes.processoPadrao || "")
+    ? (opcoes.forcarEscolhaProcesso ? "" : (opcoes.processoPadrao || processos[0] || ""))
     : "";
 
   if (processoSelect) {
@@ -6181,7 +4558,6 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
   }
 
   if (processoInput) processoInput.value = exigeProcesso ? processoInicial : "CÉLULA INTERNA";
-  atualizarDestinosMovimentacaoPorProcesso(opcoes.destinoPadrao || "");
   if (quantidadeInput) {
     quantidadeInput.value = quantidadePadrao || "";
     quantidadeInput.max = quantidadeMaxima || "";
@@ -6225,12 +4601,7 @@ async function confirmarMovimentacaoProducao(event) {
   }
 
   if (tipoDestino === "faccao" && !processo) {
-    toast("Informe primeiro o processo da facção.");
-    return;
-  }
-
-  if (tipoDestino === "faccao" && !faccaoAceitaProcesso(destino, processo)) {
-    toast("Essa facção não pertence ao processo selecionado. Escolha conforme a divisão oficial.");
+    toast("Informe para qual processo a peça será reenviada.");
     return;
   }
 
@@ -6566,66 +4937,6 @@ function configurarModalChegadaMovimentacao() {
       if (event.target === modal) fecharModalChegadaMovimentacao();
     });
   }
-
-  const processoSelect = document.getElementById("chegadaProcessoSelect");
-  if (processoSelect) {
-    processoSelect.addEventListener("change", () => atualizarDestinosChegadaPorProcesso());
-  }
-}
-
-function getProcessosSugeridosChegada(mov) {
-  if (!mov || mov.tipoDestino !== "faccao") return [];
-
-  const setor = mov.setor || "sutia";
-  const processosOficiais = getProcessosOficiaisPorSetor(setor);
-  const processoAtual = normalizarProcessoOficial(mov.processo || "");
-
-  return [...new Set([processoAtual, ...processosOficiais].filter(Boolean))];
-}
-
-function preencherProcessosChegada(mov) {
-  const processoSelect = document.getElementById("chegadaProcessoSelect");
-  if (!processoSelect) return;
-
-  const processos = getProcessosSugeridosChegada(mov);
-  processoSelect.innerHTML = `<option value="">Selecione o processo feito</option>` + processos.map(processo => {
-    return `<option value="${escapeHtml(processo)}">${escapeHtml(processo)}</option>`;
-  }).join("");
-
-  const processoAtual = normalizarProcessoOficial(mov?.processo || "");
-  if (processoAtual && processos.includes(processoAtual)) {
-    processoSelect.value = processoAtual;
-  }
-}
-
-function atualizarDestinosChegadaPorProcesso(destinoPadrao = "") {
-  const processoSelect = document.getElementById("chegadaProcessoSelect");
-  const destinoSelect = document.getElementById("chegadaDestino");
-  if (!processoSelect || !destinoSelect) return;
-
-  const processo = normalizarProcessoOficial(processoSelect.value || "");
-  if (!processo) {
-    destinoSelect.innerHTML = `<option value="">Selecione primeiro o processo</option>`;
-    destinoSelect.value = "";
-    return;
-  }
-
-  const destinos = getFaccoesPermitidasParaProcesso(processo);
-  destinoSelect.innerHTML = `<option value="">Selecione quem fez</option>` + destinos.map(faccao => {
-    const processos = getProcessosPermitidosDaFaccao(faccao).join(", ");
-    const grupo = faccao.grupo ? ` — ${faccao.grupo}` : "";
-    return `<option value="${escapeHtml(faccao.nome || "")}" title="${escapeHtml(processos)}">${escapeHtml(faccao.nome || "")}${escapeHtml(grupo)}</option>`;
-  }).join("");
-
-  const destinoNorm = normalizarProcessoOficial(destinoPadrao || "");
-  const achouDestino = destinos.find(item => normalizarProcessoOficial(item.nome || "") === destinoNorm);
-  if (achouDestino) {
-    destinoSelect.value = achouDestino.nome || "";
-  }
-
-  if (!destinos.length) {
-    destinoSelect.innerHTML = `<option value="">Nenhuma facção cadastrada para ${escapeHtml(processo)}</option>`;
-  }
 }
 
 function registrarChegadaMovimentacao(id) {
@@ -6643,16 +4954,13 @@ function registrarChegadaMovimentacao(id) {
   const faltaInput = document.getElementById("chegadaFalta");
   const defeitoInput = document.getElementById("chegadaDefeito");
   const grupoDefeito = document.getElementById("grupoChegadaDefeito");
-  const grupoConferencia = document.getElementById("grupoChegadaConferenciaFaccao");
-  const obsConferencia = document.getElementById("chegadaConferenciaObs");
   const mostraDefeito = mov.tipoDestino === "faccao";
 
   if (grupoDefeito) grupoDefeito.classList.toggle("hidden", !mostraDefeito);
-  if (grupoConferencia) grupoConferencia.classList.toggle("hidden", !mostraDefeito);
 
   if (titulo) titulo.textContent = `Registrar chegada - ${mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino)}`;
   if (resumo) resumo.textContent = mostraDefeito
-    ? "Confira processo e facção antes de confirmar. Esse dado será usado para pagamento."
+    ? "Informe a data, a falta e o desconto em reais por defeito, se houver."
     : "Informe a data de retorno e a falta, se houver.";
 
   if (info) {
@@ -6666,15 +4974,6 @@ function registrarChegadaMovimentacao(id) {
   if (dataInput) dataInput.value = mov.dataChegada || getDataHojeISO();
   if (faltaInput) faltaInput.value = Number(mov.falta || 0);
   if (defeitoInput) defeitoInput.value = mostraDefeito ? Number(mov.descontoDefeito ?? mov.defeito ?? 0) : 0;
-
-  if (mostraDefeito) {
-    preencherProcessosChegada(mov);
-    atualizarDestinosChegadaPorProcesso(mov.destino || "");
-  }
-
-  if (obsConferencia) {
-    obsConferencia.value = mov.conferenciaChegada?.observacao || "";
-  }
 
   modal?.classList.remove("hidden");
   dataInput?.focus();
@@ -6702,31 +5001,6 @@ async function confirmarChegadaMovimentacao(event) {
   const descontoDefeito = mov.tipoDestino === "faccao"
     ? Math.max(0, Number(document.getElementById("chegadaDefeito")?.value || 0))
     : 0;
-
-  let processoConfirmado = mov.processo || "";
-  let destinoConfirmado = mov.destino || "";
-  const observacaoConferencia = limparTexto(document.getElementById("chegadaConferenciaObs")?.value || "");
-
-  if (mov.tipoDestino === "faccao") {
-    processoConfirmado = normalizarProcessoOficial(document.getElementById("chegadaProcessoSelect")?.value || "");
-    destinoConfirmado = limparTexto(document.getElementById("chegadaDestino")?.value || "").toUpperCase();
-
-    if (!processoConfirmado) {
-      toast("Confirme qual processo foi feito antes de registrar a chegada.");
-      return;
-    }
-
-    if (!destinoConfirmado) {
-      toast("Confirme qual facção fez a peça antes de registrar a chegada.");
-      return;
-    }
-
-    if (!faccaoAceitaProcesso(destinoConfirmado, processoConfirmado)) {
-      toast("A facção escolhida não pertence ao processo confirmado. Confira a divisão oficial.");
-      return;
-    }
-  }
-
   const quantidadeRecebida = Math.max(Number(mov.quantidadeEnviada || 0) - falta, 0);
 
   if (!dataChegada) {
@@ -6740,14 +5014,7 @@ async function confirmarChegadaMovimentacao(event) {
   }
 
   try {
-    const processoAnterior = mov.processo || "";
-    const destinoAnterior = mov.destino || "";
-    const houveCorrecaoConferencia = mov.tipoDestino === "faccao" && (
-      normalizarProcessoOficial(processoAnterior) !== normalizarProcessoOficial(processoConfirmado) ||
-      normalizarProcessoOficial(destinoAnterior) !== normalizarProcessoOficial(destinoConfirmado)
-    );
-
-    const dadosChegada = {
+    await setDoc(doc(db, "movimentacoesProducao", id), {
       dataChegada,
       falta,
       descontoDefeito,
@@ -6756,34 +5023,10 @@ async function confirmarChegadaMovimentacao(event) {
       status: "retornou",
       atualizadoPor: state.currentUser.uid,
       atualizadoEm: serverTimestamp()
-    };
-
-    if (mov.tipoDestino === "faccao") {
-      Object.assign(dadosChegada, {
-        processo: processoConfirmado,
-        destino: destinoConfirmado,
-        processoConfirmadoChegada: processoConfirmado,
-        destinoConfirmadoChegada: destinoConfirmado,
-        conferenciaChegadaObrigatoria: true,
-        conferenciaChegada: {
-          processoOriginal: processoAnterior,
-          destinoOriginal: destinoAnterior,
-          processoConfirmado: processoConfirmado,
-          destinoConfirmado: destinoConfirmado,
-          houveCorrecao: houveCorrecaoConferencia,
-          observacao: observacaoConferencia,
-          confirmadoPor: state.currentUser.uid
-        }
-      });
-    }
-
-    await setDoc(doc(db, "movimentacoesProducao", id), dadosChegada, { merge: true });
+    }, { merge: true });
 
     const movAtualizada = {
       ...mov,
-      ...dadosChegada,
-      processo: mov.tipoDestino === "faccao" ? processoConfirmado : mov.processo,
-      destino: mov.tipoDestino === "faccao" ? destinoConfirmado : mov.destino,
       dataChegada,
       falta,
       descontoDefeito,
@@ -6798,16 +5041,15 @@ async function confirmarChegadaMovimentacao(event) {
       "movimentacao_retorno",
       "movimentacaoProducao",
       id,
-      `OP ${mov.numeroOP} | ${destinoConfirmado || mov.destino} | processo ${processoConfirmado || mov.processo || "-"} | voltou ${quantidadeRecebida} peças | falta ${falta} | desconto defeito ${formatarMoedaBR(descontoDefeito)}`
+      `OP ${mov.numeroOP} | ${mov.destino} | voltou ${quantidadeRecebida} peças | falta ${falta} | desconto defeito ${formatarMoedaBR(descontoDefeito)}`
     );
 
     fecharModalChegadaMovimentacao();
 
     if (mov.tipoDestino === "faccao") {
-      const msgConferencia = houveCorrecaoConferencia ? " Conferência aplicada antes do pagamento." : "";
       toast(pagamento.ok
-        ? `${pagamento.pagamentoReenvio ? "Chegada de reenvio registrada e novo pagamento gerado" : "Chegada registrada e pagamento gerado"}: ${formatarMoedaBR(pagamento.total)}.${msgConferencia}`
-        : `Chegada registrada.${msgConferencia} ${pagamento.motivo}`);
+        ? `${pagamento.pagamentoReenvio ? "Chegada de reenvio registrada e novo pagamento gerado" : "Chegada registrada e pagamento gerado"}: ${formatarMoedaBR(pagamento.total)}.`
+        : `Chegada registrada. ${pagamento.motivo}`);
     } else {
       toast("Chegada da célula registrada.");
     }
@@ -6918,7 +5160,7 @@ function renderRastreamento() {
   }
 
   tbody.innerHTML = movimentos.map(mov => `
-    <tr id="rastreamento-row-${escapeHtml(mov.id || "")}" class="${state.rastreamentoMovimentoDestacado === mov.id ? "linha-destaque-rastreamento" : ""}">
+    <tr>
       <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
       <td><strong>${escapeHtml(mov.referencia || "-")}</strong></td>
       <td>${escapeHtml(mov.cor || "-")}</td>
@@ -6935,7 +5177,6 @@ function renderRastreamento() {
         </span>
       </td>
       <td>
-        <button class="btn btn-sm btn-primary" onclick="abrirLocalDaPeca('${mov.id}')">Ir para local</button>
         ${mov.status === "encaminhado" ? `<span class="badge info">Encaminhado</span>` : ""}
         ${mov.status !== "finalizado" && mov.status !== "encaminhado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
         ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : mov.status === "encaminhado" ? "" : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
@@ -7058,11 +5299,6 @@ function configurarPagamentos() {
       if (status) status.value = "pendente";
       renderPagamentos();
     });
-  }
-
-  const buscarPagamentos = document.getElementById("btnBuscarPagamentosBanco");
-  if (buscarPagamentos) {
-    buscarPagamentos.addEventListener("click", buscarPagamentosNoBanco);
   }
 
   const marcarPagos = document.getElementById("btnMarcarPagamentosFiltrados");
@@ -7221,39 +5457,29 @@ function abrirGerenciarValores() {
   if (!painel) return;
 
   const abrindo = painel.classList.contains("hidden");
-
-  if (!abrindo) {
-    fecharGerenciarValores();
-    return;
-  }
-
-  painel.classList.remove("hidden");
-  painel.classList.add("manager-screen-active");
-  document.body.classList.add("manager-open");
+  painel.classList.toggle("hidden");
 
   if (botao) {
-    botao.textContent = "Gerenciamento aberto";
+    botao.textContent = abrindo ? "Ocultar gerenciamento" : "Gerenciar valores";
   }
 
-  preencherProcessosValores();
-  renderProcessosValores();
-  renderPrecosReferencia();
+  if (abrindo) {
+    preencherProcessosValores();
+    renderProcessosValores();
+    renderPrecosReferencia();
 
-  setTimeout(() => {
-    painel.scrollTo({ top: 0, behavior: "smooth" });
-  }, 50);
+    setTimeout(() => {
+      painel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  }
 }
 
 function fecharGerenciarValores() {
   const painel = document.getElementById("painelGerenciarValores");
   const botao = document.getElementById("btnToggleGerenciarValores");
 
-  if (painel) {
-    painel.classList.add("hidden");
-    painel.classList.remove("manager-screen-active");
-  }
-  document.body.classList.remove("manager-open");
-  if (botao) botao.textContent = "Abrir gerenciamento";
+  if (painel) painel.classList.add("hidden");
+  if (botao) botao.textContent = "Gerenciar valores";
 }
 
 function usarNovoProcessoValor() {
@@ -8403,6 +6629,7 @@ function imprimirRelatorioPagamento() {
         <table>
           <thead>
             <tr>
+              <th>Facção</th>
               <th>Referência</th>
               <th>Processo</th>
               <th>Entregas</th>
@@ -8446,7 +6673,7 @@ function configurarRelatorios() {
     });
   });
 
-  document.getElementById("btnAplicarFiltros").addEventListener("click", buscarRelatorioNoBanco);
+  document.getElementById("btnAplicarFiltros").addEventListener("click", renderRelatorio);
 
   document.getElementById("btnLimparFiltros").addEventListener("click", () => {
     document.getElementById("filtroSemana").value = "";
@@ -9726,18 +7953,33 @@ function configurarBackup() {
       try {
         const backup = JSON.parse(reader.result);
 
+        if (Array.isArray(backup.ordensProducao)) {
+          const totalOps = backup.ordensProducao.length;
+          const totalRefs = Array.isArray(backup.produtos) ? backup.produtos.length : 0;
+          const confirmarLigia = confirm(`Detectei o banco da Lígia. Importar ${totalOps.toLocaleString("pt-BR")} OPs e ${totalRefs.toLocaleString("pt-BR")} referências únicas? Não serão importados pagamentos históricos.`);
+          if (!confirmarLigia) return;
+
+          const resultado = await importarLigiaNovaLogicaObjeto(backup, `Arquivo ${file.name}`);
+          const validacaoTexto = textoValidacaoImportacaoLigia(resultado.validacao);
+          await registrarLog("backup_ligia_importado", "importacao", file.name, validacaoTexto || `${totalOps} OPs importadas`);
+          const avisoErros = resultado.erros?.length ? " Algumas coleções falharam: publique novamente o firebase-rules.txt." : "";
+          toast(`Banco da Lígia importado. OPs no sistema: ${Number(resultado.validacao?.ordens || totalOps).toLocaleString("pt-BR")}. Referências únicas: ${Number(resultado.validacao?.produtos || totalRefs).toLocaleString("pt-BR")}.${avisoErros}`);
+          mostrarResumoLigiaNovaLogica();
+          return;
+        }
+
         if (!Array.isArray(backup.produtos) || !Array.isArray(backup.ordens)) {
-          throw new Error("Formato inválido.");
+          throw new Error("Formato inválido. Use um backup do sistema ou o banco dados-ligia-migracao.json.");
         }
 
         if (!confirm("Importar estes dados para o Firestore? Documentos com mesmo ID serão atualizados.")) return;
 
         await importarBackupFirestore(backup);
         await registrarLog("backup_importado", "importacao", "backup-json", `${backup.produtos.length} produtos e ${backup.ordens.length} ordens importados`);
-        toast("Dados importados para o Firebase.");
+        toast(`Dados importados. OPs: ${backup.ordens.length.toLocaleString("pt-BR")}; referências: ${backup.produtos.length.toLocaleString("pt-BR")}.`);
       } catch (error) {
         console.error(error);
-        toast("Erro ao importar backup.");
+        toast("Erro ao importar backup. Confira se o arquivo é o JSON correto.");
       }
     };
 
@@ -9829,6 +8071,11 @@ function baixarBackupAtual() {
   const backup = {
     produtos: state.produtos,
     ordens: state.ordens,
+    ordensProducao: state.ordens,
+    faccoes: state.faccoes,
+    celulas: state.celulas,
+    movimentacoesProducao: state.movimentacoesProducao,
+    entregasPagamento: state.entregasPagamento,
     usuarios: ehAdmin() ? state.usuarios.map(u => ({
       uid: u.uid,
       nome: u.nome,
@@ -9836,6 +8083,7 @@ function baixarBackupAtual() {
       tipo: u.tipo,
       ativo: u.ativo
     })) : [],
+    observacao: "Produtos são referências únicas. Ordens/ordensProducao são as OPs do sistema.",
     exportadoEm: new Date().toISOString()
   };
 
@@ -10328,7 +8576,6 @@ window.mandarParaCelula = mandarParaCelula;
 window.toggleMenuAcoesManejo = toggleMenuAcoesManejo;
 window.abrirModalAjusteMigracao = abrirModalAjusteMigracao;
 window.abrirRastreamentoOP = abrirRastreamentoOP;
-window.abrirLocalDaPeca = abrirLocalDaPeca;
 window.registrarChegadaMovimentacao = registrarChegadaMovimentacao;
 window.encaminharMovimentacao = encaminharMovimentacao;
 window.reenviarMovimentacaoParaFaccao = reenviarMovimentacaoParaFaccao;
