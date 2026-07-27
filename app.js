@@ -192,13 +192,20 @@ const PROCESSOS_FACCAO_PADRAO = [
   "SUTIÃ COMPLETO"
 ];
 
+// No envio do Manejo Sutiã, aparecem somente processos relacionados a sutiã.
+// Isso evita selecionar processo de calcinha por engano e também filtra as facções corretas.
+const PROCESSOS_FACCAO_POR_SETOR_PADRAO = {
+  sutia: ["ENCAPAR BOJO", "SUTIÃ COMPLETO", "SUTIÃ MONTAGEM", "ALÇA"],
+  calcinha: ["CALCINHA MONTAGEM", "CALCINHA COMPLETA"]
+};
+
 const FACCOES_POR_PROCESSO_PADRAO = {
   "ENCAPAR BOJO": ["DIVINA", "GRACIANE", "JESSICA", "LARISSA", "ALINE BATISTA", "DAIANY", "NAGILA", "DELMA", "GIRLAINE"],
   "ALÇA": ["JANAINA", "IVONE", "LUANA", "KARYTA", "SIMEI", "SIMONE"],
   "CALCINHA MONTAGEM": ["ANA FLAVIA", "KAUANE", "LIANA", "DAIANA", "LEIDIANE", "ANDREZA"],
   "CALCINHA COMPLETA": ["LORENA", "JEAN", "SCHENEIDER", "DANIELA", "KAMILA", "LIANDRA", "JUZENI", "THEILLOR", "SILVANY", "LEONARDO", "MATHEUS", "BEATRIZ", "MARILIA", "DARLLEN", "RONEIDIA"],
   "SUTIÃ MONTAGEM": ["LIVIA", "FRACEILDA", "MOCINHA", "NAYARA", "NAGILA", "GIRLAINE", "JHENIFER"],
-  "SUTIÃ COMPLETO": ["DANUBIA", "LARA CRISTINA", "KAKA", "GISLAINY", "GISLAINE", "ITAMAR", "LUCIA", "GOIANIRA"]
+  "SUTIÃ COMPLETO": ["DANUBIA", "KAKA", "GISLAINY", "ITAMAR", "LUCIA", "GOIANIRA"]
 };
 
 const ALIASES_PROCESSO_FACCAO = {
@@ -219,7 +226,12 @@ const ALIASES_PROCESSO_FACCAO = {
 const ALIASES_NOME_FACCAO = {
   "LARA CRISTINA KAKA": "KAKA",
   "LARA CRISTINA (KAKA)": "KAKA",
-  "KAKA LARA CRISTINA": "KAKA"
+  "LARA CRISTINA(KAKA)": "KAKA",
+  "LARA CRISTINA / KAKA": "KAKA",
+  "LARA CRISTINA/KAKA": "KAKA",
+  "KAKA LARA CRISTINA": "KAKA",
+  // Variação comum da mesma facção na planilha/cadastro.
+  "GISLAINE": "GISLAINY"
 };
 
 
@@ -2045,13 +2057,6 @@ function renderManejoInline() {
             <button class="btn-save-manejo" type="button" onclick="salvarManejoLinha('${op.id}')" title="Salvar edição rápida" aria-label="Salvar edição rápida da OP ${escapeHtml(op.numeroOP || '')}">✓</button>
             <div class="action-menu-wrap">
               <button class="btn-kebab" type="button" onclick="toggleMenuAcoesManejo(event, '${op.id}')" title="Mais ações da OP" aria-label="Mais ações da OP ${escapeHtml(op.numeroOP || '')}">⋮</button>
-              <div class="action-menu" id="menu-acoes-${op.id}">
-                <button type="button" onclick="mandarParaFaccao('${op.id}')">Enviar para facção</button>
-                <button type="button" onclick="mandarParaCelula('${op.id}')">Enviar para célula</button>
-                <button type="button" onclick="abrirModalAjusteMigracao('${op.id}')">Editar localização/status</button>
-                <button type="button" onclick="abrirRastreamentoOP('${op.id}')">Ver histórico/rastreamento</button>
-                ${manejo && ehAdmin() ? `<button class="danger" type="button" onclick="limparManejoLinha('${op.id}')">Limpar manejo</button>` : ""}
-              </div>
             </div>
           </div>
         </td>
@@ -4086,10 +4091,38 @@ async function importarLigiaNovaLogica() {
   }
 }
 
+function getMenuAcoesManejoGlobal() {
+  let menu = document.getElementById("menu-acoes-manejo-global");
+
+  if (!menu) {
+    menu = document.createElement("div");
+    menu.id = "menu-acoes-manejo-global";
+    menu.className = "action-menu action-menu-floating";
+    document.body.appendChild(menu);
+  }
+
+  return menu;
+}
+
+function montarMenuAcoesManejoHtml(ordemId) {
+  const ordem = state.ordens.find(op => String(op.id) === String(ordemId));
+  const setor = getManejoSetorAtual();
+  const manejo = ordem ? getManejoDaOrdem(ordem, setor) : null;
+  const podeLimpar = Boolean(manejo && ehAdmin());
+
+  return `
+    <button type="button" onclick="fecharMenusAcoesManejo(); mandarParaFaccao('${ordemId}')">Enviar para facção</button>
+    <button type="button" onclick="fecharMenusAcoesManejo(); mandarParaCelula('${ordemId}')">Enviar para célula</button>
+    <button type="button" onclick="fecharMenusAcoesManejo(); abrirModalAjusteMigracao('${ordemId}')">Mover / editar local</button>
+    <button type="button" onclick="fecharMenusAcoesManejo(); abrirRastreamentoOP('${ordemId}')">Ver histórico/rastreamento</button>
+    ${podeLimpar ? `<button class="danger" type="button" onclick="fecharMenusAcoesManejo(); limparManejoLinha('${ordemId}')">Limpar manejo</button>` : ""}
+  `;
+}
+
 function posicionarMenuAcoesManejo(menu, botao) {
   if (!menu || !botao) return;
 
-  const largura = Math.min(280, Math.max(250, window.innerWidth - 16));
+  const largura = Math.min(300, Math.max(250, window.innerWidth - 16));
   menu.style.width = `${largura}px`;
   menu.style.right = "auto";
   menu.style.bottom = "auto";
@@ -4098,7 +4131,7 @@ function posicionarMenuAcoesManejo(menu, botao) {
   const left = Math.max(8, Math.min(window.innerWidth - largura - 8, rect.right - largura));
   menu.style.left = `${left}px`;
 
-  const alturaMenu = menu.offsetHeight || 240;
+  const alturaMenu = menu.offsetHeight || 260;
   const topPreferido = rect.top - alturaMenu - 8;
   const topSeguro = Math.max(8, topPreferido);
   menu.style.top = `${topSeguro}px`;
@@ -4106,26 +4139,16 @@ function posicionarMenuAcoesManejo(menu, botao) {
 
 function toggleMenuAcoesManejo(event, ordemId) {
   event?.stopPropagation?.();
-  const menuId = `menu-acoes-${ordemId}`;
-  const menu = document.getElementById(menuId);
+  const menu = getMenuAcoesManejoGlobal();
   const botao = event?.currentTarget || event?.target;
-  if (!menu) return;
+  const mesmoMenuAberto = menu.classList.contains("open") && menu.dataset.ordemId === String(ordemId);
 
-  const vaiAbrir = !menu.classList.contains("open");
+  fecharMenusAcoesManejo();
 
-  document.querySelectorAll(".action-menu.open").forEach(item => {
-    if (item.id !== menuId) {
-      item.classList.remove("open");
-      item.removeAttribute("style");
-    }
-  });
+  if (mesmoMenuAberto) return;
 
-  if (!vaiAbrir) {
-    menu.classList.remove("open");
-    menu.removeAttribute("style");
-    return;
-  }
-
+  menu.dataset.ordemId = String(ordemId);
+  menu.innerHTML = montarMenuAcoesManejoHtml(ordemId);
   menu.classList.add("open");
   posicionarMenuAcoesManejo(menu, botao);
 }
@@ -4134,11 +4157,14 @@ function fecharMenusAcoesManejo() {
   document.querySelectorAll(".action-menu.open").forEach(menu => {
     menu.classList.remove("open");
     menu.removeAttribute("style");
+    if (menu.id === "menu-acoes-manejo-global") {
+      menu.removeAttribute("data-ordem-id");
+    }
   });
 }
 
 document.addEventListener("click", event => {
-  if (!event.target.closest(".action-menu-wrap")) fecharMenusAcoesManejo();
+  if (!event.target.closest(".action-menu-wrap") && !event.target.closest(".action-menu")) fecharMenusAcoesManejo();
 });
 
 window.addEventListener("resize", fecharMenusAcoesManejo);
@@ -4939,7 +4965,8 @@ function normalizarNomeProcesso(valor) {
 function nomeFaccaoCanonico(valor) {
   const nome = limparTexto(valor).toUpperCase().replace(/\s+/g, " ").trim();
   if (!nome) return "";
-  return ALIASES_NOME_FACCAO[nome] || nome;
+  const semAcento = normalizarTexto(nome).toUpperCase().replace(/\s+/g, " ").trim();
+  return ALIASES_NOME_FACCAO[nome] || ALIASES_NOME_FACCAO[semAcento] || nome;
 }
 
 function chaveFaccaoCanonica(valor) {
@@ -5043,23 +5070,37 @@ function getProcessosDaFaccao(faccao) {
   ].map(normalizarNomeProcesso));
 }
 
+function getProcessosPermitidosMovimentacaoPorSetor(setor = "sutia") {
+  const chaveSetor = String(setor || "sutia").toLowerCase();
+  const base = PROCESSOS_FACCAO_POR_SETOR_PADRAO[chaveSetor] || PROCESSOS_FACCAO_POR_SETOR_PADRAO.sutia;
+  return listaUnicaNormalizada(base.map(normalizarNomeProcesso));
+}
+
+function processoPermitidoNoSetor(processo, setor = "sutia") {
+  const normalizado = normalizarNomeProcesso(processo);
+  if (!normalizado) return false;
+  return getProcessosPermitidosMovimentacaoPorSetor(setor).includes(normalizado);
+}
+
 function getProcessosSugeridosMovimentacao(op, setor, tipoDestino) {
   if (tipoDestino === "celula") return ["CÉLULA INTERNA"];
 
   const referencia = normalizarReferencia(op?.referencia || "");
   const processosTabela = getPrecosReferenciaAtivos()
     .filter(preco => normalizarReferencia(preco.referencia || "") === referencia)
-    .map(preco => preco.processo);
+    .map(preco => normalizarNomeProcesso(preco.processo));
 
   const processosHistorico = state.movimentacoesProducao
     .filter(mov => normalizarReferencia(mov.referencia || "") === referencia && mov.tipoDestino === "faccao")
-    .map(mov => mov.processo);
+    .map(mov => normalizarNomeProcesso(mov.processo));
+
+  const permitidos = new Set(getProcessosPermitidosMovimentacaoPorSetor(setor));
 
   return listaUnicaNormalizada([
-    ...PROCESSOS_FACCAO_PADRAO,
-    ...processosTabela,
-    ...processosHistorico
-  ].map(normalizarNomeProcesso));
+    ...getProcessosPermitidosMovimentacaoPorSetor(setor),
+    ...processosTabela.filter(processo => permitidos.has(processo)),
+    ...processosHistorico.filter(processo => permitidos.has(processo))
+  ]);
 }
 
 function getFaccoesPermitidasPorProcesso(processo) {
@@ -5070,19 +5111,19 @@ function getFaccoesPermitidasPorProcesso(processo) {
 
   const nomesOficiais = FACCOES_POR_PROCESSO_PADRAO[processoNormalizado] || [];
   const chavesOficiais = new Set(nomesOficiais.map(chaveFaccaoCanonica).filter(Boolean));
+  const mapa = new Map();
 
-  let faccoes = faccoesUnicas.filter(faccao => {
+  faccoesUnicas.forEach(faccao => {
     const processos = getProcessosDaFaccao(faccao).map(normalizarNomeProcesso);
-    return processos.includes(processoNormalizado) || chavesOficiais.has(chaveFaccaoCanonica(faccao.nome));
+    const chave = chaveFaccaoCanonica(faccao.nome);
+    const permitido = processos.includes(processoNormalizado) || chavesOficiais.has(chave);
+    if (!permitido || !chave) return;
+
+    const atual = mapa.get(chave);
+    mapa.set(chave, atual ? mergeFaccoesCadastro(atual, faccao) : mergeFaccoesCadastro(faccao, faccao));
   });
 
-  // Processo digitado manualmente ainda pode ser usado; nesse caso liberamos as facções ativas,
-  // mas sem duplicar nomes. Isso evita travar a produção se ainda não existir valor/cadastro do processo.
-  if (!faccoes.length && processoNormalizado) {
-    faccoes = faccoesUnicas;
-  }
-
-  return faccoes;
+  return [...mapa.values()].sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true }));
 }
 
 function atualizarDestinosMovimentacaoPorProcesso() {
@@ -5094,7 +5135,7 @@ function atualizarDestinosMovimentacaoPorProcesso() {
 
   if (tipoDestino !== "faccao") return;
 
-  const processo = normalizarNomeProcesso(document.getElementById("movimentacaoProcesso")?.value || "");
+  const processo = normalizarNomeProcesso(document.getElementById("movimentacaoProcessoSelect")?.value || document.getElementById("movimentacaoProcesso")?.value || "");
   const destinoAtual = destinoSelect.value;
 
   if (!processo) {
@@ -5209,7 +5250,9 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
   }
 
   if (processoInput) {
-    processoInput.required = exigeProcesso;
+    processoInput.required = false;
+    processoInput.readOnly = true;
+    processoInput.classList.toggle("hidden", exigeProcesso);
   }
 
   const processos = getProcessosSugeridosMovimentacao(ordem, setor, tipoDestino);
@@ -5219,6 +5262,8 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
     : "";
 
   if (processoSelect) {
+    processoSelect.required = exigeProcesso;
+    processoSelect.disabled = !exigeProcesso;
     processoSelect.innerHTML = `<option value="">Primeiro selecione o processo</option>` + processos.map(processo => {
       return `<option value="${escapeHtml(processo)}">${escapeHtml(processo)}</option>`;
     }).join("");
@@ -5264,13 +5309,19 @@ async function confirmarMovimentacaoProducao(event) {
 
   const label = labelTipoMovimento(tipoDestino);
   const destino = limparTexto(document.getElementById("movimentacaoDestino")?.value || "").toUpperCase();
+  const processoSelecionado = limparTexto(document.getElementById("movimentacaoProcessoSelect")?.value || "").toUpperCase();
   const processoDigitado = limparTexto(document.getElementById("movimentacaoProcesso")?.value || "").toUpperCase();
-  const processo = tipoDestino === "celula" ? "CÉLULA INTERNA" : processoDigitado;
+  const processo = tipoDestino === "celula" ? "CÉLULA INTERNA" : normalizarNomeProcesso(processoSelecionado || processoDigitado);
   const quantidadeEnviada = Number(document.getElementById("movimentacaoQuantidade")?.value || 0);
   const dataEnvio = document.getElementById("movimentacaoDataEnvio")?.value || "";
 
   if (tipoDestino === "faccao" && !processo) {
     toast("Primeiro escolha o processo que a facção vai fazer.");
+    return;
+  }
+
+  if (tipoDestino === "faccao" && !processoPermitidoNoSetor(processo, setor)) {
+    toast("Escolha um processo permitido para este manejo. No sutiã, use Encapar bojo, Sutiã completo, Sutiã montagem ou Alça.");
     return;
   }
 
@@ -5464,7 +5515,7 @@ function mandarParaFaccao(ordemId) {
   abrirModalMovimentacao(ordemId, "faccao", {
     forcarEscolhaProcesso: true,
     titulo: "Enviar para facção",
-    resumo: "Primeiro escolha o processo. Depois o sistema mostra somente as facções desse processo, sem duplicar nomes."
+    resumo: "Primeiro escolha o processo do sutiã. Depois o sistema mostra somente as facções desse processo, sem duplicar nomes."
   });
 }
 
