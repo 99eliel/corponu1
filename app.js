@@ -2099,6 +2099,19 @@ function filtroManejoCombina(campo, valorFiltroOriginal, valorItemOriginal, seto
 
   if (!valorFiltro) return true;
 
+  // Filtro especial da DATA TECIDO:
+  // "Preenchido" mostra todas as OPs que têm qualquer data/texto em tecido,
+  // independente do dia. Isso ajuda a saber rapidamente o que já pode ser movimentado.
+  if (campo === "dataTecido") {
+    if (["preenchido", "preenchida", "preenchidos", "com tecido", "tecido preenchido"].includes(valorFiltro)) {
+      return Boolean(valorItem);
+    }
+
+    if (["vazio", "sem tecido", "nao preenchido", "não preenchido"].includes(valorFiltro)) {
+      return !valorItem;
+    }
+  }
+
   // Quando o valor digitado existe exatamente nas opções do filtro, compara exato.
   // Isso impede o bug: filtrar FASE = CASA trazendo também DISPONIVEL P CASA.
   // Se digitar só parte do texto, continua funcionando como busca parcial.
@@ -2191,8 +2204,20 @@ function preencherSelectFiltroManejo(id, valores, labelTodos = "Todos") {
   if (!campo) return;
 
   const atual = campo.value;
-  const limpos = [...new Set(valores.map(valor => String(valor ?? "").trim()).filter(Boolean))]
+  const limposBase = [...new Set(valores.map(valor => String(valor ?? "").trim()).filter(Boolean))];
+
+  // Mantém opções especiais no topo do datalist para facilitar o uso no dia a dia.
+  // No filtro DATA TECIDO, "Preenchido" precisa aparecer primeiro para listar todas
+  // as OPs que já têm tecido informado, sem precisar escolher uma data específica.
+  const opcoesFixasPorFiltro = {
+    filtroManejoDataTecido: ["Preenchido", "Sem tecido"]
+  };
+  const fixas = opcoesFixasPorFiltro[id] || [];
+  const fixasNormalizadas = new Set(fixas.map(valor => normalizarTexto(valor).trim()));
+  const dinamicas = limposBase
+    .filter(valor => !fixasNormalizadas.has(normalizarTexto(valor).trim()))
     .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+  const limpos = [...fixas, ...dinamicas];
 
   const datalist = document.getElementById(`${id}List`);
 
@@ -2221,7 +2246,11 @@ function renderFiltrosColunasManejo() {
   preencherSelectFiltroManejo("filtroManejoOP", ordens.map(op => getValorManejoParaFiltro(op, "op")), "Todas");
   preencherSelectFiltroManejo("filtroManejoReferencia", ordens.map(op => getValorManejoParaFiltro(op, "referencia")), "Todas");
   preencherSelectFiltroManejo("filtroManejoSilk", ordens.map(op => getValorManejoParaFiltro(op, "silk")), "Todos");
-  preencherSelectFiltroManejo("filtroManejoDataTecido", ordens.map(op => getValorManejoParaFiltro(op, "dataTecido")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoDataTecido", [
+    "Preenchido",
+    "Sem tecido",
+    ...ordens.map(op => getValorManejoParaFiltro(op, "dataTecido"))
+  ], "Todas");
   preencherSelectFiltroManejo("filtroManejoFase", [
     ...ordens.map(op => getValorManejoParaFiltro(op, "fase")),
     ...state.fasesManejoExtras

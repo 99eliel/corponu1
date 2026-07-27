@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-ligia-sem-loop-versao-2",
-  "descricao": "Correção do loop de versão; versões alinhadas entre index, update, sw e version.json.",
+  "version": "2026-07-27-ligia-filtro-tecido-preenchido-1",
+  "descricao": "Filtro DATA TECIDO com opção Preenchido no topo para mostrar todas as OPs com tecido informado, mantendo os filtros exatos de CASA/DISPONÍVEL P CASA e sem loop de versão.",
   "data": "2026-07-27"
 }

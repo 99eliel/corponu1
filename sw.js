@@ -1,11 +1,11 @@
-const APP_VERSION = "2026-07-27-ligia-sem-loop-versao-2";
+const APP_VERSION = "2026-07-27-ligia-filtro-tecido-preenchido-1";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 
 const CORE_ASSETS = [
   "./index.html",
-  "./style.css?v=2026-07-27-ligia-sem-loop-versao-2",
-  "./app.js?v=2026-07-27-ligia-sem-loop-versao-2",
-  "./update.js?v=2026-07-27-ligia-sem-loop-versao-2"
+  "./style.css?v=2026-07-27-ligia-filtro-tecido-preenchido-1",
+  "./app.js?v=2026-07-27-ligia-filtro-tecido-preenchido-1",
+  "./update.js?v=2026-07-27-ligia-filtro-tecido-preenchido-1"
 ];
 
 self.addEventListener("install", event => {
