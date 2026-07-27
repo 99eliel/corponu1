@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-relatorios-auditoria-sob-demanda-1",
+  "version": "2026-07-27-login-estavel-1",
   "updatedAt": "2026-07-27T00:00:00-03:00",
-  "notes": "Relatórios e auditoria sem listagem automática; mostram dados somente após aplicar filtros, com carregar mais sem quebrar filtros."
+  "notes": "Correção de estabilidade do login: erro de renderização de tela não derruba mais a autenticação. Mantém relatórios e auditoria sob demanda."
 }

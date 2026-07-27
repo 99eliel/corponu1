@@ -94,36 +94,41 @@ function paginaAtivaAtual() {
 function renderPaginaAtiva() {
   const page = paginaAtivaAtual();
 
-  if (page === "produtos") {
-    renderProdutos();
-    renderProdutosPendentes();
-  }
-  if (page === "ordens") renderOrdens();
-  if (page === "manejo") {
-    renderFiltrosColunasManejo();
-    renderManejoInline();
-    renderDatalistManejo();
-    renderDatalistReferencias();
-    renderDatalistCores();
-    renderDatalistNecessidadesOrdem();
-  }
-  if (page === "processos") renderProcessos();
-  if (page === "faccoes") {
-    renderFaccoes();
-    renderFaccoesPendentes();
-    renderFaccoesMovimentacoes();
-  }
-  if (page === "celulas") {
-    renderCelulas();
-    renderCelulasMovimentacoes();
-  }
-  if (page === "rastreamento") renderRastreamento();
-  if (page === "pagamentos") renderPagamentos();
-  if (page === "relatorios") renderRelatorio();
-  if (page === "usuarios") renderUsuarios();
-  if (page === "logs") renderLogs();
+  try {
+    if (page === "produtos") {
+      renderProdutos();
+      renderProdutosPendentes();
+    }
+    if (page === "ordens") renderOrdens();
+    if (page === "manejo") {
+      renderFiltrosColunasManejo();
+      renderManejoInline();
+      renderDatalistManejo();
+      renderDatalistReferencias();
+      renderDatalistCores();
+      renderDatalistNecessidadesOrdem();
+    }
+    if (page === "processos") renderProcessos();
+    if (page === "faccoes") {
+      renderFaccoes();
+      renderFaccoesPendentes();
+      renderFaccoesMovimentacoes();
+    }
+    if (page === "celulas") {
+      renderCelulas();
+      renderCelulasMovimentacoes();
+    }
+    if (page === "rastreamento") renderRastreamento();
+    if (page === "pagamentos") renderPagamentos();
+    if (page === "relatorios") renderRelatorio();
+    if (page === "usuarios") renderUsuarios();
+    if (page === "logs") renderLogs();
 
-  aplicarPermissoesTela();
+    aplicarPermissoesTela();
+  } catch (error) {
+    console.error("Erro ao renderizar página ativa:", error);
+    toast("A tela atual encontrou um erro, mas o login foi mantido. Atualize a página ou abra outra aba do menu.");
+  }
 }
 
 const pageInfo = {
@@ -445,35 +450,52 @@ function configurarAuth() {
 
     state.currentUser = user;
 
+    let perfilSnap;
     try {
-      const perfilSnap = await getDoc(doc(db, "usuarios", user.uid));
-
-      if (!perfilSnap.exists()) {
-        await signOut(auth);
-        toast("Login sem perfil no Firestore. Crie o documento em usuarios usando o UID deste usuário.");
-        return;
-      }
-
-      const perfil = {
-        uid: user.uid,
-        ...perfilSnap.data()
-      };
-
-      if (!perfil.ativo) {
-        await signOut(auth);
-        toast("Usuário inativo. Fale com o administrador.");
-        return;
-      }
-
-      state.perfil = perfil;
-      mostrarSistema();
-      iniciarListenersFirestore();
-      registrarLog("login", "sistema", "Sistema", "Usuário entrou no sistema.");
+      perfilSnap = await getDoc(doc(db, "usuarios", user.uid));
     } catch (error) {
-      console.error(error);
+      console.error("Erro ao buscar perfil do usuário:", error);
       await signOut(auth);
-      toast("Erro de permissão. Confira as regras do Firestore e o perfil do usuário.");
+      toast("Erro de permissão ao buscar o perfil. Confira as regras do Firestore e o documento em usuarios.");
+      return;
     }
+
+    if (!perfilSnap.exists()) {
+      await signOut(auth);
+      toast("Login sem perfil no Firestore. Crie o documento em usuarios usando o UID deste usuário.");
+      return;
+    }
+
+    const perfil = {
+      uid: user.uid,
+      ...perfilSnap.data()
+    };
+
+    if (!perfil.ativo) {
+      await signOut(auth);
+      toast("Usuário inativo. Fale com o administrador.");
+      return;
+    }
+
+    state.perfil = perfil;
+
+    try {
+      mostrarSistema();
+    } catch (error) {
+      console.error("Erro ao abrir sistema após login:", error);
+      document.getElementById("authScreen")?.classList.add("hidden");
+      document.getElementById("appShell")?.classList.remove("hidden");
+      toast("Login realizado. Uma tela encontrou erro ao abrir, mas seu acesso foi mantido.");
+    }
+
+    try {
+      iniciarListenersFirestore();
+    } catch (error) {
+      console.error("Erro ao iniciar dados do sistema:", error);
+      toast("Login realizado. Houve erro ao carregar dados; use Atualizar ou confira as regras do Firebase.");
+    }
+
+    registrarLog("login", "sistema", "Sistema", "Usuário entrou no sistema.");
   });
 }
 
@@ -832,25 +854,30 @@ function abrirPagina(page) {
     document.getElementById("pageSubtitle").textContent = pageInfo[page].subtitle;
   }
 
-  carregarDadosDaPagina(page);
+  try {
+    carregarDadosDaPagina(page);
 
-  if (page === "produtos") {
-    renderProdutos();
-    renderProdutosPendentes();
+    if (page === "produtos") {
+      renderProdutos();
+      renderProdutosPendentes();
+    }
+    if (page === "ordens") renderOrdens();
+    if (page === "manejo") {
+      atualizarBotoesManejoSetor();
+      atualizarManejoComSoma();
+    }
+    if (page === "processos") renderProcessos();
+    if (page === "faccoes") renderFaccoesMovimentacoes();
+    if (page === "celulas") renderCelulasMovimentacoes();
+    if (page === "rastreamento") renderRastreamento();
+    if (page === "pagamentos") renderPagamentos();
+    if (page === "relatorios") renderRelatorio();
+    if (page === "usuarios") renderUsuarios();
+    if (page === "logs") renderLogs();
+  } catch (error) {
+    console.error(`Erro ao abrir a página ${page}:`, error);
+    toast("A tela abriu, mas encontrou um erro ao carregar os dados. O login foi mantido.");
   }
-  if (page === "ordens") renderOrdens();
-  if (page === "manejo") {
-    atualizarBotoesManejoSetor();
-    atualizarManejoComSoma();
-  }
-  if (page === "processos") renderProcessos();
-  if (page === "faccoes") renderFaccoesMovimentacoes();
-  if (page === "celulas") renderCelulasMovimentacoes();
-  if (page === "rastreamento") renderRastreamento();
-  if (page === "pagamentos") renderPagamentos();
-  if (page === "relatorios") renderRelatorio();
-  if (page === "usuarios") renderUsuarios();
-  if (page === "logs") renderLogs();
 }
 
 function configurarProduto() {
