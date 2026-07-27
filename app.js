@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   getAuth,
   onAuthStateChanged,
@@ -49,7 +49,7 @@ async function carregarPdfJs() {
   return pdfjsLibCache;
 }
 
-const app = initializeApp(firebaseConfig);
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 let db;
@@ -66,12 +66,13 @@ try {
 
 let secondaryApp;
 try {
-  secondaryApp = initializeApp(firebaseConfig, "SecondaryUserCreator");
+  secondaryApp = getApps().find(a => a.name === "SecondaryUserCreator") || initializeApp(firebaseConfig, "SecondaryUserCreator");
 } catch (error) {
   console.warn("App secundário já existia ou não pôde iniciar. Reusando instância principal para não travar a tela.", error);
   secondaryApp = app;
 }
 const secondaryAuth = getAuth(secondaryApp);
+window.OP_APP_MAIN_IMPORTOU = true;
 
 
 const state = {
@@ -394,6 +395,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Login e senha entram antes de qualquer função pesada, para não bloquear acesso.
   iniciarParte("mostrar senha", configurarVisibilidadeSenhas);
   iniciarParte("login", configurarAuth);
+  window.OP_APP_MAIN_READY = true;
 
   iniciarParte("sugestões de facções", carregarSugestoesFaccoesCelus);
   iniciarParte("sugestões do manejo", carregarSugestoesExtrasManejo);

@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-login-final-corrigido-1",
+  "version": "2026-07-27-login-resgate-definitivo-3",
   "updatedAt": "2026-07-27T00:00:00-03:00",
-  "notes": "Correção final do login: autenticação processada no submit, perfil com mensagem visível, PDF carregado sob demanda e login antes das telas pesadas."
+  "notes": "Resgate definitivo do login: cache antigo limpo uma vez, login-core independente e app.js reutilizando Firebase já inicializado."
 }
