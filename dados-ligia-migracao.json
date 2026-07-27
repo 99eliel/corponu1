@@ -1,13 +1,14 @@
 {
   "meta": {
-    "versao": "2026-07-27-ligia-atualizada-limpa-anterior",
+    "versao": "2026-07-27-ligia-modo-seguro-producao-1",
     "origem": "Planilha Lígia(1).xlsx / aba FACÇÃO",
     "totalOPs": 718,
     "totalPecas": 147614,
     "somenteLigia": true,
     "naoIncluiPagamentosHistoricos": true,
-    "limparMigracaoAnteriorAntesImportar": true,
-    "observacao": "Base refeita a partir da planilha atualizada enviada pelo usuário; corrige divergência de somas como BOJOS ENCAPADOS = 10.808."
+    "limparMigracaoAnteriorAntesImportar": false,
+    "observacao": "Base atualizada da planilha Lígia. Nesta versão de produção segura, a importação não apaga e não sobrescreve OPs existentes; só adiciona documentos faltantes para proteger lançamentos reais no sistema.",
+    "modoImportacao": "seguro_sem_apagar_sem_sobrescrever"
   },
   "resumo": {
     "statusCounts": {

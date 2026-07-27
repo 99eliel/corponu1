@@ -1449,9 +1449,26 @@ function montarPatchManejoSetor(setor, manejo, status, extras = {}) {
 }
 
 
+let timerAtualizacaoManejo = null;
+
 function atualizarManejoComSoma() {
+  if (timerAtualizacaoManejo) {
+    clearTimeout(timerAtualizacaoManejo);
+    timerAtualizacaoManejo = null;
+  }
+
   renderManejoInline();
   setTimeout(renderResumoSomasManejoPeloDOM, 0);
+}
+
+function agendarAtualizacaoManejoComSoma(delay = 260) {
+  if (timerAtualizacaoManejo) clearTimeout(timerAtualizacaoManejo);
+
+  timerAtualizacaoManejo = setTimeout(() => {
+    timerAtualizacaoManejo = null;
+    renderManejoInline();
+    setTimeout(renderResumoSomasManejoPeloDOM, 0);
+  }, delay);
 }
 
 function configurarManejo() {
@@ -1461,7 +1478,7 @@ function configurarManejo() {
 
   const busca = document.getElementById("buscaManejoLinha");
   if (busca) {
-    busca.addEventListener("input", atualizarManejoComSoma);
+    busca.addEventListener("input", () => agendarAtualizacaoManejoComSoma(220));
   }
 
   [
@@ -1481,9 +1498,8 @@ function configurarManejo() {
   ].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    ["input", "change"].forEach(evento => {
-      el.addEventListener(evento, atualizarManejoComSoma);
-    });
+    el.addEventListener("input", () => agendarAtualizacaoManejoComSoma(id === "filtroManejoOP" ? 180 : 260));
+    el.addEventListener("change", atualizarManejoComSoma);
   });
 
   const limpar = document.getElementById("btnLimparFiltrosManejo");
@@ -2087,7 +2103,7 @@ function getOpcoesFiltroManejoNormalizadas(campo, setor = getManejoSetorAtual())
     .filter(Boolean));
 }
 
-function filtroManejoCombina(campo, valorFiltroOriginal, valorItemOriginal, setor = getManejoSetorAtual()) {
+function filtroManejoCombina(campo, valorFiltroOriginal, valorItemOriginal, setor = getManejoSetorAtual(), opcoesNormalizadasPorCampo = null) {
   if (!valorFiltroOriginal) return true;
 
   if (campo === "status") {
@@ -2116,7 +2132,7 @@ function filtroManejoCombina(campo, valorFiltroOriginal, valorItemOriginal, seto
   // Isso impede o bug: filtrar FASE = CASA trazendo também DISPONIVEL P CASA.
   // Se digitar só parte do texto, continua funcionando como busca parcial.
   if (CAMPOS_FILTRO_MANEJO_EXATO_QUANDO_OPCAO.has(campo)) {
-    const opcoes = getOpcoesFiltroManejoNormalizadas(campo, setor);
+    const opcoes = opcoesNormalizadasPorCampo?.[campo] || getOpcoesFiltroManejoNormalizadas(campo, setor);
     if (opcoes.has(valorFiltro)) {
       return valorItem === valorFiltro;
     }
@@ -2145,6 +2161,13 @@ function filtrarOrdensManejoPorColunas() {
     necessidade: document.getElementById("filtroManejoNecessidade")?.value || ""
   };
 
+  const opcoesNormalizadasPorCampo = {};
+  Object.entries(filtros).forEach(([campo, valor]) => {
+    if (valor && CAMPOS_FILTRO_MANEJO_EXATO_QUANDO_OPCAO.has(campo)) {
+      opcoesNormalizadasPorCampo[campo] = getOpcoesFiltroManejoNormalizadas(campo, setor);
+    }
+  });
+
   return getOrdensDoSetorManejo(setor).filter(op => {
     const manejo = getManejoDaOrdem(op, setor);
 
@@ -2172,7 +2195,7 @@ function filtrarOrdensManejoPorColunas() {
       if (!valor) return true;
 
       const valorItem = getValorManejoParaFiltro(op, campo, setor);
-      return filtroManejoCombina(campo, valor, valorItem, setor);
+      return filtroManejoCombina(campo, valor, valorItem, setor, opcoesNormalizadasPorCampo);
     });
   });
 }
@@ -2239,11 +2262,27 @@ function preencherSelectFiltroManejo(id, valores, labelTodos = "Todos") {
   }
 }
 
+function prepararFiltroOPManejoDigitado() {
+  const campo = document.getElementById("filtroManejoOP");
+  const datalist = document.getElementById("filtroManejoOPList");
+
+  // O filtro de OP fica somente digitável.
+  // Não carregamos todas as OPs como sugestão porque isso deixa o navegador lento
+  // quando a base cresce e o usuário precisa digitar rapidamente o número.
+  if (campo) {
+    campo.removeAttribute("list");
+    campo.setAttribute("inputmode", "numeric");
+    campo.setAttribute("autocomplete", "off");
+  }
+
+  if (datalist) datalist.innerHTML = "";
+}
+
 function renderFiltrosColunasManejo() {
   const setor = getManejoSetorAtual();
   const ordens = getOrdensDoSetorManejo(setor);
 
-  preencherSelectFiltroManejo("filtroManejoOP", ordens.map(op => getValorManejoParaFiltro(op, "op")), "Todas");
+  prepararFiltroOPManejoDigitado();
   preencherSelectFiltroManejo("filtroManejoReferencia", ordens.map(op => getValorManejoParaFiltro(op, "referencia")), "Todas");
   preencherSelectFiltroManejo("filtroManejoSilk", ordens.map(op => getValorManejoParaFiltro(op, "silk")), "Todos");
   preencherSelectFiltroManejo("filtroManejoDataTecido", [
@@ -3394,6 +3433,11 @@ function configurarFaccoes() {
     importarLigia.addEventListener("click", importarLigiaNovaLogica);
   }
 
+  const conferenciaSeguraLigia = document.getElementById("btnConferenciaSeguraLigia");
+  if (conferenciaSeguraLigia) {
+    conferenciaSeguraLigia.addEventListener("click", mostrarConferenciaSeguraLigia);
+  }
+
   const resumoLigia = document.getElementById("btnResumoLigiaNovaLogica");
   if (resumoLigia) {
     resumoLigia.addEventListener("click", mostrarResumoLigiaNovaLogica);
@@ -3578,7 +3622,7 @@ async function mostrarResumoLigiaNovaLogica() {
       BOJOS ENCAPADOS: ${Number(resumo.bojosEncapadosPecas || resumo.faseSomas?.["BOJOS ENCAPADOS"] || 0).toLocaleString("pt-BR")} peças<br>
       <br><strong>Importante:</strong> esta versão não importa pagamentos históricos.<br>
       <strong>Conferência:</strong> depois de importar, o Dashboard deve mostrar ${Number(dados.meta?.totalOPs || 0).toLocaleString("pt-BR")} OPs cadastradas e BOJOS ENCAPADOS = ${Number(resumo.bojosEncapadosPecas || 0).toLocaleString("pt-BR")} peças.<br>
-      <strong>Correção:</strong> esta versão limpa a migração anterior da Lígia antes de reimportar, para não sobrar OP antiga.
+      <strong>Modo seguro:</strong> esta versão NÃO apaga e NÃO sobrescreve OPs já existentes. Ela só adiciona itens faltantes e preserva o que os usuários já lançaram.
     `;
   } catch (error) {
     console.error(error);
@@ -3590,6 +3634,7 @@ function prepararDocumentoImportacaoLigia(item) {
   const copia = { ...item };
   delete copia.id;
   copia.importadoLigiaNovaLogica = true;
+  copia.modoImportacaoLigia = "seguro_sem_sobrescrever";
   copia.atualizadoPor = state.currentUser.uid;
   copia.atualizadoEm = serverTimestamp();
   if (!copia.criadoPor) copia.criadoPor = state.currentUser.uid;
@@ -3597,19 +3642,79 @@ function prepararDocumentoImportacaoLigia(item) {
   return copia;
 }
 
-async function importarColecaoLigia(batch, colecao, itens, contadorRef) {
-  for (const item of itens || []) {
-    const id = item.id || docIdSeguro(item.numeroOP || item.nome || item.referencia || Math.random().toString(36).slice(2));
-    batch.set(doc(db, colecao, id), prepararDocumentoImportacaoLigia(item), { merge: true });
-    contadorRef.total++;
-    contadorRef.batch++;
-    if (contadorRef.batch >= 420) {
-      await batch.commit();
-      contadorRef.batch = 0;
-      batch = writeBatch(db);
+function idDocumentoLigia(colecao, item) {
+  return item.id || docIdSeguro(
+    item.numeroOP ||
+    item.numeroOPExterno ||
+    item.op ||
+    item.nome ||
+    item.referencia ||
+    item.processo ||
+    `${colecao}-${Math.random().toString(36).slice(2)}`
+  );
+}
+
+function ehDocumentoLigia(data = {}) {
+  const origem = String(data.origem || data.origemMigracao || data.origemImportacao || "").toLowerCase();
+  return data.importadoLigiaNovaLogica === true || origem.includes("ligia") || origem.includes("lígia") || origem.includes("migracao_ligia");
+}
+
+function temUsoDepoisDaMigracao(data = {}) {
+  return Boolean(
+    data.ajusteManualMigracao ||
+    data.migracaoProtegida ||
+    data.ultimoMotivoAjusteMigracao ||
+    data.ultimaEntregaPagamento ||
+    data.ultimoProcessoPagamento ||
+    data.totalEntreguePagamento ||
+    data.manejosSetores ||
+    data.manejo ||
+    data.bipado ||
+    data.status === "bipado" ||
+    data.status === "organizada"
+  );
+}
+
+async function importarColecaoLigiaSemSobrescrever(colecao, itens, contadorGeral, erros) {
+  const lista = Array.isArray(itens) ? itens : [];
+  contadorGeral.porColecao[colecao] = contadorGeral.porColecao[colecao] || { novos: 0, preservados: 0, erros: 0 };
+  if (!lista.length) return;
+
+  let batch = writeBatch(db);
+  let batchCount = 0;
+
+  for (const item of lista) {
+    const id = idDocumentoLigia(colecao, item);
+    const ref = doc(db, colecao, id);
+
+    try {
+      const existente = await getDoc(ref);
+      if (existente.exists()) {
+        contadorGeral.preservados++;
+        contadorGeral.porColecao[colecao].preservados++;
+        continue;
+      }
+
+      batch.set(ref, prepararDocumentoImportacaoLigia(item), { merge: true });
+      contadorGeral.total++;
+      contadorGeral.novos++;
+      contadorGeral.porColecao[colecao].novos++;
+      batchCount++;
+
+      if (batchCount >= 420) {
+        await batch.commit();
+        batch = writeBatch(db);
+        batchCount = 0;
+      }
+    } catch (error) {
+      console.error(`Erro ao importar ${colecao}/${id}.`, error);
+      erros.push({ colecao, id, mensagem: error?.message || "Erro desconhecido" });
+      contadorGeral.erros++;
+      contadorGeral.porColecao[colecao].erros++;
     }
   }
-  return batch;
+
+  if (batchCount > 0) await batch.commit();
 }
 
 async function contarDocumentosColecao(nomeColecao) {
@@ -3646,78 +3751,99 @@ function textoValidacaoImportacaoLigia(validacao) {
   if (!validacao) return "";
 
   const linhas = [
-    `OPs no Firestore: ${Number(validacao.ordens || 0).toLocaleString("pt-BR")} / esperado: ${validacao.esperadoOrdens.toLocaleString("pt-BR")}`,
-    `Referências únicas: ${Number(validacao.produtos || 0).toLocaleString("pt-BR")} / esperado: ${validacao.esperadoProdutos.toLocaleString("pt-BR")}`,
-    `Movimentações: ${Number(validacao.movimentos || 0).toLocaleString("pt-BR")} / esperado: ${validacao.esperadoMovimentos.toLocaleString("pt-BR")}`,
-    `Relatórios separados: ${Number(validacao.relatorios || 0).toLocaleString("pt-BR")} / esperado: ${validacao.esperadoRelatorios.toLocaleString("pt-BR")}`
+    `OPs no Firestore: ${Number(validacao.ordens || 0).toLocaleString("pt-BR")} | Base Lígia atual: ${validacao.esperadoOrdens.toLocaleString("pt-BR")}`,
+    `Referências únicas no Firestore: ${Number(validacao.produtos || 0).toLocaleString("pt-BR")} | Base Lígia atual: ${validacao.esperadoProdutos.toLocaleString("pt-BR")}`,
+    `Movimentações no Firestore: ${Number(validacao.movimentos || 0).toLocaleString("pt-BR")} | Base Lígia atual: ${validacao.esperadoMovimentos.toLocaleString("pt-BR")}`,
+    `Relatórios separados no Firestore: ${Number(validacao.relatorios || 0).toLocaleString("pt-BR")} | Base Lígia atual: ${validacao.esperadoRelatorios.toLocaleString("pt-BR")}`
   ];
 
   return linhas.join("\n");
 }
 
-async function importarColecaoLigiaIndependente(colecao, itens, contadorGeral, erros) {
-  const lista = Array.isArray(itens) ? itens : [];
-  if (!lista.length) {
-    contadorGeral.porColecao[colecao] = 0;
-    return;
-  }
+async function gerarConferenciaSeguraLigia(dados) {
+  const baseOps = Array.isArray(dados?.ordensProducao) ? dados.ordensProducao : [];
+  const idsBase = new Set(baseOps.map(item => idDocumentoLigia("ordensProducao", item)));
+  const snap = await getDocs(collection(db, "ordensProducao"));
 
-  let batch = writeBatch(db);
-  const contadorLocal = { total: 0, batch: 0 };
+  const resultado = {
+    baseOps: baseOps.length,
+    sistemaOps: snap.size,
+    novosParaAdicionar: 0,
+    existentesPreservados: 0,
+    foraDaPlanilhaAtual: 0,
+    ligiaAntigaForaDaPlanilha: 0,
+    criadosNoSistema: 0,
+    protegidosPorUso: 0,
+    exemplosNovos: [],
+    exemplosForaDaPlanilha: [],
+    exemplosProtegidos: [],
+    bojosEncapadosPecas: Number(dados?.resumo?.bojosEncapadosPecas || dados?.resumo?.faseSomas?.["BOJOS ENCAPADOS"] || 0)
+  };
 
-  try {
-    batch = await importarColecaoLigia(batch, colecao, lista, contadorLocal);
-    if (contadorLocal.batch > 0) await batch.commit();
-    contadorGeral.total += contadorLocal.total;
-    contadorGeral.porColecao[colecao] = contadorLocal.total;
-  } catch (error) {
-    console.error(`Erro ao importar coleção ${colecao}.`, error);
-    erros.push({ colecao, mensagem: error?.message || "Erro desconhecido" });
-    contadorGeral.porColecao[colecao] = contadorLocal.total;
-  }
-}
+  const idsSistema = new Set();
+  snap.forEach(documento => {
+    idsSistema.add(documento.id);
+    const data = documento.data() || {};
+    const numeroOP = data.numeroOP || documento.id;
 
+    if (idsBase.has(documento.id)) {
+      resultado.existentesPreservados++;
+      if (temUsoDepoisDaMigracao(data)) {
+        resultado.protegidosPorUso++;
+        if (resultado.exemplosProtegidos.length < 8) resultado.exemplosProtegidos.push(numeroOP);
+      }
+    } else {
+      resultado.foraDaPlanilhaAtual++;
+      if (ehDocumentoLigia(data)) resultado.ligiaAntigaForaDaPlanilha++;
+      else resultado.criadosNoSistema++;
+      if (resultado.exemplosForaDaPlanilha.length < 8) resultado.exemplosForaDaPlanilha.push(numeroOP);
+    }
+  });
 
-async function limparColecaoMigracaoLigiaAnterior(colecao) {
-  const q = query(collection(db, colecao), where("importadoLigiaNovaLogica", "==", true));
-  const snap = await getDocs(q);
-
-  let batch = writeBatch(db);
-  let contador = 0;
-  let total = 0;
-
-  for (const documento of snap.docs) {
-    batch.delete(doc(db, colecao, documento.id));
-    contador++;
-    total++;
-
-    if (contador >= 420) {
-      await batch.commit();
-      batch = writeBatch(db);
-      contador = 0;
+  for (const item of baseOps) {
+    const id = idDocumentoLigia("ordensProducao", item);
+    if (!idsSistema.has(id)) {
+      resultado.novosParaAdicionar++;
+      if (resultado.exemplosNovos.length < 8) resultado.exemplosNovos.push(item.numeroOP || id);
     }
   }
 
-  if (contador > 0) await batch.commit();
-  return total;
+  return resultado;
 }
 
-async function limparMigracaoLigiaAnterior() {
-  const colecoes = [
-    "ordensProducao",
-    "movimentacoesProducao",
-    "relatoriosMigracaoLigia",
-    "datasIncoerentesLigia",
-    "processosMigracao"
-  ];
+function montarHtmlConferenciaSeguraLigia(conf, dados) {
+  return `
+    <strong>Conferência segura antes de importar</strong><br>
+    Base atual da Lígia: <strong>${Number(conf.baseOps || 0).toLocaleString("pt-BR")}</strong> OPs<br>
+    OPs existentes no sistema agora: <strong>${Number(conf.sistemaOps || 0).toLocaleString("pt-BR")}</strong><br>
+    Novas OPs que serão adicionadas: <strong>${Number(conf.novosParaAdicionar || 0).toLocaleString("pt-BR")}</strong><br>
+    OPs já existentes que serão preservadas sem sobrescrever: <strong>${Number(conf.existentesPreservados || 0).toLocaleString("pt-BR")}</strong><br>
+    OPs já movimentadas/corrigidas no sistema e protegidas: <strong>${Number(conf.protegidosPorUso || 0).toLocaleString("pt-BR")}</strong><br>
+    OPs que existem no sistema, mas não estão na planilha atual: <strong>${Number(conf.foraDaPlanilhaAtual || 0).toLocaleString("pt-BR")}</strong><br>
+    Dessas, vindas de migração antiga da Lígia: <strong>${Number(conf.ligiaAntigaForaDaPlanilha || 0).toLocaleString("pt-BR")}</strong><br>
+    Criadas/lançadas no sistema: <strong>${Number(conf.criadosNoSistema || 0).toLocaleString("pt-BR")}</strong><br>
+    BOJOS ENCAPADOS na base atual: <strong>${Number(conf.bojosEncapadosPecas || 0).toLocaleString("pt-BR")}</strong> peças<br>
+    <br>
+    <strong>Regra de segurança:</strong> nada será apagado e nenhuma OP existente será sobrescrita. O sistema só adiciona o que estiver faltando.<br>
+    ${conf.exemplosNovos.length ? `<br>Exemplos de OPs novas: ${conf.exemplosNovos.map(escapeHtml).join(", ")}` : ""}
+    ${conf.exemplosForaDaPlanilha.length ? `<br>Exemplos fora da planilha atual: ${conf.exemplosForaDaPlanilha.map(escapeHtml).join(", ")}` : ""}
+    ${conf.exemplosProtegidos.length ? `<br>Exemplos protegidos por uso/correção: ${conf.exemplosProtegidos.map(escapeHtml).join(", ")}` : ""}
+  `;
+}
 
-  const resultado = {};
-
-  for (const colecao of colecoes) {
-    resultado[colecao] = await limparColecaoMigracaoLigiaAnterior(colecao);
+async function mostrarConferenciaSeguraLigia() {
+  const box = document.getElementById("resumoLigiaNovaLogica");
+  if (!box) return;
+  try {
+    box.classList.remove("hidden");
+    box.innerHTML = "Conferindo base atual do sistema com a planilha da Lígia...";
+    const dados = await carregarDadosLigiaNovaLogica();
+    const conferencia = await gerarConferenciaSeguraLigia(dados);
+    box.innerHTML = montarHtmlConferenciaSeguraLigia(conferencia, dados);
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao conferir a base da Lígia.");
   }
-
-  return resultado;
 }
 
 async function importarLigiaNovaLogicaObjeto(dados, origem = "Planilha Lígia") {
@@ -3725,28 +3851,23 @@ async function importarLigiaNovaLogicaObjeto(dados, origem = "Planilha Lígia") 
     throw new Error("Arquivo da Lígia inválido: ordensProducao não encontrado.");
   }
 
-  const contador = { total: 0, porColecao: {} };
+  const conferenciaAntes = await gerarConferenciaSeguraLigia(dados);
+  const contador = { total: 0, novos: 0, preservados: 0, erros: 0, porColecao: {}, conferenciaAntes };
   const erros = [];
 
-  try {
-    const limpeza = await limparMigracaoLigiaAnterior();
-    contador.limpezaAnterior = limpeza;
-    console.info("Migração antiga da Lígia limpa antes da nova importação:", limpeza);
-  } catch (error) {
-    console.error("Erro ao limpar migração antiga da Lígia.", error);
-    throw new Error("Não foi possível limpar a migração antiga da Lígia. Publique as regras do Firebase e tente novamente.");
-  }
+  // MODO PRODUÇÃO SEGURO:
+  // Não limpa coleção nenhuma e não sobrescreve documentos existentes.
+  // Isso protege lançamentos reais, ajustes manuais, movimentações e dados criados pelos usuários.
+  await importarColecaoLigiaSemSobrescrever("ordensProducao", dados.ordensProducao || [], contador, erros);
+  await importarColecaoLigiaSemSobrescrever("produtos", dados.produtos || [], contador, erros);
+  await importarColecaoLigiaSemSobrescrever("faccoes", dados.faccoes || [], contador, erros);
+  await importarColecaoLigiaSemSobrescrever("celulas", dados.celulas || [], contador, erros);
+  await importarColecaoLigiaSemSobrescrever("movimentacoesProducao", dados.movimentacoesProducao || [], contador, erros);
+  await importarColecaoLigiaSemSobrescrever("relatoriosMigracaoLigia", dados.relatoriosMigracaoLigia || [], contador, erros);
+  await importarColecaoLigiaSemSobrescrever("datasIncoerentesLigia", dados.datasIncoerentes || [], contador, erros);
+  await importarColecaoLigiaSemSobrescrever("processosMigracao", dados.processos || [], contador, erros);
 
-  // Ordem proposital: OPs primeiro. Assim, mesmo se alguma coleção auxiliar estiver sem regra no Firebase,
-  // as OPs não ficam escondidas atrás das referências/produtos.
-  await importarColecaoLigiaIndependente("ordensProducao", dados.ordensProducao || [], contador, erros);
-  await importarColecaoLigiaIndependente("produtos", dados.produtos || [], contador, erros);
-  await importarColecaoLigiaIndependente("faccoes", dados.faccoes || [], contador, erros);
-  await importarColecaoLigiaIndependente("celulas", dados.celulas || [], contador, erros);
-  await importarColecaoLigiaIndependente("movimentacoesProducao", dados.movimentacoesProducao || [], contador, erros);
-  await importarColecaoLigiaIndependente("relatoriosMigracaoLigia", dados.relatoriosMigracaoLigia || [], contador, erros);
-  await importarColecaoLigiaIndependente("datasIncoerentesLigia", dados.datasIncoerentes || [], contador, erros);
-  await importarColecaoLigiaIndependente("processosMigracao", dados.processos || [], contador, erros);
+  const validacao = await verificarTotaisImportacaoLigia(dados);
 
   try {
     await setDoc(doc(db, "configuracoes", "migracaoLigiaNovaLogica"), {
@@ -3754,8 +3875,12 @@ async function importarLigiaNovaLogicaObjeto(dados, origem = "Planilha Lígia") 
       resumo: dados.resumo || {},
       regrasAplicadas: dados.regrasAplicadas || [],
       origemImportacao: origem,
-      totalDocumentosImportados: contador.total,
+      modoImportacao: "seguro_sem_apagar_sem_sobrescrever",
+      totalDocumentosNovos: contador.novos,
+      documentosPreservados: contador.preservados,
       porColecao: contador.porColecao,
+      conferenciaAntes,
+      validacaoDepois: validacao,
       errosImportacao: erros,
       importadoPor: state.currentUser.uid,
       importadoEm: serverTimestamp(),
@@ -3766,14 +3891,12 @@ async function importarLigiaNovaLogicaObjeto(dados, origem = "Planilha Lígia") 
     erros.push({ colecao: "configuracoes/migracaoLigiaNovaLogica", mensagem: error?.message || "Erro desconhecido" });
   }
 
-  const validacao = await verificarTotaisImportacaoLigia(dados);
-
   try {
     await registrarLog(
-      "migracao_ligia_nova_logica",
+      "migracao_ligia_modo_seguro",
       "importacao",
       origem,
-      `${contador.total} documentos importados. OPs esperadas: ${(dados.ordensProducao || []).length}. Erros: ${erros.length}. Sem pagamentos históricos.`
+      `${contador.novos} documentos novos. ${contador.preservados} preservados. Nada apagado. OPs base: ${(dados.ordensProducao || []).length}. Erros: ${erros.length}.`
     );
   } catch (error) {
     console.warn("Não foi possível registrar log da migração.", error);
@@ -3788,21 +3911,35 @@ async function importarLigiaNovaLogica() {
     return;
   }
 
-  const confirmar = confirm("Importar a planilha da Lígia com a nova lógica? Esta importação NÃO inclui pagamentos históricos. Use em ambiente de teste/implantação.");
-  if (!confirmar) return;
-
   try {
     const dados = await carregarDadosLigiaNovaLogica();
-    const resultado = await importarLigiaNovaLogicaObjeto(dados, "Botão Importar dados da Lígia");
+    const conferencia = await gerarConferenciaSeguraLigia(dados);
+    const mensagem = [
+      "ATUALIZAÇÃO SEGURA DA LÍGIA",
+      "",
+      `Base atual da planilha: ${Number(conferencia.baseOps || 0).toLocaleString("pt-BR")} OPs`,
+      `Novas OPs que serão adicionadas: ${Number(conferencia.novosParaAdicionar || 0).toLocaleString("pt-BR")}`,
+      `OPs já existentes preservadas: ${Number(conferencia.existentesPreservados || 0).toLocaleString("pt-BR")}`,
+      `OPs protegidas por uso/correção: ${Number(conferencia.protegidosPorUso || 0).toLocaleString("pt-BR")}`,
+      `OPs fora da planilha atual que NÃO serão apagadas: ${Number(conferencia.foraDaPlanilhaAtual || 0).toLocaleString("pt-BR")}`,
+      "",
+      "Nada será apagado e nenhuma OP existente será sobrescrita.",
+      "Antes de confirmar, baixe o backup atual caso ainda não tenha feito."
+    ].join("\n");
+
+    const confirmar = confirm(mensagem);
+    if (!confirmar) return;
+
+    const resultado = await importarLigiaNovaLogicaObjeto(dados, "Atualização segura da Lígia");
     const validacaoTexto = textoValidacaoImportacaoLigia(resultado.validacao);
 
     const avisoErros = resultado.erros?.length ? " Algumas coleções falharam: publique novamente o firebase-rules.txt." : "";
-    toast(`Migração importada. OPs: ${Number(resultado.validacao?.ordens || dados.ordensProducao.length).toLocaleString("pt-BR")}. Referências únicas: ${Number(resultado.validacao?.produtos || dados.produtos?.length || 0).toLocaleString("pt-BR")}.${avisoErros}`);
+    toast(`Atualização segura concluída. Novos: ${Number(resultado.contador?.novos || 0).toLocaleString("pt-BR")}. Preservados: ${Number(resultado.contador?.preservados || 0).toLocaleString("pt-BR")}.${avisoErros}`);
     if (validacaoTexto) console.info("Validação da importação Lígia:\n" + validacaoTexto);
-    mostrarResumoLigiaNovaLogica();
+    mostrarConferenciaSeguraLigia();
   } catch (error) {
     console.error(error);
-    toast("Erro ao importar a migração da Lígia. Confira o console para detalhes.");
+    toast("Erro ao atualizar a migração da Lígia. Confira o console para detalhes.");
   }
 }
 

@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-27-ligia-filtro-tecido-preenchido-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-27-ligia-filtro-tecido-preenchido-1" />
+  <meta name="app-version" content="2026-07-27-op-digitada-sem-sugestao-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-27-op-digitada-sem-sugestao-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -461,7 +461,7 @@
                 </tr>
                 <tr class="manejo-filter-row">
                   <th>
-                    <input id="filtroManejoOP" class="filtro-digitavel" type="text" list="filtroManejoOPList" placeholder="Todas" autocomplete="off" />
+                    <input id="filtroManejoOP" class="filtro-digitavel" type="text" placeholder="Digite a OP" autocomplete="off" inputmode="numeric" />
                     <datalist id="filtroManejoOPList"></datalist>
                   </th>
                   <th>
@@ -1674,16 +1674,17 @@
           <div class="panel-header">
             <div>
               <h3>Migração Lígia — nova lógica</h3>
-              <p>Importa somente a planilha da Lígia: 746 OPs, 50 referências únicas, manejo editável, relatórios separados e movimentos sequenciais.</p>
+              <p>Atualização segura da planilha da Lígia: não apaga dados, não sobrescreve OPs já existentes e protege tudo que já foi movimentado no sistema.</p>
             </div>
           </div>
 
           <div class="notice small">
-            <strong>Regras desta versão:</strong> FASE=PRODUÇÃO vai para relatório de células; BOJOS ENCAPADOS aguarda destino; CASA fica aguardando chegada da facção; PRODUÇÃO só vira data de reenvio quando a FASE indica uma facção.
+            <strong>Modo produção seguro:</strong> a importação agora só adiciona o que estiver faltando. OPs já existentes, correções manuais, movimentações e dados lançados pelos usuários são preservados.
           </div>
 
           <div class="backup-pro-actions">
-            <button class="btn btn-success" id="btnImportarLigiaNovaLogica" type="button">Importar dados da Lígia embutidos</button>
+            <button class="btn btn-success" id="btnImportarLigiaNovaLogica" type="button">Atualizar dados da Lígia com segurança</button>
+            <button class="btn" id="btnConferenciaSeguraLigia" type="button">Conferir antes de importar</button>
             <button class="btn" id="btnResumoLigiaNovaLogica" type="button">Ver resumo dos dados</button>
           </div>
 
@@ -1757,8 +1758,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-27-ligia-filtro-tecido-preenchido-1"></script>
-  <script type="module" src="app.js?v=2026-07-27-ligia-filtro-tecido-preenchido-1"></script>
+  <script src="update.js?v=2026-07-27-op-digitada-sem-sugestao-1"></script>
+  <script type="module" src="app.js?v=2026-07-27-op-digitada-sem-sugestao-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
