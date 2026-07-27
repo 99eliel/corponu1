@@ -1,4 +1,5 @@
-import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.mjs";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   getAuth,
   onAuthStateChanged,
@@ -9,7 +10,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
   initializeFirestore,
-  getFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
   doc,
@@ -40,40 +40,18 @@ const firebaseConfig = {
   measurementId: "G-3FVRT3CD6W"
 };
 
-
-let pdfjsLibCache = null;
-async function carregarPdfJs() {
-  if (pdfjsLibCache) return pdfjsLibCache;
-  pdfjsLibCache = await import("https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.mjs");
-  pdfjsLibCache.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.mjs";
-  return pdfjsLibCache;
-}
-
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+});
 
-let db;
-try {
-  db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager()
-    })
-  });
-} catch (error) {
-  console.warn("Cache persistente do Firestore não pôde iniciar. Usando Firestore normal para não quebrar o login.", error);
-  db = getFirestore(app);
-}
-
-let secondaryApp;
-try {
-  secondaryApp = getApps().find(a => a.name === "SecondaryUserCreator") || initializeApp(firebaseConfig, "SecondaryUserCreator");
-} catch (error) {
-  console.warn("App secundário já existia ou não pôde iniciar. Reusando instância principal para não travar a tela.", error);
-  secondaryApp = app;
-}
+const secondaryApp = initializeApp(firebaseConfig, "SecondaryUserCreator");
 const secondaryAuth = getAuth(secondaryApp);
-window.OP_APP_MAIN_IMPORTOU = true;
 
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.mjs";
 
 const state = {
   currentUser: null,
@@ -93,8 +71,6 @@ const state = {
   logs: [],
   pdfImportacaoPendente: [],
   relatorioAtual: "enfesto",
-  relatorioFiltrosAplicados: false,
-  logsFiltrosAplicados: false,
   manejoSetorAtual: "sutia",
   dadosCarregados: {},
   carregandoDados: {},
@@ -116,41 +92,36 @@ function paginaAtivaAtual() {
 function renderPaginaAtiva() {
   const page = paginaAtivaAtual();
 
-  try {
-    if (page === "produtos") {
-      renderProdutos();
-      renderProdutosPendentes();
-    }
-    if (page === "ordens") renderOrdens();
-    if (page === "manejo") {
-      renderFiltrosColunasManejo();
-      renderManejoInline();
-      renderDatalistManejo();
-      renderDatalistReferencias();
-      renderDatalistCores();
-      renderDatalistNecessidadesOrdem();
-    }
-    if (page === "processos") renderProcessos();
-    if (page === "faccoes") {
-      renderFaccoes();
-      renderFaccoesPendentes();
-      renderFaccoesMovimentacoes();
-    }
-    if (page === "celulas") {
-      renderCelulas();
-      renderCelulasMovimentacoes();
-    }
-    if (page === "rastreamento") renderRastreamento();
-    if (page === "pagamentos") renderPagamentos();
-    if (page === "relatorios") renderRelatorio();
-    if (page === "usuarios") renderUsuarios();
-    if (page === "logs") renderLogs();
-
-    aplicarPermissoesTela();
-  } catch (error) {
-    console.error("Erro ao renderizar página ativa:", error);
-    toast("A tela atual encontrou um erro, mas o login foi mantido. Atualize a página ou abra outra aba do menu.");
+  if (page === "produtos") {
+    renderProdutos();
+    renderProdutosPendentes();
   }
+  if (page === "ordens") renderOrdens();
+  if (page === "manejo") {
+    renderFiltrosColunasManejo();
+    renderManejoInline();
+    renderDatalistManejo();
+    renderDatalistReferencias();
+    renderDatalistCores();
+    renderDatalistNecessidadesOrdem();
+  }
+  if (page === "processos") renderProcessos();
+  if (page === "faccoes") {
+    renderFaccoes();
+    renderFaccoesPendentes();
+    renderFaccoesMovimentacoes();
+  }
+  if (page === "celulas") {
+    renderCelulas();
+    renderCelulasMovimentacoes();
+  }
+  if (page === "rastreamento") renderRastreamento();
+  if (page === "pagamentos") renderPagamentos();
+  if (page === "relatorios") renderRelatorio();
+  if (page === "usuarios") renderUsuarios();
+  if (page === "logs") renderLogs();
+
+  aplicarPermissoesTela();
 }
 
 const pageInfo = {
@@ -383,42 +354,30 @@ function configurarSidebarRetratil() {
 
 
 document.addEventListener("DOMContentLoaded", () => {
-  const iniciarParte = (nome, fn) => {
-    try {
-      fn();
-    } catch (error) {
-      console.error(`Erro ao iniciar ${nome}:`, error);
-      try { toast(`A parte ${nome} encontrou erro, mas o login foi preservado.`); } catch (_) {}
-    }
-  };
-
-  // Login e senha entram antes de qualquer função pesada, para não bloquear acesso.
-  iniciarParte("mostrar senha", configurarVisibilidadeSenhas);
-  iniciarParte("login", configurarAuth);
-  window.OP_APP_MAIN_READY = true;
-
-  iniciarParte("sugestões de facções", carregarSugestoesFaccoesCelus);
-  iniciarParte("sugestões do manejo", carregarSugestoesExtrasManejo);
-  iniciarParte("menu lateral", configurarSidebarRetratil);
-  iniciarParte("navegação", configurarNavegacao);
-  iniciarParte("atualização manual", () => document.getElementById("btnAtualizarServidor")?.addEventListener("click", atualizarDadosServidorAgora));
-  iniciarParte("produtos", configurarProduto);
-  iniciarParte("ordens", configurarOrdem);
-  iniciarParte("manejo", configurarManejo);
-  iniciarParte("processos", configurarProcessos);
-  iniciarParte("facções", configurarFaccoes);
-  iniciarParte("células", configurarCelulas);
-  iniciarParte("rastreamento", configurarRastreamento);
-  iniciarParte("movimentação", configurarModalMovimentacao);
-  iniciarParte("chegada", configurarModalChegadaMovimentacao);
-  iniciarParte("pagamentos", configurarPagamentos);
-  iniciarParte("relatórios", configurarRelatorios);
-  iniciarParte("usuários", configurarUsuarios);
-  iniciarParte("logs", configurarLogs);
-  iniciarParte("importador PDF", configurarImportadorPDF);
-  iniciarParte("backup", configurarBackup);
-  iniciarParte("ano atual", preencherAnoAtual);
-  iniciarParte("campos PDF", preencherCamposPDFImportacao);
+  carregarSugestoesFaccoesCelus();
+  carregarSugestoesExtrasManejo();
+  configurarVisibilidadeSenhas();
+  configurarSidebarRetratil();
+  configurarAuth();
+  configurarNavegacao();
+  document.getElementById("btnAtualizarServidor")?.addEventListener("click", atualizarDadosServidorAgora);
+  configurarProduto();
+  configurarOrdem();
+  configurarManejo();
+  configurarProcessos();
+  configurarFaccoes();
+  configurarCelulas();
+  configurarRastreamento();
+  configurarModalMovimentacao();
+  configurarModalChegadaMovimentacao();
+  configurarPagamentos();
+  configurarRelatorios();
+  configurarUsuarios();
+  configurarLogs();
+  configurarImportadorPDF();
+  configurarBackup();
+  preencherAnoAtual();
+  preencherCamposPDFImportacao();
 });
 
 
@@ -436,122 +395,22 @@ function configurarVisibilidadeSenhas() {
   });
 }
 
-function setLoginStatus(mensagem, tipo = "info") {
-  const el = document.getElementById("loginStatus");
-  if (!el) return;
-  el.textContent = mensagem || "";
-  el.className = `notice small login-status ${tipo}`;
-  el.classList.toggle("hidden", !mensagem);
-}
-
-let uidEmProcessamentoLogin = null;
-async function processarUsuarioAutenticado(user) {
-  if (!user) return;
-  if (uidEmProcessamentoLogin === user.uid) return;
-  uidEmProcessamentoLogin = user.uid;
-
-  limparListeners();
-  state.currentUser = user;
-  setLoginStatus("Login confirmado. Carregando perfil...", "info");
-
-  let perfilSnap;
-  try {
-    perfilSnap = await getDoc(doc(db, "usuarios", user.uid));
-  } catch (error) {
-    console.error("Erro ao buscar perfil do usuário:", error);
-    uidEmProcessamentoLogin = null;
-    setLoginStatus("Entrou no Authentication, mas o Firestore bloqueou o perfil. Confira as regras e o documento em usuarios com o mesmo UID.", "erro");
-    toast("Authentication OK, mas perfil bloqueado no Firestore.");
-    return;
-  }
-
-  if (!perfilSnap.exists()) {
-    uidEmProcessamentoLogin = null;
-    setLoginStatus(`Login feito, mas não existe perfil em usuarios/${user.uid}. Crie esse documento ou confira o UID.`, "erro");
-    toast("Login sem perfil no Firestore. Confira o UID em usuarios.");
-    return;
-  }
-
-  const perfil = { uid: user.uid, ...perfilSnap.data() };
-
-  if (perfil.ativo === false) {
-    uidEmProcessamentoLogin = null;
-    setLoginStatus("Usuário encontrado, mas está marcado como inativo.", "erro");
-    toast("Usuário inativo. Fale com o administrador.");
-    return;
-  }
-
-  // Proteção para usuários antigos: se o campo ativo não existir, considera ativo sem alterar o banco.
-  if (perfil.ativo === undefined) perfil.ativo = true;
-
-  state.perfil = perfil;
-  setLoginStatus("Perfil carregado. Abrindo sistema...", "sucesso");
-
-  try {
-    mostrarSistema();
-  } catch (error) {
-    console.error("Erro ao abrir sistema após login:", error);
-    document.getElementById("authScreen")?.classList.add("hidden");
-    document.getElementById("appShell")?.classList.remove("hidden");
-    toast("Login realizado. Uma tela encontrou erro ao abrir, mas seu acesso foi mantido.");
-  }
-
-  try {
-    iniciarListenersFirestore();
-  } catch (error) {
-    console.error("Erro ao iniciar dados do sistema:", error);
-    toast("Login realizado. Houve erro ao carregar dados; use Atualizar ou confira as regras do Firebase.");
-  }
-
-  try {
-    registrarLog("login", "sistema", "Sistema", "Usuário entrou no sistema.");
-  } catch (error) {
-    console.warn("Não foi possível registrar log de login.", error);
-  }
-}
-
 function configurarAuth() {
-  window.OP_APP_AUTH_READY = true;
-  const formLogin = document.getElementById("loginForm");
-  if (formLogin && formLogin.dataset.authPrincipalReady !== "1") {
-    formLogin.dataset.authPrincipalReady = "1";
-    formLogin.addEventListener("submit", async event => {
-      event.preventDefault();
-      event.stopPropagation();
+  document.getElementById("loginForm").addEventListener("submit", async event => {
+    event.preventDefault();
 
-      const email = document.getElementById("loginEmail")?.value.trim();
-      const senha = document.getElementById("loginSenha")?.value;
+    const email = document.getElementById("loginEmail").value.trim();
+    const senha = document.getElementById("loginSenha").value;
 
-      if (!email || !senha) {
-        setLoginStatus("Digite e-mail e senha.", "erro");
-        return;
-      }
+    try {
+      await signInWithEmailAndPassword(auth, email, senha);
+    } catch (error) {
+      console.error(error);
+      toast("Erro ao entrar. Confira e-mail e senha.");
+    }
+  });
 
-      const btn = formLogin.querySelector('button[type="submit"]');
-      if (btn) {
-        btn.disabled = true;
-        btn.dataset.textoOriginal = btn.textContent;
-        btn.textContent = "Entrando...";
-      }
-
-      try {
-        setLoginStatus("Conferindo e-mail e senha...", "info");
-        const cred = await signInWithEmailAndPassword(auth, email, senha);
-        await processarUsuarioAutenticado(cred.user);
-      } catch (error) {
-        console.error("Erro no login:", error);
-        setLoginStatus("Erro ao entrar. Confira e-mail, senha e se o usuário existe no Firebase Authentication.", "erro");
-        toast("Erro ao entrar. Confira e-mail e senha.");
-      } finally {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = btn.dataset.textoOriginal || "Entrar";
-        }
-      }
-    });
-  }
-
-  document.getElementById("btnResetSenha")?.addEventListener("click", async () => {
+  document.getElementById("btnResetSenha").addEventListener("click", async () => {
     const email = document.getElementById("loginEmail").value.trim();
 
     if (!email) {
@@ -568,21 +427,51 @@ function configurarAuth() {
     }
   });
 
-  document.getElementById("btnLogout")?.addEventListener("click", async () => {
+  document.getElementById("btnLogout").addEventListener("click", async () => {
     await signOut(auth);
   });
 
   onAuthStateChanged(auth, async user => {
+    limparListeners();
+
     if (!user) {
-      limparListeners();
       state.currentUser = null;
       state.perfil = null;
-      uidEmProcessamentoLogin = null;
       mostrarTelaLogin();
       return;
     }
 
-    await processarUsuarioAutenticado(user);
+    state.currentUser = user;
+
+    try {
+      const perfilSnap = await getDoc(doc(db, "usuarios", user.uid));
+
+      if (!perfilSnap.exists()) {
+        await signOut(auth);
+        toast("Login sem perfil no Firestore. Crie o documento em usuarios usando o UID deste usuário.");
+        return;
+      }
+
+      const perfil = {
+        uid: user.uid,
+        ...perfilSnap.data()
+      };
+
+      if (!perfil.ativo) {
+        await signOut(auth);
+        toast("Usuário inativo. Fale com o administrador.");
+        return;
+      }
+
+      state.perfil = perfil;
+      mostrarSistema();
+      iniciarListenersFirestore();
+      registrarLog("login", "sistema", "Sistema", "Usuário entrou no sistema.");
+    } catch (error) {
+      console.error(error);
+      await signOut(auth);
+      toast("Erro de permissão. Confira as regras do Firestore e o perfil do usuário.");
+    }
   });
 }
 
@@ -850,7 +739,7 @@ function carregarDadosDaPagina(page) {
   }
 
   if (page === "logs") {
-    // Auditoria carrega somente quando o usuário clicar em Filtrar auditoria.
+    carregarLogsSeNecessario();
   }
 
   if (page === "relatorios") {
@@ -941,30 +830,25 @@ function abrirPagina(page) {
     document.getElementById("pageSubtitle").textContent = pageInfo[page].subtitle;
   }
 
-  try {
-    carregarDadosDaPagina(page);
+  carregarDadosDaPagina(page);
 
-    if (page === "produtos") {
-      renderProdutos();
-      renderProdutosPendentes();
-    }
-    if (page === "ordens") renderOrdens();
-    if (page === "manejo") {
-      atualizarBotoesManejoSetor();
-      atualizarManejoComSoma();
-    }
-    if (page === "processos") renderProcessos();
-    if (page === "faccoes") renderFaccoesMovimentacoes();
-    if (page === "celulas") renderCelulasMovimentacoes();
-    if (page === "rastreamento") renderRastreamento();
-    if (page === "pagamentos") renderPagamentos();
-    if (page === "relatorios") renderRelatorio();
-    if (page === "usuarios") renderUsuarios();
-    if (page === "logs") renderLogs();
-  } catch (error) {
-    console.error(`Erro ao abrir a página ${page}:`, error);
-    toast("A tela abriu, mas encontrou um erro ao carregar os dados. O login foi mantido.");
+  if (page === "produtos") {
+    renderProdutos();
+    renderProdutosPendentes();
   }
+  if (page === "ordens") renderOrdens();
+  if (page === "manejo") {
+    atualizarBotoesManejoSetor();
+    atualizarManejoComSoma();
+  }
+  if (page === "processos") renderProcessos();
+  if (page === "faccoes") renderFaccoesMovimentacoes();
+  if (page === "celulas") renderCelulasMovimentacoes();
+  if (page === "rastreamento") renderRastreamento();
+  if (page === "pagamentos") renderPagamentos();
+  if (page === "relatorios") renderRelatorio();
+  if (page === "usuarios") renderUsuarios();
+  if (page === "logs") renderLogs();
 }
 
 function configurarProduto() {
@@ -8447,17 +8331,11 @@ function configurarRelatorios() {
       document.querySelectorAll(".report-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       state.relatorioAtual = btn.dataset.relatorio;
-      state.relatorioFiltrosAplicados = false;
-      resetarLimitesRenderTabelaPrefixo("relatorio");
       renderRelatorio();
     });
   });
 
-  document.getElementById("btnAplicarFiltros").addEventListener("click", () => {
-    state.relatorioFiltrosAplicados = true;
-    resetarLimiteRenderTabela(`relatorio-${state.relatorioAtual}`);
-    renderRelatorio();
-  });
+  document.getElementById("btnAplicarFiltros").addEventListener("click", renderRelatorio);
 
   document.getElementById("btnLimparFiltros").addEventListener("click", () => {
     document.getElementById("filtroSemana").value = "";
@@ -8465,19 +8343,11 @@ function configurarRelatorios() {
     document.getElementById("filtroAno").value = "";
     document.getElementById("filtroReferencia").value = "";
     document.getElementById("filtroCor").value = "";
-    state.relatorioFiltrosAplicados = false;
-    resetarLimitesRenderTabelaPrefixo("relatorio");
     renderRelatorio();
   });
 
   document.getElementById("btnExportarCSV").addEventListener("click", exportarCSV);
-  document.getElementById("btnImprimir").addEventListener("click", () => {
-    if (!state.relatorioFiltrosAplicados) {
-      toast("Aplique os filtros antes de imprimir o relatório.");
-      return;
-    }
-    window.print();
-  });
+  document.getElementById("btnImprimir").addEventListener("click", () => window.print());
 }
 
 function getOrdensRelatorio() {
@@ -8548,22 +8418,17 @@ function ordemMes(mes) {
 
 function renderRelatorio() {
   const info = reportInfo[state.relatorioAtual];
-  const titulo = document.getElementById("tituloRelatorio");
-  const subtitulo = document.getElementById("subtituloRelatorio");
+  document.getElementById("tituloRelatorio").textContent = info.title;
+  document.getElementById("subtituloRelatorio").textContent = info.subtitle;
+
   const thead = document.getElementById("cabecalhoRelatorio");
   const tbody = document.getElementById("corpoRelatorio");
-  const chaveTabela = `relatorio-${state.relatorioAtual}`;
+  const ordens = getOrdensRelatorio();
 
-  if (!info || !thead || !tbody) return;
-
-  titulo.textContent = info.title;
-  subtitulo.textContent = info.subtitle;
-  limparControleRenderTabela(chaveTabela);
-
-  let colspan = 6;
 
   if (info.tipo === "bipado") {
-    colspan = 10;
+    const movimentos = getMovimentacoesRelatorioBipadas();
+
     thead.innerHTML = `
       <tr>
         <th>OP</th>
@@ -8578,51 +8443,13 @@ function renderRelatorio() {
         <th>Status</th>
       </tr>
     `;
-  } else if (info.tipo === "geral") {
-    colspan = 10;
-    thead.innerHTML = `
-      <tr>
-        <th>OP</th>
-        <th>Necessidade</th>
-        <th>Referência</th>
-        <th>Cor</th>
-        <th>Produto</th>
-        <th>Qtd.</th>
-        <th>Alça</th>
-        <th>Bojo</th>
-        <th>Renda</th>
-        <th>Obs.</th>
-      </tr>
-    `;
-  } else {
-    colspan = 6;
-    thead.innerHTML = `
-      <tr>
-        <th>OP</th>
-        <th>Necessidade</th>
-        <th>Referência</th>
-        <th>Cor</th>
-        <th>Quantidade</th>
-        <th>${escapeHtml(info.coluna)}</th>
-      </tr>
-    `;
-  }
-
-  if (!state.relatorioFiltrosAplicados) {
-    tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty">Escolha o tipo de relatório, informe os filtros necessários e clique em <strong>Aplicar filtros</strong>. Nada é listado automaticamente para economizar leitura e processamento.</td></tr>`;
-    return;
-  }
-
-  if (info.tipo === "bipado") {
-    const movimentos = getMovimentacoesRelatorioBipadas();
 
     if (!movimentos.length) {
-      tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma movimentação bipada encontrada para os filtros aplicados.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma movimentação bipada encontrada.</td></tr>`;
       return;
     }
 
-    const movimentosVisiveis = limitarItensRenderTabela(chaveTabela, movimentos);
-    tbody.innerHTML = movimentosVisiveis.map(mov => `
+    tbody.innerHTML = movimentos.map(mov => `
       <tr>
         <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
         <td>${escapeHtml(mov.referencia || "-")}</td>
@@ -8637,21 +8464,31 @@ function renderRelatorio() {
       </tr>
     `).join("");
 
-    renderControleRenderTabela(tbody, chaveTabela, movimentos.length, movimentosVisiveis.length, "movimentações filtradas");
     return;
   }
-
-  const ordens = getOrdensRelatorio();
-
-  if (!ordens.length) {
-    tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty">Nenhuma ordem encontrada para os filtros aplicados.</td></tr>`;
-    return;
-  }
-
-  const ordensVisiveis = limitarItensRenderTabela(chaveTabela, ordens);
 
   if (info.tipo === "geral") {
-    tbody.innerHTML = ordensVisiveis.map(op => `
+    thead.innerHTML = `
+      <tr>
+        <th>OP</th>
+        <th>Necessidade</th>
+        <th>Referência</th>
+        <th>Cor</th>
+        <th>Produto</th>
+        <th>Qtd.</th>
+        <th>Alça</th>
+        <th>Bojo</th>
+        <th>Renda</th>
+        <th>Obs.</th>
+      </tr>
+    `;
+
+    if (!ordens.length) {
+      tbody.innerHTML = `<tr><td colspan="10" class="empty">Nenhuma ordem encontrada para este relatório.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = ordens.map(op => `
       <tr>
         <td><strong>${escapeHtml(op.numeroOP)}</strong></td>
         <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
@@ -8665,20 +8502,36 @@ function renderRelatorio() {
         <td>${escapeHtml(op.observacoes || "-")}</td>
       </tr>
     `).join("");
-  } else {
-    tbody.innerHTML = ordensVisiveis.map(op => `
-      <tr>
-        <td><strong>${escapeHtml(op.numeroOP)}</strong></td>
-        <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
-        <td>${escapeHtml(op.referencia)}</td>
-        <td><strong>${escapeHtml(op.cor || "-")}</strong></td>
-        <td>${op.quantidade}</td>
-        <td>${simNaoBadge(true)}</td>
-      </tr>
-    `).join("");
+
+    return;
   }
 
-  renderControleRenderTabela(tbody, chaveTabela, ordens.length, ordensVisiveis.length, "ordens filtradas");
+  thead.innerHTML = `
+    <tr>
+      <th>OP</th>
+      <th>Necessidade</th>
+      <th>Referência</th>
+      <th>Cor</th>
+      <th>Quantidade</th>
+      <th>${escapeHtml(info.coluna)}</th>
+    </tr>
+  `;
+
+  if (!ordens.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhuma ordem encontrada para este relatório.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = ordens.map(op => `
+    <tr>
+      <td><strong>${escapeHtml(op.numeroOP)}</strong></td>
+      <td>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</td>
+      <td>${escapeHtml(op.referencia)}</td>
+      <td><strong>${escapeHtml(op.cor || "-")}</strong></td>
+      <td>${op.quantidade}</td>
+      <td>${simNaoBadge(true)}</td>
+    </tr>
+  `).join("");
 }
 
 function configurarUsuarios() {
@@ -9086,27 +8939,7 @@ async function alternarUsuario(uid, novoStatus) {
 function configurarLogs() {
   const busca = document.getElementById("buscaLog");
   if (busca) {
-    busca.addEventListener("keydown", event => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        aplicarFiltroLogsAuditoria();
-      }
-    });
-  }
-
-  const btnFiltrar = document.getElementById("btnFiltrarLogs");
-  if (btnFiltrar) {
-    btnFiltrar.addEventListener("click", aplicarFiltroLogsAuditoria);
-  }
-
-  const btnLimpar = document.getElementById("btnLimparLogs");
-  if (btnLimpar) {
-    btnLimpar.addEventListener("click", () => {
-      if (busca) busca.value = "";
-      state.logsFiltrosAplicados = false;
-      resetarLimiteRenderTabela("logs-auditoria");
-      renderLogs();
-    });
+    busca.addEventListener("input", renderLogs);
   }
 
   const btn = document.getElementById("btnExportarLogs");
@@ -9115,41 +8948,12 @@ function configurarLogs() {
   }
 }
 
-function aplicarFiltroLogsAuditoria() {
-  if (!ehAdmin()) {
-    toast("Apenas admin pode visualizar logs.");
-    return;
-  }
-
-  state.logsFiltrosAplicados = true;
-  resetarLimiteRenderTabela("logs-auditoria");
-  carregarLogsSeNecessario();
-  renderLogs();
-}
-
 function renderLogs() {
   const tbody = document.getElementById("listaLogs");
   if (!tbody) return;
 
-  limparControleRenderTabela("logs-auditoria");
-
   if (!ehAdmin()) {
     tbody.innerHTML = `<tr><td colspan="6" class="empty">Apenas admin pode visualizar logs.</td></tr>`;
-    return;
-  }
-
-  if (!state.logsFiltrosAplicados) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">Digite um termo, se precisar, e clique em <strong>Filtrar auditoria</strong>. Os logs não aparecem automaticamente para reduzir carregamento.</td></tr>`;
-    return;
-  }
-
-  if (state.carregandoDados.logs && !state.dadosCarregados.logs) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">Carregando auditoria...</td></tr>`;
-    return;
-  }
-
-  if (!state.dadosCarregados.logs && !state.logs.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">Clique em Filtrar auditoria para carregar os registros.</td></tr>`;
     return;
   }
 
@@ -9172,12 +8976,11 @@ function renderLogs() {
   }
 
   if (!logs.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhum log encontrado para o filtro aplicado.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhum log encontrado.</td></tr>`;
     return;
   }
 
-  const logsVisiveis = limitarItensRenderTabela("logs-auditoria", logs);
-  tbody.innerHTML = logsVisiveis.map(log => `
+  tbody.innerHTML = logs.slice(0, 300).map(log => `
     <tr>
       <td>${escapeHtml(formatarDataHora(log.criadoEm))}</td>
       <td>
@@ -9190,30 +8993,6 @@ function renderLogs() {
       <td class="log-detail">${escapeHtml(log.detalhes || "-")}</td>
     </tr>
   `).join("");
-
-  renderControleRenderTabela(tbody, "logs-auditoria", logs.length, logsVisiveis.length, "logs filtrados");
-}
-
-function getLogsAuditoriaFiltrados() {
-  const busca = normalizarTexto(document.getElementById("buscaLog")?.value || "");
-  let logs = [...state.logs];
-
-  if (busca) {
-    logs = logs.filter(log => {
-      const texto = normalizarTexto([
-        log.usuarioNome,
-        log.usuarioEmail,
-        log.usuarioTipo,
-        log.acao,
-        log.tipoAlvo,
-        log.alvoId,
-        log.detalhes
-      ].join(" "));
-      return texto.includes(busca);
-    });
-  }
-
-  return logs;
 }
 
 function exportarLogsCSV() {
@@ -9222,15 +9001,10 @@ function exportarLogsCSV() {
     return;
   }
 
-  if (!state.logsFiltrosAplicados) {
-    toast("Filtre a auditoria antes de exportar.");
-    return;
-  }
-
-  const logs = getLogsAuditoriaFiltrados();
+  const logs = [...state.logs];
 
   if (!logs.length) {
-    toast("Não há logs filtrados para exportar.");
+    toast("Não há logs para exportar.");
     return;
   }
 
@@ -9253,10 +9027,9 @@ function exportarLogsCSV() {
 
   const csv = linhas
     .map(linha => linha.map(campo => `"${String(campo).replaceAll('"', '""')}"`).join(";"))
-    .join("
-");
+    .join("\n");
 
-  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
 
@@ -9444,7 +9217,6 @@ function preencherCamposPDFImportacao() {
 
 async function extrairTextoPDF(file) {
   const buffer = await file.arrayBuffer();
-  const pdfjsLib = await carregarPdfJs();
   const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
   let textoFinal = "";
 
@@ -10292,11 +10064,6 @@ function getLinhasCSVRelatorio(ordens) {
 
 
 function exportarCSV() {
-  if (!state.relatorioFiltrosAplicados) {
-    toast("Aplique os filtros antes de exportar o relatório.");
-    return;
-  }
-
   const info = reportInfo[state.relatorioAtual];
   const ordens = getOrdensRelatorio();
   const temDados = info.tipo === "bipado" ? getMovimentacoesRelatorioBipadas().length : ordens.length;

@@ -7,40 +7,39 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-27-login-resgate-definitivo-3" />
-  <link rel="stylesheet" href="style.css?v=2026-07-27-login-resgate-definitivo-3" />
-
+  <meta name="app-version" content="2026-07-27-resgate-funcional-dados-1" />
   <script>
-    // Resgate de cache: limpa service worker/cache antigos uma única vez nesta versão.
-    (function () {
-      var VERSION = "2026-07-27-login-resgate-definitivo-3";
-      var KEY = "op_confeccao_login_resgate_" + VERSION;
-      async function limpar() {
+    (function() {
+      var RESCUE_VERSION = "2026-07-27-resgate-funcional-dados-1";
+      var KEY = "op_confeccao_resgate_funcional_aplicado";
+      var params = new URLSearchParams(window.location.search);
+      if (params.get("resgateOk") === RESCUE_VERSION) return;
+      try {
+        if (localStorage.getItem(KEY) === RESCUE_VERSION) return;
+        localStorage.setItem(KEY, RESCUE_VERSION);
+      } catch (e) {}
+      Promise.resolve().then(async function() {
+        try {
+          if ("caches" in window) {
+            var keys = await caches.keys();
+            await Promise.all(keys.filter(function(k) { return k.indexOf("op-confeccao-") === 0; }).map(function(k) { return caches.delete(k); }));
+          }
+        } catch (e) {}
         try {
           if ("serviceWorker" in navigator && navigator.serviceWorker.getRegistrations) {
             var regs = await navigator.serviceWorker.getRegistrations();
-            await Promise.all(regs.map(function (r) { return r.unregister(); }));
+            await Promise.all(regs.map(function(r) { return r.unregister(); }));
           }
-          if ("caches" in window) {
-            var keys = await caches.keys();
-            await Promise.all(keys.filter(function (k) { return k.indexOf("op-confeccao-") === 0; }).map(function (k) { return caches.delete(k); }));
-          }
-        } catch (e) { console.warn("Resgate de cache não conseguiu limpar tudo.", e); }
-      }
-      try {
-        if (!sessionStorage.getItem(KEY) && !location.search.includes("loginResgate=1")) {
-          sessionStorage.setItem(KEY, "1");
-          limpar().finally(function () {
-            var url = new URL(location.href);
-            url.searchParams.set("loginResgate", "1");
-            url.searchParams.set("t", Date.now().toString());
-            location.replace(url.toString());
-          });
-        }
-      } catch (e) { console.warn(e); }
+        } catch (e) {}
+        var url = new URL(window.location.href);
+        url.searchParams.set("resgateOk", RESCUE_VERSION);
+        url.searchParams.set("v", RESCUE_VERSION);
+        window.location.replace(url.toString());
+      });
     })();
   </script>
-  <script type="module" src="login-core.js?v=2026-07-27-login-resgate-definitivo-3"></script>
+
+  <link rel="stylesheet" href="style.css?v=2026-07-27-resgate-funcional-dados-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -76,7 +75,6 @@
         </label>
 
         <button class="btn btn-primary full" type="submit">Entrar</button>
-        <div id="loginStatus" class="notice small login-status hidden"></div>
         <button class="btn full" type="button" id="btnResetSenha">Esqueci minha senha</button>
 
         <div class="notice small">
@@ -1324,7 +1322,7 @@
           <div class="panel-header">
             <div>
               <h3>Relatórios de produção</h3>
-              <p>Relatórios só aparecem após aplicar filtros. Isso evita carregar listas grandes sem necessidade.</p>
+              <p>Relatórios gerais usam OPs. O relatório Bipadas usa as movimentações finalizadas em Facções/Células.</p>
             </div>
           </div>
 
@@ -1551,12 +1549,10 @@
           <div class="panel-header">
             <div>
               <h3>Logs / Auditoria</h3>
-              <p>Veja quem fez alterações importantes. A auditoria só aparece após clicar em Filtrar auditoria.</p>
+              <p>Veja quem fez alterações importantes dentro do sistema.</p>
             </div>
             <div class="actions">
-              <input id="buscaLog" class="search" type="text" placeholder="Buscar log, OP, usuário ou ação..." />
-              <button class="btn btn-primary" id="btnFiltrarLogs">Filtrar auditoria</button>
-              <button class="btn" id="btnLimparLogs">Limpar</button>
+              <input id="buscaLog" class="search" type="text" placeholder="Buscar log..." />
               <button class="btn btn-success" id="btnExportarLogs">Exportar logs CSV</button>
             </div>
           </div>
@@ -1806,7 +1802,10 @@
       </form>
     </div>
   </div>
-<div class="modal-backdrop hidden" id="modalMovimentacao">
+
+  <script src="update.js?v=2026-07-27-resgate-funcional-dados-1"></script>
+  <script type="module" src="app.js?v=2026-07-27-resgate-funcional-dados-1"></script>
+  <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
         <div>
@@ -1926,7 +1925,5 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-27-login-resgate-definitivo-3"></script>
-  <script type="module" src="app.js?v=2026-07-27-login-resgate-definitivo-3"></script>
 </body>
 </html>

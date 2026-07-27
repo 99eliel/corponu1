@@ -1,12 +1,11 @@
-const APP_VERSION = "2026-07-27-login-resgate-definitivo-3";
+const APP_VERSION = "2026-07-27-resgate-funcional-dados-1";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 
 const CORE_ASSETS = [
   "./index.html",
-  "./style.css?v=2026-07-27-login-resgate-definitivo-3",
-  "./app.js?v=2026-07-27-login-resgate-definitivo-3",
-  "./login-core.js?v=2026-07-27-login-resgate-definitivo-3",
-  "./update.js?v=2026-07-27-login-resgate-definitivo-3"
+  "./style.css?v=2026-07-27-resgate-funcional-dados-1",
+  "./app.js?v=2026-07-27-resgate-funcional-dados-1",
+  "./update.js?v=2026-07-27-resgate-funcional-dados-1"
 ];
 
 self.addEventListener("install", event => {
@@ -70,7 +69,6 @@ self.addEventListener("fetch", event => {
     url.pathname.endsWith("/") ||
     url.pathname.endsWith("/index.html") ||
     url.pathname.endsWith("/app.js") ||
-    url.pathname.endsWith("/login-core.js") ||
     url.pathname.endsWith("/style.css") ||
     url.pathname.endsWith("/update.js") ||
     url.pathname.endsWith("/version.json") ||

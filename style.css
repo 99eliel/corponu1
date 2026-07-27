@@ -4070,8 +4070,3 @@ table td {
 #dashboard.hidden {
   display: none !important;
 }
-
-.login-status.hidden { display: none !important; }
-.login-status.info { border-color: #93c5fd; background: #eff6ff; color: #1e3a8a; }
-.login-status.sucesso { border-color: #86efac; background: #f0fdf4; color: #14532d; }
-.login-status.erro { border-color: #fca5a5; background: #fef2f2; color: #7f1d1d; }
