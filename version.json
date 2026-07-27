@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-op-manual-salvar-1",
-  "descricao": "Cadastro manual de OP agora permite digitar o número da ordem antes de salvar, preservando regras de SILK/TECIDO e modo produção seguro.",
+  "version": "2026-07-27-necessidade-editavel-1",
+  "descricao": "Campo Necessidade editável igual à planilha, preservando dados atuais e mantendo regras de SILK/TECIDO e modo produção seguro.",
   "data": "2026-07-27"
 }

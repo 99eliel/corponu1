@@ -921,6 +921,50 @@ function montarTextoNecessidade(inicio, fim) {
   return `${dataISOParaBR(inicio)} a ${dataISOParaBR(fim)}`;
 }
 
+function normalizarNecessidadeOrdem(valor) {
+  return String(valor || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function dataBRCurtaParaISO(valor, anoPadrao = new Date().getFullYear()) {
+  const texto = String(valor || "").trim();
+  let match = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (match) {
+    const dia = String(match[1]).padStart(2, "0");
+    const mes = String(match[2]).padStart(2, "0");
+    let ano = String(match[3]);
+    if (ano.length === 2) ano = `20${ano}`;
+    return `${ano}-${mes}-${dia}`;
+  }
+
+  match = texto.match(/^(\d{1,2})\/(\d{1,2})$/);
+  if (match) {
+    const dia = String(match[1]).padStart(2, "0");
+    const mes = String(match[2]).padStart(2, "0");
+    return `${anoPadrao}-${mes}-${dia}`;
+  }
+
+  return "";
+}
+
+function extrairPeriodoNecessidade(texto) {
+  const necessidade = normalizarNecessidadeOrdem(texto);
+  if (!necessidade) return { inicio: "", fim: "" };
+
+  const anoPadrao = new Date().getFullYear();
+  const partes = necessidade
+    .split(/\s+(?:A|ATÉ|ATE)\s+|[-–—]/i)
+    .map(parte => parte.trim())
+    .filter(Boolean);
+
+  const inicio = dataBRCurtaParaISO(partes[0], anoPadrao);
+  const fim = dataBRCurtaParaISO(partes[1] || partes[0], anoPadrao);
+
+  return { inicio, fim };
+}
+
 
 function configurarOrdem() {
   const form = document.getElementById("formOrdem");
@@ -972,12 +1016,13 @@ function configurarOrdem() {
 
     const cor = normalizarCor(document.getElementById("ordemCor").value);
     const quantidade = Number(document.getElementById("ordemQuantidade").value);
-    const necessidadeInicio = document.getElementById("ordemNecessidadeInicio").value;
-    const necessidadeFim = document.getElementById("ordemNecessidadeFim").value;
-    const necessidade = montarTextoNecessidade(necessidadeInicio, necessidadeFim);
+    const necessidade = normalizarNecessidadeOrdem(document.getElementById("ordemNecessidadeTexto")?.value || "");
+    const periodoNecessidade = extrairPeriodoNecessidade(necessidade);
+    const necessidadeInicio = periodoNecessidade.inicio;
+    const necessidadeFim = periodoNecessidade.fim;
     const semana = "";
-    const mes = nomeMesPorDataISO(necessidadeInicio);
-    const ano = anoPorDataISO(necessidadeInicio);
+    const mes = necessidadeInicio ? nomeMesPorDataISO(necessidadeInicio) : "";
+    const ano = necessidadeInicio ? anoPorDataISO(necessidadeInicio) : new Date().getFullYear();
 
     if (!cor) {
       toast("Informe a cor da OP.");
@@ -989,13 +1034,14 @@ function configurarOrdem() {
       return;
     }
 
-    if (!necessidadeInicio || !necessidadeFim) {
-      toast("Informe a data inicial e a data final da necessidade.");
+    if (!necessidade) {
+      toast("Informe a necessidade da OP. Ex: URGENTE, 24/07 ou 24/07 a 30/07.");
+      document.getElementById("ordemNecessidadeTexto")?.focus();
       return;
     }
 
-    if (necessidadeInicio > necessidadeFim) {
-      toast("A data inicial não pode ser maior que a data final.");
+    if (necessidadeInicio && necessidadeFim && necessidadeInicio > necessidadeFim) {
+      toast("Confira a necessidade: a data inicial não pode ser maior que a final.");
       return;
     }
 
@@ -1068,6 +1114,8 @@ function montarDadosOrdem({ numeroOP, produto, referencia, cor, quantidade, sema
     necessidadeInicio,
     necessidadeFim,
     necessidade,
+    necessidadeTexto: necessidade,
+    necessidadeManual: true,
     quantidade,
     possuiAlca: Boolean(produto.possuiAlca),
     possuiBojo: Boolean(produto.possuiBojo),
@@ -1150,16 +1198,14 @@ function mostrarPreviewProduto() {
 }
 
 function capturarOrdemPendente(referencia) {
-  const necessidadeInicio = document.getElementById("ordemNecessidadeInicio")?.value || "";
-  const necessidadeFim = document.getElementById("ordemNecessidadeFim")?.value || "";
+  const necessidade = normalizarNecessidadeOrdem(document.getElementById("ordemNecessidadeTexto")?.value || "");
 
   return {
     numeroOP: normalizarNumeroOP(document.getElementById("ordemNumero")?.value || ""),
     referencia: normalizarReferencia(referencia),
     cor: normalizarCor(document.getElementById("ordemCor").value),
     quantidade: document.getElementById("ordemQuantidade").value,
-    necessidadeInicio,
-    necessidadeFim,
+    necessidade,
     observacoes: document.getElementById("ordemObs").value
   };
 }
@@ -1206,8 +1252,7 @@ function restaurarOrdemPendenteSePossivel(produtoCadastrado) {
     document.getElementById("ordemReferencia").value = produtoCadastrado.referencia;
     document.getElementById("ordemCor").value = pendente.cor || "";
     document.getElementById("ordemQuantidade").value = pendente.quantidade || "";
-    document.getElementById("ordemNecessidadeInicio").value = pendente.necessidadeInicio || "";
-    document.getElementById("ordemNecessidadeFim").value = pendente.necessidadeFim || "";
+    document.getElementById("ordemNecessidadeTexto").value = pendente.necessidade || "";
     document.getElementById("ordemObs").value = pendente.observacoes || "";
 
     mostrarPreviewProduto();
@@ -1227,8 +1272,7 @@ function limparFormOrdem() {
   document.getElementById("ordemReferencia").value = "";
   document.getElementById("ordemCor").value = "";
   document.getElementById("ordemQuantidade").value = "";
-  document.getElementById("ordemNecessidadeInicio").value = "";
-  document.getElementById("ordemNecessidadeFim").value = "";
+  document.getElementById("ordemNecessidadeTexto").value = "";
   document.getElementById("ordemObs").value = "";
   document.getElementById("produtoPreview").classList.add("hidden");
 }
@@ -1243,8 +1287,7 @@ function editarOrdem(id) {
   document.getElementById("ordemReferencia").value = ordem.referencia;
   document.getElementById("ordemCor").value = ordem.cor || "";
   document.getElementById("ordemQuantidade").value = ordem.quantidade;
-  document.getElementById("ordemNecessidadeInicio").value = ordem.necessidadeInicio || "";
-  document.getElementById("ordemNecessidadeFim").value = ordem.necessidadeFim || "";
+  document.getElementById("ordemNecessidadeTexto").value = getNecessidadeDaOrdem(ordem) || "";
   document.getElementById("ordemObs").value = ordem.observacoes || "";
 
   mostrarPreviewProduto();
@@ -9484,6 +9527,7 @@ function renderTudo() {
   renderDatalistManejo();
   renderDatalistReferencias();
   renderDatalistCores();
+  renderDatalistNecessidadesOrdem();
   renderProcessos();
   renderFaccoes();
   renderFaccoesPendentes();
@@ -9663,8 +9707,7 @@ function renderOrdens() {
   tbody.innerHTML = ordens.map(op => `
     <tr>
       <td><strong>${escapeHtml(op.numeroOP)}</strong></td>
-      <td>Semana ${op.semana}</td>
-      <td>${escapeHtml(op.mes)}/${op.ano}</td>
+      <td><strong>${escapeHtml(getNecessidadeDaOrdem(op) || "-")}</strong></td>
       <td>${escapeHtml(op.referencia)}</td>
       <td><strong>${escapeHtml(op.cor || "-")}</strong></td>
       <td>${escapeHtml(op.produtoNome)}</td>
@@ -9687,6 +9730,27 @@ function renderDatalistReferencias() {
   datalist.innerHTML = state.produtos.map(produto => {
     return `<option value="${escapeHtml(produto.referencia)}">${escapeHtml(produto.nome)}</option>`;
   }).join("");
+}
+
+function renderDatalistNecessidadesOrdem() {
+  const datalist = document.getElementById("necessidadesOrdemList");
+  if (!datalist) return;
+
+  const opcoesFixas = ["URGENTE", "PRIORIDADE", "NORMAL"];
+  const valoresSistema = state.ordens
+    .map(op => getNecessidadeDaOrdem(op))
+    .map(valor => normalizarNecessidadeOrdem(valor))
+    .filter(Boolean);
+
+  const unicos = [...new Set([...opcoesFixas, ...valoresSistema])]
+    .sort((a, b) => {
+      const ai = opcoesFixas.indexOf(a);
+      const bi = opcoesFixas.indexOf(b);
+      if (ai >= 0 || bi >= 0) return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+      return a.localeCompare(b, "pt-BR", { numeric: true });
+    });
+
+  datalist.innerHTML = unicos.map(valor => `<option value="${escapeHtml(valor)}"></option>`).join("");
 }
 
 function renderDatalistCores() {
