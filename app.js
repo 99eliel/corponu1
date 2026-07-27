@@ -181,6 +181,47 @@ const reportInfo = {
 const FACCOES_EXTRAIDAS_PLANILHA = [];
 const LIGIA_MIGRACAO_DADOS_URL = 'dados-ligia-migracao.json';
 
+// Processos e facções oficiais usados no envio para facção.
+// A escolha agora segue a ordem: primeiro processo, depois facções permitidas.
+const PROCESSOS_FACCAO_PADRAO = [
+  "ENCAPAR BOJO",
+  "ALÇA",
+  "CALCINHA MONTAGEM",
+  "CALCINHA COMPLETA",
+  "SUTIÃ MONTAGEM",
+  "SUTIÃ COMPLETO"
+];
+
+const FACCOES_POR_PROCESSO_PADRAO = {
+  "ENCAPAR BOJO": ["DIVINA", "GRACIANE", "JESSICA", "LARISSA", "ALINE BATISTA", "DAIANY", "NAGILA", "DELMA", "GIRLAINE"],
+  "ALÇA": ["JANAINA", "IVONE", "LUANA", "KARYTA", "SIMEI", "SIMONE"],
+  "CALCINHA MONTAGEM": ["ANA FLAVIA", "KAUANE", "LIANA", "DAIANA", "LEIDIANE", "ANDREZA"],
+  "CALCINHA COMPLETA": ["LORENA", "JEAN", "SCHENEIDER", "DANIELA", "KAMILA", "LIANDRA", "JUZENI", "THEILLOR", "SILVANY", "LEONARDO", "MATHEUS", "BEATRIZ", "MARILIA", "DARLLEN", "RONEIDIA"],
+  "SUTIÃ MONTAGEM": ["LIVIA", "FRACEILDA", "MOCINHA", "NAYARA", "NAGILA", "GIRLAINE", "JHENIFER"],
+  "SUTIÃ COMPLETO": ["DANUBIA", "LARA CRISTINA", "KAKA", "GISLAINY", "GISLAINE", "ITAMAR", "LUCIA", "GOIANIRA"]
+};
+
+const ALIASES_PROCESSO_FACCAO = {
+  "BOJO": "ENCAPAR BOJO",
+  "ENCAPAR": "ENCAPAR BOJO",
+  "ENCAPAR BOJOS": "ENCAPAR BOJO",
+  "ALCA": "ALÇA",
+  "ALCAS": "ALÇA",
+  "ALÇAS": "ALÇA",
+  "CALCINHA": "CALCINHA COMPLETA",
+  "MONTAGEM CALCINHA": "CALCINHA MONTAGEM",
+  "SUTIA MONTAGEM": "SUTIÃ MONTAGEM",
+  "SUTIÃ MONTAGEM": "SUTIÃ MONTAGEM",
+  "SUTIA COMPLETO": "SUTIÃ COMPLETO",
+  "SUTIÃ COMPLETO": "SUTIÃ COMPLETO"
+};
+
+const ALIASES_NOME_FACCAO = {
+  "LARA CRISTINA KAKA": "KAKA",
+  "LARA CRISTINA (KAKA)": "KAKA",
+  "KAKA LARA CRISTINA": "KAKA"
+};
+
 
 function carregarSugestoesFaccoesCelus() {
   try {
@@ -2000,15 +2041,17 @@ function renderManejoInline() {
           ${movimentosAbertos ? `<small class="mov-aberto">${movimentosAbertos} mov.</small>` : ""}
         </td>
         <td>
-          <div class="action-menu-wrap">
-            <button class="btn-kebab" type="button" onclick="toggleMenuAcoesManejo(event, '${op.id}')" title="Ações da OP">⋮</button>
-            <div class="action-menu" id="menu-acoes-${op.id}">
-              <button type="button" onclick="salvarManejoLinha('${op.id}')">Salvar edição rápida</button>
-              <button type="button" onclick="mandarParaFaccao('${op.id}')">Enviar para facção</button>
-              <button type="button" onclick="mandarParaCelula('${op.id}')">Enviar para célula</button>
-              <button type="button" onclick="abrirModalAjusteMigracao('${op.id}')">Editar localização/status</button>
-              <button type="button" onclick="abrirRastreamentoOP('${op.id}')">Ver histórico/rastreamento</button>
-              ${manejo && ehAdmin() ? `<button class="danger" type="button" onclick="limparManejoLinha('${op.id}')">Limpar manejo</button>` : ""}
+          <div class="manejo-actions-inline">
+            <button class="btn-save-manejo" type="button" onclick="salvarManejoLinha('${op.id}')" title="Salvar edição rápida" aria-label="Salvar edição rápida da OP ${escapeHtml(op.numeroOP || '')}">✓</button>
+            <div class="action-menu-wrap">
+              <button class="btn-kebab" type="button" onclick="toggleMenuAcoesManejo(event, '${op.id}')" title="Mais ações da OP" aria-label="Mais ações da OP ${escapeHtml(op.numeroOP || '')}">⋮</button>
+              <div class="action-menu" id="menu-acoes-${op.id}">
+                <button type="button" onclick="mandarParaFaccao('${op.id}')">Enviar para facção</button>
+                <button type="button" onclick="mandarParaCelula('${op.id}')">Enviar para célula</button>
+                <button type="button" onclick="abrirModalAjusteMigracao('${op.id}')">Editar localização/status</button>
+                <button type="button" onclick="abrirRastreamentoOP('${op.id}')">Ver histórico/rastreamento</button>
+                ${manejo && ehAdmin() ? `<button class="danger" type="button" onclick="limparManejoLinha('${op.id}')">Limpar manejo</button>` : ""}
+              </div>
             </div>
           </div>
         </td>
@@ -2935,9 +2978,8 @@ function renderDatalistManejo() {
   if (faccaoList) {
     const faccoes = new Set();
 
-    state.faccoes.forEach(faccao => {
-      if (faccao?.ativo === false) return;
-      if (faccao?.nome) faccoes.add(String(faccao.nome).toUpperCase());
+    getFaccoesUnicas().forEach(faccao => {
+      if (faccao?.nome) faccoes.add(nomeFaccaoCanonico(faccao.nome));
     });
 
     state.faccoesManejoExtras.forEach(faccao => {
@@ -3428,6 +3470,11 @@ function configurarFaccoes() {
     importarFaccoes.addEventListener("click", importarFaccoesExtraidasPlanilha);
   }
 
+  const organizarDuplicadas = document.getElementById("btnOrganizarFaccoesDuplicadas");
+  if (organizarDuplicadas) {
+    organizarDuplicadas.addEventListener("click", organizarFaccoesDuplicadas);
+  }
+
   const importarLigia = document.getElementById("btnImportarLigiaNovaLogica");
   if (importarLigia) {
     importarLigia.addEventListener("click", importarLigiaNovaLogica);
@@ -3515,12 +3562,108 @@ async function salvarFaccao(event) {
   }
 }
 
+async function organizarFaccoesDuplicadas() {
+  if (!ehAdmin()) {
+    toast("Apenas admin pode organizar facções duplicadas.");
+    return;
+  }
+
+  const grupos = new Map();
+  (state.faccoes || []).forEach(faccao => {
+    if (!faccao?.nome) return;
+    if (faccao.statusImportacao === "duplicada_consolidada" || faccao.duplicadaDe) return;
+    const chave = chaveFaccaoCanonica(faccao.nome);
+    if (!chave) return;
+    if (!grupos.has(chave)) grupos.set(chave, []);
+    grupos.get(chave).push(faccao);
+  });
+
+  const duplicadas = [...grupos.values()].filter(grupo => grupo.length > 1);
+
+  if (!duplicadas.length) {
+    toast("Nenhuma facção duplicada encontrada. A lista visual já está unificada.");
+    return;
+  }
+
+  const totalDuplicadas = duplicadas.reduce((soma, grupo) => soma + grupo.length - 1, 0);
+  if (!confirm(`Encontramos ${totalDuplicadas} cadastro(s) duplicado(s). Vou manter um cadastro principal ativo e marcar os repetidos como duplicados/inativos. Continuar?`)) {
+    return;
+  }
+
+  try {
+    let batch = writeBatch(db);
+    let contador = 0;
+    let gruposCorrigidos = 0;
+
+    for (const grupo of duplicadas) {
+      const ordenado = [...grupo].sort((a, b) => scoreFaccaoParaUnificar(b) - scoreFaccaoParaUnificar(a));
+      const principal = ordenado[0];
+      const nomePrincipal = nomeFaccaoCanonico(principal.nome);
+      const principalId = principal.id || docIdSeguro(nomePrincipal);
+      const consolidado = ordenado.reduce((acc, item) => mergeFaccoesCadastro(acc, item), principal);
+      const processosPermitidos = listaUnicaNormalizada([
+        ...(consolidado.processosPermitidos || []),
+        ...getProcessosPadraoDaFaccao(nomePrincipal)
+      ].map(normalizarNomeProcesso));
+
+      batch.set(doc(db, "faccoes", principalId), {
+        ...consolidado,
+        nome: nomePrincipal,
+        processosPermitidos,
+        ativo: true,
+        cadastroPendente: false,
+        statusImportacao: "ok",
+        pendenciaImportacao: "",
+        consolidadoDuplicadas: true,
+        quantidadeDuplicadasConsolidadas: grupo.length - 1,
+        atualizadoPor: state.currentUser.uid,
+        atualizadoEm: serverTimestamp()
+      }, { merge: true });
+      contador++;
+
+      for (const duplicada of ordenado.slice(1)) {
+        if (!duplicada.id || duplicada.id === principalId) continue;
+        batch.set(doc(db, "faccoes", duplicada.id), {
+          ativo: false,
+          cadastroPendente: true,
+          statusImportacao: "duplicada_consolidada",
+          pendenciaImportacao: `Cadastro duplicado consolidado em ${nomePrincipal}`,
+          duplicadaDe: principalId,
+          duplicadaDeNome: nomePrincipal,
+          atualizadoPor: state.currentUser.uid,
+          atualizadoEm: serverTimestamp()
+        }, { merge: true });
+        contador++;
+      }
+
+      gruposCorrigidos++;
+      if (contador >= 430) {
+        await batch.commit();
+        batch = writeBatch(db);
+        contador = 0;
+      }
+    }
+
+    if (contador > 0) await batch.commit();
+
+    await registrarLog("faccoes_duplicadas_consolidadas", "faccao", "duplicadas", `${gruposCorrigidos} grupos corrigidos | ${totalDuplicadas} duplicadas marcadas`);
+    renderFaccoes();
+    renderFaccoesPendentes();
+    renderDatalistManejo();
+    toast(`${gruposCorrigidos} grupo(s) de facções duplicadas organizado(s).`);
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao organizar facções duplicadas.");
+  }
+}
+
+
 function renderFaccoes() {
   const tbody = document.getElementById("listaFaccoes");
   if (!tbody) return;
 
   const busca = normalizarTexto(document.getElementById("buscaFaccao")?.value || "");
-  let faccoes = state.faccoes.filter(faccao => !faccao.cadastroPendente);
+  let faccoes = getFaccoesUnicas().filter(faccao => !faccao.cadastroPendente && faccao.ativo !== false);
 
   if (busca) {
     faccoes = faccoes.filter(faccao => {
@@ -3568,8 +3711,8 @@ function renderFaccoesPendentes() {
   const tbody = document.getElementById("listaFaccoesPendentes");
   if (!tbody) return;
 
-  const pendentes = state.faccoes
-    .filter(faccao => faccao.cadastroPendente)
+  const pendentes = getFaccoesUnicas({ incluirPendentes: true, somentePendentes: true })
+    .filter(faccao => faccao.statusImportacao !== "duplicada_consolidada" && !faccao.duplicadaDe)
     .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true }));
 
   if (!pendentes.length) {
@@ -3943,21 +4086,63 @@ async function importarLigiaNovaLogica() {
   }
 }
 
+function posicionarMenuAcoesManejo(menu, botao) {
+  if (!menu || !botao) return;
+
+  const largura = Math.min(280, Math.max(250, window.innerWidth - 16));
+  menu.style.width = `${largura}px`;
+  menu.style.right = "auto";
+  menu.style.bottom = "auto";
+
+  const rect = botao.getBoundingClientRect();
+  const left = Math.max(8, Math.min(window.innerWidth - largura - 8, rect.right - largura));
+  menu.style.left = `${left}px`;
+
+  const alturaMenu = menu.offsetHeight || 240;
+  const topPreferido = rect.top - alturaMenu - 8;
+  const topSeguro = Math.max(8, topPreferido);
+  menu.style.top = `${topSeguro}px`;
+}
+
 function toggleMenuAcoesManejo(event, ordemId) {
   event?.stopPropagation?.();
-  document.querySelectorAll(".action-menu.open").forEach(menu => {
-    if (menu.id !== `menu-acoes-${ordemId}`) menu.classList.remove("open");
+  const menuId = `menu-acoes-${ordemId}`;
+  const menu = document.getElementById(menuId);
+  const botao = event?.currentTarget || event?.target;
+  if (!menu) return;
+
+  const vaiAbrir = !menu.classList.contains("open");
+
+  document.querySelectorAll(".action-menu.open").forEach(item => {
+    if (item.id !== menuId) {
+      item.classList.remove("open");
+      item.removeAttribute("style");
+    }
   });
-  document.getElementById(`menu-acoes-${ordemId}`)?.classList.toggle("open");
+
+  if (!vaiAbrir) {
+    menu.classList.remove("open");
+    menu.removeAttribute("style");
+    return;
+  }
+
+  menu.classList.add("open");
+  posicionarMenuAcoesManejo(menu, botao);
 }
 
 function fecharMenusAcoesManejo() {
-  document.querySelectorAll(".action-menu.open").forEach(menu => menu.classList.remove("open"));
+  document.querySelectorAll(".action-menu.open").forEach(menu => {
+    menu.classList.remove("open");
+    menu.removeAttribute("style");
+  });
 }
 
 document.addEventListener("click", event => {
   if (!event.target.closest(".action-menu-wrap")) fecharMenusAcoesManejo();
 });
+
+window.addEventListener("resize", fecharMenusAcoesManejo);
+window.addEventListener("scroll", fecharMenusAcoesManejo, true);
 
 function abrirRastreamentoOP(ordemId) {
   const ordem = state.ordens.find(op => String(op.id) === String(ordemId) || String(op.numeroOP) === String(ordemId));
@@ -4275,7 +4460,7 @@ function renderFaccoesMovimentacoes() {
     if (el) el.textContent = Number(valor || 0).toLocaleString("pt-BR");
   };
 
-  setText("faccoesTotalCadastradas", state.faccoes.filter(faccao => !faccao.cadastroPendente).length);
+  setText("faccoesTotalCadastradas", getFaccoesUnicas().filter(faccao => !faccao.cadastroPendente && faccao.ativo !== false).length);
   setText("faccoesOpsEmAndamento", emFaccoes.length);
   setText("faccoesPecasEnviadas", pecasEnviadas);
   setText("faccoesPecasRecebidas", pecasRecebidas);
@@ -4674,9 +4859,9 @@ function getMovimentacoesDaOrdem(opId) {
 }
 
 function getDestinoMovimento(tipo, nome) {
-  const lista = tipo === "faccao" ? state.faccoes : state.celulas;
-  const texto = limparTexto(nome).toUpperCase();
-  return lista.find(item => limparTexto(item.nome || "").toUpperCase() === texto) || null;
+  const lista = tipo === "faccao" ? getFaccoesUnicas() : state.celulas;
+  const texto = chaveFaccaoCanonica(nome);
+  return lista.find(item => tipo === "faccao" ? chaveFaccaoCanonica(item.nome || "") === texto : limparTexto(item.nome || "").toUpperCase() === limparTexto(nome).toUpperCase()) || null;
 }
 
 function labelTipoMovimento(tipo) {
@@ -4733,29 +4918,203 @@ function configurarModalMovimentacao() {
       if (processoInput && processoSelect.value) {
         processoInput.value = processoSelect.value;
       }
+      atualizarDestinosMovimentacaoPorProcesso();
     });
+  }
+
+  const processoInput = document.getElementById("movimentacaoProcesso");
+  if (processoInput) {
+    processoInput.addEventListener("input", atualizarDestinosMovimentacaoPorProcesso);
   }
 }
 
+function normalizarNomeProcesso(valor) {
+  const texto = limparTexto(valor).toUpperCase();
+  if (!texto) return "";
+
+  const semAcento = normalizarTexto(texto).toUpperCase().replace(/\s+/g, " ").trim();
+  return ALIASES_PROCESSO_FACCAO[texto] || ALIASES_PROCESSO_FACCAO[semAcento] || texto;
+}
+
+function nomeFaccaoCanonico(valor) {
+  const nome = limparTexto(valor).toUpperCase().replace(/\s+/g, " ").trim();
+  if (!nome) return "";
+  return ALIASES_NOME_FACCAO[nome] || nome;
+}
+
+function chaveFaccaoCanonica(valor) {
+  return normalizarTexto(nomeFaccaoCanonico(valor))
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function listaUnicaNormalizada(valores) {
+  const mapa = new Map();
+  (valores || []).forEach(valor => {
+    const limpo = limparTexto(valor).toUpperCase();
+    if (!limpo) return;
+    const chave = normalizarTexto(limpo).trim();
+    if (!mapa.has(chave)) mapa.set(chave, limpo);
+  });
+  return [...mapa.values()].sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+}
+
+function getProcessosPadraoDaFaccao(nome) {
+  const chaveNome = chaveFaccaoCanonica(nome);
+  const processos = [];
+
+  Object.entries(FACCOES_POR_PROCESSO_PADRAO).forEach(([processo, faccoes]) => {
+    const existe = (faccoes || []).some(faccao => chaveFaccaoCanonica(faccao) === chaveNome);
+    if (existe) processos.push(processo);
+  });
+
+  return processos;
+}
+
+function scoreFaccaoParaUnificar(faccao) {
+  let score = 0;
+  if (faccao?.ativo !== false) score += 20;
+  if (!faccao?.cadastroPendente) score += 20;
+  if (faccao?.celular) score += 4;
+  if (faccao?.chavePix) score += 4;
+  if (Array.isArray(faccao?.processosPermitidos) && faccao.processosPermitidos.length) score += 3;
+  if (faccao?.cidade) score += 2;
+  return score;
+}
+
+function mergeFaccoesCadastro(base, item) {
+  const nome = nomeFaccaoCanonico(base?.nome || item?.nome || "");
+  const processos = listaUnicaNormalizada([
+    ...(base?.processosPermitidos || []),
+    ...(item?.processosPermitidos || []),
+    ...getProcessosPadraoDaFaccao(nome)
+  ].map(normalizarNomeProcesso));
+
+  return {
+    ...base,
+    id: base?.id || item?.id || docIdSeguro(nome),
+    nome,
+    cidade: base?.cidade || item?.cidade || "",
+    chavePix: base?.chavePix || item?.chavePix || "",
+    celular: base?.celular || item?.celular || "",
+    observacoes: listaUnicaNormalizada([base?.observacoes, item?.observacoes]).join(" | "),
+    processosPermitidos: processos,
+    gruposPermitidos: listaUnicaNormalizada([...(base?.gruposPermitidos || []), ...(item?.gruposPermitidos || []), base?.grupo, item?.grupo]),
+    ativo: base?.ativo !== false || item?.ativo !== false,
+    cadastroPendente: Boolean(base?.cadastroPendente && item?.cadastroPendente),
+    unificadoVisualmente: Boolean(base?.id && item?.id && base.id !== item.id)
+  };
+}
+
+function getFaccoesUnicas(opcoes = {}) {
+  const incluirPendentes = Boolean(opcoes.incluirPendentes);
+  const somentePendentes = Boolean(opcoes.somentePendentes);
+  const incluirInativas = Boolean(opcoes.incluirInativas);
+
+  const ordenadas = [...(state.faccoes || [])].sort((a, b) => {
+    const scoreDiff = scoreFaccaoParaUnificar(b) - scoreFaccaoParaUnificar(a);
+    if (scoreDiff) return scoreDiff;
+    return String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true });
+  });
+
+  const mapa = new Map();
+
+  ordenadas.forEach(item => {
+    if (!item?.nome) return;
+    if (!incluirInativas && item.ativo === false) return;
+    if (somentePendentes && !item.cadastroPendente) return;
+    if (!incluirPendentes && item.cadastroPendente) return;
+    if (item.statusImportacao === "duplicada_consolidada" || item.duplicadaDe) return;
+
+    const chave = chaveFaccaoCanonica(item.nome);
+    if (!chave) return;
+
+    const atual = mapa.get(chave);
+    mapa.set(chave, atual ? mergeFaccoesCadastro(atual, item) : mergeFaccoesCadastro(item, item));
+  });
+
+  return [...mapa.values()].sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true }));
+}
+
+function getProcessosDaFaccao(faccao) {
+  return listaUnicaNormalizada([
+    ...(faccao?.processosPermitidos || []),
+    ...getProcessosPadraoDaFaccao(faccao?.nome || "")
+  ].map(normalizarNomeProcesso));
+}
+
 function getProcessosSugeridosMovimentacao(op, setor, tipoDestino) {
+  if (tipoDestino === "celula") return ["CÉLULA INTERNA"];
+
   const referencia = normalizarReferencia(op?.referencia || "");
   const processosTabela = getPrecosReferenciaAtivos()
     .filter(preco => normalizarReferencia(preco.referencia || "") === referencia)
     .map(preco => preco.processo);
 
   const processosHistorico = state.movimentacoesProducao
-    .filter(mov => normalizarReferencia(mov.referencia || "") === referencia)
+    .filter(mov => normalizarReferencia(mov.referencia || "") === referencia && mov.tipoDestino === "faccao")
     .map(mov => mov.processo);
 
-  const padrao = tipoDestino === "faccao" ? "ENCAPAR BOJO" : "MONTAGEM";
-
-  return [...new Set([
-    padrao,
+  return listaUnicaNormalizada([
+    ...PROCESSOS_FACCAO_PADRAO,
     ...processosTabela,
     ...processosHistorico
-  ].map(item => limparTexto(item).toUpperCase()).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+  ].map(normalizarNomeProcesso));
 }
+
+function getFaccoesPermitidasPorProcesso(processo) {
+  const processoNormalizado = normalizarNomeProcesso(processo);
+  const faccoesUnicas = getFaccoesUnicas();
+
+  if (!processoNormalizado) return [];
+
+  const nomesOficiais = FACCOES_POR_PROCESSO_PADRAO[processoNormalizado] || [];
+  const chavesOficiais = new Set(nomesOficiais.map(chaveFaccaoCanonica).filter(Boolean));
+
+  let faccoes = faccoesUnicas.filter(faccao => {
+    const processos = getProcessosDaFaccao(faccao).map(normalizarNomeProcesso);
+    return processos.includes(processoNormalizado) || chavesOficiais.has(chaveFaccaoCanonica(faccao.nome));
+  });
+
+  // Processo digitado manualmente ainda pode ser usado; nesse caso liberamos as facções ativas,
+  // mas sem duplicar nomes. Isso evita travar a produção se ainda não existir valor/cadastro do processo.
+  if (!faccoes.length && processoNormalizado) {
+    faccoes = faccoesUnicas;
+  }
+
+  return faccoes;
+}
+
+function atualizarDestinosMovimentacaoPorProcesso() {
+  if (!movimentacaoModalContexto) return;
+
+  const tipoDestino = document.getElementById("movimentacaoTipoDestino")?.value || movimentacaoModalContexto.tipoDestino || "";
+  const destinoSelect = document.getElementById("movimentacaoDestino");
+  if (!destinoSelect) return;
+
+  if (tipoDestino !== "faccao") return;
+
+  const processo = normalizarNomeProcesso(document.getElementById("movimentacaoProcesso")?.value || "");
+  const destinoAtual = destinoSelect.value;
+
+  if (!processo) {
+    destinoSelect.innerHTML = `<option value="">Escolha o processo primeiro</option>`;
+    destinoSelect.disabled = true;
+    return;
+  }
+
+  const destinos = getFaccoesPermitidasPorProcesso(processo);
+
+  destinoSelect.disabled = false;
+  destinoSelect.innerHTML = `<option value="">Agora selecione a facção</option>` + destinos.map(destino => {
+    return `<option value="${escapeHtml(destino.nome || "")}">${escapeHtml(destino.nome || "")}</option>`;
+  }).join("");
+
+  if (destinos.some(destino => limparTexto(destino.nome || "").toUpperCase() === limparTexto(destinoAtual).toUpperCase())) {
+    destinoSelect.value = destinoAtual;
+  }
+}
+
 
 function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
   const ordem = state.ordens.find(op => op.id === ordemId);
@@ -4766,11 +5125,11 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
 
   const setor = opcoes.setor || getManejoSetorAtual();
   const label = labelTipoMovimento(tipoDestino);
-  const destinos = tipoDestino === "faccao"
-    ? state.faccoes.filter(item => item.ativo !== false && !item.cadastroPendente)
+  const destinosBase = tipoDestino === "faccao"
+    ? getFaccoesUnicas()
     : state.celulas.filter(item => item.ativo !== false);
 
-  if (!destinos.length) {
+  if (!destinosBase.length) {
     if (state.carregandoDados?.[tipoDestino === "faccao" ? "faccoes" : "celulas"]) {
       toast(`Carregando ${label.toLowerCase()}s. Tente novamente em alguns segundos.`);
       return;
@@ -4830,10 +5189,16 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
   if (tipoInput) tipoInput.value = tipoDestino;
 
   if (destinoSelect) {
-    destinoSelect.innerHTML = `<option value="">Selecione ${escapeHtml(label.toLowerCase())}</option>` + destinos.map(destino => {
-      return `<option value="${escapeHtml(destino.nome || "")}">${escapeHtml(destino.nome || "")}</option>`;
-    }).join("");
-    destinoSelect.value = opcoes.destinoPadrao || "";
+    if (tipoDestino === "faccao") {
+      destinoSelect.innerHTML = `<option value="">Escolha o processo primeiro</option>`;
+      destinoSelect.disabled = true;
+    } else {
+      destinoSelect.innerHTML = `<option value="">Selecione ${escapeHtml(label.toLowerCase())}</option>` + destinosBase.map(destino => {
+        return `<option value="${escapeHtml(destino.nome || "")}">${escapeHtml(destino.nome || "")}</option>`;
+      }).join("");
+      destinoSelect.disabled = false;
+      destinoSelect.value = opcoes.destinoPadrao || "";
+    }
   }
 
   const grupoProcesso = document.getElementById("grupoMovimentacaoProcesso");
@@ -4854,13 +5219,15 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
     : "";
 
   if (processoSelect) {
-    processoSelect.innerHTML = `<option value="">Selecione ou digite abaixo</option>` + processos.map(processo => {
+    processoSelect.innerHTML = `<option value="">Primeiro selecione o processo</option>` + processos.map(processo => {
       return `<option value="${escapeHtml(processo)}">${escapeHtml(processo)}</option>`;
     }).join("");
     processoSelect.value = processoInicial;
   }
 
   if (processoInput) processoInput.value = exigeProcesso ? processoInicial : "CÉLULA INTERNA";
+  atualizarDestinosMovimentacaoPorProcesso();
+  if (destinoSelect && opcoes.destinoPadrao && !destinoSelect.disabled) destinoSelect.value = opcoes.destinoPadrao;
   if (quantidadeInput) {
     quantidadeInput.value = quantidadePadrao || "";
     quantidadeInput.max = quantidadeMaxima || "";
@@ -4869,7 +5236,11 @@ function abrirModalMovimentacao(ordemId, tipoDestino, opcoes = {}) {
   if (dataInput) dataInput.value = getDataHojeISO();
 
   document.getElementById("modalMovimentacao")?.classList.remove("hidden");
-  destinoSelect?.focus();
+  if (tipoDestino === "faccao") {
+    (processoSelect || processoInput)?.focus();
+  } else {
+    destinoSelect?.focus();
+  }
 }
 
 function fecharModalMovimentacao() {
@@ -4898,14 +5269,23 @@ async function confirmarMovimentacaoProducao(event) {
   const quantidadeEnviada = Number(document.getElementById("movimentacaoQuantidade")?.value || 0);
   const dataEnvio = document.getElementById("movimentacaoDataEnvio")?.value || "";
 
-  if (!destino) {
-    toast(`Selecione para qual ${label.toLowerCase()} será enviado.`);
+  if (tipoDestino === "faccao" && !processo) {
+    toast("Primeiro escolha o processo que a facção vai fazer.");
     return;
   }
 
-  if (tipoDestino === "faccao" && !processo) {
-    toast("Informe para qual processo a peça será reenviada.");
+  if (!destino) {
+    toast(`Depois do processo, selecione para qual ${label.toLowerCase()} será enviado.`);
     return;
+  }
+
+  if (tipoDestino === "faccao") {
+    const permitidas = getFaccoesPermitidasPorProcesso(processo);
+    const destinoPermitido = permitidas.some(faccao => chaveFaccaoCanonica(faccao.nome) === chaveFaccaoCanonica(destino));
+    if (!destinoPermitido) {
+      toast("Essa facção não está ligada ao processo escolhido. Se for um processo novo, cadastre ou ajuste a facção antes.");
+      return;
+    }
   }
 
   if (!quantidadeEnviada || quantidadeEnviada <= 0) {
@@ -5079,8 +5459,13 @@ function enviarMovimentacaoParaCelula(id) {
 }
 
 function mandarParaFaccao(ordemId) {
+  carregarFaccoesSeNecessario();
   carregarPrecosReferenciaSeNecessario();
-  abrirModalMovimentacao(ordemId, "faccao");
+  abrirModalMovimentacao(ordemId, "faccao", {
+    forcarEscolhaProcesso: true,
+    titulo: "Enviar para facção",
+    resumo: "Primeiro escolha o processo. Depois o sistema mostra somente as facções desse processo, sem duplicar nomes."
+  });
 }
 
 function mandarParaCelula(ordemId) {

@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-27-rastreamento-global-editar-local-1" />
-  <link rel="stylesheet" href="style.css?v=2026-07-27-rastreamento-global-editar-local-1" />
+  <meta name="app-version" content="2026-07-27-manejo-salvar-verde-menu-cima-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-27-manejo-salvar-verde-menu-cima-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -710,6 +710,7 @@
               </div>
               <div class="actions">
                 <button class="btn btn-success" id="btnImportarFaccoesExtraidas" type="button">Importar facções da planilha</button>
+                <button class="btn btn-warning" id="btnOrganizarFaccoesDuplicadas" type="button">Organizar duplicadas</button>
                 <button class="btn btn-primary" id="btnAbrirCadastroFaccao" type="button">Cadastrar facção</button>
               </div>
             </div>
@@ -717,9 +718,9 @@
             <div class="faccoes-import-box admin-only-block">
               <div>
                 <strong>Importação preparada</strong>
-                <span>20 facções OK serão importadas como ativas. 15 ficam em pendentes para revisão.</span>
+                <span>A lista de facções agora é unificada por nome e ligada ao processo correto.</span>
               </div>
-              <small>Depois de revisar uma pendente, clique em Editar, complete os dados e salve. Ela vira facção normal.</small>
+              <small>Use “Organizar duplicadas” para manter só um cadastro ativo por nome, sem apagar histórico de movimentações.</small>
             </div>
 
             <form class="form admin-only-block faccao-form-inline hidden" id="formFaccao">
@@ -1758,8 +1759,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-27-rastreamento-global-editar-local-1"></script>
-  <script type="module" src="app.js?v=2026-07-27-rastreamento-global-editar-local-1"></script>
+  <script src="update.js?v=2026-07-27-manejo-salvar-verde-menu-cima-1"></script>
+  <script type="module" src="app.js?v=2026-07-27-manejo-salvar-verde-menu-cima-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
@@ -1778,19 +1779,19 @@
           OP selecionada
         </div>
 
-        <label>
-          Destino
-          <select id="movimentacaoDestino" required>
-            <option value="">Selecione</option>
-          </select>
-        </label>
-
         <label id="grupoMovimentacaoProcesso">
           Processo / etapa
           <select id="movimentacaoProcessoSelect">
-            <option value="">Selecione ou digite abaixo</option>
+            <option value="">Primeiro selecione o processo</option>
           </select>
           <input id="movimentacaoProcesso" type="text" placeholder="Ex: ENCAPAR BOJO, MONTAGEM..." required />
+        </label>
+
+        <label>
+          Destino
+          <select id="movimentacaoDestino" required>
+            <option value="">Escolha o processo primeiro</option>
+          </select>
         </label>
 
         <label>
