@@ -7,8 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-27-necessidade-manejo-editavel-2" />
-  <link rel="stylesheet" href="style.css?v=2026-07-27-necessidade-manejo-editavel-2" />
+  <meta name="app-version" content="2026-07-27-otimizacao-leituras-1" />
+  <link rel="stylesheet" href="style.css?v=2026-07-27-otimizacao-leituras-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -98,6 +98,7 @@
             <strong id="userName">Usuário</strong>
             <span id="userRole">Carregando...</span>
           </div>
+          <button class="btn btn-light" id="btnAtualizarServidor" title="Atualizar a tela atual pelo servidor">Atualizar</button>
           <button class="btn" id="btnLogout">Sair</button>
         </div>
       </header>
@@ -383,6 +384,19 @@
               <span id="somaManejoFiltroAtivo">Filtro: todos os registros</span>
               <span id="somaManejoResumoCompacto">0 OPs | 0 falta | 0 organizadas / 0 pendentes</span>
             </div>
+            <label class="manejo-ordenacao-box">
+              <span>Ordenar</span>
+              <select id="filtroManejoOrdenacao">
+                <option value="padrao">Padrão</option>
+                <option value="urgente_primeiro">Urgente primeiro</option>
+                <option value="necessidade_desc">Necessidade: data decrescente</option>
+                <option value="necessidade_asc">Necessidade: data crescente</option>
+                <option value="op_desc">OP decrescente</option>
+                <option value="op_asc">OP crescente</option>
+                <option value="qtd_desc">QTI maior primeiro</option>
+                <option value="qtd_asc">QTI menor primeiro</option>
+              </select>
+            </label>
             <button class="btn btn-print" id="btnImprimirManejoFiltrado" type="button">
               Imprimir itens filtrados
             </button>
@@ -1760,8 +1774,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-27-necessidade-manejo-editavel-2"></script>
-  <script type="module" src="app.js?v=2026-07-27-necessidade-manejo-editavel-2"></script>
+  <script src="update.js?v=2026-07-27-otimizacao-leituras-1"></script>
+  <script type="module" src="app.js?v=2026-07-27-otimizacao-leituras-1"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">

@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-27-necessidade-manejo-editavel-2",
-  "descricao": "Campo Necessidade editável no Manejo, sem usar data de criação como necessidade e preservando dados já lançados.",
-  "data": "2026-07-27"
+  "version": "2026-07-27-otimizacao-leituras-1",
+  "updatedAt": "2026-07-27T00:00:00-03:00",
+  "notes": "Otimização de leituras Firestore, cache persistente e renderização somente da tela ativa."
 }

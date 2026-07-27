@@ -9,7 +9,9 @@ import {
   createUserWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
-  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   doc,
   getDoc,
   setDoc,
@@ -40,7 +42,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+});
 
 const secondaryApp = initializeApp(firebaseConfig, "SecondaryUserCreator");
 const secondaryAuth = getAuth(secondaryApp);
@@ -71,6 +77,52 @@ const state = {
   listenersPorChave: {},
   unsubscribers: []
 };
+
+// Otimização de leituras Firestore:
+// - cache persistente do Firebase acima evita reler tudo em cada F5/atualização de PWA.
+// - telas pesadas só carregam quando abertas.
+// - renderização fica limitada à tela ativa para não travar filtros/digitação.
+const OTIMIZACAO_LEITURAS_ATIVA = true;
+
+function paginaAtivaAtual() {
+  return document.querySelector(".page.active")?.id || "dashboard";
+}
+
+function renderPaginaAtiva() {
+  const page = paginaAtivaAtual();
+
+  if (page === "dashboard") renderDashboard();
+  if (page === "produtos") {
+    renderProdutos();
+    renderProdutosPendentes();
+  }
+  if (page === "ordens") renderOrdens();
+  if (page === "manejo") {
+    renderFiltrosColunasManejo();
+    renderManejoInline();
+    renderDatalistManejo();
+    renderDatalistReferencias();
+    renderDatalistCores();
+    renderDatalistNecessidadesOrdem();
+  }
+  if (page === "processos") renderProcessos();
+  if (page === "faccoes") {
+    renderFaccoes();
+    renderFaccoesPendentes();
+    renderFaccoesMovimentacoes();
+  }
+  if (page === "celulas") {
+    renderCelulas();
+    renderCelulasMovimentacoes();
+  }
+  if (page === "rastreamento") renderRastreamento();
+  if (page === "pagamentos") renderPagamentos();
+  if (page === "relatorios") renderRelatorio();
+  if (page === "usuarios") renderUsuarios();
+  if (page === "logs") renderLogs();
+
+  aplicarPermissoesTela();
+}
 
 const pageInfo = {
   dashboard: {
@@ -308,6 +360,7 @@ document.addEventListener("DOMContentLoaded", () => {
   configurarSidebarRetratil();
   configurarAuth();
   configurarNavegacao();
+  document.getElementById("btnAtualizarServidor")?.addEventListener("click", atualizarDadosServidorAgora);
   configurarProduto();
   configurarOrdem();
   configurarManejo();
@@ -493,7 +546,7 @@ function iniciarDadosEssenciais() {
   registrarListenerChave("produtos", onSnapshot(produtosQuery, snapshot => {
     state.produtos = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     marcarCarregado("produtos");
-    renderTudo();
+    renderPaginaAtiva();
   }, error => {
     console.error(error);
     toast("Erro ao carregar produtos. Verifique as permissões.");
@@ -502,7 +555,7 @@ function iniciarDadosEssenciais() {
   registrarListenerChave("ordens", onSnapshot(ordensQuery, snapshot => {
     state.ordens = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     marcarCarregado("ordens");
-    renderTudo();
+    renderPaginaAtiva();
   }, error => {
     console.error(error);
     toast("Erro ao carregar ordens. Verifique as permissões.");
@@ -652,9 +705,11 @@ function carregarLogsSeNecessario() {
 function carregarDadosDaPagina(page) {
   if (page === "manejo") {
     carregarPrecosReferenciaSeNecessario();
-    carregarMovimentacoesSeNecessario();
     carregarFaccoesSeNecessario();
     carregarCelulasSeNecessario();
+    // Não carregar movimentações aqui. O Manejo precisa filtrar e movimentar OPs,
+    // mas não precisa ler o histórico inteiro. O histórico carrega apenas no Rastreamento,
+    // Processos, Facções ou Células.
   }
 
   if (page === "processos" || page === "rastreamento") {
@@ -1616,7 +1671,8 @@ function configurarManejo() {
     "filtroManejoChegada",
     "filtroManejoFalta",
     "filtroManejoCelu",
-    "filtroManejoNecessidade"
+    "filtroManejoNecessidade",
+    "filtroManejoOrdenacao"
   ].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -2343,6 +2399,16 @@ function filtroManejoCombina(campo, valorFiltroOriginal, valorItemOriginal, seto
     }
   }
 
+  if (campo === "necessidade") {
+    if (["urgente", "urgencia", "urgência"].includes(valorFiltro)) {
+      return valorItem.includes("urgente") || valorItem.includes("urgencia");
+    }
+
+    if (["vazio", "sem necessidade", "nao preenchido", "não preenchido"].includes(valorFiltro)) {
+      return !valorItem;
+    }
+  }
+
   // Quando o valor digitado existe exatamente nas opções do filtro, compara exato.
   // Isso impede o bug: filtrar FASE = CASA trazendo também DISPONIVEL P CASA.
   // Se digitar só parte do texto, continua funcionando como busca parcial.
@@ -2354,6 +2420,81 @@ function filtroManejoCombina(campo, valorFiltroOriginal, valorItemOriginal, seto
   }
 
   return valorItem.includes(valorFiltro);
+}
+
+
+function getNumeroOrdenacaoOP(op) {
+  const valor = String(op?.numeroOP || op?.id || "").replace(/\D/g, "");
+  const numero = Number(valor || 0);
+  return Number.isFinite(numero) ? numero : 0;
+}
+
+function getDataOrdenacaoNecessidade(op, setor = getManejoSetorAtual()) {
+  const necessidade = getNecessidadeDaOrdem(op, setor);
+  const periodo = extrairPeriodoNecessidade(necessidade);
+  const data = periodo.inicio || periodo.fim || "";
+  return data || "0000-00-00";
+}
+
+function getPrioridadeUrgenteNecessidade(op, setor = getManejoSetorAtual()) {
+  const texto = normalizarTexto(getNecessidadeDaOrdem(op, setor));
+  return (texto.includes("urgente") || texto.includes("urgencia")) ? 1 : 0;
+}
+
+function compararPadraoManejo(a, b, setor = getManejoSetorAtual()) {
+  const dataA = getDataOrdenacaoNecessidade(a, setor);
+  const dataB = getDataOrdenacaoNecessidade(b, setor);
+  return dataA.localeCompare(dataB)
+    || getNumeroOrdenacaoOP(a) - getNumeroOrdenacaoOP(b)
+    || String(a?.numeroOP || "").localeCompare(String(b?.numeroOP || ""), "pt-BR", { numeric: true });
+}
+
+function aplicarOrdenacaoManejo(ordens) {
+  const tipo = document.getElementById("filtroManejoOrdenacao")?.value || "padrao";
+  const setor = getManejoSetorAtual();
+  const lista = [...ordens];
+
+  const comparaTextoNecessidade = (a, b) => String(getNecessidadeDaOrdem(a, setor) || "").localeCompare(String(getNecessidadeDaOrdem(b, setor) || ""), "pt-BR", { numeric: true });
+
+  switch (tipo) {
+    case "necessidade_desc":
+      return lista.sort((a, b) => {
+        const urgente = getPrioridadeUrgenteNecessidade(b, setor) - getPrioridadeUrgenteNecessidade(a, setor);
+        if (urgente) return urgente;
+        const data = getDataOrdenacaoNecessidade(b, setor).localeCompare(getDataOrdenacaoNecessidade(a, setor));
+        if (data) return data;
+        return comparaTextoNecessidade(b, a) || getNumeroOrdenacaoOP(b) - getNumeroOrdenacaoOP(a);
+      });
+
+    case "necessidade_asc":
+      return lista.sort((a, b) => {
+        const data = getDataOrdenacaoNecessidade(a, setor).localeCompare(getDataOrdenacaoNecessidade(b, setor));
+        if (data) return data;
+        return comparaTextoNecessidade(a, b) || getNumeroOrdenacaoOP(a) - getNumeroOrdenacaoOP(b);
+      });
+
+    case "urgente_primeiro":
+      return lista.sort((a, b) => {
+        const urgente = getPrioridadeUrgenteNecessidade(b, setor) - getPrioridadeUrgenteNecessidade(a, setor);
+        if (urgente) return urgente;
+        return getDataOrdenacaoNecessidade(a, setor).localeCompare(getDataOrdenacaoNecessidade(b, setor)) || getNumeroOrdenacaoOP(a) - getNumeroOrdenacaoOP(b);
+      });
+
+    case "op_desc":
+      return lista.sort((a, b) => getNumeroOrdenacaoOP(b) - getNumeroOrdenacaoOP(a));
+
+    case "op_asc":
+      return lista.sort((a, b) => getNumeroOrdenacaoOP(a) - getNumeroOrdenacaoOP(b));
+
+    case "qtd_desc":
+      return lista.sort((a, b) => numeroQuantidadeOP(b) - numeroQuantidadeOP(a) || getNumeroOrdenacaoOP(a) - getNumeroOrdenacaoOP(b));
+
+    case "qtd_asc":
+      return lista.sort((a, b) => numeroQuantidadeOP(a) - numeroQuantidadeOP(b) || getNumeroOrdenacaoOP(a) - getNumeroOrdenacaoOP(b));
+
+    default:
+      return lista.sort((a, b) => compararPadraoManejo(a, b, setor));
+  }
 }
 
 function filtrarOrdensManejoPorColunas() {
@@ -2383,7 +2524,7 @@ function filtrarOrdensManejoPorColunas() {
     }
   });
 
-  return getOrdensDoSetorManejo(setor).filter(op => {
+  const filtradas = getOrdensDoSetorManejo(setor).filter(op => {
     const manejo = getManejoDaOrdem(op, setor);
 
     const textoGeral = normalizarTexto([
@@ -2413,6 +2554,8 @@ function filtrarOrdensManejoPorColunas() {
       return filtroManejoCombina(campo, valor, valorItem, setor, opcoesNormalizadasPorCampo);
     });
   });
+
+  return aplicarOrdenacaoManejo(filtradas);
 }
 
 function limparFiltrosColunasManejo() {
@@ -2430,10 +2573,12 @@ function limparFiltrosColunasManejo() {
     "filtroManejoChegada",
     "filtroManejoFalta",
     "filtroManejoCelu",
-    "filtroManejoNecessidade"
+    "filtroManejoNecessidade",
+    "filtroManejoOrdenacao"
   ].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.value = "";
+    if (!el) return;
+    el.value = id === "filtroManejoOrdenacao" ? "padrao" : "";
   });
 }
 
@@ -2449,7 +2594,8 @@ function preencherSelectFiltroManejo(id, valores, labelTodos = "Todos") {
   // tudo que já está liberado para seguir.
   const opcoesFixasPorFiltro = {
     filtroManejoSilk: ["Preenchido", "Sem silk"],
-    filtroManejoDataTecido: ["Preenchido", "Sem tecido"]
+    filtroManejoDataTecido: ["Preenchido", "Sem tecido"],
+    filtroManejoNecessidade: ["URGENTE", "Sem necessidade"]
   };
   const fixas = opcoesFixasPorFiltro[id] || [];
   const fixasNormalizadas = new Set(fixas.map(valor => normalizarTexto(valor).trim()));
@@ -2526,7 +2672,11 @@ function renderFiltrosColunasManejo() {
     ...ordens.map(op => getValorManejoParaFiltro(op, "celu")),
     ...state.celusManejoExtras
   ], "Todos");
-  preencherSelectFiltroManejo("filtroManejoNecessidade", ordens.map(op => getValorManejoParaFiltro(op, "necessidade")), "Todas");
+  preencherSelectFiltroManejo("filtroManejoNecessidade", [
+    "URGENTE",
+    "Sem necessidade",
+    ...ordens.map(op => getValorManejoParaFiltro(op, "necessidade"))
+  ], "Todas");
 }
 
 
@@ -2622,6 +2772,11 @@ function getFiltrosManejoAtivosTexto() {
     .filter(Boolean);
 
   if (busca) ativos.unshift(`Busca: ${busca}`);
+
+  const ordenacao = textoSelectSelecionado("filtroManejoOrdenacao");
+  if (ordenacao && document.getElementById("filtroManejoOrdenacao")?.value !== "padrao") {
+    ativos.push(`Ordenação: ${ordenacao}`);
+  }
 
   return ativos.length ? `Filtro: ${ativos.join(" + ")}` : "Filtro: todos os registros";
 }
@@ -4386,9 +4541,10 @@ document.addEventListener("click", event => {
 window.addEventListener("resize", fecharMenusAcoesManejo);
 window.addEventListener("scroll", fecharMenusAcoesManejo, true);
 
-function abrirRastreamentoOP(ordemId) {
+async function abrirRastreamentoOP(ordemId) {
   const ordem = state.ordens.find(op => String(op.id) === String(ordemId) || String(op.numeroOP) === String(ordemId));
   if (!ordem) return;
+  carregarMovimentacoesSeNecessario();
   abrirPagina("rastreamento");
   const busca = document.getElementById("buscaRastreamento");
   if (busca) {
@@ -9562,27 +9718,9 @@ function baixarBackupAtual() {
 }
 
 function renderTudo() {
-  renderDashboard();
-  renderProdutos();
-  renderProdutosPendentes();
-  renderOrdens();
-  renderFiltrosColunasManejo();
-  renderManejoInline();
-  renderDatalistManejo();
-  renderDatalistReferencias();
-  renderDatalistCores();
-  renderDatalistNecessidadesOrdem();
-  renderProcessos();
-  renderFaccoes();
-  renderFaccoesPendentes();
-  renderFaccoesMovimentacoes();
-  renderCelulas();
-  renderCelulasMovimentacoes();
-  renderRastreamento();
-  renderPagamentos();
-  renderRelatorio();
-  renderLogs();
-  aplicarPermissoesTela();
+  // Otimizado: renderiza só a tela atual.
+  // As demais telas são renderizadas quando o usuário abrir cada aba.
+  renderPaginaAtiva();
 }
 
 function renderDashboard() {
@@ -10015,6 +10153,42 @@ function toast(msg) {
   }, 3500);
 }
 
+async function atualizarDadosServidorAgora() {
+  toast("Atualizando dados do servidor...");
+
+  const pagina = paginaAtivaAtual();
+
+  // Reinicia somente os listeners necessários da tela atual.
+  const chavesPorPagina = {
+    dashboard: ["produtos", "ordens"],
+    produtos: ["produtos", "ordens"],
+    ordens: ["produtos", "ordens"],
+    manejo: ["produtos", "ordens", "faccoes", "celulas", "precosReferencia"],
+    processos: ["movimentacoes", "faccoes", "celulas"],
+    faccoes: ["faccoes", "movimentacoes"],
+    celulas: ["celulas", "movimentacoes"],
+    rastreamento: ["produtos", "ordens", "movimentacoes", "faccoes", "celulas"],
+    pagamentos: ["entregasPagamento", "precosReferencia", "faccoes"],
+    relatorios: ["produtos", "ordens"],
+    usuarios: ["usuarios"],
+    logs: ["logs"]
+  };
+
+  (chavesPorPagina[pagina] || []).forEach(chave => {
+    if (state.listenersPorChave[chave]) {
+      try { state.listenersPorChave[chave](); } catch (error) { console.warn(error); }
+      delete state.listenersPorChave[chave];
+    }
+    state.dadosCarregados[chave] = false;
+    state.carregandoDados[chave] = false;
+  });
+
+  iniciarDadosEssenciais();
+  carregarDadosDaPagina(pagina);
+  renderPaginaAtiva();
+}
+
+window.atualizarDadosServidorAgora = atualizarDadosServidorAgora;
 window.editarProduto = editarProduto;
 window.excluirProduto = excluirProduto;
 window.editarOrdem = editarOrdem;
