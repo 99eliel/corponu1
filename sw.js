@@ -1,11 +1,11 @@
-const APP_VERSION = "2026-07-27-resgate-seguro-tecido-celulas-faccoes-1";
+const APP_VERSION = "2026-07-27-resgate-chegada-manual-faccao-1";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 
 const CORE_ASSETS = [
   "./index.html",
-  "./style.css?v=2026-07-27-resgate-seguro-tecido-celulas-faccoes-1",
-  "./app.js?v=2026-07-27-resgate-seguro-tecido-celulas-faccoes-1",
-  "./update.js?v=2026-07-27-resgate-seguro-tecido-celulas-faccoes-1"
+  "./style.css?v=2026-07-27-resgate-chegada-manual-faccao-1",
+  "./app.js?v=2026-07-27-resgate-chegada-manual-faccao-1",
+  "./update.js?v=2026-07-27-resgate-chegada-manual-faccao-1"
 ];
 
 self.addEventListener("install", event => {
