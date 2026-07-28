@@ -1,42 +1,57 @@
-CORPONU - CORREÇÃO EMERGENCIAL
-Versão: 2026-07-28-fase-sem-piscar-1
+ATUALIZAÇÃO CORPONU — IMPORTAÇÃO SEGURA DA NOVA TABELA DE VALORES
 
-PROBLEMA CORRIGIDO
-O botão antigo "+" da coluna Fase era recriado pelo app.js quando a tabela do Manejo
-era redesenhada durante a digitação ou aplicação de filtros. A atualização anterior
-o removia depois, causando o efeito de piscar e possíveis instabilidades no campo.
+Versão:
+2026-07-28-importacao-valores-processos-1
 
-ARQUIVOS PARA SUBSTITUIR NO GITHUB
-1. update.js
-2. sw.js
-3. version.json
+ARQUIVOS PARA SUBSTITUIR/ADICIONAR NO GITHUB
+1. update.js              (substituir)
+2. sw.js                  (substituir)
+3. version.json           (substituir)
+4. valores-processos-corponu-2026.json (adicionar na raiz)
 
-NÃO SUBSTITUIR
+NÃO ALTERAR
 - app.js
 - index.html
 - style.css
 - firebase-rules.txt
 - storage-rules.txt
+- dados-ligia-migracao.json
 
-O QUE ESTA VERSÃO FAZ
-- Esconde o botão "+" imediatamente, antes que ele possa aparecer na tela.
-- Remove qualquer botão antigo recriado pela renderização.
-- Bloqueia cliques no botão antigo caso algum navegador ainda mantenha o elemento.
-- Mantém o campo de fase ocupando toda a largura.
-- Impede que o observador entre em ciclo ao remover o botão e atualizar o datalist.
-- Preserva o gerenciamento de sugestões exclusivo do administrador.
-- Preserva a função de clicar na seta para limpar e abrir as opções.
+O QUE A ATUALIZAÇÃO IMPORTA
+- CALCINHA MONTAGEM: 89 valores
+- SUTIÃ MONTAGEM: 11 valores
+- CALCINHA COMPLETA: 17 valores
+- ENCAPAR BOJO: 17 valores
+Total: 134 valores válidos
 
-PUBLICAÇÃO
-1. Faça uma cópia dos três arquivos atuais.
-2. Substitua update.js, sw.js e version.json juntos.
-3. Faça um único commit.
-4. Abra o sistema e confira a versão.
-5. Se o navegador ainda mostrar a anterior, pressione Ctrl + F5 uma vez.
+REFERÊNCIAS SEM PREÇO NA PLANILHA
+- Ref. 580 — SUTIÃ MONTAGEM
+- Ref. 617 — CALCINHA COMPLETA
+Essas duas não serão cadastradas com valor zero.
 
-TESTE RÁPIDO
-- Abra a aba Manejo.
-- Clique e digite lentamente no campo Fase.
-- O símbolo "+" não deve aparecer nem piscar.
-- O foco e o texto digitado devem permanecer estáveis.
-- Clique na seta do campo para confirmar que as sugestões continuam abrindo.
+REGRA DE SEGURANÇA
+A importação adiciona somente REF + PROCESSO + SETOR que ainda não existem.
+Nenhum valor já salvo será alterado.
+Os valores existentes de ENCAPAR BOJO serão preservados.
+A rotina pode ser executada novamente sem duplicar ou sobrescrever registros.
+
+COMO USAR
+1. Envie os quatro arquivos para a raiz do repositório.
+2. Faça o commit de todos juntos.
+3. Abra o sistema e pressione Ctrl + F5 uma vez, caso a atualização não entre automaticamente.
+4. Entre com uma conta administradora.
+5. Abra Pagamentos.
+6. Clique em Gerenciar valores.
+7. No bloco verde “Importar nova tabela de valores”, clique em “Importar valores ausentes”.
+8. Leia a confirmação e confirme.
+9. Aguarde o resumo final mostrando adicionados, preservados e referências sem preço.
+
+MAPEAMENTO UTILIZADO
+- “montagem calcinha” da planilha -> CALCINHA MONTAGEM / setor calcinha
+- “sutia montagem” -> SUTIÃ MONTAGEM / setor sutia
+- “calcinha pronta” -> CALCINHA COMPLETA / setor calcinha
+- “encapar bojo” -> ENCAPAR BOJO / setor bojo
+
+OBSERVAÇÃO
+Pagamentos antigos que já estejam marcados como “sem valor” não são recalculados automaticamente por esta atualização.
+A importação prepara os valores para os próximos lançamentos e mantém todo o histórico existente intacto.

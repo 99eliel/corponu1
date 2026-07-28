@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-fase-sem-piscar-1";
+  const APP_VERSION = "2026-07-28-importacao-valores-processos-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -1865,11 +1865,480 @@
     document.addEventListener("keydown", tratarAtalhoDeAberturaDaLista, true);
   }
 
+
+  // =========================================================
+  // IMPORTAÇÃO SEGURA: NOVA TABELA DE VALORES DA PRODUÇÃO
+  // - Lê valores-processos-corponu-2026.json.
+  // - Adiciona somente combinações REF + PROCESSO + SETOR ausentes.
+  // - Nunca sobrescreve valores já cadastrados, inclusive ENCAPAR BOJO.
+  // - Ignora referências sem preço informado e exibe um resumo.
+  // - Execução manual e exclusiva do administrador.
+  // =========================================================
+
+  const ARQUIVO_VALORES_PROCESSOS = "valores-processos-corponu-2026.json";
+  const ID_PAINEL_IMPORTACAO_VALORES = "painelImportacaoTabelaValoresCorpoNu";
+  const ID_BOTAO_IMPORTACAO_VALORES = "btnImportarTabelaValoresCorpoNu";
+  let contextoImportacaoValores = null;
+  let usuarioEhAdminImportacaoValores = false;
+  let unsubscribeAuthImportacaoValores = null;
+  let tabelaValoresPlanilhaCache = null;
+  let importacaoTabelaValoresEmAndamento = false;
+
+  const ALIASES_PROCESSO_IMPORTACAO = Object.freeze({
+    "CALCINHA PRONTA": "CALCINHA COMPLETA",
+    "CALCINHA COMPLETA": "CALCINHA COMPLETA",
+    "MONTAGEM CALCINHA": "CALCINHA MONTAGEM",
+    "CALCINHA MONTAGEM": "CALCINHA MONTAGEM",
+    "SUTIA MONTAGEM": "SUTIÃ MONTAGEM",
+    "SUTIÃ MONTAGEM": "SUTIÃ MONTAGEM",
+    "BOJO ENCAPADO": "ENCAPAR BOJO",
+    "ENCAPAR BOJO": "ENCAPAR BOJO",
+    "ENCAPAR BOJOS": "ENCAPAR BOJO"
+  });
+
+  function processoCanonicoImportacaoValores(valor) {
+    const chave = normalizarComparacao(valor);
+    return ALIASES_PROCESSO_IMPORTACAO[chave] || String(valor || "").trim().toUpperCase();
+  }
+
+  function referenciaCanonicaImportacaoValores(valor) {
+    return String(valor || "").trim().toUpperCase();
+  }
+
+  function setorCanonicoImportacaoValores(valor, processo = "") {
+    const informado = String(valor || "").trim().toLowerCase();
+    if (informado) return informado;
+
+    const processoCanonico = processoCanonicoImportacaoValores(processo);
+    if (processoCanonico === "ENCAPAR BOJO") return "bojo";
+    if (processoCanonico.includes("CALCINHA")) return "calcinha";
+    if (processoCanonico.includes("SUTIÃ")) return "sutia";
+    return "bojo";
+  }
+
+  function labelSetorImportacaoValores(setor) {
+    const mapa = {
+      bojo: "Bojo",
+      alca: "Alça",
+      renda: "Renda",
+      sutia: "Sutiã",
+      calcinha: "Calcinha"
+    };
+    return mapa[String(setor || "").toLowerCase()] || String(setor || "");
+  }
+
+  function chaveRegistroImportacaoValores(referencia, processo, setor) {
+    return [
+      referenciaCanonicaImportacaoValores(referencia),
+      processoCanonicoImportacaoValores(processo),
+      setorCanonicoImportacaoValores(setor, processo)
+    ].join("__");
+  }
+
+  function docIdSeguroImportacaoValores(valor) {
+    return String(valor || "")
+      .trim()
+      .replaceAll("/", "-")
+      .replaceAll("\\", "-")
+      .replaceAll("#", "-")
+      .replaceAll("?", "-");
+  }
+
+  async function carregarTabelaValoresPlanilha(forcar = false) {
+    if (tabelaValoresPlanilhaCache && !forcar) return tabelaValoresPlanilhaCache;
+
+    const response = await fetch(
+      `${ARQUIVO_VALORES_PROCESSOS}?v=${encodeURIComponent(APP_VERSION)}&ts=${Date.now()}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) {
+      throw new Error(`Não foi possível abrir ${ARQUIVO_VALORES_PROCESSOS} (HTTP ${response.status}).`);
+    }
+
+    const dados = await response.json();
+    if (!Array.isArray(dados?.processos)) {
+      throw new Error("O arquivo da tabela de valores está inválido.");
+    }
+
+    tabelaValoresPlanilhaCache = dados;
+    return dados;
+  }
+
+  function totalRegistrosTabelaValores(dados) {
+    return (dados?.processos || []).reduce(
+      (total, grupo) => total + (Array.isArray(grupo?.valores) ? grupo.valores.length : 0),
+      0
+    );
+  }
+
+  function criarResumoProcessosTabelaValores(dados) {
+    return (dados?.processos || []).map(grupo => {
+      const total = Array.isArray(grupo?.valores) ? grupo.valores.length : 0;
+      return `${grupo.processo}: ${total}`;
+    }).join(" • ");
+  }
+
+  function atualizarStatusPainelImportacaoValores(mensagem, tipo = "normal") {
+    const status = document.getElementById("statusImportacaoTabelaValoresCorpoNu");
+    if (!status) return;
+
+    status.textContent = mensagem;
+    status.style.color = tipo === "erro"
+      ? "#b91c1c"
+      : tipo === "sucesso"
+        ? "#166534"
+        : "#475569";
+  }
+
+  async function criarPainelImportacaoValores() {
+    const existente = document.getElementById(ID_PAINEL_IMPORTACAO_VALORES);
+
+    if (!usuarioEhAdminImportacaoValores) {
+      existente?.remove();
+      return;
+    }
+
+    const alvo = document.querySelector("#painelGerenciarValores .importar-valores-box");
+    if (!alvo) {
+      setTimeout(criarPainelImportacaoValores, 500);
+      return;
+    }
+
+    if (existente) return;
+
+    const painel = document.createElement("div");
+    painel.id = ID_PAINEL_IMPORTACAO_VALORES;
+    painel.style.border = "2px solid #16a34a";
+    painel.style.borderRadius = "14px";
+    painel.style.padding = "16px";
+    painel.style.marginBottom = "16px";
+    painel.style.background = "#f0fdf4";
+    painel.innerHTML = `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+        <div style="min-width:240px;flex:1;">
+          <strong style="display:block;font-size:16px;color:#14532d;">Importar nova tabela de valores</strong>
+          <span style="display:block;margin-top:5px;color:#475569;line-height:1.45;">
+            Importa Montagem Calcinha, Sutiã Montagem, Calcinha Completa e Encapar Bojo.
+            <strong>Nenhum valor já existente será alterado.</strong>
+          </span>
+          <small id="resumoImportacaoTabelaValoresCorpoNu" style="display:block;margin-top:7px;color:#64748b;">
+            Conferindo arquivo da planilha...
+          </small>
+          <small id="statusImportacaoTabelaValoresCorpoNu" style="display:block;margin-top:7px;color:#475569;"></small>
+        </div>
+        <button class="btn btn-success" id="${ID_BOTAO_IMPORTACAO_VALORES}" type="button">
+          Importar valores ausentes
+        </button>
+      </div>
+    `;
+
+    alvo.prepend(painel);
+    document.getElementById(ID_BOTAO_IMPORTACAO_VALORES)
+      ?.addEventListener("click", importarTabelaValoresCorpoNu);
+
+    try {
+      const dados = await carregarTabelaValoresPlanilha();
+      const total = totalRegistrosTabelaValores(dados);
+      const pendentes = Array.isArray(dados?.pendentesSemValor) ? dados.pendentesSemValor.length : 0;
+      const resumo = document.getElementById("resumoImportacaoTabelaValoresCorpoNu");
+      if (resumo) {
+        resumo.textContent =
+          `${total} valores válidos • ${criarResumoProcessosTabelaValores(dados)}`
+          + (pendentes ? ` • ${pendentes} referência(s) sem preço serão ignoradas.` : "");
+      }
+    } catch (error) {
+      console.error("Erro ao preparar tabela de valores.", error);
+      atualizarStatusPainelImportacaoValores(
+        "Não foi possível abrir o arquivo de valores. Confirme se ele foi enviado ao GitHub.",
+        "erro"
+      );
+    }
+  }
+
+  async function registrarLogImportacaoTabelaValores(resumo) {
+    if (!contextoImportacaoValores?.user) return;
+
+    const { firestore, db, user } = contextoImportacaoValores;
+    try {
+      await firestore.addDoc(firestore.collection(db, "logsAlteracoes"), {
+        acao: "precos_referencia_importados_sem_sobrescrever",
+        entidade: "precosReferencia",
+        entidadeId: "importacao-planilha-valores-2026",
+        detalhes: resumo,
+        usuarioId: user.uid,
+        usuarioEmail: user.email || "",
+        versao: APP_VERSION,
+        criadoEm: firestore.serverTimestamp()
+      });
+    } catch (error) {
+      console.warn("Valores importados, mas não foi possível registrar o log.", error);
+    }
+  }
+
+  async function importarTabelaValoresCorpoNu() {
+    if (importacaoTabelaValoresEmAndamento) return;
+
+    if (!usuarioEhAdminImportacaoValores || !contextoImportacaoValores?.user) {
+      mostrarAvisoFormulario("Somente o administrador pode importar a tabela de valores.");
+      return;
+    }
+
+    const botao = document.getElementById(ID_BOTAO_IMPORTACAO_VALORES);
+    const textoOriginal = botao?.textContent || "Importar valores ausentes";
+
+    try {
+      const dados = await carregarTabelaValoresPlanilha(true);
+      const totalPlanilha = totalRegistrosTabelaValores(dados);
+      const confirmacao = window.confirm(
+        `Importar ${totalPlanilha} valores da nova tabela?\n\n`
+        + "Segurança desta importação:\n"
+        + "• adiciona somente valores que ainda não existem;\n"
+        + "• não altera nenhum valor já cadastrado;\n"
+        + "• os valores atuais de ENCAPAR BOJO serão preservados;\n"
+        + "• referências sem preço serão ignoradas."
+      );
+      if (!confirmacao) return;
+
+      importacaoTabelaValoresEmAndamento = true;
+      if (botao) {
+        botao.disabled = true;
+        botao.textContent = "Conferindo valores...";
+      }
+      atualizarStatusPainelImportacaoValores("Lendo valores já cadastrados no Firebase...");
+
+      const { firestore, db, user } = contextoImportacaoValores;
+      const snapshot = await firestore.getDocs(
+        firestore.collection(db, "precosReferencia")
+      );
+
+      const chavesExistentes = new Set();
+      const referenciasProcessosExistentes = new Set();
+      const idsExistentes = new Set();
+
+      snapshot.docs.forEach(documento => {
+        idsExistentes.add(documento.id);
+        const valor = documento.data() || {};
+        const referencia = referenciaCanonicaImportacaoValores(valor.referencia);
+        const processo = processoCanonicoImportacaoValores(valor.processo);
+        chavesExistentes.add(
+          chaveRegistroImportacaoValores(referencia, processo, valor.setor)
+        );
+        if (referencia && processo) {
+          referenciasProcessosExistentes.add(`${referencia}__${processo}`);
+        }
+      });
+
+      const candidatos = [];
+      const porProcesso = {};
+
+      (dados.processos || []).forEach(grupo => {
+        const processo = processoCanonicoImportacaoValores(grupo.processo);
+        const setor = setorCanonicoImportacaoValores(grupo.setor, processo);
+        porProcesso[processo] = porProcesso[processo] || { adicionados: 0, preservados: 0 };
+
+        (grupo.valores || []).forEach(registro => {
+          const referencia = referenciaCanonicaImportacaoValores(registro.referencia);
+          const valor = Number(registro.valor || 0);
+          if (!referencia || !Number.isFinite(valor) || valor <= 0) return;
+
+          const chave = chaveRegistroImportacaoValores(referencia, processo, setor);
+          const id = docIdSeguroImportacaoValores(`${referencia}-${setor}-${processo}`);
+
+          const chaveReferenciaProcesso = `${referencia}__${processo}`;
+          if (
+            chavesExistentes.has(chave) ||
+            referenciasProcessosExistentes.has(chaveReferenciaProcesso) ||
+            idsExistentes.has(id)
+          ) {
+            porProcesso[processo].preservados += 1;
+            return;
+          }
+
+          chavesExistentes.add(chave);
+          referenciasProcessosExistentes.add(chaveReferenciaProcesso);
+          idsExistentes.add(id);
+          candidatos.push({
+            id,
+            referencia,
+            processo,
+            setor,
+            setorLabel: grupo.setorLabel || labelSetorImportacaoValores(setor),
+            valor
+          });
+          porProcesso[processo].adicionados += 1;
+        });
+      });
+
+      if (botao) botao.textContent = "Salvando valores...";
+      atualizarStatusPainelImportacaoValores(
+        `${candidatos.length} valor(es) novo(s) serão adicionados; os existentes permanecerão intactos.`
+      );
+
+      let batch = firestore.writeBatch(db);
+      let noLote = 0;
+      let totalAdicionado = 0;
+
+      for (const item of candidatos) {
+        batch.set(
+          firestore.doc(db, "precosReferencia", item.id),
+          {
+            referencia: item.referencia,
+            processo: item.processo,
+            setor: item.setor,
+            setorLabel: item.setorLabel,
+            valor: item.valor,
+            ativo: true,
+            origemImportacao: "Pasta1 (1)(1).xlsx",
+            versaoImportacao: APP_VERSION,
+            criadoPor: user.uid,
+            criadoEm: firestore.serverTimestamp(),
+            atualizadoPor: user.uid,
+            atualizadoEm: firestore.serverTimestamp()
+          },
+          { merge: false }
+        );
+
+        noLote += 1;
+        totalAdicionado += 1;
+
+        if (noLote >= 400) {
+          await batch.commit();
+          batch = firestore.writeBatch(db);
+          noLote = 0;
+        }
+      }
+
+      if (noLote > 0) await batch.commit();
+
+      const totalPreservado = Object.values(porProcesso)
+        .reduce((total, item) => total + Number(item.preservados || 0), 0);
+      const semValor = Array.isArray(dados.pendentesSemValor)
+        ? dados.pendentesSemValor
+        : [];
+
+      const resumoProcessos = Object.entries(porProcesso)
+        .map(([processo, item]) =>
+          `${processo}: ${item.adicionados} novo(s), ${item.preservados} preservado(s)`
+        )
+        .join(" | ");
+
+      await registrarLogImportacaoTabelaValores(
+        `${totalAdicionado} adicionados | ${totalPreservado} preservados | `
+        + `${semValor.length} sem preço | ${resumoProcessos}`
+      );
+
+      atualizarStatusPainelImportacaoValores(
+        `${totalAdicionado} valor(es) adicionados, ${totalPreservado} preservados e `
+        + `${semValor.length} sem preço ignorados. ${resumoProcessos}`,
+        "sucesso"
+      );
+
+      showUpdateToast(
+        totalAdicionado
+          ? `${totalAdicionado} novos valores importados. Nenhum valor existente foi alterado.`
+          : "A tabela já estava cadastrada. Nenhum valor existente foi alterado."
+      );
+
+      setTimeout(() => {
+        document.getElementById("btnAtualizarServidor")?.click();
+      }, 500);
+    } catch (error) {
+      console.error("Erro ao importar tabela de valores.", error);
+      atualizarStatusPainelImportacaoValores(
+        `Erro ao importar: ${error?.message || "falha desconhecida"}`,
+        "erro"
+      );
+      mostrarAvisoFormulario(
+        "Não foi possível importar os valores. Confira os arquivos, a internet e a permissão de administrador."
+      );
+    } finally {
+      importacaoTabelaValoresEmAndamento = false;
+      if (botao) {
+        botao.disabled = false;
+        botao.textContent = textoOriginal;
+      }
+    }
+  }
+
+  async function configurarUsuarioImportacaoValores(user) {
+    if (!contextoImportacaoValores) return;
+
+    if (!user) {
+      usuarioEhAdminImportacaoValores = false;
+      contextoImportacaoValores = { ...contextoImportacaoValores, user: null, perfil: null };
+      document.getElementById(ID_PAINEL_IMPORTACAO_VALORES)?.remove();
+      return;
+    }
+
+    const { firestore, db } = contextoImportacaoValores;
+    try {
+      const perfilSnapshot = await firestore.getDoc(
+        firestore.doc(db, "usuarios", user.uid)
+      );
+      const perfil = perfilSnapshot.exists() ? perfilSnapshot.data() : {};
+      usuarioEhAdminImportacaoValores = perfil?.tipo === "admin" && perfil?.ativo !== false;
+      contextoImportacaoValores = { ...contextoImportacaoValores, user, perfil };
+      criarPainelImportacaoValores();
+    } catch (error) {
+      usuarioEhAdminImportacaoValores = false;
+      console.error("Não foi possível validar o administrador para importar valores.", error);
+    }
+  }
+
+  async function conectarFirebaseImportacaoValores(tentativa = 0) {
+    if (contextoImportacaoValores?.auth) return;
+
+    try {
+      const [firebaseApp, firestore, firebaseAuth] = await Promise.all([
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js")
+      ]);
+
+      if (!firebaseApp.getApps().length) {
+        throw new Error("Firebase ainda não inicializado.");
+      }
+
+      const appAtual = firebaseApp.getApp();
+      const auth = firebaseAuth.getAuth(appAtual);
+      const db = firestore.getFirestore(appAtual);
+      contextoImportacaoValores = {
+        firestore,
+        firebaseAuth,
+        auth,
+        db,
+        user: null,
+        perfil: null
+      };
+
+      if (unsubscribeAuthImportacaoValores) unsubscribeAuthImportacaoValores();
+      unsubscribeAuthImportacaoValores = firebaseAuth.onAuthStateChanged(
+        auth,
+        configurarUsuarioImportacaoValores
+      );
+    } catch (error) {
+      if (tentativa < 20) {
+        setTimeout(() => conectarFirebaseImportacaoValores(tentativa + 1), 300);
+        return;
+      }
+      console.error("Não foi possível iniciar a importação da tabela de valores.", error);
+    }
+  }
+
+  function iniciarImportacaoValoresPlanilha() {
+    conectarFirebaseImportacaoValores();
+    criarPainelImportacaoValores();
+  }
+
+  window.importarTabelaValoresCorpoNu = importarTabelaValoresCorpoNu;
+
+
   function iniciarRecursosDaVersao() {
     iniciarHotfixChegadaManual();
     iniciarHotfixNecessidade();
     iniciarGestaoSugestoesFases();
     iniciarSetasListasManejo();
+    iniciarImportacaoValoresPlanilha();
   }
 
   window.addEventListener("load", () => {

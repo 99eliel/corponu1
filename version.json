@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-fase-sem-piscar-1",
-  "updatedAt": "2026-07-28T07:18:04-03:00",
-  "notes": "Atualização cumulativa. Corrige o botão antigo '+' da fase que reaparecia e piscava durante a digitação porque o app.js redesenhava as linhas do Manejo. O botão agora nasce oculto por CSS permanente, cliques antigos são bloqueados e o observador deixa de reagir às próprias alterações. Mantém a lista de sugestões administrada pelo ADM e o comportamento das setas nos filtros e campos de fase."
+  "version": "2026-07-28-importacao-valores-processos-1",
+  "updatedAt": "2026-07-28T07:45:00-03:00",
+  "notes": "Atualização cumulativa. Adiciona importação administrativa segura de 134 valores da nova planilha para CALCINHA MONTAGEM, SUTIÃ MONTAGEM, CALCINHA COMPLETA e ENCAPAR BOJO. A rotina adiciona somente combinações ausentes e nunca sobrescreve valores já cadastrados, preservando especialmente os valores existentes de ENCAPAR BOJO. As referências 580 e 617 permanecem pendentes porque vieram sem preço na planilha."
 }

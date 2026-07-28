@@ -1,11 +1,12 @@
-const APP_VERSION = "2026-07-28-fase-sem-piscar-1";
+const APP_VERSION = "2026-07-28-importacao-valores-processos-1";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 
 const CORE_ASSETS = [
   "./index.html",
   "./style.css?v=2026-07-27-resgate-chegada-manual-faccao-1",
   "./app.js?v=2026-07-27-resgate-chegada-manual-faccao-1",
-  "./update.js?v=2026-07-28-fase-sem-piscar-1"
+  "./update.js?v=2026-07-28-importacao-valores-processos-1",
+  "./valores-processos-corponu-2026.json?v=2026-07-28-importacao-valores-processos-1"
 ];
 
 self.addEventListener("install", event => {
@@ -76,7 +77,8 @@ self.addEventListener("fetch", event => {
     url.pathname.endsWith("/style.css") ||
     url.pathname.endsWith("/update.js") ||
     url.pathname.endsWith("/version.json") ||
-    url.pathname.endsWith("/dados-ligia-migracao.json")
+    url.pathname.endsWith("/dados-ligia-migracao.json") ||
+    url.pathname.endsWith("/valores-processos-corponu-2026.json")
   ) {
     event.respondWith(networkFirst(request));
     return;
