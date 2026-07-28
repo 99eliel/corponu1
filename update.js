@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-faccoes-sem-chegada-retornou-1";
+  const APP_VERSION = "2026-07-28-travas-duplicidade-faccao-pagamento-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -4983,7 +4983,615 @@
     setTimeout(removerBotoesChegadaDeRetornadas, 600);
   }
 
+
+  // =========================================================
+  // TRAVAS OPERACIONAIS CONTRA DUPLICIDADE
+  // - Impede o mesmo envio de OP para facção duas vezes.
+  // - Impede registrar novamente uma chegada já concluída.
+  // - Impede chegada manual idêntica e pagamento manual idêntico.
+  // - Usa uma trava temporária no Firestore para proteger contra
+  //   dois usuários/abas confirmando a mesma operação ao mesmo tempo.
+  // =========================================================
+  let contextoTravasDuplicidadePromise = null;
+  const TEMPO_TRAVA_DUPLICIDADE_MS = 45 * 1000;
+
+  async function obterContextoTravasDuplicidade() {
+    if (contextoTravasDuplicidadePromise) return contextoTravasDuplicidadePromise;
+
+    contextoTravasDuplicidadePromise = (async () => {
+      const [firebaseApp, firestore, firebaseAuth] = await Promise.all([
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js")
+      ]);
+
+      if (!firebaseApp.getApps().length) {
+        throw new Error("Firebase ainda não foi inicializado.");
+      }
+
+      const appAtual = firebaseApp.getApp();
+      return {
+        firestore,
+        firebaseAuth,
+        auth: firebaseAuth.getAuth(appAtual),
+        db: firestore.getFirestore(appAtual)
+      };
+    })().catch(error => {
+      contextoTravasDuplicidadePromise = null;
+      throw error;
+    });
+
+    return contextoTravasDuplicidadePromise;
+  }
+
+  function hashTravaDuplicidade(texto) {
+    const valor = String(texto || "");
+    let hash1 = 2166136261;
+    let hash2 = 5381;
+
+    for (let indice = 0; indice < valor.length; indice += 1) {
+      const codigo = valor.charCodeAt(indice);
+      hash1 ^= codigo;
+      hash1 = Math.imul(hash1, 16777619);
+      hash2 = ((hash2 << 5) + hash2) ^ codigo;
+    }
+
+    return `${(hash1 >>> 0).toString(36)}${(hash2 >>> 0).toString(36)}`;
+  }
+
+  function timestampTravaEmMs(valor) {
+    if (!valor) return 0;
+    if (typeof valor.toMillis === "function") return valor.toMillis();
+    if (Number.isFinite(Number(valor.seconds))) {
+      return (Number(valor.seconds) * 1000) + Math.floor(Number(valor.nanoseconds || 0) / 1000000);
+    }
+    const convertido = new Date(valor).getTime();
+    return Number.isFinite(convertido) ? convertido : 0;
+  }
+
+  function textoChaveTrava(...partes) {
+    return partes
+      .flat(Infinity)
+      .map(valor => normalizarComparacao(valor))
+      .filter(Boolean)
+      .join("|");
+  }
+
+  function setorPeloProcessoDuplicidade(processo, setorInformado = "") {
+    const setor = normalizarComparacao(setorInformado).toLowerCase();
+    if (setor) return setor;
+
+    const processoNormalizado = normalizarComparacao(processo);
+    if (processoNormalizado.includes("CALCINHA")) return "calcinha";
+    if (processoNormalizado.includes("BOJO")) return "sutia";
+    if (processoNormalizado.includes("SUTIA")) return "sutia";
+    if (processoNormalizado.includes("ALCA")) return "sutia";
+    return "sutia";
+  }
+
+  function movimentoValidoParaDuplicidade(movimento) {
+    if (!movimento || typeof movimento !== "object") return false;
+    if (movimento.excluido === true || movimento.cancelado === true) return false;
+
+    const status = normalizarComparacao(movimento.status);
+    const tipo = normalizarComparacao(movimento.tipoDestino);
+    if (["CANCELADO", "CANCELADA", "EXCLUIDO", "EXCLUIDA"].includes(status)) return false;
+    if (["FACCAO_CANCELADA", "CANCELADO", "CANCELADA"].includes(tipo)) return false;
+    return true;
+  }
+
+  function movimentoEmAndamentoDuplicidade(movimento) {
+    if (!movimentoValidoParaDuplicidade(movimento)) return false;
+    const status = normalizarComparacao(movimento.status);
+    return !status || ["EM_ANDAMENTO", "EM ANDAMENTO", "AGUARDANDO_CHEGADA", "AGUARDANDO CHEGADA"].includes(status);
+  }
+
+  function formatarResumoMovimentoDuplicado(movimento) {
+    if (!movimento) return "movimentação já existente";
+    const partes = [
+      movimento.destino ? `facção ${movimento.destino}` : "",
+      movimento.processo ? `processo ${movimento.processo}` : "",
+      movimento.dataEnvio ? `envio ${movimento.dataEnvio}` : "",
+      movimento.dataChegada ? `chegada ${movimento.dataChegada}` : "",
+      movimento.status ? `status ${movimento.status}` : ""
+    ].filter(Boolean);
+    return partes.join(" | ") || "movimentação já existente";
+  }
+
+  async function carregarMovimentacoesServidorDuplicidade({ opId = "", numeroOP = "" } = {}) {
+    const { firestore, db } = await obterContextoTravasDuplicidade();
+    const colecao = firestore.collection(db, "movimentacoesProducao");
+    const documentos = new Map();
+
+    if (opId) {
+      const snapshot = await firestore.getDocs(
+        firestore.query(colecao, firestore.where("opId", "==", String(opId)))
+      );
+      snapshot.docs.forEach(item => documentos.set(item.id, { id: item.id, ...item.data() }));
+    }
+
+    if (numeroOP) {
+      const numeroLimpo = String(numeroOP).trim();
+      const valoresNumero = [numeroLimpo];
+      if (/^\d+(?:[.,]\d+)?$/.test(numeroLimpo)) {
+        const numeroConvertido = Number(numeroLimpo.replace(",", "."));
+        if (Number.isFinite(numeroConvertido)) valoresNumero.push(numeroConvertido);
+      }
+      for (const valorNumero of [...new Set(valoresNumero)]) {
+        const snapshot = await firestore.getDocs(
+          firestore.query(colecao, firestore.where("numeroOP", "==", valorNumero))
+        );
+        snapshot.docs.forEach(item => documentos.set(item.id, { id: item.id, ...item.data() }));
+      }
+    }
+
+    return [...documentos.values()];
+  }
+
+  async function carregarPagamentosMovimentacaoDuplicidade(movimentacaoId) {
+    if (!movimentacaoId) return [];
+    const { firestore, db } = await obterContextoTravasDuplicidade();
+    const snapshot = await firestore.getDocs(
+      firestore.query(
+        firestore.collection(db, "entregasPagamento"),
+        firestore.where("movimentacaoId", "==", String(movimentacaoId))
+      )
+    );
+    return snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+  }
+
+  async function adquirirTravaTemporariaDuplicidade(tipo, chave, detalhes = {}) {
+    const { firestore, auth, db } = await obterContextoTravasDuplicidade();
+    const usuario = auth.currentUser;
+    if (!usuario) throw new Error("Usuário não autenticado.");
+
+    const chaveCompleta = textoChaveTrava(tipo, chave);
+    const travaId = `trava-${String(tipo || "operacao").replace(/[^a-z0-9_-]/gi, "-")}-${hashTravaDuplicidade(chaveCompleta)}`;
+    const travaRef = firestore.doc(db, "travasOperacionais", travaId);
+    const agora = Date.now();
+    const expiraEm = firestore.Timestamp.fromMillis(agora + TEMPO_TRAVA_DUPLICIDADE_MS);
+
+    await firestore.runTransaction(db, async transacao => {
+      const atual = await transacao.get(travaRef);
+      if (atual.exists()) {
+        const dadosAtuais = atual.data() || {};
+        const validade = timestampTravaEmMs(dadosAtuais.expiraEm);
+        if (validade > agora) {
+          const erro = new Error("Outra aba ou usuário já está confirmando esta mesma operação.");
+          erro.codigoTravaDuplicidade = "EM_USO";
+          throw erro;
+        }
+      }
+
+      transacao.set(travaRef, {
+        tipo: String(tipo || "operacao"),
+        chaveHash: hashTravaDuplicidade(chaveCompleta),
+        chaveResumo: chaveCompleta.slice(0, 700),
+        detalhes,
+        criadoPor: usuario.uid,
+        criadoEm: firestore.serverTimestamp(),
+        expiraEm,
+        versaoSistema: APP_VERSION
+      });
+    });
+
+    return { firestore, db, ref: travaRef, uid: usuario.uid };
+  }
+
+  async function liberarTravaTemporariaDuplicidade(trava) {
+    if (!trava?.ref || !trava?.firestore) return;
+    try {
+      await trava.firestore.deleteDoc(trava.ref);
+    } catch (error) {
+      console.warn("A trava temporária será liberada automaticamente quando expirar.", error);
+    }
+  }
+
+  function mostrarBloqueioDuplicidade(mensagem) {
+    mostrarAvisoFormulario(mensagem);
+    showUpdateToast(mensagem);
+  }
+
+  function alterarEstadoBotaoTrava(form, verificando, texto = "Verificando...") {
+    const botao = form?.querySelector('button[type="submit"]');
+    if (!botao) return;
+
+    if (verificando) {
+      if (!botao.dataset.textoAntesTrava) botao.dataset.textoAntesTrava = botao.textContent || "Salvar";
+      botao.disabled = true;
+      botao.textContent = texto;
+      return;
+    }
+
+    botao.disabled = false;
+    if (botao.dataset.textoAntesTrava) {
+      botao.textContent = botao.dataset.textoAntesTrava;
+      delete botao.dataset.textoAntesTrava;
+    }
+  }
+
+  function reenviarSubmitOriginalComTrava(form) {
+    form.dataset.travaDuplicidadeLiberada = "1";
+    const evento = typeof SubmitEvent === "function"
+      ? new SubmitEvent("submit", { bubbles: true, cancelable: true })
+      : new Event("submit", { bubbles: true, cancelable: true });
+    form.dispatchEvent(evento);
+  }
+
+  async function esperarConfirmacaoOperacao(verificador, limiteMs = 14000) {
+    const inicio = Date.now();
+    while ((Date.now() - inicio) < limiteMs) {
+      try {
+        if (await verificador()) return true;
+      } catch (error) {
+        console.warn("Falha temporária ao conferir conclusão da operação.", error);
+      }
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    return false;
+  }
+
+  function instalarTravaEmFormulario(form, prepararOperacao) {
+    if (!form || form.dataset.travaDuplicidadeInstalada === APP_VERSION) return;
+    form.dataset.travaDuplicidadeInstalada = APP_VERSION;
+
+    form.addEventListener("submit", async event => {
+      if (form.dataset.travaDuplicidadeLiberada === "1") {
+        delete form.dataset.travaDuplicidadeLiberada;
+        return;
+      }
+
+      let operacao;
+      try {
+        operacao = prepararOperacao();
+      } catch (error) {
+        console.error("Erro ao ler dados para trava de duplicidade.", error);
+        return;
+      }
+
+      // Quando o formulário ainda está incompleto, a validação original continua responsável.
+      if (!operacao?.deveVerificar) return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      if (form.dataset.travaDuplicidadeVerificando === "1") {
+        mostrarBloqueioDuplicidade("Aguarde: esta operação já está sendo conferida.");
+        return;
+      }
+
+      form.dataset.travaDuplicidadeVerificando = "1";
+      alterarEstadoBotaoTrava(form, true);
+      let trava = null;
+
+      try {
+        const resultado = await operacao.verificarDuplicidade();
+        if (resultado?.duplicado) {
+          mostrarBloqueioDuplicidade(resultado.mensagem || "Esta operação já foi registrada.");
+          return;
+        }
+
+        trava = await adquirirTravaTemporariaDuplicidade(
+          operacao.tipoTrava,
+          operacao.chaveTrava,
+          operacao.detalhesTrava || {}
+        );
+
+        // Segunda conferência depois de adquirir a trava. Isso fecha a janela entre
+        // a primeira leitura e o início efetivo da gravação.
+        const reconferencia = await operacao.verificarDuplicidade();
+        if (reconferencia?.duplicado) {
+          mostrarBloqueioDuplicidade(reconferencia.mensagem || "Esta operação acabou de ser registrada em outra aba.");
+          return;
+        }
+
+        alterarEstadoBotaoTrava(form, false);
+        reenviarSubmitOriginalComTrava(form);
+
+        const travaParaLiberar = trava;
+        trava = null;
+        void (async () => {
+          try {
+            await esperarConfirmacaoOperacao(operacao.confirmarConclusao, 14000);
+          } finally {
+            await liberarTravaTemporariaDuplicidade(travaParaLiberar);
+          }
+        })();
+      } catch (error) {
+        console.error("Operação bloqueada pela trava de duplicidade.", error);
+        if (error?.codigoTravaDuplicidade === "EM_USO") {
+          mostrarBloqueioDuplicidade("Outra aba ou usuário já está registrando exatamente esta operação. Aguarde alguns segundos e atualize a tela.");
+        } else if (String(error?.code || "").includes("permission-denied")) {
+          mostrarBloqueioDuplicidade("Não foi possível ativar a trava. Publique o novo firebase-rules.txt antes de continuar.");
+        } else {
+          mostrarBloqueioDuplicidade("Não foi possível confirmar se já existe um registro igual. A operação foi bloqueada por segurança; verifique a internet e tente novamente.");
+        }
+      } finally {
+        if (trava) await liberarTravaTemporariaDuplicidade(trava);
+        delete form.dataset.travaDuplicidadeVerificando;
+        alterarEstadoBotaoTrava(form, false);
+      }
+    }, true);
+  }
+
+  function dadosEnvioFaccaoParaTrava() {
+    const form = document.getElementById("formMovimentacaoProducao");
+    if (!form) return { deveVerificar: false };
+
+    const tipoDestino = String(document.getElementById("movimentacaoTipoDestino")?.value || "").toLowerCase();
+    const opId = String(document.getElementById("movimentacaoOrdemId")?.value || "").trim();
+    const processo = String(
+      document.getElementById("movimentacaoProcessoSelect")?.value ||
+      document.getElementById("movimentacaoProcesso")?.value || ""
+    ).trim();
+    const destino = String(document.getElementById("movimentacaoDestino")?.value || "").trim();
+    const quantidade = Math.max(0, Number(document.getElementById("movimentacaoQuantidade")?.value || 0));
+    const titulo = String(document.getElementById("modalMovimentacaoTitulo")?.textContent || "");
+    const reenvio = normalizarComparacao(titulo).includes("REENVIAR");
+    const setor = setorPeloProcessoDuplicidade(processo);
+
+    if (tipoDestino !== "faccao" || !opId || !processo || !destino || quantidade <= 0) {
+      return { deveVerificar: false };
+    }
+
+    const chaveTrava = reenvio
+      ? textoChaveTrava("REENVIO", opId, setor, processo, destino)
+      : textoChaveTrava("ENVIO_INICIAL", opId, setor);
+
+    const encontrarDuplicado = async () => {
+      const movimentos = await carregarMovimentacoesServidorDuplicidade({ opId });
+      const candidatos = movimentos
+        .filter(mov => normalizarComparacao(mov.tipoDestino) === "FACCAO")
+        .filter(movimentoValidoParaDuplicidade)
+        .filter(mov => setorPeloProcessoDuplicidade(mov.processo, mov.setor) === setor);
+
+      let duplicado = null;
+      if (reenvio) {
+        duplicado = candidatos.find(mov =>
+          movimentoEmAndamentoDuplicidade(mov) &&
+          normalizarComparacao(mov.destino) === normalizarComparacao(destino) &&
+          normalizarComparacao(mov.processo) === normalizarComparacao(processo)
+        ) || candidatos.find(movimentoEmAndamentoDuplicidade);
+      } else {
+        duplicado = candidatos[0] || null;
+      }
+
+      if (!duplicado) return { duplicado: false };
+
+      return {
+        duplicado: true,
+        mensagem: reenvio
+          ? `Esta OP já possui um reenvio de facção em andamento (${formatarResumoMovimentoDuplicado(duplicado)}). Registre a chegada dessa etapa antes de reenviar novamente.`
+          : `Esta OP já foi enviada para facção (${formatarResumoMovimentoDuplicado(duplicado)}). Para uma nova etapa, use o botão Reenviar facção depois da chegada; não faça outro envio pelo Manejo.`
+      };
+    };
+
+    return {
+      deveVerificar: true,
+      tipoTrava: reenvio ? "reenvio-faccao" : "envio-faccao",
+      chaveTrava,
+      detalhesTrava: { opId, processo, destino, quantidade, setor, reenvio },
+      verificarDuplicidade: encontrarDuplicado,
+      confirmarConclusao: async () => {
+        const movimentos = await carregarMovimentacoesServidorDuplicidade({ opId });
+        return movimentos.some(mov =>
+          normalizarComparacao(mov.tipoDestino) === "FACCAO" &&
+          movimentoValidoParaDuplicidade(mov) &&
+          setorPeloProcessoDuplicidade(mov.processo, mov.setor) === setor &&
+          normalizarComparacao(mov.destino) === normalizarComparacao(destino) &&
+          normalizarComparacao(mov.processo) === normalizarComparacao(processo) &&
+          Number(mov.quantidadeEnviada || 0) === quantidade
+        );
+      }
+    };
+  }
+
+  function dadosChegadaNormalParaTrava() {
+    const id = String(document.getElementById("chegadaMovimentacaoId")?.value || "").trim();
+    const dataChegada = String(document.getElementById("chegadaData")?.value || "").trim();
+    if (!id || !dataChegada) return { deveVerificar: false };
+
+    const verificarDuplicidade = async () => {
+      const { firestore, db } = await obterContextoTravasDuplicidade();
+      const snapshot = await firestore.getDoc(firestore.doc(db, "movimentacoesProducao", id));
+      if (!snapshot.exists()) {
+        return { duplicado: true, mensagem: "A movimentação não existe mais. Atualize a tela antes de continuar." };
+      }
+
+      const mov = snapshot.data() || {};
+      const status = normalizarComparacao(mov.status);
+      const pagamentos = await carregarPagamentosMovimentacaoDuplicidade(id);
+      const pagamentoValido = pagamentos.find(item =>
+        !item.excluido && !["CANCELADO", "EXCLUIDO"].includes(normalizarComparacao(item.statusPagamento))
+      );
+
+      if (mov.dataChegada || ["RETORNOU", "FINALIZADO", "ENCAMINHADO"].includes(status) || mov.bipado === true) {
+        return {
+          duplicado: true,
+          mensagem: pagamentoValido
+            ? "A chegada e o pagamento desta movimentação já foram registrados. Use Movimentações registradas para corrigir ou excluir."
+            : "A chegada desta movimentação já foi registrada. Use Movimentações registradas para corrigir e reconstruir o pagamento, se necessário."
+        };
+      }
+
+      if (pagamentoValido) {
+        return {
+          duplicado: true,
+          mensagem: "Já existe um pagamento ligado a esta movimentação. A nova chegada foi bloqueada para não duplicar o financeiro; revise em Movimentações registradas."
+        };
+      }
+
+      return { duplicado: false };
+    };
+
+    return {
+      deveVerificar: true,
+      tipoTrava: "chegada-faccao",
+      chaveTrava: textoChaveTrava("CHEGADA", id),
+      detalhesTrava: { movimentacaoId: id, dataChegada },
+      verificarDuplicidade,
+      confirmarConclusao: async () => {
+        const { firestore, db } = await obterContextoTravasDuplicidade();
+        const snapshot = await firestore.getDoc(firestore.doc(db, "movimentacoesProducao", id));
+        if (!snapshot.exists()) return false;
+        const mov = snapshot.data() || {};
+        return Boolean(mov.dataChegada) || normalizarComparacao(mov.status) === "RETORNOU";
+      }
+    };
+  }
+
+  function dadosChegadaManualParaTrava() {
+    const numeroOP = String(document.getElementById("chegadaManualOP")?.value || "").trim();
+    const referencia = String(document.getElementById("chegadaManualRef")?.value || "").trim();
+    const quantidade = Math.max(0, Number(document.getElementById("chegadaManualQuantidade")?.value || 0));
+    const processo = String(document.getElementById("chegadaManualProcesso")?.value || "").trim();
+    const faccao = String(document.getElementById("chegadaManualFaccao")?.value || "").trim();
+    const dataChegada = String(document.getElementById("chegadaManualDataChegada")?.value || "").trim();
+
+    if (!numeroOP || !referencia || quantidade <= 0 || !processo || !faccao || !dataChegada) {
+      return { deveVerificar: false };
+    }
+
+    const corresponde = mov =>
+      normalizarComparacao(mov.tipoDestino) === "FACCAO" &&
+      movimentoValidoParaDuplicidade(mov) &&
+      normalizarComparacao(mov.numeroOP) === normalizarComparacao(numeroOP) &&
+      normalizarComparacao(mov.referencia) === normalizarComparacao(referencia) &&
+      normalizarComparacao(mov.destino) === normalizarComparacao(faccao) &&
+      normalizarComparacao(mov.processo) === normalizarComparacao(processo) &&
+      String(mov.dataChegada || "") === dataChegada &&
+      Number(mov.quantidadeRecebida || mov.quantidadeEnviada || 0) === quantidade;
+
+    const verificarDuplicidade = async () => {
+      const movimentos = await carregarMovimentacoesServidorDuplicidade({ numeroOP });
+      const duplicado = movimentos.find(corresponde);
+      if (!duplicado) return { duplicado: false };
+
+      const pagamentos = await carregarPagamentosMovimentacaoDuplicidade(duplicado.id);
+      return {
+        duplicado: true,
+        mensagem: pagamentos.length
+          ? `Esta chegada manual já existe e já possui pagamento (OP ${numeroOP}, ${faccao}, ${processo}, ${quantidade} peças em ${dataChegada}). Use Movimentações registradas para corrigir.`
+          : `Esta chegada manual já existe (OP ${numeroOP}, ${faccao}, ${processo}, ${quantidade} peças em ${dataChegada}). Não será criado outro registro; corrija em Movimentações registradas.`
+      };
+    };
+
+    return {
+      deveVerificar: true,
+      tipoTrava: "chegada-manual-faccao",
+      chaveTrava: textoChaveTrava(numeroOP, referencia, faccao, processo, dataChegada, quantidade),
+      detalhesTrava: { numeroOP, referencia, faccao, processo, dataChegada, quantidade },
+      verificarDuplicidade,
+      confirmarConclusao: async () => {
+        const movimentos = await carregarMovimentacoesServidorDuplicidade({ numeroOP });
+        return movimentos.some(corresponde);
+      }
+    };
+  }
+
+  function extrairNumeroOPPagamentoDuplicidade(valor) {
+    const texto = String(valor || "").trim();
+    if (!texto) return "";
+    return texto.split(/\s+-\s+/)[0]?.trim() || texto;
+  }
+
+  function dadosPagamentoManualParaTrava() {
+    const idAtual = String(document.getElementById("entregaPagamentoId")?.value || "").trim();
+    // Edição do próprio pagamento continua permitida.
+    if (idAtual) return { deveVerificar: false };
+
+    const numeroOP = extrairNumeroOPPagamentoDuplicidade(document.getElementById("entregaOP")?.value || "");
+    const precoId = String(document.getElementById("entregaPreco")?.value || "").trim();
+    const faccao = String(document.getElementById("entregaFaccao")?.value || "").trim();
+    const dataEntrega = String(document.getElementById("entregaData")?.value || "").trim();
+    const quantidade = Math.max(0, Number(document.getElementById("entregaQuantidade")?.value || 0));
+
+    if (!numeroOP || !precoId || !faccao || !dataEntrega || quantidade <= 0) {
+      return { deveVerificar: false };
+    }
+
+    const corresponde = item =>
+      normalizarComparacao(item.numeroOP) === normalizarComparacao(numeroOP) &&
+      normalizarComparacao(item.faccao) === normalizarComparacao(faccao) &&
+      String(item.precoReferenciaId || item.servicoId || "") === precoId &&
+      String(item.dataEntrega || "") === dataEntrega &&
+      Number(item.quantidade || 0) === quantidade &&
+      !item.excluido &&
+      !["CANCELADO", "EXCLUIDO"].includes(normalizarComparacao(item.statusPagamento));
+
+    const consultarPagamentos = async () => {
+      const { firestore, db } = await obterContextoTravasDuplicidade();
+      const colecao = firestore.collection(db, "entregasPagamento");
+      const documentos = new Map();
+      const valoresNumero = [numeroOP];
+      if (/^\d+(?:[.,]\d+)?$/.test(numeroOP)) {
+        const numeroConvertido = Number(numeroOP.replace(",", "."));
+        if (Number.isFinite(numeroConvertido)) valoresNumero.push(numeroConvertido);
+      }
+      for (const valorNumero of [...new Set(valoresNumero)]) {
+        const snapshot = await firestore.getDocs(
+          firestore.query(colecao, firestore.where("numeroOP", "==", valorNumero))
+        );
+        snapshot.docs.forEach(item => documentos.set(item.id, { id: item.id, ...item.data() }));
+      }
+      return [...documentos.values()];
+    };
+
+    const verificarDuplicidade = async () => {
+      const pagamentos = await consultarPagamentos();
+      const duplicado = pagamentos.find(corresponde);
+      return duplicado
+        ? {
+            duplicado: true,
+            mensagem: `Já existe um pagamento igual para a OP ${numeroOP}, facção ${faccao}, mesma data, processo e quantidade. Edite o pagamento existente em vez de cadastrar outro.`
+          }
+        : { duplicado: false };
+    };
+
+    return {
+      deveVerificar: true,
+      tipoTrava: "pagamento-manual",
+      chaveTrava: textoChaveTrava(numeroOP, precoId, faccao, dataEntrega, quantidade),
+      detalhesTrava: { numeroOP, precoId, faccao, dataEntrega, quantidade },
+      verificarDuplicidade,
+      confirmarConclusao: async () => {
+        const pagamentos = await consultarPagamentos();
+        return pagamentos.some(corresponde);
+      }
+    };
+  }
+
+  function iniciarTravasDuplicidadeFaccaoPagamento() {
+    instalarTravaEmFormulario(
+      document.getElementById("formMovimentacaoProducao"),
+      dadosEnvioFaccaoParaTrava
+    );
+    instalarTravaEmFormulario(
+      document.getElementById("formChegadaMovimentacao"),
+      dadosChegadaNormalParaTrava
+    );
+    instalarTravaEmFormulario(
+      document.getElementById("formChegadaManualFaccao"),
+      dadosChegadaManualParaTrava
+    );
+    instalarTravaEmFormulario(
+      document.getElementById("formEntregaPagamento"),
+      dadosPagamentoManualParaTrava
+    );
+
+    // Alguns painéis são renderizados depois do login; tenta novamente sem
+    // duplicar eventos, pois cada formulário recebe uma marca de instalação.
+    setTimeout(() => {
+      instalarTravaEmFormulario(document.getElementById("formMovimentacaoProducao"), dadosEnvioFaccaoParaTrava);
+      instalarTravaEmFormulario(document.getElementById("formChegadaMovimentacao"), dadosChegadaNormalParaTrava);
+      instalarTravaEmFormulario(document.getElementById("formChegadaManualFaccao"), dadosChegadaManualParaTrava);
+      instalarTravaEmFormulario(document.getElementById("formEntregaPagamento"), dadosPagamentoManualParaTrava);
+    }, 1200);
+  }
+
   function iniciarRecursosDaVersao() {
+    // Instalada primeiro para barrar a ação antes das rotinas antigas de salvamento.
+    iniciarTravasDuplicidadeFaccaoPagamento();
     iniciarHotfixChegadaManual();
     iniciarHotfixNecessidade();
     iniciarGestaoSugestoesFases();

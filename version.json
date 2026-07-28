@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-faccoes-sem-chegada-retornou-1",
-  "updatedAt": "2026-07-28T20:10:00-03:00",
-  "notes": "Na aba Facções, remove o botão Chegada das movimentações com status Retornou. O botão permanece apenas para itens em andamento, evitando lançamento duplicado e pagamento incorreto. Mantém todas as correções anteriores."
+  "version": "2026-07-28-travas-duplicidade-faccao-pagamento-1",
+  "updatedAt": "2026-07-28T07:45:00-03:00",
+  "notes": "Adiciona travas no Firestore contra envio duplicado de OP para facção, chegada normal/manual repetida e pagamento manual duplicado. Faz conferência no servidor e protege confirmações simultâneas em duas abas ou por dois usuários. Mantém todas as correções anteriores."
 }

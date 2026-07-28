@@ -1,34 +1,70 @@
-ATUALIZAÇÃO CORPONU — FACÇÕES SEM BOTÃO CHEGADA APÓS RETORNO
+ATUALIZAÇÃO CORPONU
+TRAVAS CONTRA ENVIO, CHEGADA E PAGAMENTO DUPLICADOS
+Versão: 2026-07-28-travas-duplicidade-faccao-pagamento-1
 
-VERSÃO
-2026-07-28-faccoes-sem-chegada-retornou-1
-
-ARQUIVOS PARA SUBSTITUIR NA RAIZ DO GITHUB
+ARQUIVOS PARA SUBSTITUIR NO GITHUB
 - update.js
 - sw.js
 - version.json
-
-NÃO ALTERAR NESTA ATUALIZAÇÃO
-- app.js
-- index.html
-- style.css
 - firebase-rules.txt
-- firestore-rules.txt
-- storage-rules.txt
 
-NÃO É NECESSÁRIO ALTERAR AS REGRAS DO FIREBASE.
+O arquivo firestore-rules.txt contém uma cópia idêntica das regras, para facilitar copiar e colar.
 
-O QUE FOI CORRIGIDO
-- Na aba Facções, o botão Chegada aparece somente enquanto a movimentação estiver em andamento.
-- Quando o status estiver Retornou, o botão Chegada é removido.
-- A correção é reaplicada após filtros, atualizações em tempo real e redesenho da tabela.
-- Existe uma proteção adicional contra clique caso algum botão antigo permaneça na tela por cache.
-- Para corrigir uma chegada já registrada, use o botão Movimentações registradas.
-- Os botões Bipar, Mandar célula e Reenviar facção continuam seguindo a lógica atual.
+PASSO OBRIGATÓRIO NO FIREBASE
+1. Abra o Firebase Console do projeto.
+2. Entre em Firestore Database > Rules.
+3. Apague as regras atuais.
+4. Cole TODO o conteúdo de firebase-rules.txt ou firestore-rules.txt.
+5. Clique em Publicar.
 
-COMO PUBLICAR
-1. Substitua update.js, sw.js e version.json no GitHub.
-2. Faça um único commit com os três arquivos.
-3. Abra o sistema e clique em Atualizar.
-4. Caso o navegador mantenha a versão anterior, pressione Ctrl + F5 uma vez.
-5. Abra Facções e confira uma linha com status Retornou: o botão Chegada não deve aparecer.
+Sem publicar as regras, a tela mostrará que não conseguiu ativar a trava.
+
+O QUE ESTA VERSÃO BLOQUEIA
+
+1. ENVIO DUPLICADO PARA FACÇÃO
+- O envio normal pelo Manejo consulta o Firestore antes de gravar.
+- Se a OP já possuir movimentação de facção para o mesmo setor, o novo envio é bloqueado.
+- Depois de a facção retornar, uma nova etapa deve ser feita pelo botão Reenviar facção.
+- No reenvio, também é bloqueado outro reenvio enquanto já existir uma etapa em andamento.
+
+2. CHEGADA NORMAL DUPLICADA
+- Antes de registrar a chegada, o sistema lê a movimentação diretamente no servidor.
+- Se já houver data de chegada, status Retornou/Finalizado/Encaminhado ou pagamento ligado à movimentação, a nova confirmação é bloqueada.
+- Correções devem ser feitas em Facções > Movimentações registradas.
+
+3. CHEGADA MANUAL DUPLICADA
+- É considerada igual quando coincidem OP, referência, facção, processo, data de chegada e quantidade.
+- Se já existir, o sistema não cria outra movimentação nem outro pagamento.
+
+4. PAGAMENTO MANUAL DUPLICADO
+- Um novo pagamento é bloqueado quando já existe pagamento com a mesma OP, preço/processo, facção, data e quantidade.
+- Editar um pagamento já existente continua permitido.
+
+5. DUAS ABAS OU DOIS USUÁRIOS AO MESMO TEMPO
+- A coleção travasOperacionais cria uma reserva temporária de 45 segundos.
+- Se duas pessoas confirmarem a mesma operação simultaneamente, apenas a primeira prossegue.
+- A trava é apagada depois da conclusão ou expira automaticamente se houver falha.
+
+O QUE CONTINUA PERMITIDO
+- Reenviar a OP para outra etapa depois que a chegada anterior foi registrada.
+- Editar ou excluir uma chegada pela função Movimentações registradas.
+- Editar um pagamento existente.
+- Enviar sutiã e calcinha separadamente, pois a verificação considera o setor/processo.
+- Repetir uma chegada manual legítima quando data ou quantidade forem diferentes.
+
+TESTE RECOMENDADO
+1. Escolha uma OP que nunca foi enviada e mande para uma facção.
+2. Volte ao Manejo e tente enviar a mesma OP novamente: deve bloquear.
+3. Registre a chegada da movimentação.
+4. Tente registrar a mesma chegada novamente: deve bloquear.
+5. Faça uma chegada manual e tente repetir exatamente os mesmos dados: deve bloquear.
+6. Em Pagamentos, tente cadastrar manualmente duas vezes a mesma entrega: a segunda deve bloquear.
+7. Abra o sistema em duas abas e confirme a mesma operação quase ao mesmo tempo: uma delas deve ser bloqueada.
+
+ATUALIZAÇÃO NO NAVEGADOR
+Depois do commit e da publicação das regras:
+1. Abra o sistema.
+2. Clique em Atualizar no canto superior direito.
+3. Caso necessário, pressione Ctrl + F5 uma vez.
+
+Não substitua app.js, index.html, style.css ou storage-rules.txt nesta atualização.

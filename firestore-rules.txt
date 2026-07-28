@@ -31,19 +31,6 @@ service cloud.firestore {
         && meuPerfil().data.tipo in ["admin", "usuario"];
     }
 
-
-    function logOperacional() {
-      return resource.data.tipoAlvo in [
-        "ordemProducao",
-        "ordensProducao",
-        "movimentacaoProducao",
-        "manejo",
-        "ajusteMigracao",
-        "entregaPagamento",
-        "pagamento"
-      ];
-    }
-
     function pagamentoDoUsuario() {
       return usuarioComum()
         && resource.data.criadoPor == request.auth.uid;
@@ -91,9 +78,7 @@ service cloud.firestore {
     }
 
     match /logsAlteracoes/{logId} {
-      // Usuários ativos podem consultar somente logs operacionais usados
-      // na linha do tempo das OPs. Logs administrativos continuam restritos.
-      allow read: if admin() || (usuarioComum() && logOperacional());
+      allow read: if admin();
       allow create: if usuarioComum()
         && request.resource.data.usuarioUid == request.auth.uid;
       allow update, delete: if false;
@@ -146,9 +131,12 @@ service cloud.firestore {
     }
 
     match /ajustesMigracao/{ajusteId} {
-      // Ajustes de local fazem parte do histórico operacional da OP.
-      // Usuários ativos podem consultar; somente o criador pode inserir.
-      allow read: if usuarioComum();
+      // Administrador acessa todos os ajustes. Usuário comum cria e lê
+      // somente o histórico das próprias correções de local.
+      allow read: if admin() || (
+        usuarioComum()
+        && resource.data.criadoPor == request.auth.uid
+      );
       allow create: if admin() || (
         usuarioComum()
         && request.resource.data.criadoPor == request.auth.uid
@@ -169,6 +157,26 @@ service cloud.firestore {
     match /processosMigracao/{processoId} {
       allow read: if usuarioComum();
       allow create, update, delete: if admin();
+    }
+
+
+    match /travasOperacionais/{travaId} {
+      // Trava curta usada para impedir que duas abas/usuários confirmem
+      // o mesmo envio, chegada ou pagamento ao mesmo tempo.
+      allow read: if usuarioComum();
+
+      allow create: if usuarioComum()
+        && request.resource.data.criadoPor == request.auth.uid;
+
+      // Uma trava expirada pode ser assumida por outro usuário ativo.
+      // A lógica do sistema só faz isso quando o prazo já terminou.
+      allow update: if usuarioComum()
+        && request.resource.data.criadoPor == request.auth.uid;
+
+      allow delete: if admin() || (
+        usuarioComum()
+        && resource.data.criadoPor == request.auth.uid
+      );
     }
   }
 }
