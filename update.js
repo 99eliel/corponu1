@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-chegada-manual-condicional-1";
+  const APP_VERSION = "2026-07-28-necessidade-original-restauracao-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -399,8 +399,471 @@
     resetarCondicionais();
   }
 
+
+  // =========================================================
+  // HOTFIX: NECESSIDADE ORIGINAL DA PLANILHA
+  // - Exibe imediatamente o valor original quando a tela mostra vazio.
+  // - Não substitui nenhum valor atual que já esteja preenchido.
+  // - Oferece restauração definitiva e segura no Firestore.
+  // - Evita que o botão verde salve vazio quando existe necessidade original.
+  // =========================================================
+
+  const LIGIA_ORIGINAL_URL = "dados-ligia-migracao.json";
+  const necessidadesOriginaisPorOP = new Map();
+  let carregandoNecessidadesOriginais = null;
+  let observerNecessidades = null;
+  let aplicandoFallbackNecessidades = false;
+  let restauracaoNecessidadesEmAndamento = false;
+
+  function normalizarNumeroOPNecessidade(valor) {
+    return String(valor || "")
+      .trim()
+      .toUpperCase()
+      .replace(/^OP\s*[-:]?\s*/i, "");
+  }
+
+  function limparNecessidade(valor) {
+    return String(valor ?? "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase();
+  }
+
+  function primeiroTextoNecessidade(...valores) {
+    for (const valor of valores) {
+      const texto = limparNecessidade(valor);
+      if (texto) return texto;
+    }
+    return "";
+  }
+
+  function necessidadesDosManejos(dados) {
+    const candidatos = [];
+    const setores = dados?.manejosSetores;
+    if (setores && typeof setores === "object") {
+      Object.values(setores).forEach(manejo => {
+        if (!manejo || typeof manejo !== "object") return;
+        candidatos.push(manejo.necessidade, manejo.necessidadeTexto);
+      });
+    }
+
+    const manejoAntigo = dados?.manejo;
+    if (manejoAntigo && typeof manejoAntigo === "object") {
+      candidatos.push(manejoAntigo.necessidade, manejoAntigo.necessidadeTexto);
+    }
+
+    return candidatos;
+  }
+
+  function extrairNecessidadeOriginal(dados) {
+    if (!dados || typeof dados !== "object") return "";
+    return primeiroTextoNecessidade(
+      dados.necessidadeOriginalLigia,
+      ...necessidadesDosManejos(dados),
+      dados.necessidade,
+      dados.necessidadeTexto,
+      dados.previsaoEntrega,
+      dados.dataNecessidade,
+      dados.dataEntrega
+    );
+  }
+
+  function registrarNecessidadeOriginal(op, necessidade) {
+    const texto = limparNecessidade(necessidade);
+    if (!texto) return;
+
+    [op?.id, op?.numeroOP, op?.numeroOPExterno].forEach(numero => {
+      const chave = normalizarNumeroOPNecessidade(numero);
+      if (chave && !necessidadesOriginaisPorOP.has(chave)) {
+        necessidadesOriginaisPorOP.set(chave, texto);
+      }
+    });
+  }
+
+  async function carregarNecessidadesOriginais() {
+    if (necessidadesOriginaisPorOP.size) return necessidadesOriginaisPorOP;
+    if (carregandoNecessidadesOriginais) return carregandoNecessidadesOriginais;
+
+    carregandoNecessidadesOriginais = (async () => {
+      try {
+        const response = await fetch(`${LIGIA_ORIGINAL_URL}?v=${encodeURIComponent(APP_VERSION)}&ts=${Date.now()}`, {
+          cache: "no-store"
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const dados = await response.json();
+        const ordens = Array.isArray(dados?.ordensProducao)
+          ? dados.ordensProducao
+          : (Array.isArray(dados?.ordens) ? dados.ordens : []);
+
+        ordens.forEach(op => registrarNecessidadeOriginal(op, extrairNecessidadeOriginal(op)));
+        return necessidadesOriginaisPorOP;
+      } catch (error) {
+        console.warn("Não foi possível carregar as necessidades originais da Lígia.", error);
+        return necessidadesOriginaisPorOP;
+      } finally {
+        carregandoNecessidadesOriginais = null;
+      }
+    })();
+
+    return carregandoNecessidadesOriginais;
+  }
+
+  function necessidadeOriginalDaOP(numeroOP) {
+    return necessidadesOriginaisPorOP.get(normalizarNumeroOPNecessidade(numeroOP)) || "";
+  }
+
+  function obterNumeroOPDaLinhaManejo(linha) {
+    const primeiroInput = linha?.querySelector("td:first-child input");
+    return normalizarNumeroOPNecessidade(primeiroInput?.value || linha?.querySelector("td:first-child")?.textContent || "");
+  }
+
+  function marcarCampoNecessidadeRecuperado(input, valor) {
+    if (!input || !valor) return;
+    input.value = valor;
+    input.dataset.necessidadeOriginalRecuperada = "1";
+    input.title = "Necessidade recuperada dos dados originais. Clique no botão verde da linha para salvar esta OP ou use a restauração definitiva.";
+    input.style.background = "#fff8dc";
+    input.style.borderColor = "#d6a800";
+  }
+
+  function aplicarFallbackNaTabelaManejo() {
+    const tbody = document.getElementById("listaManejoInline");
+    if (!tbody) return 0;
+
+    let preenchidas = 0;
+    tbody.querySelectorAll('tr[data-manejo-row="1"]').forEach(linha => {
+      const input = linha.querySelector('input[id$="-necessidade"]');
+      if (!input || limparNecessidade(input.value)) return;
+
+      const numeroOP = obterNumeroOPDaLinhaManejo(linha);
+      const original = necessidadeOriginalDaOP(numeroOP);
+      if (!original) return;
+
+      marcarCampoNecessidadeRecuperado(input, original);
+      preenchidas += 1;
+    });
+
+    return preenchidas;
+  }
+
+  function aplicarFallbackNaTabelaOrdens() {
+    const tbody = document.getElementById("listaOrdens");
+    if (!tbody) return 0;
+
+    let preenchidas = 0;
+    tbody.querySelectorAll("tr").forEach(linha => {
+      const celulas = linha.querySelectorAll("td");
+      if (celulas.length < 2) return;
+
+      const numeroOP = normalizarNumeroOPNecessidade(celulas[0].textContent || "");
+      const atual = limparNecessidade(celulas[1].textContent || "").replace(/^-$/, "");
+      if (atual) return;
+
+      const original = necessidadeOriginalDaOP(numeroOP);
+      if (!original) return;
+
+      const alvo = celulas[1].querySelector("strong") || celulas[1];
+      alvo.textContent = original;
+      celulas[1].title = "Necessidade recuperada visualmente dos dados originais.";
+      celulas[1].style.background = "#fff8dc";
+      preenchidas += 1;
+    });
+
+    return preenchidas;
+  }
+
+  function atualizarDatalistsNecessidade() {
+    const valores = [...new Set(necessidadesOriginaisPorOP.values())]
+      .filter(Boolean)
+      .sort((a, b) => {
+        if (a === "URGENTE") return -1;
+        if (b === "URGENTE") return 1;
+        return a.localeCompare(b, "pt-BR", { numeric: true });
+      });
+
+    ["necessidadesOrdemList", "filtroManejoNecessidadeList"].forEach(id => {
+      const datalist = document.getElementById(id);
+      if (!datalist) return;
+
+      const atuais = new Set(
+        [...datalist.querySelectorAll("option")]
+          .map(option => limparNecessidade(option.value))
+          .filter(Boolean)
+      );
+
+      valores.forEach(valor => {
+        if (atuais.has(valor)) return;
+        const option = document.createElement("option");
+        option.value = valor;
+        datalist.appendChild(option);
+        atuais.add(valor);
+      });
+    });
+  }
+
+  function aplicarFallbackVisualNecessidades() {
+    if (aplicandoFallbackNecessidades || !necessidadesOriginaisPorOP.size) return;
+    aplicandoFallbackNecessidades = true;
+    try {
+      aplicarFallbackNaTabelaManejo();
+      aplicarFallbackNaTabelaOrdens();
+      atualizarDatalistsNecessidade();
+      atualizarStatusCorrecaoNecessidade();
+    } finally {
+      aplicandoFallbackNecessidades = false;
+    }
+  }
+
+  function agendarFallbackVisualNecessidades() {
+    clearTimeout(window.__timerFallbackNecessidades);
+    window.__timerFallbackNecessidades = setTimeout(aplicarFallbackVisualNecessidades, 40);
+  }
+
+  function iniciarObservadorNecessidades() {
+    if (observerNecessidades) return;
+    const alvos = [
+      document.getElementById("listaManejoInline"),
+      document.getElementById("listaOrdens")
+    ].filter(Boolean);
+    if (!alvos.length) return;
+
+    observerNecessidades = new MutationObserver(agendarFallbackVisualNecessidades);
+    alvos.forEach(alvo => observerNecessidades.observe(alvo, { childList: true, subtree: true }));
+  }
+
+  function contarNecessidadesRecuperadasNaTela() {
+    return document.querySelectorAll('[data-necessidade-original-recuperada="1"]').length;
+  }
+
+  function atualizarStatusCorrecaoNecessidade(mensagem = "") {
+    const status = document.getElementById("statusCorrecaoNecessidade");
+    if (!status) return;
+
+    if (mensagem) {
+      status.textContent = mensagem;
+      return;
+    }
+
+    const recuperadasTela = contarNecessidadesRecuperadasNaTela();
+    if (recuperadasTela > 0) {
+      status.textContent = `${recuperadasTela} necessidade(s) original(is) recuperada(s) nesta tela.`;
+    } else if (necessidadesOriginaisPorOP.size > 0) {
+      status.textContent = `${necessidadesOriginaisPorOP.size} OP(s) com necessidade original disponíveis para conferência.`;
+    } else {
+      status.textContent = "Aguardando leitura dos dados originais.";
+    }
+  }
+
+  function adicionarPainelCorrecaoNecessidade() {
+    if (document.getElementById("painelCorrecaoNecessidade")) return;
+
+    const referencia = document.querySelector("#manejo .manejo-soma-compacta") || document.querySelector("#manejo .notice.small");
+    if (!referencia) return;
+
+    const painel = document.createElement("div");
+    painel.id = "painelCorrecaoNecessidade";
+    painel.style.display = "flex";
+    painel.style.flexWrap = "wrap";
+    painel.style.alignItems = "center";
+    painel.style.gap = "10px";
+    painel.style.margin = "10px 0";
+    painel.style.padding = "10px 12px";
+    painel.style.border = "1px solid #e5c04b";
+    painel.style.borderRadius = "12px";
+    painel.style.background = "#fffdf2";
+    painel.innerHTML = `
+      <div style="flex:1; min-width:240px;">
+        <strong>Correção da Necessidade</strong>
+        <div id="statusCorrecaoNecessidade" style="font-size:12px; margin-top:3px; color:#5f4b00;">
+          Aguardando leitura dos dados originais.
+        </div>
+      </div>
+      <button id="btnRestaurarNecessidadesOriginais" class="btn btn-primary" type="button">
+        Restaurar necessidades vazias
+      </button>
+    `;
+
+    referencia.insertAdjacentElement("afterend", painel);
+    document.getElementById("btnRestaurarNecessidadesOriginais")?.addEventListener("click", restaurarNecessidadesOriginaisNoFirebase);
+  }
+
+  async function obterFirebaseParaCorrecao() {
+    const [firebaseApp, firestore] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js")
+    ]);
+
+    const appAtual = firebaseApp.getApp();
+    return {
+      firestore,
+      db: firestore.getFirestore(appAtual)
+    };
+  }
+
+  function necessidadeAtualPreenchida(dados) {
+    return primeiroTextoNecessidade(dados?.necessidade, dados?.necessidadeTexto);
+  }
+
+  function candidatoRestauracaoDocumento(documento) {
+    const dados = documento?.data?.() || {};
+    const atual = necessidadeAtualPreenchida(dados);
+    if (atual) return { atual, candidato: "", dados };
+
+    const numeroOP = normalizarNumeroOPNecessidade(
+      dados.numeroOP || dados.numeroOPExterno || documento.id
+    );
+    const candidato = primeiroTextoNecessidade(
+      dados.necessidadeOriginalLigia,
+      ...necessidadesDosManejos(dados),
+      necessidadeOriginalDaOP(numeroOP),
+      dados.previsaoEntrega,
+      dados.dataNecessidade,
+      dados.dataEntrega
+    );
+
+    return { atual: "", candidato, dados, numeroOP };
+  }
+
+  async function restaurarNecessidadesOriginaisNoFirebase() {
+    if (restauracaoNecessidadesEmAndamento) return;
+    restauracaoNecessidadesEmAndamento = true;
+
+    const botao = document.getElementById("btnRestaurarNecessidadesOriginais");
+    const textoOriginalBotao = botao?.textContent || "Restaurar necessidades vazias";
+    if (botao) {
+      botao.disabled = true;
+      botao.textContent = "Conferindo OPs...";
+    }
+
+    try {
+      await carregarNecessidadesOriginais();
+      const { firestore, db } = await obterFirebaseParaCorrecao();
+      const snapshot = await firestore.getDocs(firestore.collection(db, "ordensProducao"));
+
+      const restauraveis = [];
+      let preservadas = 0;
+      let semOrigem = 0;
+
+      snapshot.docs.forEach(documento => {
+        const resultado = candidatoRestauracaoDocumento(documento);
+        if (resultado.atual) {
+          preservadas += 1;
+          return;
+        }
+        if (!resultado.candidato) {
+          semOrigem += 1;
+          return;
+        }
+        restauraveis.push({ documento, ...resultado });
+      });
+
+      if (!restauraveis.length) {
+        atualizarStatusCorrecaoNecessidade("Nenhuma necessidade vazia com valor original foi encontrada.");
+        showUpdateToast("Nenhuma necessidade precisava ser restaurada.");
+        return;
+      }
+
+      const confirmar = window.confirm(
+        `Foram encontradas ${restauraveis.length} OP(s) com necessidade vazia e valor original disponível.\n\n` +
+        `A correção NÃO altera as ${preservadas} OP(s) que já possuem necessidade preenchida.\n\n` +
+        "Deseja gravar a restauração definitiva no Firebase?"
+      );
+      if (!confirmar) {
+        atualizarStatusCorrecaoNecessidade("Restauração cancelada. A visualização temporária continua ativa.");
+        return;
+      }
+
+      let lote = firestore.writeBatch(db);
+      let itensNoLote = 0;
+      let totalSalvo = 0;
+
+      for (const item of restauraveis) {
+        lote.set(item.documento.ref, {
+          necessidade: item.candidato,
+          necessidadeTexto: item.candidato,
+          necessidadeManual: false,
+          necessidadeRestauradaOriginal: true,
+          necessidadeRestauradaVersao: APP_VERSION,
+          necessidadeRestauradaEm: firestore.serverTimestamp(),
+          atualizadoEm: firestore.serverTimestamp()
+        }, { merge: true });
+
+        itensNoLote += 1;
+        totalSalvo += 1;
+
+        if (itensNoLote >= 400) {
+          if (botao) botao.textContent = `Salvando ${totalSalvo}/${restauraveis.length}...`;
+          await lote.commit();
+          lote = firestore.writeBatch(db);
+          itensNoLote = 0;
+        }
+      }
+
+      if (itensNoLote > 0) await lote.commit();
+
+      atualizarStatusCorrecaoNecessidade(
+        `${totalSalvo} necessidade(s) restaurada(s). ${preservadas} valor(es) preenchido(s) foram preservados.`
+      );
+      showUpdateToast(`${totalSalvo} necessidade(s) original(is) restaurada(s) com segurança.`);
+
+      document.querySelectorAll('[data-necessidade-original-recuperada="1"]').forEach(input => {
+        input.dataset.necessidadeOriginalRecuperada = "";
+        input.style.background = "";
+        input.style.borderColor = "";
+      });
+
+      if (typeof window.atualizarDadosServidorAgora === "function") {
+        setTimeout(() => window.atualizarDadosServidorAgora(), 600);
+      } else {
+        setTimeout(() => window.location.reload(), 900);
+      }
+
+      console.info("Restauração de necessidades concluída.", {
+        totalSalvo,
+        preservadas,
+        semOrigem
+      });
+    } catch (error) {
+      console.error("Erro ao restaurar necessidades originais.", error);
+      atualizarStatusCorrecaoNecessidade("Erro na restauração. Nenhum valor preenchido foi sobrescrito.");
+      showUpdateToast("Não foi possível restaurar as necessidades. Confira a internet e as permissões do usuário.");
+    } finally {
+      restauracaoNecessidadesEmAndamento = false;
+      if (botao) {
+        botao.disabled = false;
+        botao.textContent = textoOriginalBotao;
+      }
+    }
+  }
+
+  function protegerNecessidadeAntesDoSalvar(event) {
+    const botao = event.target?.closest?.(".btn-save-manejo");
+    if (!botao) return;
+
+    const linha = botao.closest('tr[data-manejo-row="1"]');
+    if (!linha) return;
+
+    const input = linha.querySelector('input[id$="-necessidade"]');
+    if (!input || limparNecessidade(input.value)) return;
+
+    const original = necessidadeOriginalDaOP(obterNumeroOPDaLinhaManejo(linha));
+    if (original) marcarCampoNecessidadeRecuperado(input, original);
+  }
+
+  async function iniciarHotfixNecessidade() {
+    adicionarPainelCorrecaoNecessidade();
+    iniciarObservadorNecessidades();
+    document.addEventListener("click", protegerNecessidadeAntesDoSalvar, true);
+    await carregarNecessidadesOriginais();
+    aplicarFallbackVisualNecessidades();
+  }
+
+  window.restaurarNecessidadesOriginaisNoFirebase = restaurarNecessidadesOriginaisNoFirebase;
+
   function iniciarRecursosDaVersao() {
     iniciarHotfixChegadaManual();
+    iniciarHotfixNecessidade();
   }
 
   window.addEventListener("load", () => {

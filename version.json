@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-chegada-manual-condicional-1",
+  "version": "2026-07-28-necessidade-original-restauracao-1",
   "updatedAt": "2026-07-28T00:00:00-03:00",
-  "notes": "Correção pontual da Chegada Manual: processo selecionado primeiro e exibição somente das facções permitidas para o serviço, preservando app.js, Firebase e demais funções em produção."
+  "notes": "Correção cumulativa: mantém a Chegada Manual condicional e reorganiza a aba Necessidade, recuperando valores originais nas OPs vazias sem sobrescrever informações já preenchidas. Inclui conferência visual e restauração definitiva opcional no Firebase."
 }

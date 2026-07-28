@@ -1,36 +1,52 @@
-CORPONU - CORREÇÃO PONTUAL DA CHEGADA MANUAL
-Versão: 2026-07-28-chegada-manual-condicional-1
+CORPONU — CORREÇÃO EMERGENCIAL DA ABA NECESSIDADE
+Versão: 2026-07-28-necessidade-original-restauracao-1
 
-ARQUIVOS PARA SUBSTITUIR NO GITHUB:
+ESTA É UMA ATUALIZAÇÃO CUMULATIVA
+Ela mantém a correção anterior da Chegada Manual e acrescenta a recuperação da aba Necessidade.
+
+ARQUIVOS PARA SUBSTITUIR NO GITHUB
 1. update.js
 2. sw.js
 3. version.json
 
-NÃO SUBSTITUA NESTA CORREÇÃO:
+NÃO SUBSTITUIR NESTA ATUALIZAÇÃO
 - app.js
 - index.html
 - style.css
-- regras do Firebase
+- firebase-rules.txt
+- storage-rules.txt
+- dados-ligia-migracao.json
 
-O QUE FOI CORRIGIDO:
-- O campo Processo virou uma seleção controlada.
-- O campo Facção fica escondido até o processo ser escolhido.
-- Depois do processo, aparecem somente as facções que fazem aquele serviço.
-- O formulário impede salvar uma facção que não pertence ao processo.
-- O botão Salvar fica temporariamente bloqueado para reduzir duplo clique.
-- A rotina original de salvamento, pagamento, histórico e Firebase foi preservada.
+COMO PUBLICAR
+1. Abra o repositório do sistema no GitHub.
+2. Substitua update.js, sw.js e version.json pelos arquivos desta pasta.
+3. Faça o commit dos três arquivos juntos.
+4. Abra o sistema e pressione Ctrl + F5 uma vez.
+5. Entre na aba Manejo/Necessidade.
 
-COMO PUBLICAR:
-1. Abra o repositório corponu1 no GitHub.
-2. Substitua os três arquivos listados acima.
-3. Confirme o commit.
-4. Abra o sistema e pressione Ctrl+F5 uma vez no primeiro computador.
-5. Teste em Facções > Chegada manual.
+COMO A CORREÇÃO FUNCIONA
+- Quando uma OP aparece com Necessidade vazia, o sistema procura o valor nos dados originais da Lígia.
+- O valor recuperado aparece destacado em amarelo para conferência.
+- Informações que já estiverem preenchidas não são substituídas.
+- A correção também protege o botão verde da linha para não salvar vazio quando existe valor original.
 
-FLUXO ESPERADO:
-OP -> REF/Cor/Quantidade -> Processo -> Facções filtradas -> Datas -> Salvar
+RESTAURAÇÃO DEFINITIVA
+Na aba Manejo aparecerá o botão:
+"Restaurar necessidades vazias"
 
-IMPORTANTE:
-A correção foi colocada em update.js para evitar substituir o app.js de aproximadamente
-10 mil linhas durante o uso em produção. No final de semana, esta lógica poderá ser
-incorporada definitivamente ao app.js após os testes completos.
+Ao clicar:
+1. O sistema confere todas as OPs do Firebase.
+2. Mostra quantas estão vazias e possuem valor original disponível.
+3. Pede confirmação antes de gravar.
+4. Preenche somente os campos vazios.
+5. Preserva todas as Necessidades que já estejam preenchidas.
+
+IMPORTANTE
+- Execute o botão de restauração com uma conta administradora.
+- Clique apenas uma vez e aguarde a mensagem de conclusão.
+- Nenhuma OP preenchida manualmente será sobrescrita.
+- Se o botão não aparecer imediatamente, navegue para outra aba e volte para Manejo, ou use Ctrl + F5.
+
+RETORNO À VERSÃO ANTERIOR
+Se for necessário voltar, recoloque no GitHub os três arquivos da versão anterior:
+2026-07-28-chegada-manual-condicional-1
