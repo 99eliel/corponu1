@@ -1,12 +1,12 @@
-const APP_VERSION = "2026-07-28-botao-editar-local-usuarios-2";
+const APP_VERSION = "2026-07-28-editar-local-rastreamento-usuarios-3";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 
 const CORE_ASSETS = [
   "./index.html",
   "./style.css?v=2026-07-27-resgate-chegada-manual-faccao-1",
   "./app.js?v=2026-07-27-resgate-chegada-manual-faccao-1",
-  "./update.js?v=2026-07-28-botao-editar-local-usuarios-2",
-  "./valores-processos-corponu-2026.json?v=2026-07-28-botao-editar-local-usuarios-2"
+  "./update.js?v=2026-07-28-editar-local-rastreamento-usuarios-3",
+  "./valores-processos-corponu-2026.json?v=2026-07-28-editar-local-rastreamento-usuarios-3"
 ];
 
 self.addEventListener("install", event => {

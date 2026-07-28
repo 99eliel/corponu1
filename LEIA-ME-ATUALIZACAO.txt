@@ -1,44 +1,38 @@
-CORPONU — CORREÇÃO DO BOTÃO EDITAR LOCAL PARA USUÁRIOS COMUNS
+CORPONU — CORREÇÃO EDITAR LOCAL NO RASTREAMENTO
+Versão: 2026-07-28-editar-local-rastreamento-usuarios-3
 
-VERSÃO
-2026-07-28-botao-editar-local-usuarios-2
+CAUSA DO PROBLEMA
+A imagem enviada mostra a aba RASTREAMENTO. A correção anterior adicionava o botão somente na tabela do MANEJO. Além disso, a verificação visual exigia que o campo ativo estivesse exatamente como booleano true, o que podia esconder o botão em perfis personalizados.
 
 ARQUIVOS PARA SUBSTITUIR NO GITHUB
-- update.js
-- sw.js
-- version.json
+1. update.js
+2. sw.js
+3. version.json
 
-NÃO É NECESSÁRIO ALTERAR NESTA ATUALIZAÇÃO
+NÃO É NECESSÁRIO ALTERAR
 - app.js
 - index.html
 - style.css
 - firebase-rules.txt
-- firestore-rules.txt
 - storage-rules.txt
 
-O QUE FOI CORRIGIDO
-A versão anterior já permitia que o usuário comum salvasse a correção do local, porém a opção dependia do menu montado pelo app.js e podia não aparecer para perfis não administradores.
-
-Agora, para usuários comuns ativos com acesso ao Manejo:
-1. aparece um botão azul compacto com lápis na linha da OP;
-2. a opção Mover / editar local também é garantida dentro do menu de três pontos;
-3. o botão é recriado automaticamente quando a tabela é filtrada ou redesenhada;
-4. o formulário usa o mesmo salvamento seguro da versão anterior;
-5. o motivo continua obrigatório e a alteração continua registrada no histórico.
+NOVO FUNCIONAMENTO
+- Usuário comum ativo verá o botão EDITAR LOCAL na aba Rastreamento.
+- O botão aparece antes de Chegada e Bipar.
+- Também aparece em resultados de busca por OP e no histórico detalhado.
+- O botão de lápis e a opção Mover / editar local permanecem no Manejo.
+- Administradores continuam usando o botão original.
+- Usuário bloqueado/inativo não recebe acesso.
+- O motivo da correção continua obrigatório.
+- A alteração continua registrada em ajustesMigracao e logsAlteracoes.
 
 COMO PUBLICAR
 1. Substitua update.js, sw.js e version.json na raiz do repositório.
 2. Faça um único commit com os três arquivos.
-3. Abra o sistema com um usuário comum.
-4. Pressione Ctrl + F5 uma vez caso a atualização não apareça automaticamente.
-5. Entre na aba Manejo e procure o botão de lápis ao lado do botão verde de salvar e do menu de três pontos.
-
-TESTE RECOMENDADO
-- Abrir o Manejo com usuário comum.
-- Clicar no lápis de uma OP.
-- Alterar o local e informar o motivo.
-- Salvar e confirmar que a OP foi atualizada.
-- Abrir novamente pelo menu de três pontos e confirmar que Mover / editar local também aparece.
+3. Abra o sistema e clique em ATUALIZAR no canto superior direito.
+4. Caso necessário, pressione Ctrl + F5 uma vez.
+5. Entre com usuário comum e abra Rastreamento.
+6. O botão Editar local deve aparecer à esquerda de Chegada e Bipar.
 
 OBSERVAÇÃO
-As regras do Firestore entregues na atualização anterior continuam válidas. Não é necessário republicá-las apenas para corrigir a exibição do botão.
+As regras do Firestore publicadas na atualização anterior continuam válidas. Não é necessário republicá-las para esta correção visual.

@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-botao-editar-local-usuarios-2";
+  const APP_VERSION = "2026-07-28-editar-local-rastreamento-usuarios-3";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -3412,7 +3412,10 @@
   function perfilComumPodeAjustarLocal() {
     const perfil = contextoMovUsuario?.perfil;
     const user = contextoMovUsuario?.user;
-    return Boolean(user && perfil?.ativo === true && perfil?.tipo === "usuario");
+    const tipo = String(perfil?.tipo || "").trim().toLowerCase();
+    const ativoTexto = String(perfil?.ativo ?? "true").trim().toLowerCase();
+    const estaInativo = perfil?.ativo === false || ativoTexto === "false" || ativoTexto === "inativo";
+    return Boolean(user && tipo !== "admin" && !estaInativo);
   }
 
   async function salvarAjusteLocalComoUsuario(event) {
@@ -3421,7 +3424,7 @@
     const user = contextoMovUsuario?.user;
 
     // Administrador continua usando a função original do app.js.
-    if (perfil?.tipo === "admin") return;
+    if (String(perfil?.tipo || "").trim().toLowerCase() === "admin") return;
 
     // Evita que a função antiga mostre "Apenas admin" enquanto o perfil carrega.
     event.preventDefault();
@@ -3645,9 +3648,7 @@
   // ainda escondiam a opção. Este bloco garante a ação no menu e na própria linha.
   // ---------------------------------------------------------------------------
   function usuarioComumAtivoPodeVerEditarLocal() {
-    const perfil = contextoMovUsuario?.perfil;
-    const user = contextoMovUsuario?.user;
-    return Boolean(user && perfil?.ativo === true && perfil?.tipo === "usuario");
+    return perfilComumPodeAjustarLocal();
   }
 
   function extrairOrdemIdDoKebab(botao) {
@@ -3703,6 +3704,16 @@
         display: block !important;
         visibility: visible !important;
         opacity: 1 !important;
+      }
+      #listaRastreamento .btn-editar-local-rastreamento-usuario {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        margin: 2px 5px 2px 0;
+        white-space: nowrap;
+      }
+      #listaRastreamento .rastreamento-historico-head .btn-editar-local-rastreamento-usuario {
+        margin-left: auto;
       }
     `;
     document.head.appendChild(style);
@@ -3776,12 +3787,82 @@
     menu.insertBefore(botao, botaoHistorico || null);
   }
 
+  function obterNumeroOPLinhaRastreamento(linha) {
+    if (!linha) return "";
+    const primeiraCelula = linha.querySelector(":scope > td:first-child");
+    const forte = primeiraCelula?.querySelector("strong")?.textContent || primeiraCelula?.textContent || "";
+    return String(forte).replace(/\s+/g, " ").trim();
+  }
+
+  function criarBotaoEditarLocalRastreamento(ordemIdOuNumero) {
+    const botao = document.createElement("button");
+    botao.type = "button";
+    botao.className = "btn btn-sm btn-primary btn-editar-local-rastreamento-usuario";
+    botao.textContent = "Editar local";
+    botao.title = "Mover ou corrigir o local desta OP";
+    botao.setAttribute("aria-label", `Editar local da OP ${ordemIdOuNumero}`);
+    botao.dataset.ordemId = String(ordemIdOuNumero || "");
+    botao.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      abrirEdicaoLocalUsuarioPelaInterface(ordemIdOuNumero);
+    });
+    return botao;
+  }
+
+  function garantirBotaoEditarLocalNoRastreamento() {
+    if (!usuarioComumAtivoPodeVerEditarLocal()) return;
+    const tbody = document.getElementById("listaRastreamento");
+    if (!tbody) return;
+
+    // Linhas principais: funciona tanto na listagem geral quanto na busca global por OP.
+    tbody.querySelectorAll("tr").forEach(linha => {
+      if (linha.classList.contains("rastreamento-historico-row")) return;
+      const celulas = linha.querySelectorAll(":scope > td");
+      if (celulas.length < 12) return;
+      const acoes = celulas[celulas.length - 1];
+      if (!acoes || acoes.querySelector(".btn-editar-local-rastreamento-usuario")) return;
+
+      const numeroOP = obterNumeroOPLinhaRastreamento(linha);
+      if (!numeroOP || /nenhuma|carregando/i.test(numeroOP)) return;
+
+      // Se por alguma razão o app já exibiu o botão nativo, apenas garante que ele permaneça visível.
+      const nativo = [...acoes.querySelectorAll("button")].find(item =>
+        /editar\s*local|mover\s*\/\s*editar/i.test(String(item.textContent || ""))
+      );
+      if (nativo) {
+        nativo.classList.remove("hidden", "admin-only");
+        nativo.classList.add("btn-editar-local-rastreamento-usuario");
+        nativo.disabled = false;
+        nativo.removeAttribute("hidden");
+        nativo.style.removeProperty("display");
+        nativo.style.removeProperty("visibility");
+        nativo.style.removeProperty("opacity");
+        return;
+      }
+
+      acoes.insertBefore(criarBotaoEditarLocalRastreamento(numeroOP), acoes.firstChild);
+    });
+
+    // Quando uma OP específica é pesquisada, também libera o botão dentro do histórico detalhado.
+    tbody.querySelectorAll(".rastreamento-historico-card").forEach(card => {
+      const cabecalho = card.querySelector(".rastreamento-historico-head");
+      if (!cabecalho || cabecalho.querySelector(".btn-editar-local-rastreamento-usuario")) return;
+      const texto = String(cabecalho.querySelector("strong")?.textContent || "");
+      const match = texto.match(/\bOP\s+([^\s|]+)/i);
+      const numeroOP = match?.[1] || "";
+      if (!numeroOP) return;
+      cabecalho.appendChild(criarBotaoEditarLocalRastreamento(numeroOP));
+    });
+  }
+
   function iniciarExibicaoEditarLocalUsuarios() {
     injetarEstiloBotaoEditarLocalUsuario();
 
     const atualizar = () => {
       garantirBotaoEditarLocalNasLinhas();
       garantirOpcaoEditarLocalNoMenu();
+      garantirBotaoEditarLocalNoRastreamento();
     };
 
     if (!document.documentElement.dataset.hotfixExibirEditarLocalUsuario) {
@@ -3791,6 +3872,18 @@
         if (event.target.closest("#listaManejoInline .btn-kebab")) {
           setTimeout(garantirOpcaoEditarLocalNoMenu, 0);
           setTimeout(garantirOpcaoEditarLocalNoMenu, 40);
+        }
+        if (event.target.closest('[data-page="rastreamento"], #buscaRastreamento, #btnAtualizarServidor')) {
+          setTimeout(garantirBotaoEditarLocalNoRastreamento, 0);
+          setTimeout(garantirBotaoEditarLocalNoRastreamento, 120);
+          setTimeout(garantirBotaoEditarLocalNoRastreamento, 600);
+        }
+      }, true);
+
+      document.addEventListener("input", event => {
+        if (event.target?.id === "buscaRastreamento") {
+          setTimeout(garantirBotaoEditarLocalNoRastreamento, 0);
+          setTimeout(garantirBotaoEditarLocalNoRastreamento, 120);
         }
       }, true);
 

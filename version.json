@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-botao-editar-local-usuarios-2",
-  "updatedAt": "2026-07-28T10:30:00-03:00",
-  "notes": "Atualização cumulativa. Corrige a exibição da função Mover / editar local para usuários comuns ativos na aba Manejo. A opção passa a aparecer no menu de três pontos e também como botão compacto de lápis na própria linha. Mantém a edição com motivo obrigatório, auditoria e regras de segurança da versão anterior."
+  "version": "2026-07-28-editar-local-rastreamento-usuarios-3",
+  "updatedAt": "2026-07-28T11:20:00-03:00",
+  "notes": "Atualização cumulativa. Corrige definitivamente a exibição da função Editar local para usuários comuns ativos. O botão passa a aparecer nas linhas da aba Rastreamento, ao lado de Chegada e Bipar, também na busca global e no histórico detalhado. Mantém o botão no Manejo, o motivo obrigatório, a auditoria e todas as correções anteriores."
 }
