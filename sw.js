@@ -1,11 +1,11 @@
-const APP_VERSION = "2026-07-28-necessidade-original-restauracao-1";
+const APP_VERSION = "2026-07-28-necessidade-sem-branco-verificada-2";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 
 const CORE_ASSETS = [
   "./index.html",
   "./style.css?v=2026-07-27-resgate-chegada-manual-faccao-1",
   "./app.js?v=2026-07-27-resgate-chegada-manual-faccao-1",
-  "./update.js?v=2026-07-28-necessidade-original-restauracao-1"
+  "./update.js?v=2026-07-28-necessidade-sem-branco-verificada-2"
 ];
 
 self.addEventListener("install", event => {

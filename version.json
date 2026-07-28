@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-necessidade-original-restauracao-1",
-  "updatedAt": "2026-07-28T00:00:00-03:00",
-  "notes": "Correção cumulativa: mantém a Chegada Manual condicional e reorganiza a aba Necessidade, recuperando valores originais nas OPs vazias sem sobrescrever informações já preenchidas. Inclui conferência visual e restauração definitiva opcional no Firebase."
+  "version": "2026-07-28-necessidade-sem-branco-verificada-2",
+  "updatedAt": "2026-07-28T01:30:00-03:00",
+  "notes": "Correção cumulativa: mantém a Chegada Manual condicional e reprocessa a aba Necessidade com conferência real no servidor. Recupera valores existentes em campos antigos e na planilha original, mostra claramente as OPs cuja necessidade não foi informada na planilha e não grava textos ou datas inventadas."
 }

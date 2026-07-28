@@ -1,52 +1,48 @@
 CORPONU — CORREÇÃO EMERGENCIAL DA ABA NECESSIDADE
-Versão: 2026-07-28-necessidade-original-restauracao-1
-
-ESTA É UMA ATUALIZAÇÃO CUMULATIVA
-Ela mantém a correção anterior da Chegada Manual e acrescenta a recuperação da aba Necessidade.
+Versão: 2026-07-28-necessidade-sem-branco-verificada-2
 
 ARQUIVOS PARA SUBSTITUIR NO GITHUB
 1. update.js
 2. sw.js
 3. version.json
 
-NÃO SUBSTITUIR NESTA ATUALIZAÇÃO
+NÃO SUBSTITUIR
 - app.js
 - index.html
 - style.css
-- firebase-rules.txt
-- storage-rules.txt
+- regras do Firebase
 - dados-ligia-migracao.json
 
+O QUE ESTA VERSÃO CORRIGE
+- A restauração anterior podia informar que havia terminado, embora várias linhas continuassem vazias.
+- Agora a conferência informa separadamente:
+  * OPs que já estão preenchidas;
+  * OPs que possuem valor recuperável;
+  * OPs cuja necessidade não foi informada na planilha original.
+- Valores recuperados aparecem em amarelo.
+- Linhas sem valor na planilha aparecem em cinza com o texto visual
+  "NÃO INFORMADA NA PLANILHA".
+- Esse texto cinza é apenas um placeholder visual: não é gravado no Firebase.
+- Nenhuma necessidade já preenchida é sobrescrita.
+- A gravação é relida do servidor antes de o sistema informar que terminou.
+- Mantém a correção cumulativa da Chegada Manual.
+
 COMO PUBLICAR
-1. Abra o repositório do sistema no GitHub.
-2. Substitua update.js, sw.js e version.json pelos arquivos desta pasta.
+1. Abra o repositório corponu1 no GitHub.
+2. Substitua update.js, sw.js e version.json.
 3. Faça o commit dos três arquivos juntos.
 4. Abra o sistema e pressione Ctrl + F5 uma vez.
-5. Entre na aba Manejo/Necessidade.
-
-COMO A CORREÇÃO FUNCIONA
-- Quando uma OP aparece com Necessidade vazia, o sistema procura o valor nos dados originais da Lígia.
-- O valor recuperado aparece destacado em amarelo para conferência.
-- Informações que já estiverem preenchidas não são substituídas.
-- A correção também protege o botão verde da linha para não salvar vazio quando existe valor original.
-
-RESTAURAÇÃO DEFINITIVA
-Na aba Manejo aparecerá o botão:
-"Restaurar necessidades vazias"
-
-Ao clicar:
-1. O sistema confere todas as OPs do Firebase.
-2. Mostra quantas estão vazias e possuem valor original disponível.
-3. Pede confirmação antes de gravar.
-4. Preenche somente os campos vazios.
-5. Preserva todas as Necessidades que já estejam preenchidas.
+5. Entre como administrador.
+6. Abra a aba Manejo.
+7. Clique em "Reprocessar e conferir".
+8. Leia os três totais exibidos antes de confirmar.
 
 IMPORTANTE
-- Execute o botão de restauração com uma conta administradora.
-- Clique apenas uma vez e aguarde a mensagem de conclusão.
-- Nenhuma OP preenchida manualmente será sobrescrita.
-- Se o botão não aparecer imediatamente, navegue para outra aba e volte para Manejo, ou use Ctrl + F5.
+Muitas OPs da própria planilha da Lígia estão com o campo Necessidade vazio.
+Esta atualização não inventa uma data para essas OPs. Elas passam a ficar
+visivelmente identificadas, para que o responsável digite a necessidade correta
+quando ela for definida.
 
-RETORNO À VERSÃO ANTERIOR
-Se for necessário voltar, recoloque no GitHub os três arquivos da versão anterior:
-2026-07-28-chegada-manual-condicional-1
+RETORNO RÁPIDO
+Caso precise voltar, restaure no GitHub os três arquivos da versão anterior:
+2026-07-28-necessidade-original-restauracao-1
