@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-07-28-sistema-duplo-sutia-calcinha-1";
+  const VERSION = "2026-07-28-calcinha-sem-silk-envio-historico-2";
   const FIREBASE_VERSION = "10.12.5";
   const HISTORY_URL = `calcinhas-historico-2026.json?v=${encodeURIComponent(VERSION)}`;
   const TYPES = Object.freeze({ sutia: "Sutiã", calcinha: "Calcinha" });
@@ -271,7 +271,14 @@
       #corponuDualToast{position:fixed;right:18px;bottom:18px;z-index:100000;max-width:390px;padding:13px 15px;border-radius:13px;background:#172334;color:#fff;font:800 13px/1.4 Arial,sans-serif;box-shadow:0 16px 40px rgba(0,0,0,.24);opacity:0;transform:translateY(16px);pointer-events:none;transition:.2s ease}
       #corponuDualToast.show{opacity:1;transform:translateY(0)}#corponuDualToast[data-kind="error"]{background:#991b1b}#corponuDualToast[data-kind="success"]{background:#166534}
       .corponu-import-progress{height:10px;background:#dce8f3;border-radius:99px;overflow:hidden;margin-top:10px}.corponu-import-progress>span{display:block;height:100%;width:0;background:#1f6fb2;transition:width .2s}
-      @media(max-width:720px){.corponu-dual-grid,.corponu-history-summary{grid-template-columns:1fr}.corponu-dual-tabs{position:sticky;top:0;z-index:15}.corponu-dual-tab{flex:1}}
+      .corponu-history-send-overlay{position:fixed;inset:0;z-index:100020;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.55);backdrop-filter:blur(2px)}
+      .corponu-history-send-overlay.show{display:flex}
+      .corponu-history-send-card{width:min(560px,100%);background:#fff;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.3);overflow:hidden}
+      .corponu-history-send-head{padding:18px 20px;background:#173c69;color:#fff}.corponu-history-send-head h3{margin:0 0 5px}.corponu-history-send-head p{margin:0;opacity:.9;font-size:12px}
+      .corponu-history-send-body{display:grid;gap:14px;padding:20px}.corponu-history-send-body label{display:grid;gap:6px;font-weight:900;color:#20344b}.corponu-history-send-body select{min-height:44px;border:1px solid #b8c7d8;border-radius:10px;padding:8px 10px;background:#fff}
+      .corponu-history-send-actions{display:flex;justify-content:flex-end;gap:10px;padding:0 20px 20px}
+      body[data-corponu-manejo-tipo="calcinha"] #avisoFiltrosExcelManejo{border-color:#a9c5e0;background:#eef6ff}
+      @media(max-width:720px){.corponu-dual-grid,.corponu-history-summary{grid-template-columns:1fr}.corponu-dual-tabs{position:sticky;top:0;z-index:15}.corponu-dual-tab{flex:1}.corponu-history-send-actions{flex-direction:column-reverse}.corponu-history-send-actions .btn{width:100%}}
     `;
     document.head.appendChild(style);
   }
@@ -423,6 +430,141 @@
     select.disabled = false;
     select.innerHTML = `<option value="">Selecione a facção</option>${[...new Set(names.map(item => String(item || "").trim()).filter(Boolean))].map(name => `<option value="${escapeHtml(normalize(name))}">${escapeHtml(normalize(name))}</option>`).join("")}`;
     if (selected) select.value = normalize(selected);
+  }
+
+  function isHistoricalPanty(order) {
+    const origins = [
+      order?.origem,
+      order?.origemImportacao,
+      order?.manejamentosSetores?.calcinha?.origem,
+      order?.manejosSetores?.calcinha?.origem
+    ].map(normalize);
+    return origins.some(item => item.includes("PLANILHA_CALCINHAS_HISTORICO"));
+  }
+
+  let historicalSendResolver = null;
+
+  function closeHistoricalSendModal(result = null) {
+    const modal = document.getElementById("corponuHistoricoEnvioModal");
+    modal?.classList.remove("show");
+    document.body.style.overflow = "";
+    const resolver = historicalSendResolver;
+    historicalSendResolver = null;
+    if (resolver) resolver(result);
+  }
+
+  function ensureHistoricalSendModal() {
+    let modal = document.getElementById("corponuHistoricoEnvioModal");
+    if (modal) return modal;
+    modal = document.createElement("div");
+    modal.id = "corponuHistoricoEnvioModal";
+    modal.className = "corponu-history-send-overlay";
+    modal.innerHTML = `
+      <div class="corponu-history-send-card" role="dialog" aria-modal="true" aria-labelledby="corponuHistoricoEnvioTitulo">
+        <div class="corponu-history-send-head">
+          <h3 id="corponuHistoricoEnvioTitulo">Enviar calcinha histórica para facção</h3>
+          <p id="corponuHistoricoEnvioResumo">Escolha o serviço e a facção para esta movimentação.</p>
+        </div>
+        <form id="corponuHistoricoEnvioForm">
+          <div class="corponu-history-send-body">
+            <div class="notice small"><strong>Registro importado:</strong> como esta OP veio da planilha antiga, o planejamento de serviço e facção será definido agora.</div>
+            <label>Serviço
+              <select id="corponuHistoricoEnvioProcesso" required>
+                <option value="">Selecione o serviço</option>
+                ${CALCINHA_PROCESSES.map(item => `<option value="${item}">${item}</option>`).join("")}
+              </select>
+            </label>
+            <label>Facção
+              <select id="corponuHistoricoEnvioFaccao" required disabled>
+                <option value="">Primeiro selecione o serviço</option>
+              </select>
+            </label>
+          </div>
+          <div class="corponu-history-send-actions">
+            <button type="button" class="btn" id="btnCancelarHistoricoEnvio">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Continuar envio</button>
+          </div>
+        </form>
+      </div>`;
+    document.body.appendChild(modal);
+    const processSelect = document.getElementById("corponuHistoricoEnvioProcesso");
+    processSelect?.addEventListener("change", () => fillFactionSelect("corponuHistoricoEnvioProcesso", "corponuHistoricoEnvioFaccao"));
+    document.getElementById("btnCancelarHistoricoEnvio")?.addEventListener("click", () => closeHistoricalSendModal(null));
+    modal.addEventListener("pointerdown", event => {
+      if (event.target === modal) closeHistoricalSendModal(null);
+    });
+    document.getElementById("corponuHistoricoEnvioForm")?.addEventListener("submit", event => {
+      event.preventDefault();
+      const process = normalize(document.getElementById("corponuHistoricoEnvioProcesso")?.value);
+      const faction = normalize(document.getElementById("corponuHistoricoEnvioFaccao")?.value);
+      if (!CALCINHA_PROCESSES.includes(process)) {
+        toast("Selecione o serviço da calcinha.", "error");
+        return;
+      }
+      if (!faction) {
+        toast("Selecione a facção de destino.", "error");
+        return;
+      }
+      closeHistoricalSendModal({ process, faction });
+    });
+    return modal;
+  }
+
+  function chooseHistoricalPantyDestination(order) {
+    if (historicalSendResolver) {
+      toast("Finalize a escolha de serviço/facção que já está aberta.", "error");
+      return Promise.resolve(null);
+    }
+    const modal = ensureHistoricalSendModal();
+    const processSelect = document.getElementById("corponuHistoricoEnvioProcesso");
+    const factionSelect = document.getElementById("corponuHistoricoEnvioFaccao");
+    const summary = document.getElementById("corponuHistoricoEnvioResumo");
+    if (summary) summary.textContent = `OP ${order?.numeroOP || "-"} • Ref. ${order?.referencia || "-"} • ${order?.cor || "-"}`;
+    if (processSelect) processSelect.value = "";
+    if (factionSelect) {
+      factionSelect.value = "";
+      factionSelect.disabled = true;
+      factionSelect.innerHTML = '<option value="">Primeiro selecione o serviço</option>';
+    }
+    modal.classList.add("show");
+    document.body.style.overflow = "hidden";
+    setTimeout(() => processSelect?.focus(), 50);
+    return new Promise(resolve => { historicalSendResolver = resolve; });
+  }
+
+  function applyManejoTypeLayout() {
+    const table = document.querySelector("#manejo .manejo-inline-table");
+    if (!table) return;
+    const isCalcinha = document.querySelector(".manejo-setor-btn.active")?.dataset?.setor === "calcinha";
+    document.body.dataset.corponuManejoTipo = isCalcinha ? "calcinha" : "sutia";
+    const headRow = table.querySelector("thead .manejo-head-row");
+    const filterRow = table.querySelector("thead .manejo-filter-row");
+    const headers = [...(headRow?.children || [])];
+    const hiddenIndexes = headers
+      .map((cell, index) => ({ index, label: normalize(cell.textContent) }))
+      .filter(item => item.label === "SILK" || item.label === "TECIDO")
+      .map(item => item.index);
+    hiddenIndexes.forEach(index => {
+      if (headRow?.children[index]) headRow.children[index].style.display = isCalcinha ? "none" : "";
+      if (filterRow?.children[index]) filterRow.children[index].style.display = isCalcinha ? "none" : "";
+      document.querySelectorAll("#listaManejoInline tr[data-manejo-row='1']").forEach(row => {
+        if (row.children[index]) row.children[index].style.display = isCalcinha ? "none" : "";
+      });
+    });
+    if (isCalcinha) {
+      const silkFilter = document.getElementById("filtroManejoSilk");
+      const tecidoFilter = document.getElementById("filtroManejoDataTecido");
+      if (silkFilter) silkFilter.value = "";
+      if (tecidoFilter) tecidoFilter.value = "";
+    }
+    const info = document.getElementById("manejoSetorInfo");
+    if (info) info.textContent = isCalcinha
+      ? "Mostrando OPs de calcinha. Informe Linha, Fase e Necessidade; Silk e Tecido não são utilizados para calcinha."
+      : "Mostrando OPs de sutiã importadas do PDF. A separação vem automaticamente da importação.";
+    const notice = document.querySelector("#manejo .notice.small");
+    if (notice) notice.innerHTML = isCalcinha
+      ? "<strong>Funcionamento da calcinha:</strong> OP, referência, quantidade, cor e necessidade vêm da importação. No Manejo ficam Linha, Fase, localização e encaminhamento. Registros históricos perguntam serviço e facção no momento do envio; novas OPs usam o planejamento já definido."
+      : "<strong>Funcionamento:</strong> Nº OP, REF, QTI, COR, NECESSIDADE e o tipo da peça vêm da importação. Aqui ficam Silk, Tecido, Fase e encaminhamentos. Use os botões para mandar a OP para Facção ou Célula.";
   }
 
   function updateOrderProductDatalist() {
@@ -854,6 +996,7 @@
       }
       row.children[1]?.after(cell);
     });
+    applyManejoTypeLayout();
   }
 
   async function saveCalcinhaLine(orderId, value) {
@@ -922,16 +1065,22 @@
       toast("OP de calcinha não encontrada.", "error");
       return;
     }
-    const process = normalize(order.processoPlanejado);
-    const faction = normalize(order.faccaoPlanejada);
+    const historical = isHistoricalPanty(order);
+    let process = normalize(order.processoPlanejado);
+    let faction = normalize(order.faccaoPlanejada);
     const rowData = readManejoRow(orderId);
     const line = lineValue(rowData.linhaCalcinha || order.linhaCalcinha);
     if (!line) {
       toast("Antes de enviar, escolha Cotton Line ou Corpo Nu na coluna Linha e salve.", "error");
       return;
     }
-    if (!CALCINHA_PROCESSES.includes(process) || !faction) {
-      toast("Esta OP não possui serviço/facção planejados. Edite a OP na aba Ordens → Calcinha.", "error");
+    if (historical) {
+      const choice = await chooseHistoricalPantyDestination(order);
+      if (!choice) return;
+      process = choice.process;
+      faction = choice.faction;
+    } else if (!CALCINHA_PROCESSES.includes(process) || !faction) {
+      toast("Esta nova OP não possui serviço/facção planejados. Edite a OP na aba Ordens → Calcinha.", "error");
       return;
     }
     const duplicate = [...state.maps.movimentacoes.values()].find(item => item.opId === order.id && typeOfData(item) === "calcinha" && item.tipoDestino === "faccao" && !["finalizado", "retornou", "encaminhado"].includes(item.status));
@@ -943,7 +1092,7 @@
     const user = currentUser();
     const { addDoc, collection, doc, setDoc, serverTimestamp, writeBatch } = state.firebase;
     const movementData = {
-      origem: "manejo",
+      origem: historical ? "manejo_historico_calcinha" : "manejo",
       movimentacaoOrigemId: "",
       opId: order.id,
       numeroOP: order.numeroOP || "",
@@ -974,16 +1123,13 @@
     try {
       const movementRef = await addDoc(collection(state.db, "movimentacoesProducao"), movementData);
       const management = {
-        silkNome: rowData.silkNome || "",
-        silkData: rowData.silkData || "",
-        tecidoNome: rowData.tecidoNome || "",
-        dataTecido: rowData.dataTecido || "",
         fase: rowData.fase || "",
         necessidade: rowData.necessidade || order.necessidade || "",
         linhaCalcinha: line,
         linhaCalcinhaLabel: lineLabel(line),
         faccao: faction,
         processo: process,
+        origemEnvio: historical ? "historico_escolha_no_envio" : "planejamento_op",
         status: "organizada",
         atualizadoPor: user?.uid || "",
         atualizadoEm: serverTimestamp()
@@ -998,7 +1144,7 @@
         atualizadoEm: serverTimestamp()
       }, { merge: true });
       state.maps.movimentacoes.set(movementRef.id, { id: movementRef.id, ...movementData });
-      await registerLog("movimentacao_criada", "movimentacaoProducao", movementRef.id, `Calcinha | OP ${order.numeroOP} | ${lineLabel(line)} | ${process} | ${faction}`);
+      await registerLog("movimentacao_criada", "movimentacaoProducao", movementRef.id, `Calcinha ${historical ? "histórica" : "nova"} | OP ${order.numeroOP} | ${lineLabel(line)} | ${process} | ${faction}`);
       toast(`OP ${order.numeroOP} enviada para ${faction}.`, "success");
       scheduleRefreshAndApply(400, false);
     } catch (error) {
@@ -1305,7 +1451,7 @@
       if (pageId === "ordens") applyOrders();
       if (pageId === "faccoes") applyFaccoes();
       if (pageId === "rastreamento") applyTracking();
-      if (pageId === "manejo") injectManejoLineColumn();
+      if (pageId === "manejo") { injectManejoLineColumn(); applyManejoTypeLayout(); }
     } finally {
       state.applying = false;
     }
@@ -1317,6 +1463,7 @@
     wrapManejoSave();
     wrapSendToFaction();
     injectManejoLineColumn();
+    applyManejoTypeLayout();
     applyProducts();
     applyOrders();
     applyFaccoes();
@@ -1339,7 +1486,7 @@
         scheduled = true;
         requestAnimationFrame(() => {
           scheduled = false;
-          if (id === "listaManejoInline") injectManejoLineColumn();
+          if (id === "listaManejoInline") { injectManejoLineColumn(); applyManejoTypeLayout(); }
           if (id.includes("Produto")) applyProducts();
           else if (id === "listaOrdens") applyOrders();
           else if (id.includes("Faccoes") || id === "listaMovimentacoesUsuario") applyFaccoes();
@@ -1372,6 +1519,7 @@
     }, true);
     document.querySelectorAll(".manejo-setor-btn").forEach(button => button.addEventListener("click", () => setTimeout(() => {
       injectManejoLineColumn();
+      applyManejoTypeLayout();
       scheduleRefreshAndApply(60, false);
     }, 30)));
     document.addEventListener("click", event => {
@@ -1405,6 +1553,7 @@
       setActiveType("faccoes", "sutia", { keepForm: true });
       setActiveType("rastreamento", "sutia", { keepForm: true });
       injectManejoLineColumn();
+      applyManejoTypeLayout();
       applyAll();
       window.corponuDualMode = {
         version: VERSION,

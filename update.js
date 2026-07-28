@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-sistema-duplo-sutia-calcinha-1";
+  const APP_VERSION = "2026-07-28-calcinha-sem-silk-envio-historico-2";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -4742,12 +4742,36 @@
       return;
     }
 
-    const cabecalhos = ["OP", "REF", "LINHA", "SILK", "TECIDO", "FASE", "QTI", "COR", "NECESSIDADE", "STATUS"];
+    const calcinha = setorAtualFiltroExcelManejo() === "calcinha";
+    const colunas = calcinha
+      ? [
+          { label: "OP", indice: 0 },
+          { label: "REF", indice: 1 },
+          { label: "LINHA", indice: 2 },
+          { label: "FASE", indice: 5 },
+          { label: "QTI", indice: 6 },
+          { label: "COR", indice: 7 },
+          { label: "NECESSIDADE", indice: 8 },
+          { label: "STATUS", indice: 9 }
+        ]
+      : [
+          { label: "OP", indice: 0 },
+          { label: "REF", indice: 1 },
+          { label: "LINHA", indice: 2 },
+          { label: "SILK", indice: 3 },
+          { label: "TECIDO", indice: 4 },
+          { label: "FASE", indice: 5 },
+          { label: "QTI", indice: 6 },
+          { label: "COR", indice: 7 },
+          { label: "NECESSIDADE", indice: 8 },
+          { label: "STATUS", indice: 9 }
+        ];
+    const cabecalhos = colunas.map(item => item.label);
     const corpo = linhas.map(linha => {
-      const valores = cabecalhos.map((_, indice) => textoDaCelulaParaImpressao(linha, indice));
+      const valores = colunas.map(item => textoDaCelulaParaImpressao(linha, item.indice));
       return `<tr>${valores.map(valor => `<td>${escaparHtmlFiltroExcelManejo(valor || "-")}</td>`).join("")}</tr>`;
     }).join("");
-    const setor = setorAtualFiltroExcelManejo() === "calcinha" ? "Calcinha" : "Sutiã";
+    const setor = calcinha ? "Calcinha" : "Sutiã";
 
     janela.document.write(`
       <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Manejo ${setor}</title>
@@ -4758,7 +4782,7 @@
       </style></head><body>
       <h1>Manejo ${setor} — itens filtrados</h1>
       <p>${escaparHtmlFiltroExcelManejo(textoFiltrosExcelAtivos())} • ${linhas.length} OP(s)</p>
-      <table><thead><tr>${cabecalhos.map(item => `<th>${item}</th>`).join("")}</tr></thead><tbody>${corpo || '<tr><td colspan="10">Nenhum item encontrado.</td></tr>'}</tbody></table>
+      <table><thead><tr>${cabecalhos.map(item => `<th>${item}</th>`).join("")}</tr></thead><tbody>${corpo || `<tr><td colspan="${cabecalhos.length}">Nenhum item encontrado.</td></tr>`}</tbody></table>
       </body></html>
     `);
     janela.document.close();

@@ -1,14 +1,14 @@
-const APP_VERSION = "2026-07-28-sistema-duplo-sutia-calcinha-1";
+const APP_VERSION = "2026-07-28-calcinha-sem-silk-envio-historico-2";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 
 const CORE_ASSETS = [
   "./index.html",
   "./style.css?v=2026-07-27-resgate-chegada-manual-faccao-1",
   "./app.js?v=2026-07-27-resgate-chegada-manual-faccao-1",
-  "./update.js?v=2026-07-28-sistema-duplo-sutia-calcinha-1",
-  "./corponu-dual-mode.js?v=2026-07-28-sistema-duplo-sutia-calcinha-1",
-  "./calcinhas-historico-2026.json?v=2026-07-28-sistema-duplo-sutia-calcinha-1",
-  "./valores-processos-corponu-2026.json?v=2026-07-28-sistema-duplo-sutia-calcinha-1"
+  "./update.js?v=2026-07-28-calcinha-sem-silk-envio-historico-2",
+  "./corponu-dual-mode.js?v=2026-07-28-calcinha-sem-silk-envio-historico-2",
+  "./calcinhas-historico-2026.json?v=2026-07-28-calcinha-sem-silk-envio-historico-2",
+  "./valores-processos-corponu-2026.json?v=2026-07-28-calcinha-sem-silk-envio-historico-2"
 ];
 
 self.addEventListener("install", event => {

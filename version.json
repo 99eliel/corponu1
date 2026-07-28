@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-sistema-duplo-sutia-calcinha-1",
-  "updatedAt": "2026-07-28T15:45:00-03:00",
-  "notes": "Atualização cumulativa que mantém o fluxo atual de sutiã e adiciona o fluxo de calcinha. Divide Produtos, Ordens de Produção, Facções e Rastreamento entre Sutiã e Calcinha; adiciona Linha Cotton Line/Corpo Nu no Manejo; exige serviço e facção no planejamento das novas OPs de calcinha; e inclui importação manual protegida do histórico das abas Calcinhas Cotton Line e Calcinhas Corpo Nu."
+  "version": "2026-07-28-calcinha-sem-silk-envio-historico-2",
+  "updatedAt": "2026-07-28T18:40:00-03:00",
+  "notes": "Correção cumulativa do fluxo de calcinha: oculta Silk e Tecido no Manejo de Calcinha e na impressão; mantém o fluxo de sutiã intacto; OPs históricas importadas passam a solicitar serviço e facção no momento de Enviar para facção; novas OPs continuam usando serviço e facção definidos no planejamento."
 }
