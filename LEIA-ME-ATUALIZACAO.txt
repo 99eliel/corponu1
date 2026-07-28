@@ -1,15 +1,25 @@
-CORPONU — FILTROS ACUMULATIVOS DO MANEJO (LÓGICA TIPO EXCEL)
-Versão: 2026-07-28-filtros-excel-acumulativos-manejo-1
+CORPONU — SISTEMA DUPLO SUTIÃ / CALCINHA
+Versão: 2026-07-28-sistema-duplo-sutia-calcinha-1
 
-OBJETIVO
-Permitir selecionar várias opções em um mesmo filtro da aba Manejo/Fases e combinar vários filtros ao mesmo tempo.
+============================================================
+1. ARQUIVOS PARA SUBSTITUIR NO GITHUB
+============================================================
 
-ARQUIVOS PARA SUBSTITUIR NA RAIZ DO GITHUB
-1. update.js
-2. sw.js
-3. version.json
+Substitua na raiz do repositório:
 
-NÃO ALTERAR NESTA ATUALIZAÇÃO
+- update.js
+- sw.js
+- version.json
+
+Adicione na raiz do repositório:
+
+- corponu-dual-mode.js
+- calcinhas-historico-2026.json
+
+Faça um único commit com os cinco arquivos.
+
+NÃO altere nesta atualização:
+
 - app.js
 - index.html
 - style.css
@@ -17,46 +27,183 @@ NÃO ALTERAR NESTA ATUALIZAÇÃO
 - firestore-rules.txt
 - storage-rules.txt
 - valores-processos-corponu-2026.json
+- dados-ligia-migracao.json
 
-NÃO É NECESSÁRIO ALTERAR AS REGRAS DO FIREBASE.
+Não é necessário publicar novas regras do Firebase.
 
-COMO FUNCIONA
-1. Abra a aba Manejo.
-2. Nos filtros de Referência, Silk, Tecido, Fase, Quantidade, Cor, Necessidade ou Status, clique na seta nova.
-3. Marque uma ou várias opções.
-4. Clique em Aplicar.
-5. Repita em outras colunas quando necessário.
+============================================================
+2. SEGURANÇA DOS DADOS ATUAIS
+============================================================
 
-REGRA DOS FILTROS
-- Dentro da mesma coluna: OU.
-  Exemplo: Fase = CASA OU CORTE.
-- Entre colunas diferentes: E.
-  Exemplo: (Fase = CASA OU CORTE) E (Cor = BLUSH OU PRETO).
+- Nenhum documento atual é convertido ou regravado em massa.
+- Produtos e OPs antigos sem tipo continuam sendo interpretados como SUTIÃ.
+- O fluxo atual de Sutiã continua usando as funções originais do app.js.
+- Calcinha usa documentos identificados separadamente.
+- Uma referência pode existir em Sutiã e Calcinha ao mesmo tempo.
+- A planilha histórica NÃO é importada automaticamente.
 
-OUTRAS FUNÇÕES
-- A caixa de pesquisa permite localizar uma opção dentro da lista.
-- Selecionar tudo equivale a não restringir aquela coluna.
-- Limpar dentro da janela desmarca as opções; depois clique em Aplicar.
-- O botão geral Limpar filtros remove também todas as seleções acumulativas.
-- A digitação normal nos campos continua funcionando para buscas simples.
-- O filtro de OP continua digitável para evitar uma lista enorme.
-- Os totais, soma por fase, soma por cor e impressão consideram apenas as linhas resultantes.
-- Ao trocar entre Manejo Sutiã e Manejo Calcinha, os filtros acumulativos são limpos para evitar combinações inválidas entre setores.
+============================================================
+3. NOVA DIVISÃO DO SISTEMA
+============================================================
 
-EXEMPLO PRÁTICO
-Para encontrar peças que estejam em CASA ou CORTE, nas cores BLUSH ou PRETO:
-1. Fase: marque CASA e CORTE.
-2. Cor: marque BLUSH e PRETO.
-3. O sistema mostrará somente as peças que atendam às duas condições.
+As páginas abaixo terão botões Sutiã e Calcinha:
 
-PUBLICAÇÃO
-1. Faça um único commit com update.js, sw.js e version.json.
-2. Abra o sistema.
-3. Clique em Atualizar no topo ou pressione Ctrl + F5 uma vez.
-4. Confira se a versão exibida é:
-   2026-07-28-filtros-excel-acumulativos-manejo-1
-5. Teste primeiro com duas fases e duas cores.
+- Produtos
+- Ordens de Produção
+- Facções
+- Rastreamento
 
-RETORNO RÁPIDO
-Caso seja necessário voltar, restaure os três arquivos da versão anterior:
-2026-07-28-editar-local-rastreamento-usuarios-3
+O Manejo mantém os botões Sutiã e Calcinha que já existiam.
+No Manejo foi adicionada a coluna LINHA:
+
+- Cotton Line
+- Corpo Nu
+- A definir
+
+As novas OPs de calcinha são criadas com a linha em branco. O usuário escolhe a linha no Manejo e salva a linha normalmente.
+
+============================================================
+4. NOVOS PRODUTOS DE CALCINHA
+============================================================
+
+Produtos > Calcinha
+
+- Cadastre referência e nome.
+- Alça, bojo e renda continuam exclusivos do fluxo de sutiã.
+- A mesma referência pode existir em Produtos > Sutiã e Produtos > Calcinha.
+- Os documentos de calcinha usam IDs separados, por exemplo calcinha-414.
+
+============================================================
+5. NOVAS ORDENS DE PRODUÇÃO DE CALCINHA
+============================================================
+
+Ordens de Produção > Calcinha
+
+Informe:
+
+- Nº da OP
+- Referência da calcinha
+- Cor
+- Quantidade
+- Início da necessidade
+- Final da necessidade
+- Serviço: CALCINHA MONTAGEM ou CALCINHA COMPLETA
+- Facção planejada
+- Observação opcional
+
+A linha Cotton Line/Corpo Nu fica em branco e será definida no Manejo.
+
+Ao selecionar o serviço, o campo Facção mostra somente as facções relacionadas ao processo.
+
+============================================================
+6. IMPORTAÇÃO DE NOVAS OPS PELO PDF
+============================================================
+
+Importar / Backup > Importar relatório externo PDF
+
+Quando o tipo for Calcinha, o sistema também pedirá:
+
+- Serviço da calcinha
+- Facção de destino
+
+O importador de calcinha é separado e não usa a referência de sutiã com o mesmo número.
+Todas as OPs do PDF recebem o serviço e a facção informados no planejamento.
+A linha Cotton Line/Corpo Nu permanece em branco até o Manejo.
+
+O PDF de Sutiã continua seguindo a rotina original.
+
+============================================================
+7. ENVIO PARA FACÇÃO NO MANEJO DE CALCINHA
+============================================================
+
+Manejo > Calcinha
+
+1. Escolha Cotton Line ou Corpo Nu na coluna Linha.
+2. Preencha/salve os demais campos necessários.
+3. Abra os três pontos da OP.
+4. Clique em Enviar para facção.
+
+O sistema usa automaticamente o serviço e a facção definidos no planejamento da OP.
+O usuário não precisa selecionar novamente.
+O envio usa a quantidade total da OP e a data atual.
+
+O envio de Sutiã continua abrindo o modal original e segue o funcionamento anterior.
+
+============================================================
+8. IMPORTAÇÃO DO HISTÓRICO DAS CALCINHAS
+============================================================
+
+Depois de publicar e testar a atualização:
+
+1. Entre como administrador.
+2. Abra Importar / Backup.
+3. Localize Importar histórico das calcinhas.
+4. Clique em Conferir e importar histórico.
+5. Leia o resumo da conferência.
+6. Confirme somente depois de conferir os números.
+
+O arquivo contém somente:
+
+- CALCINHAS COTTON LINE: 465 linhas
+- CALCINHAS CORPO NU: 975 linhas
+- Total: 1.440 OPs históricas
+- 113 referências de calcinha
+
+A importação:
+
+- ignora documentos que já existem;
+- não altera OPs de sutiã;
+- preserva linhas repetidas com IDs próprios;
+- preserva registros cancelados e encerrados;
+- mantém observações;
+- mantém Cotton Line/Corpo Nu da planilha antiga;
+- deixa planejamento de serviço/facção pendente nos registros históricos que não tinham essa informação.
+
+Execute o botão uma única vez. Se for executado novamente, os IDs existentes serão preservados e ignorados.
+
+============================================================
+9. TESTE ANTES DE IMPORTAR O HISTÓRICO
+============================================================
+
+Faça estes testes primeiro:
+
+1. Produtos > Sutiã continua mostrando os produtos atuais.
+2. Produtos > Calcinha aceita uma referência igual a uma de sutiã.
+3. Ordens > Sutiã continua cadastrando normalmente.
+4. Ordens > Calcinha exige intervalo, serviço e facção.
+5. Manejo > Calcinha mostra a coluna Linha.
+6. Salve Cotton Line/Corpo Nu em uma OP de teste.
+7. Envie a OP de teste para facção pelos três pontos.
+8. Facções > Calcinha mostra a movimentação.
+9. Rastreamento > Calcinha mostra a mesma movimentação.
+10. Facções > Sutiã e Rastreamento > Sutiã continuam mostrando os dados atuais.
+
+Somente depois desses testes execute a importação histórica.
+
+============================================================
+10. ATUALIZAÇÃO E CACHE
+============================================================
+
+Depois do commit:
+
+1. Abra o sistema.
+2. Clique em Atualizar no topo.
+3. Aguarde o recarregamento.
+4. Caso a versão antiga continue, pressione Ctrl + F5 uma vez.
+
+A versão exibida deve ser:
+
+2026-07-28-sistema-duplo-sutia-calcinha-1
+
+============================================================
+11. RETORNO DE EMERGÊNCIA
+============================================================
+
+Caso a interface apresente problema antes da importação histórica:
+
+- restaure update.js, sw.js e version.json da versão anterior;
+- remova corponu-dual-mode.js e calcinhas-historico-2026.json;
+- faça novo commit;
+- pressione Ctrl + F5.
+
+O app.js, o banco atual e o fluxo antigo de Sutiã não foram substituídos por esta atualização.

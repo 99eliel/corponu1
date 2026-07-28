@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-filtros-excel-acumulativos-manejo-1";
+  const APP_VERSION = "2026-07-28-sistema-duplo-sutia-calcinha-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -3910,13 +3910,14 @@
 
   const CONFIG_FILTROS_EXCEL_MANEJO = Object.freeze([
     { id: "filtroManejoReferencia", campo: "referencia", label: "Referência", coluna: 1 },
-    { id: "filtroManejoSilk", campo: "silk", label: "Silk", coluna: 2 },
-    { id: "filtroManejoDataTecido", campo: "dataTecido", label: "Tecido", coluna: 3 },
-    { id: "filtroManejoFase", campo: "fase", label: "Fase", coluna: 4 },
-    { id: "filtroManejoQuantidade", campo: "quantidade", label: "Quantidade", coluna: 5 },
-    { id: "filtroManejoCor", campo: "cor", label: "Cor", coluna: 6 },
-    { id: "filtroManejoNecessidade", campo: "necessidade", label: "Necessidade", coluna: 7 },
-    { id: "filtroManejoStatus", campo: "status", label: "Status", coluna: 8 }
+    { id: "filtroManejoLinhaCalcinha", campo: "linhaCalcinha", label: "Linha", coluna: 2 },
+    { id: "filtroManejoSilk", campo: "silk", label: "Silk", coluna: 3 },
+    { id: "filtroManejoDataTecido", campo: "dataTecido", label: "Tecido", coluna: 4 },
+    { id: "filtroManejoFase", campo: "fase", label: "Fase", coluna: 5 },
+    { id: "filtroManejoQuantidade", campo: "quantidade", label: "Quantidade", coluna: 6 },
+    { id: "filtroManejoCor", campo: "cor", label: "Cor", coluna: 7 },
+    { id: "filtroManejoNecessidade", campo: "necessidade", label: "Necessidade", coluna: 8 },
+    { id: "filtroManejoStatus", campo: "status", label: "Status", coluna: 9 }
   ]);
 
   const selecoesFiltrosExcelManejo = new Map();
@@ -3987,6 +3988,16 @@
     if (config.campo === "referencia") {
       return celula?.querySelector("input")?.value || celula?.textContent || "";
     }
+    if (config.campo === "linhaCalcinha") {
+      const seletor = celula?.querySelector("select.corponu-manejo-line-select, select");
+      if (seletor) {
+        if (seletor.value === "cotton_line") return "Cotton Line";
+        if (seletor.value === "corpo_nu") return "Corpo Nu";
+        return "A definir";
+      }
+      const valor = celula?.querySelector("input")?.value || celula?.textContent || "";
+      return String(valor).trim() || "A definir";
+    }
     if (config.campo === "silk" || config.campo === "dataTecido") {
       const valores = [...(celula?.querySelectorAll("input") || [])]
         .map(input => String(input.value || "").trim())
@@ -4037,6 +4048,7 @@
 
     const especiaisPorCampo = {
       referencia: ["Campo vazio"],
+      linhaCalcinha: ["Cotton Line", "Corpo Nu", "A definir"],
       silk: ["Preenchido", "Campo vazio", "Sem silk"],
       dataTecido: ["Preenchido", "Campo vazio", "Sem tecido"],
       fase: ["Campo vazio"],
@@ -4704,7 +4716,13 @@
   function textoDaCelulaParaImpressao(linha, indice) {
     const celula = linha.cells?.[indice];
     if (!celula) return "";
-    if (indice === 2 || indice === 3) {
+    if (indice === 2) {
+      const seletor = celula.querySelector("select");
+      if (seletor?.value === "cotton_line") return "Cotton Line";
+      if (seletor?.value === "corpo_nu") return "Corpo Nu";
+      return celula.querySelector("input")?.value || "A definir";
+    }
+    if (indice === 3 || indice === 4) {
       return [...celula.querySelectorAll("input")]
         .map(input => String(input.value || "").trim())
         .filter(Boolean)
@@ -4724,7 +4742,7 @@
       return;
     }
 
-    const cabecalhos = ["OP", "REF", "SILK", "TECIDO", "FASE", "QTI", "COR", "NECESSIDADE", "STATUS"];
+    const cabecalhos = ["OP", "REF", "LINHA", "SILK", "TECIDO", "FASE", "QTI", "COR", "NECESSIDADE", "STATUS"];
     const corpo = linhas.map(linha => {
       const valores = cabecalhos.map((_, indice) => textoDaCelulaParaImpressao(linha, indice));
       return `<tr>${valores.map(valor => `<td>${escaparHtmlFiltroExcelManejo(valor || "-")}</td>`).join("")}</tr>`;
@@ -4740,7 +4758,7 @@
       </style></head><body>
       <h1>Manejo ${setor} — itens filtrados</h1>
       <p>${escaparHtmlFiltroExcelManejo(textoFiltrosExcelAtivos())} • ${linhas.length} OP(s)</p>
-      <table><thead><tr>${cabecalhos.map(item => `<th>${item}</th>`).join("")}</tr></thead><tbody>${corpo || '<tr><td colspan="9">Nenhum item encontrado.</td></tr>'}</tbody></table>
+      <table><thead><tr>${cabecalhos.map(item => `<th>${item}</th>`).join("")}</tr></thead><tbody>${corpo || '<tr><td colspan="10">Nenhum item encontrado.</td></tr>'}</tbody></table>
       </body></html>
     `);
     janela.document.close();
@@ -4831,6 +4849,16 @@
   }
 
 
+  function iniciarSistemaDuploSutiaCalcinha() {
+    if (document.querySelector('script[data-corponu-dual-mode="1"]')) return;
+    const script = document.createElement("script");
+    script.src = `corponu-dual-mode.js?v=${encodeURIComponent(APP_VERSION)}`;
+    script.dataset.corponuDualMode = "1";
+    script.async = true;
+    script.onerror = () => showUpdateToast("Não foi possível carregar o módulo Sutiã/Calcinha. O fluxo antigo continua disponível.");
+    document.head.appendChild(script);
+  }
+
   function iniciarRecursosDaVersao() {
     iniciarHotfixChegadaManual();
     iniciarHotfixNecessidade();
@@ -4840,6 +4868,7 @@
     iniciarMovimentacoesRegistradasUsuario();
     iniciarEdicaoLocalUsuarios();
     iniciarExibicaoEditarLocalUsuarios();
+    iniciarSistemaDuploSutiaCalcinha();
     iniciarFiltrosExcelManejo();
   }
 

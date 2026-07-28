@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-filtros-excel-acumulativos-manejo-1",
-  "updatedAt": "2026-07-28T10:36:00-03:00",
-  "notes": "Atualização cumulativa. Adiciona filtros acumulativos no Manejo com lógica semelhante ao Excel: permite selecionar várias opções na mesma coluna, combinando-as com OU, e acumular filtros entre colunas com E. Atualiza totais e impressão conforme a seleção e mantém todas as correções anteriores."
+  "version": "2026-07-28-sistema-duplo-sutia-calcinha-1",
+  "updatedAt": "2026-07-28T15:45:00-03:00",
+  "notes": "Atualização cumulativa que mantém o fluxo atual de sutiã e adiciona o fluxo de calcinha. Divide Produtos, Ordens de Produção, Facções e Rastreamento entre Sutiã e Calcinha; adiciona Linha Cotton Line/Corpo Nu no Manejo; exige serviço e facção no planejamento das novas OPs de calcinha; e inclui importação manual protegida do histórico das abas Calcinhas Cotton Line e Calcinhas Corpo Nu."
 }
