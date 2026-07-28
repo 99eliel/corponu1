@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-fases-gerenciadas-admin-1",
-  "updatedAt": "2026-07-28T02:30:00-03:00",
-  "notes": "Atualização cumulativa: remove o painel temporário de restauração da Necessidade, mantém a compatibilidade que evita campos em branco, remove o botão + das fases do Manejo e cria em Usuários um gerenciamento centralizado de sugestões exclusivo para administradores. As sugestões ficam em configuracoes/fasesManejo e são atualizadas em tempo real para todos, sem alterar fases já salvas nas OPs."
+  "version": "2026-07-28-fase-sem-piscar-1",
+  "updatedAt": "2026-07-28T07:18:04-03:00",
+  "notes": "Atualização cumulativa. Corrige o botão antigo '+' da fase que reaparecia e piscava durante a digitação porque o app.js redesenhava as linhas do Manejo. O botão agora nasce oculto por CSS permanente, cliques antigos são bloqueados e o observador deixa de reagir às próprias alterações. Mantém a lista de sugestões administrada pelo ADM e o comportamento das setas nos filtros e campos de fase."
 }

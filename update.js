@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-fases-gerenciadas-admin-1";
+  const APP_VERSION = "2026-07-28-fase-sem-piscar-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -1195,6 +1195,9 @@
   let observerSugestoesFases = null;
   let timerAplicarSugestoesFases = null;
   let inicializacaoAutomaticaFasesTentada = false;
+  let aplicandoSugestoesFasesNoDom = false;
+  let bloqueioCliqueMaisFaseInstalado = false;
+  const ID_ESTILO_SEM_MAIS_FASE = "estiloSemBotaoMaisFase";
 
   function normalizarFaseGerenciada(valor) {
     return String(valor || "")
@@ -1228,6 +1231,78 @@
       .replace(/'/g, "&#039;");
   }
 
+  function injetarEstiloSemBotaoMaisFase() {
+    if (document.getElementById(ID_ESTILO_SEM_MAIS_FASE)) return;
+
+    const estilo = document.createElement("style");
+    estilo.id = ID_ESTILO_SEM_MAIS_FASE;
+    estilo.textContent = `
+      /*
+       * O app.js redesenha as linhas do Manejo durante filtros e digitação.
+       * Por isso o botão antigo precisa nascer invisível, sem aguardar o
+       * MutationObserver removê-lo depois.
+       */
+      #manejo .fase-plus > button,
+      #manejo .fase-plus .btn-plus,
+      #manejo button[onclick*="adicionarFaseSugestao"],
+      #manejo button[title="Adicionar fase às sugestões"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+        height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: 0 !important;
+        overflow: hidden !important;
+      }
+
+      #manejo .fase-plus {
+        grid-template-columns: minmax(0, 1fr) !important;
+        column-gap: 0 !important;
+      }
+
+      #manejo .fase-plus > input[id$="-fase"],
+      #manejo .fase-plus > input[list="manejoFasesList"] {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+        grid-column: 1 / -1 !important;
+      }
+    `;
+    (document.head || document.documentElement).appendChild(estilo);
+  }
+
+  function seletorBotaoMaisFase() {
+    return [
+      '#manejo .fase-plus > button',
+      '#manejo .fase-plus .btn-plus',
+      '#manejo button[onclick*="adicionarFaseSugestao"]',
+      '#manejo button[title="Adicionar fase às sugestões"]'
+    ].join(", ");
+  }
+
+  function bloquearCliqueNoMaisFaseAntigo(event) {
+    const botao = event.target?.closest?.(seletorBotaoMaisFase());
+    if (!botao) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    botao.remove();
+  }
+
+  function instalarBloqueioCliqueMaisFase() {
+    if (bloqueioCliqueMaisFaseInstalado) return;
+    bloqueioCliqueMaisFaseInstalado = true;
+    document.addEventListener("pointerdown", bloquearCliqueNoMaisFaseAntigo, true);
+    document.addEventListener("click", bloquearCliqueNoMaisFaseAntigo, true);
+  }
+
   function removerPainelTemporarioNecessidade() {
     document.getElementById("painelCorrecaoNecessidade")?.remove();
   }
@@ -1241,17 +1316,19 @@
   }
 
   function removerBotoesMaisDasFases() {
+    injetarEstiloSemBotaoMaisFase();
+
     document
-      .querySelectorAll(
-        'button.btn-plus[onclick*="adicionarFaseSugestao"], button[title="Adicionar fase às sugestões"]'
-      )
+      .querySelectorAll(seletorBotaoMaisFase())
       .forEach(botao => botao.remove());
 
-    document.querySelectorAll(".fase-plus").forEach(container => {
-      const input = container.querySelector('input[id$="-fase"]');
+    document.querySelectorAll("#manejo .fase-plus").forEach(container => {
+      const input = container.querySelector('input[id$="-fase"], input[list="manejoFasesList"]');
       if (input) {
         input.style.width = "100%";
         input.style.minWidth = "0";
+        input.style.maxWidth = "100%";
+        input.style.flex = "1 1 100%";
         input.title = "Digite a fase ou escolha uma sugestão cadastrada pelo administrador.";
       }
     });
@@ -1281,43 +1358,61 @@
       .filter(Boolean);
   }
 
+  function observarMudancasSugestoesFases() {
+    if (!observerSugestoesFases || !document.body) return;
+    observerSugestoesFases.observe(document.body, { childList: true, subtree: true });
+  }
+
   function aplicarListaOficialNoDatalist() {
-    removerPainelTemporarioNecessidade();
-    removerBotoesMaisDasFases();
+    if (aplicandoSugestoesFasesNoDom) return;
+    aplicandoSugestoesFasesNoDom = true;
 
-    if (!configuracaoFasesExiste) return;
-
-    const datalist = document.getElementById("manejoFasesList");
-    if (!datalist) return;
-
-    const atuais = valoresDatalistFases();
-    const oficiais = ordenarFasesGerenciadas(fasesGerenciadas);
-    const iguais =
-      atuais.length === oficiais.length &&
-      atuais.every((item, indice) => chaveFaseGerenciada(item) === chaveFaseGerenciada(oficiais[indice]));
-
-    if (!iguais) {
-      datalist.innerHTML = oficiais
-        .map(fase => `<option value="${escapeHtmlFases(fase)}"></option>`)
-        .join("");
-    }
+    // Evita que a remoção do botão e a atualização do datalist acionem o
+    // próprio observador novamente em ciclo, o que causava instabilidade.
+    observerSugestoesFases?.disconnect();
 
     try {
-      localStorage.removeItem("fasesManejoExtras");
-    } catch (error) {
-      console.warn("Não foi possível limpar sugestões locais antigas.", error);
+      removerPainelTemporarioNecessidade();
+      removerBotoesMaisDasFases();
+
+      if (!configuracaoFasesExiste) return;
+
+      const datalist = document.getElementById("manejoFasesList");
+      if (!datalist) return;
+
+      const atuais = valoresDatalistFases();
+      const oficiais = ordenarFasesGerenciadas(fasesGerenciadas);
+      const iguais =
+        atuais.length === oficiais.length &&
+        atuais.every((item, indice) => chaveFaseGerenciada(item) === chaveFaseGerenciada(oficiais[indice]));
+
+      if (!iguais) {
+        datalist.innerHTML = oficiais
+          .map(fase => `<option value="${escapeHtmlFases(fase)}"></option>`)
+          .join("");
+      }
+
+      try {
+        localStorage.removeItem("fasesManejoExtras");
+      } catch (error) {
+        console.warn("Não foi possível limpar sugestões locais antigas.", error);
+      }
+    } finally {
+      aplicandoSugestoesFasesNoDom = false;
+      observarMudancasSugestoesFases();
     }
   }
 
   function agendarAplicacaoSugestoesFases() {
+    if (aplicandoSugestoesFasesNoDom) return;
     clearTimeout(timerAplicarSugestoesFases);
-    timerAplicarSugestoesFases = setTimeout(aplicarListaOficialNoDatalist, 40);
+    timerAplicarSugestoesFases = setTimeout(aplicarListaOficialNoDatalist, 80);
   }
 
   function iniciarObservadorSugestoesFases() {
     if (observerSugestoesFases || !document.body) return;
     observerSugestoesFases = new MutationObserver(agendarAplicacaoSugestoesFases);
-    observerSugestoesFases.observe(document.body, { childList: true, subtree: true });
+    observarMudancasSugestoesFases();
   }
 
   function renderListaAdminFases() {
@@ -1647,16 +1742,134 @@
   }
 
   function iniciarGestaoSugestoesFases() {
+    injetarEstiloSemBotaoMaisFase();
+    instalarBloqueioCliqueMaisFase();
     removerPainelTemporarioNecessidade();
     removerBotoesMaisDasFases();
     iniciarObservadorSugestoesFases();
     conectarFirebaseGestaoFases();
   }
 
+
+  // =========================================================
+  // HOTFIX: SETA DOS CAMPOS COM SUGESTÕES NO MANEJO
+  // - Ao clicar na seta de um campo com datalist, limpa o valor atual.
+  // - Abre imediatamente todas as sugestões disponíveis.
+  // - Vale para os filtros do Manejo e para os campos de Fase.
+  // - A digitação normal no restante do campo continua inalterada.
+  // =========================================================
+
+  let eventosSetaListasManejoInstalados = false;
+  const AREA_SETA_LISTA_MANEJO_PX = 46;
+
+  function campoComListaPertenceAoManejo(input) {
+    if (!(input instanceof HTMLInputElement) || !input.hasAttribute("list")) return false;
+    const areaManejo = document.getElementById("manejo");
+    if (areaManejo?.contains(input)) return true;
+
+    const identificacao = `${input.id || ""} ${input.name || ""} ${input.className || ""}`;
+    return /manejo|fase/i.test(identificacao);
+  }
+
+  function existeListaDoCampo(input) {
+    const idLista = input.getAttribute("list");
+    return Boolean(idLista && document.getElementById(idLista));
+  }
+
+  function cliqueNaAreaDaSeta(input, event) {
+    const retangulo = input.getBoundingClientRect();
+    if (!retangulo.width) return false;
+
+    const direcao = window.getComputedStyle(input).direction;
+    if (direcao === "rtl") {
+      return event.clientX <= retangulo.left + AREA_SETA_LISTA_MANEJO_PX;
+    }
+    return event.clientX >= retangulo.right - AREA_SETA_LISTA_MANEJO_PX;
+  }
+
+  function campoEhFiltroDoManejo(input) {
+    if (input.closest("thead, .filters, .filtros, .filter-row, .filtros-manejo")) return true;
+    const identificacao = `${input.id || ""} ${input.name || ""} ${input.className || ""}`;
+    return /filtro|filter/i.test(identificacao);
+  }
+
+  function limparCampoAntesDeAbrirSugestoes(input) {
+    if (!input.value) return;
+
+    input.value = "";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+
+    // Alguns filtros antigos escutam apenas o evento change.
+    // Nos campos de fase não o disparamos para evitar qualquer salvamento antecipado.
+    if (campoEhFiltroDoManejo(input)) {
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
+
+  function abrirListaDeSugestoes(input, event) {
+    input.focus({ preventScroll: true });
+
+    if (typeof input.showPicker === "function") {
+      try {
+        input.showPicker();
+        // Só bloqueia a abertura nativa depois que o picker programático abriu com sucesso.
+        event?.preventDefault?.();
+        return;
+      } catch (error) {
+        console.debug("O navegador usará a abertura nativa da lista.", error);
+      }
+    }
+
+    // Fallback para navegadores que não disponibilizam showPicker em campos com datalist.
+    // Sem preventDefault, o clique nativo na seta continua abrindo a lista já limpa.
+    setTimeout(() => {
+      try {
+        input.focus({ preventScroll: true });
+        input.showPicker?.();
+      } catch (_) {}
+    }, 0);
+  }
+
+  function tratarCliqueNaSetaDoManejo(event) {
+    const input = event.target?.closest?.('input[list]');
+    if (!input) return;
+    if (!campoComListaPertenceAoManejo(input)) return;
+    if (!existeListaDoCampo(input)) return;
+    if (input.disabled || input.readOnly) return;
+    if (!cliqueNaAreaDaSeta(input, event)) return;
+
+    limparCampoAntesDeAbrirSugestoes(input);
+    abrirListaDeSugestoes(input, event);
+  }
+
+  function tratarAtalhoDeAberturaDaLista(event) {
+    const input = event.target?.closest?.('input[list]');
+    if (!input || !campoComListaPertenceAoManejo(input) || !existeListaDoCampo(input)) return;
+
+    const pediuAbrirLista =
+      (event.altKey && event.key === "ArrowDown") ||
+      event.key === "F4";
+    if (!pediuAbrirLista) return;
+
+    event.preventDefault();
+    limparCampoAntesDeAbrirSugestoes(input);
+    abrirListaDeSugestoes(input, event);
+  }
+
+  function iniciarSetasListasManejo() {
+    if (eventosSetaListasManejoInstalados) return;
+    eventosSetaListasManejoInstalados = true;
+
+    // Captura antes dos eventos do app.js para que o valor antigo não limite o datalist.
+    document.addEventListener("pointerdown", tratarCliqueNaSetaDoManejo, true);
+    document.addEventListener("keydown", tratarAtalhoDeAberturaDaLista, true);
+  }
+
   function iniciarRecursosDaVersao() {
     iniciarHotfixChegadaManual();
     iniciarHotfixNecessidade();
     iniciarGestaoSugestoesFases();
+    iniciarSetasListasManejo();
   }
 
   window.addEventListener("load", () => {
