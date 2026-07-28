@@ -1,48 +1,67 @@
-CORPONU — CORREÇÃO EMERGENCIAL DA ABA NECESSIDADE
-Versão: 2026-07-28-necessidade-sem-branco-verificada-2
+CORPONU — GESTÃO ADMINISTRATIVA DAS SUGESTÕES DE FASE
+Versão: 2026-07-28-fases-gerenciadas-admin-1
 
 ARQUIVOS PARA SUBSTITUIR NO GITHUB
 1. update.js
 2. sw.js
 3. version.json
 
-NÃO SUBSTITUIR
+NÃO SUBSTITUIR NESTA ATUALIZAÇÃO
 - app.js
 - index.html
 - style.css
-- regras do Firebase
-- dados-ligia-migracao.json
+- firebase-rules.txt
+- storage-rules.txt
+- arquivos JSON de dados
 
-O QUE ESTA VERSÃO CORRIGE
-- A restauração anterior podia informar que havia terminado, embora várias linhas continuassem vazias.
-- Agora a conferência informa separadamente:
-  * OPs que já estão preenchidas;
-  * OPs que possuem valor recuperável;
-  * OPs cuja necessidade não foi informada na planilha original.
-- Valores recuperados aparecem em amarelo.
-- Linhas sem valor na planilha aparecem em cinza com o texto visual
-  "NÃO INFORMADA NA PLANILHA".
-- Esse texto cinza é apenas um placeholder visual: não é gravado no Firebase.
-- Nenhuma necessidade já preenchida é sobrescrita.
-- A gravação é relida do servidor antes de o sistema informar que terminou.
-- Mantém a correção cumulativa da Chegada Manual.
+O QUE ESTA ATUALIZAÇÃO FAZ
+
+1. NECESSIDADE
+- Remove da tela o painel temporário “Conferência da Necessidade”.
+- Remove o botão “Reprocessar e conferir”.
+- Mantém internamente a compatibilidade de leitura que impediu as necessidades restauradas de voltarem a aparecer vazias.
+- Não executa uma nova restauração automática e não altera necessidades já preenchidas.
+
+2. FASES DO MANEJO
+- Remove o botão “+” de todas as linhas da coluna Fase.
+- Usuários comuns não conseguem mais transformar fases em sugestões pelo Manejo.
+- O campo Fase continua livre: ainda é possível digitar e salvar qualquer fase necessária na OP.
+- Digitar uma fase em uma OP não adiciona automaticamente essa fase à lista oficial de sugestões.
+
+3. GERENCIAMENTO PELO ADMINISTRADOR
+- Na aba Usuários aparece o painel “Gerenciar sugestões de fases”.
+- Somente administradores visualizam o painel.
+- O administrador pode adicionar e remover sugestões.
+- Remover uma sugestão não apaga nem modifica as fases já salvas nas OPs antigas.
+- A lista é salva no Firestore em:
+  configuracoes/fasesManejo
+- Todos os usuários recebem a lista atualizada em tempo real.
+
+4. PRIMEIRO ACESSO
+- No primeiro acesso de um administrador após a atualização, o sistema centraliza automaticamente as sugestões que já existiam.
+- Depois disso, somente a lista gerenciada pelo administrador será mostrada como sugestão.
+- O administrador pode abrir a aba Usuários e limpar as opções desnecessárias.
+
+REGRAS DO FIREBASE
+- Não é necessário publicar novas regras nesta atualização.
+- As regras atuais já permitem leitura de configuracoes por usuários ativos e gravação somente por administradores.
 
 COMO PUBLICAR
 1. Abra o repositório corponu1 no GitHub.
 2. Substitua update.js, sw.js e version.json.
-3. Faça o commit dos três arquivos juntos.
-4. Abra o sistema e pressione Ctrl + F5 uma vez.
-5. Entre como administrador.
-6. Abra a aba Manejo.
-7. Clique em "Reprocessar e conferir".
-8. Leia os três totais exibidos antes de confirmar.
+3. Faça um único commit com os três arquivos.
+4. Abra o sistema em uma conta administradora.
+5. Pressione Ctrl + F5 uma vez.
+6. Entre em Usuários e confira o painel “Gerenciar sugestões de fases”.
+7. Abra Manejo e confirme que o botão “+” não aparece mais.
 
-IMPORTANTE
-Muitas OPs da própria planilha da Lígia estão com o campo Necessidade vazio.
-Esta atualização não inventa uma data para essas OPs. Elas passam a ficar
-visivelmente identificadas, para que o responsável digite a necessidade correta
-quando ela for definida.
+TESTE RÁPIDO
+- Admin adiciona uma sugestão em Usuários.
+- Abra o Manejo e clique no campo Fase: a nova sugestão deve aparecer.
+- Remova a sugestão pelo painel administrativo.
+- A sugestão deve desaparecer, mas qualquer OP que já a utilizou continua intacta.
+- Entre com usuário comum: o “+” e o painel administrativo não devem aparecer.
 
-RETORNO RÁPIDO
-Caso precise voltar, restaure no GitHub os três arquivos da versão anterior:
-2026-07-28-necessidade-original-restauracao-1
+REVERSÃO
+Se houver comportamento inesperado, restaure os três arquivos da versão anterior:
+2026-07-28-necessidade-sem-branco-verificada-2

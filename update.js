@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-necessidade-sem-branco-verificada-2";
+  const APP_VERSION = "2026-07-28-fases-gerenciadas-admin-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -1159,7 +1159,7 @@
 
     instalarLeitorNecessidadeCompativel();
     instalarEventosCamposNecessidade();
-    adicionarPainelCorrecaoNecessidade();
+    document.getElementById("painelCorrecaoNecessidade")?.remove();
     iniciarObservadorNecessidades();
     document.addEventListener("click", protegerNecessidadeAntesDoSalvar, true);
     await carregarNecessidadesOriginais();
@@ -1174,11 +1174,489 @@
     }
   }
 
-  window.restaurarNecessidadesOriginaisNoFirebase = restaurarNecessidadesOriginaisNoFirebase;
+
+  // =========================================================
+  // GESTÃO CENTRALIZADA DAS SUGESTÕES DE FASE DO MANEJO
+  // - Remove o botão "+" das linhas para todos os usuários.
+  // - Mantém o campo Fase livre para digitação e salvamento normal.
+  // - Usa configuracoes/fasesManejo como lista oficial de sugestões.
+  // - Somente administradores podem adicionar ou remover sugestões.
+  // - A lista é atualizada em tempo real para todos os usuários.
+  // =========================================================
+
+  const FASES_CONFIG_COLECAO = "configuracoes";
+  const FASES_CONFIG_DOCUMENTO = "fasesManejo";
+  let fasesGerenciadas = [];
+  let configuracaoFasesExiste = false;
+  let usuarioEhAdminFases = false;
+  let contextoFirebaseFases = null;
+  let unsubscribeConfiguracaoFases = null;
+  let unsubscribeAuthFases = null;
+  let observerSugestoesFases = null;
+  let timerAplicarSugestoesFases = null;
+  let inicializacaoAutomaticaFasesTentada = false;
+
+  function normalizarFaseGerenciada(valor) {
+    return String(valor || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase();
+  }
+
+  function chaveFaseGerenciada(valor) {
+    return normalizarComparacao(normalizarFaseGerenciada(valor));
+  }
+
+  function ordenarFasesGerenciadas(lista) {
+    const unicas = new Map();
+    (Array.isArray(lista) ? lista : []).forEach(item => {
+      const fase = normalizarFaseGerenciada(item);
+      const chave = chaveFaseGerenciada(fase);
+      if (fase && chave && !unicas.has(chave)) unicas.set(chave, fase);
+    });
+    return [...unicas.values()].sort((a, b) =>
+      a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" })
+    );
+  }
+
+  function escapeHtmlFases(valor) {
+    return String(valor ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function removerPainelTemporarioNecessidade() {
+    document.getElementById("painelCorrecaoNecessidade")?.remove();
+  }
+
+  function bloquearAdicaoLocalDeFase() {
+    window.adicionarFaseSugestao = function adicionarFaseSugestaoSomenteAdmin() {
+      mostrarAvisoFormulario(
+        "As sugestões de fase são gerenciadas somente pelo administrador na aba Usuários."
+      );
+    };
+  }
+
+  function removerBotoesMaisDasFases() {
+    document
+      .querySelectorAll(
+        'button.btn-plus[onclick*="adicionarFaseSugestao"], button[title="Adicionar fase às sugestões"]'
+      )
+      .forEach(botao => botao.remove());
+
+    document.querySelectorAll(".fase-plus").forEach(container => {
+      const input = container.querySelector('input[id$="-fase"]');
+      if (input) {
+        input.style.width = "100%";
+        input.style.minWidth = "0";
+        input.title = "Digite a fase ou escolha uma sugestão cadastrada pelo administrador.";
+      }
+    });
+
+    bloquearAdicaoLocalDeFase();
+  }
+
+  function opcoesAtuaisDoDatalistFases() {
+    const lista = [];
+    document.querySelectorAll("#manejoFasesList option").forEach(option => {
+      lista.push(option.value || option.textContent || "");
+    });
+
+    try {
+      const locais = JSON.parse(localStorage.getItem("fasesManejoExtras") || "[]");
+      if (Array.isArray(locais)) lista.push(...locais);
+    } catch (error) {
+      console.warn("Não foi possível ler sugestões locais antigas de fases.", error);
+    }
+
+    return ordenarFasesGerenciadas(lista);
+  }
+
+  function valoresDatalistFases() {
+    return [...document.querySelectorAll("#manejoFasesList option")]
+      .map(option => normalizarFaseGerenciada(option.value || option.textContent || ""))
+      .filter(Boolean);
+  }
+
+  function aplicarListaOficialNoDatalist() {
+    removerPainelTemporarioNecessidade();
+    removerBotoesMaisDasFases();
+
+    if (!configuracaoFasesExiste) return;
+
+    const datalist = document.getElementById("manejoFasesList");
+    if (!datalist) return;
+
+    const atuais = valoresDatalistFases();
+    const oficiais = ordenarFasesGerenciadas(fasesGerenciadas);
+    const iguais =
+      atuais.length === oficiais.length &&
+      atuais.every((item, indice) => chaveFaseGerenciada(item) === chaveFaseGerenciada(oficiais[indice]));
+
+    if (!iguais) {
+      datalist.innerHTML = oficiais
+        .map(fase => `<option value="${escapeHtmlFases(fase)}"></option>`)
+        .join("");
+    }
+
+    try {
+      localStorage.removeItem("fasesManejoExtras");
+    } catch (error) {
+      console.warn("Não foi possível limpar sugestões locais antigas.", error);
+    }
+  }
+
+  function agendarAplicacaoSugestoesFases() {
+    clearTimeout(timerAplicarSugestoesFases);
+    timerAplicarSugestoesFases = setTimeout(aplicarListaOficialNoDatalist, 40);
+  }
+
+  function iniciarObservadorSugestoesFases() {
+    if (observerSugestoesFases || !document.body) return;
+    observerSugestoesFases = new MutationObserver(agendarAplicacaoSugestoesFases);
+    observerSugestoesFases.observe(document.body, { childList: true, subtree: true });
+  }
+
+  function renderListaAdminFases() {
+    const lista = document.getElementById("listaSugestoesFasesAdmin");
+    const contador = document.getElementById("contadorSugestoesFasesAdmin");
+    const status = document.getElementById("statusSugestoesFasesAdmin");
+    if (!lista) return;
+
+    if (contador) contador.textContent = `${fasesGerenciadas.length} sugestão(ões)`;
+
+    if (status) {
+      status.textContent = configuracaoFasesExiste
+        ? "Lista oficial sincronizada com todos os usuários."
+        : "Preparando a lista inicial com as sugestões atuais do sistema.";
+    }
+
+    if (!fasesGerenciadas.length) {
+      lista.innerHTML = `
+        <div style="padding:14px; border:1px dashed #cbd5e1; border-radius:10px; color:#64748b; text-align:center;">
+          Nenhuma sugestão cadastrada. Digite uma fase acima para começar.
+        </div>
+      `;
+      return;
+    }
+
+    lista.innerHTML = fasesGerenciadas
+      .map(fase => `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 10px; border:1px solid #e2e8f0; border-radius:10px; background:#fff;">
+          <strong style="font-size:13px; overflow-wrap:anywhere;">${escapeHtmlFases(fase)}</strong>
+          <button
+            type="button"
+            class="btn"
+            data-remover-fase-admin="${escapeHtmlFases(fase)}"
+            style="padding:7px 10px; color:#b91c1c; border-color:#fecaca; background:#fff7f7; flex:0 0 auto;"
+            title="Remover esta sugestão"
+          >
+            Remover
+          </button>
+        </div>
+      `)
+      .join("");
+  }
+
+  function criarPainelAdminFases() {
+    if (!usuarioEhAdminFases) {
+      document.getElementById("painelSugestoesFasesAdmin")?.remove();
+      return;
+    }
+
+    if (document.getElementById("painelSugestoesFasesAdmin")) {
+      renderListaAdminFases();
+      return;
+    }
+
+    const layout = document.querySelector("#usuarios .usuarios-layout");
+    const formularioUsuario = document.getElementById("formUsuario");
+    if (!layout || !formularioUsuario) {
+      setTimeout(criarPainelAdminFases, 400);
+      return;
+    }
+
+    const painel = document.createElement("section");
+    painel.id = "painelSugestoesFasesAdmin";
+    painel.className = "panel";
+    painel.style.gridColumn = "1 / -1";
+    painel.innerHTML = `
+      <div class="panel-header" style="align-items:flex-start; gap:16px;">
+        <div>
+          <h3>Gerenciar sugestões de fases</h3>
+          <p>Somente administradores adicionam ou removem as opções mostradas no campo Fase do Manejo.</p>
+        </div>
+        <span id="contadorSugestoesFasesAdmin" class="badge ok">0 sugestão(ões)</span>
+      </div>
+      <div class="notice small" style="margin-bottom:12px;">
+        Os usuários continuam podendo digitar uma fase livremente. Ela só aparecerá como sugestão para os demais quando o administrador cadastrá-la aqui.
+      </div>
+      <form id="formSugestaoFaseAdmin" style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:12px;">
+        <label style="flex:1; min-width:240px;">
+          Nova sugestão
+          <input id="novaSugestaoFaseAdmin" type="text" placeholder="Ex: ACABAMENTO, REVISÃO, COSTURA" autocomplete="off" maxlength="80" />
+        </label>
+        <button class="btn btn-primary" type="submit">Adicionar sugestão</button>
+      </form>
+      <div id="statusSugestoesFasesAdmin" style="font-size:12px; color:#64748b; margin-bottom:10px;">
+        Carregando lista oficial...
+      </div>
+      <div id="listaSugestoesFasesAdmin" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:8px;"></div>
+    `;
+
+    formularioUsuario.insertAdjacentElement("afterend", painel);
+
+    painel.querySelector("#formSugestaoFaseAdmin")?.addEventListener("submit", async event => {
+      event.preventDefault();
+      const input = document.getElementById("novaSugestaoFaseAdmin");
+      const fase = normalizarFaseGerenciada(input?.value);
+      if (!fase) {
+        mostrarAvisoFormulario("Digite o nome da fase antes de adicionar.");
+        input?.focus();
+        return;
+      }
+      await adicionarSugestaoFaseAdmin(fase);
+      if (input) input.value = "";
+      input?.focus();
+    });
+
+    painel.querySelector("#listaSugestoesFasesAdmin")?.addEventListener("click", async event => {
+      const botao = event.target?.closest?.("[data-remover-fase-admin]");
+      if (!botao) return;
+      const fase = botao.dataset.removerFaseAdmin || "";
+      await removerSugestaoFaseAdmin(fase);
+    });
+
+    renderListaAdminFases();
+  }
+
+  async function registrarLogFaseAdmin(acao, fase) {
+    if (!contextoFirebaseFases?.user || !contextoFirebaseFases?.perfil) return;
+    const { firestore, db, user, perfil } = contextoFirebaseFases;
+    try {
+      await firestore.addDoc(firestore.collection(db, "logsAlteracoes"), {
+        acao,
+        tipoAlvo: "Sugestão de fase",
+        alvoId: fase,
+        detalhes: `${acao}: ${fase}`,
+        usuarioUid: user.uid,
+        usuarioNome: perfil.nome || "",
+        usuarioEmail: perfil.email || user.email || "",
+        usuarioTipo: perfil.tipo || "admin",
+        criadoEm: firestore.serverTimestamp()
+      });
+    } catch (error) {
+      console.warn("Não foi possível registrar o log da sugestão de fase.", error);
+    }
+  }
+
+  async function alterarListaFasesComTransacao(transformar) {
+    if (!usuarioEhAdminFases || !contextoFirebaseFases) {
+      mostrarAvisoFormulario("Somente o administrador pode gerenciar sugestões de fases.");
+      return null;
+    }
+
+    const { firestore, db, user } = contextoFirebaseFases;
+    const referencia = firestore.doc(db, FASES_CONFIG_COLECAO, FASES_CONFIG_DOCUMENTO);
+
+    return firestore.runTransaction(db, async transacao => {
+      const snapshot = await transacao.get(referencia);
+      const listaAtual = ordenarFasesGerenciadas(
+        snapshot.exists() ? snapshot.data()?.sugestoes : fasesGerenciadas
+      );
+      const proximaLista = ordenarFasesGerenciadas(transformar(listaAtual));
+
+      transacao.set(
+        referencia,
+        {
+          sugestoes: proximaLista,
+          atualizadoEm: firestore.serverTimestamp(),
+          atualizadoPor: user.uid,
+          versaoGerenciamento: APP_VERSION
+        },
+        { merge: true }
+      );
+
+      return proximaLista;
+    });
+  }
+
+  async function adicionarSugestaoFaseAdmin(faseInformada) {
+    const fase = normalizarFaseGerenciada(faseInformada);
+    if (!fase) return;
+
+    if (fasesGerenciadas.some(item => chaveFaseGerenciada(item) === chaveFaseGerenciada(fase))) {
+      mostrarAvisoFormulario(`A fase "${fase}" já está cadastrada nas sugestões.`);
+      return;
+    }
+
+    try {
+      await alterarListaFasesComTransacao(lista => [...lista, fase]);
+      await registrarLogFaseAdmin("Sugestão de fase adicionada", fase);
+      showUpdateToast(`Sugestão "${fase}" adicionada para todos os usuários.`);
+    } catch (error) {
+      console.error("Erro ao adicionar sugestão de fase.", error);
+      mostrarAvisoFormulario("Não foi possível adicionar a sugestão. Confira a internet e tente novamente.");
+    }
+  }
+
+  async function removerSugestaoFaseAdmin(faseInformada) {
+    const fase = normalizarFaseGerenciada(faseInformada);
+    if (!fase) return;
+
+    const confirmar = window.confirm(
+      `Remover "${fase}" das sugestões de fase?\n\nIsso não altera as OPs que já possuem essa fase salva.`
+    );
+    if (!confirmar) return;
+
+    try {
+      await alterarListaFasesComTransacao(lista =>
+        lista.filter(item => chaveFaseGerenciada(item) !== chaveFaseGerenciada(fase))
+      );
+      await registrarLogFaseAdmin("Sugestão de fase removida", fase);
+      showUpdateToast(`Sugestão "${fase}" removida. As OPs antigas foram preservadas.`);
+    } catch (error) {
+      console.error("Erro ao remover sugestão de fase.", error);
+      mostrarAvisoFormulario("Não foi possível remover a sugestão. Confira a internet e tente novamente.");
+    }
+  }
+
+  async function criarListaInicialFasesSeNecessario() {
+    if (
+      inicializacaoAutomaticaFasesTentada ||
+      !usuarioEhAdminFases ||
+      configuracaoFasesExiste ||
+      !contextoFirebaseFases
+    ) return;
+
+    inicializacaoAutomaticaFasesTentada = true;
+
+    // Aguarda o app.js montar o datalist com as sugestões que já existiam.
+    await new Promise(resolve => setTimeout(resolve, 1800));
+    const atuais = opcoesAtuaisDoDatalistFases();
+
+    try {
+      const { firestore, db, user } = contextoFirebaseFases;
+      const referencia = firestore.doc(db, FASES_CONFIG_COLECAO, FASES_CONFIG_DOCUMENTO);
+      await firestore.runTransaction(db, async transacao => {
+        const snapshot = await transacao.get(referencia);
+        if (snapshot.exists()) return;
+        transacao.set(referencia, {
+          sugestoes: atuais,
+          criadoEm: firestore.serverTimestamp(),
+          criadoPor: user.uid,
+          atualizadoEm: firestore.serverTimestamp(),
+          atualizadoPor: user.uid,
+          versaoGerenciamento: APP_VERSION
+        });
+      });
+
+      if (atuais.length) {
+        showUpdateToast(`${atuais.length} sugestão(ões) existente(s) centralizada(s) para o administrador.`);
+      }
+    } catch (error) {
+      inicializacaoAutomaticaFasesTentada = false;
+      console.error("Erro ao criar lista inicial de sugestões de fases.", error);
+    }
+  }
+
+  function iniciarSnapshotConfiguracaoFases() {
+    if (!contextoFirebaseFases) return;
+    if (unsubscribeConfiguracaoFases) {
+      unsubscribeConfiguracaoFases();
+      unsubscribeConfiguracaoFases = null;
+    }
+
+    const { firestore, db } = contextoFirebaseFases;
+    const referencia = firestore.doc(db, FASES_CONFIG_COLECAO, FASES_CONFIG_DOCUMENTO);
+    unsubscribeConfiguracaoFases = firestore.onSnapshot(
+      referencia,
+      snapshot => {
+        configuracaoFasesExiste = snapshot.exists();
+        fasesGerenciadas = ordenarFasesGerenciadas(
+          configuracaoFasesExiste ? snapshot.data()?.sugestoes : opcoesAtuaisDoDatalistFases()
+        );
+        aplicarListaOficialNoDatalist();
+        criarPainelAdminFases();
+        criarListaInicialFasesSeNecessario();
+      },
+      error => {
+        console.error("Erro ao carregar sugestões centralizadas de fases.", error);
+      }
+    );
+  }
+
+  async function configurarUsuarioGestaoFases(user) {
+    if (!user || !contextoFirebaseFases) {
+      usuarioEhAdminFases = false;
+      contextoFirebaseFases = contextoFirebaseFases
+        ? { ...contextoFirebaseFases, user: null, perfil: null }
+        : null;
+      document.getElementById("painelSugestoesFasesAdmin")?.remove();
+      if (unsubscribeConfiguracaoFases) {
+        unsubscribeConfiguracaoFases();
+        unsubscribeConfiguracaoFases = null;
+      }
+      return;
+    }
+
+    const { firestore, db } = contextoFirebaseFases;
+    try {
+      const perfilSnapshot = await firestore.getDoc(firestore.doc(db, "usuarios", user.uid));
+      const perfil = perfilSnapshot.exists() ? perfilSnapshot.data() : {};
+      usuarioEhAdminFases = perfil?.tipo === "admin" && perfil?.ativo !== false;
+      contextoFirebaseFases = { ...contextoFirebaseFases, user, perfil };
+      iniciarSnapshotConfiguracaoFases();
+      criarPainelAdminFases();
+    } catch (error) {
+      usuarioEhAdminFases = false;
+      console.error("Não foi possível validar o administrador das sugestões de fases.", error);
+    }
+  }
+
+  async function conectarFirebaseGestaoFases(tentativa = 0) {
+    if (contextoFirebaseFases?.auth) return;
+
+    try {
+      const [firebaseApp, firestore, firebaseAuth] = await Promise.all([
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js")
+      ]);
+
+      const apps = firebaseApp.getApps();
+      if (!apps.length) throw new Error("Firebase ainda não inicializado.");
+
+      const appAtual = firebaseApp.getApp();
+      const auth = firebaseAuth.getAuth(appAtual);
+      const db = firestore.getFirestore(appAtual);
+      contextoFirebaseFases = { firestore, firebaseAuth, auth, db, user: null, perfil: null };
+
+      if (unsubscribeAuthFases) unsubscribeAuthFases();
+      unsubscribeAuthFases = firebaseAuth.onAuthStateChanged(auth, configurarUsuarioGestaoFases);
+    } catch (error) {
+      if (tentativa < 20) {
+        setTimeout(() => conectarFirebaseGestaoFases(tentativa + 1), 300);
+        return;
+      }
+      console.error("Não foi possível iniciar a gestão das sugestões de fases.", error);
+    }
+  }
+
+  function iniciarGestaoSugestoesFases() {
+    removerPainelTemporarioNecessidade();
+    removerBotoesMaisDasFases();
+    iniciarObservadorSugestoesFases();
+    conectarFirebaseGestaoFases();
+  }
 
   function iniciarRecursosDaVersao() {
     iniciarHotfixChegadaManual();
     iniciarHotfixNecessidade();
+    iniciarGestaoSugestoesFases();
   }
 
   window.addEventListener("load", () => {

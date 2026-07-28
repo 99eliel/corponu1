@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-necessidade-sem-branco-verificada-2",
-  "updatedAt": "2026-07-28T01:30:00-03:00",
-  "notes": "Correção cumulativa: mantém a Chegada Manual condicional e reprocessa a aba Necessidade com conferência real no servidor. Recupera valores existentes em campos antigos e na planilha original, mostra claramente as OPs cuja necessidade não foi informada na planilha e não grava textos ou datas inventadas."
+  "version": "2026-07-28-fases-gerenciadas-admin-1",
+  "updatedAt": "2026-07-28T02:30:00-03:00",
+  "notes": "Atualização cumulativa: remove o painel temporário de restauração da Necessidade, mantém a compatibilidade que evita campos em branco, remove o botão + das fases do Manejo e cria em Usuários um gerenciamento centralizado de sugestões exclusivo para administradores. As sugestões ficam em configuracoes/fasesManejo e são atualizadas em tempo real para todos, sem alterar fases já salvas nas OPs."
 }
