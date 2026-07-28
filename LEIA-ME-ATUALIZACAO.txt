@@ -1,38 +1,62 @@
-CORPONU — CORREÇÃO EDITAR LOCAL NO RASTREAMENTO
-Versão: 2026-07-28-editar-local-rastreamento-usuarios-3
+CORPONU — FILTROS ACUMULATIVOS DO MANEJO (LÓGICA TIPO EXCEL)
+Versão: 2026-07-28-filtros-excel-acumulativos-manejo-1
 
-CAUSA DO PROBLEMA
-A imagem enviada mostra a aba RASTREAMENTO. A correção anterior adicionava o botão somente na tabela do MANEJO. Além disso, a verificação visual exigia que o campo ativo estivesse exatamente como booleano true, o que podia esconder o botão em perfis personalizados.
+OBJETIVO
+Permitir selecionar várias opções em um mesmo filtro da aba Manejo/Fases e combinar vários filtros ao mesmo tempo.
 
-ARQUIVOS PARA SUBSTITUIR NO GITHUB
+ARQUIVOS PARA SUBSTITUIR NA RAIZ DO GITHUB
 1. update.js
 2. sw.js
 3. version.json
 
-NÃO É NECESSÁRIO ALTERAR
+NÃO ALTERAR NESTA ATUALIZAÇÃO
 - app.js
 - index.html
 - style.css
 - firebase-rules.txt
+- firestore-rules.txt
 - storage-rules.txt
+- valores-processos-corponu-2026.json
 
-NOVO FUNCIONAMENTO
-- Usuário comum ativo verá o botão EDITAR LOCAL na aba Rastreamento.
-- O botão aparece antes de Chegada e Bipar.
-- Também aparece em resultados de busca por OP e no histórico detalhado.
-- O botão de lápis e a opção Mover / editar local permanecem no Manejo.
-- Administradores continuam usando o botão original.
-- Usuário bloqueado/inativo não recebe acesso.
-- O motivo da correção continua obrigatório.
-- A alteração continua registrada em ajustesMigracao e logsAlteracoes.
+NÃO É NECESSÁRIO ALTERAR AS REGRAS DO FIREBASE.
 
-COMO PUBLICAR
-1. Substitua update.js, sw.js e version.json na raiz do repositório.
-2. Faça um único commit com os três arquivos.
-3. Abra o sistema e clique em ATUALIZAR no canto superior direito.
-4. Caso necessário, pressione Ctrl + F5 uma vez.
-5. Entre com usuário comum e abra Rastreamento.
-6. O botão Editar local deve aparecer à esquerda de Chegada e Bipar.
+COMO FUNCIONA
+1. Abra a aba Manejo.
+2. Nos filtros de Referência, Silk, Tecido, Fase, Quantidade, Cor, Necessidade ou Status, clique na seta nova.
+3. Marque uma ou várias opções.
+4. Clique em Aplicar.
+5. Repita em outras colunas quando necessário.
 
-OBSERVAÇÃO
-As regras do Firestore publicadas na atualização anterior continuam válidas. Não é necessário republicá-las para esta correção visual.
+REGRA DOS FILTROS
+- Dentro da mesma coluna: OU.
+  Exemplo: Fase = CASA OU CORTE.
+- Entre colunas diferentes: E.
+  Exemplo: (Fase = CASA OU CORTE) E (Cor = BLUSH OU PRETO).
+
+OUTRAS FUNÇÕES
+- A caixa de pesquisa permite localizar uma opção dentro da lista.
+- Selecionar tudo equivale a não restringir aquela coluna.
+- Limpar dentro da janela desmarca as opções; depois clique em Aplicar.
+- O botão geral Limpar filtros remove também todas as seleções acumulativas.
+- A digitação normal nos campos continua funcionando para buscas simples.
+- O filtro de OP continua digitável para evitar uma lista enorme.
+- Os totais, soma por fase, soma por cor e impressão consideram apenas as linhas resultantes.
+- Ao trocar entre Manejo Sutiã e Manejo Calcinha, os filtros acumulativos são limpos para evitar combinações inválidas entre setores.
+
+EXEMPLO PRÁTICO
+Para encontrar peças que estejam em CASA ou CORTE, nas cores BLUSH ou PRETO:
+1. Fase: marque CASA e CORTE.
+2. Cor: marque BLUSH e PRETO.
+3. O sistema mostrará somente as peças que atendam às duas condições.
+
+PUBLICAÇÃO
+1. Faça um único commit com update.js, sw.js e version.json.
+2. Abra o sistema.
+3. Clique em Atualizar no topo ou pressione Ctrl + F5 uma vez.
+4. Confira se a versão exibida é:
+   2026-07-28-filtros-excel-acumulativos-manejo-1
+5. Teste primeiro com duas fases e duas cores.
+
+RETORNO RÁPIDO
+Caso seja necessário voltar, restaure os três arquivos da versão anterior:
+2026-07-28-editar-local-rastreamento-usuarios-3

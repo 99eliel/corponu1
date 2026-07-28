@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-editar-local-rastreamento-usuarios-3";
+  const APP_VERSION = "2026-07-28-filtros-excel-acumulativos-manejo-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -3897,6 +3897,940 @@
     setTimeout(atualizar, 1800);
   }
 
+
+
+  // =========================================================
+  // FILTROS ACUMULATIVOS DO MANEJO — LÓGICA TIPO EXCEL
+  // - Permite marcar várias opções dentro da mesma coluna.
+  // - Opções da mesma coluna usam OU.
+  // - Colunas diferentes usam E.
+  // - Mantém a digitação simples já existente.
+  // - Recalcula totais e impressão conforme as linhas visíveis.
+  // =========================================================
+
+  const CONFIG_FILTROS_EXCEL_MANEJO = Object.freeze([
+    { id: "filtroManejoReferencia", campo: "referencia", label: "Referência", coluna: 1 },
+    { id: "filtroManejoSilk", campo: "silk", label: "Silk", coluna: 2 },
+    { id: "filtroManejoDataTecido", campo: "dataTecido", label: "Tecido", coluna: 3 },
+    { id: "filtroManejoFase", campo: "fase", label: "Fase", coluna: 4 },
+    { id: "filtroManejoQuantidade", campo: "quantidade", label: "Quantidade", coluna: 5 },
+    { id: "filtroManejoCor", campo: "cor", label: "Cor", coluna: 6 },
+    { id: "filtroManejoNecessidade", campo: "necessidade", label: "Necessidade", coluna: 7 },
+    { id: "filtroManejoStatus", campo: "status", label: "Status", coluna: 8 }
+  ]);
+
+  const selecoesFiltrosExcelManejo = new Map();
+  const setoresManejoComRenderCompleto = new Set();
+  let popupFiltroExcelManejo = null;
+  let configPopupFiltroExcelManejo = null;
+  let observerFiltrosExcelManejo = null;
+  let rafAplicacaoFiltrosExcelManejo = 0;
+  let eventosFiltrosExcelManejoInstalados = false;
+  let aplicandoFiltrosExcelManejo = false;
+
+  function normalizarFiltroExcelManejo(valor) {
+    return String(valor ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toUpperCase();
+  }
+
+  function escaparHtmlFiltroExcelManejo(valor) {
+    return String(valor ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function formatarNumeroFiltroExcelManejo(valor) {
+    return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 })
+      .format(Number(valor || 0));
+  }
+
+  function configFiltroExcelPorId(id) {
+    return CONFIG_FILTROS_EXCEL_MANEJO.find(item => item.id === id) || null;
+  }
+
+  function getSetSelecaoFiltroExcel(id) {
+    if (!selecoesFiltrosExcelManejo.has(id)) {
+      selecoesFiltrosExcelManejo.set(id, new Set());
+    }
+    return selecoesFiltrosExcelManejo.get(id);
+  }
+
+  function haSelecaoAcumulativaManejo() {
+    return CONFIG_FILTROS_EXCEL_MANEJO.some(config => getSetSelecaoFiltroExcel(config.id).size > 0);
+  }
+
+  function setorAtualFiltroExcelManejo() {
+    return document.querySelector(".manejo-setor-btn.active")?.dataset?.setor || "sutia";
+  }
+
+  function opcoesDoDatalistFiltroExcel(campo) {
+    const listId = campo?.dataset?.excelListId || campo?.getAttribute?.("list") || "";
+    if (!listId) return [];
+    const datalist = document.getElementById(listId);
+    if (!datalist) return [];
+    return [...datalist.querySelectorAll("option")]
+      .map(option => String(option.value || option.textContent || "").trim())
+      .filter(Boolean);
+  }
+
+  function valorLinhaFiltroExcel(linha, config) {
+    if (!linha || !config) return "";
+    const celula = linha.cells?.[config.coluna];
+
+    if (config.campo === "referencia") {
+      return celula?.querySelector("input")?.value || celula?.textContent || "";
+    }
+    if (config.campo === "silk" || config.campo === "dataTecido") {
+      const valores = [...(celula?.querySelectorAll("input") || [])]
+        .map(input => String(input.value || "").trim())
+        .filter(Boolean);
+      return valores.join(" ").trim();
+    }
+    if (config.campo === "fase") {
+      return celula?.querySelector('input[id$="-fase"]')?.value
+        || linha.dataset.fase
+        || celula?.textContent
+        || "";
+    }
+    if (config.campo === "quantidade") {
+      return linha.dataset.qti || celula?.querySelector("input")?.value || celula?.textContent || "";
+    }
+    if (config.campo === "cor") {
+      return linha.dataset.cor || celula?.querySelector("input")?.value || celula?.textContent || "";
+    }
+    if (config.campo === "necessidade") {
+      return celula?.querySelector("input, textarea")?.value || celula?.textContent || "";
+    }
+    if (config.campo === "status") {
+      return linha.dataset.status || celula?.textContent || "";
+    }
+    return celula?.textContent || "";
+  }
+
+  function coletarOpcoesFiltroExcel(config) {
+    const campo = document.getElementById(config.id);
+    const valores = [];
+
+    if (campo instanceof HTMLSelectElement) {
+      valores.push(...[...campo.options]
+        .filter(option => option.value)
+        .map(option => String(option.value || option.textContent || "").trim()));
+    } else {
+      valores.push(...opcoesDoDatalistFiltroExcel(campo));
+    }
+
+    document.querySelectorAll("#listaManejoInline tr[data-manejo-row='1']")
+      .forEach(linha => {
+        const valor = String(valorLinhaFiltroExcel(linha, config) || "").trim();
+        if (valor) valores.push(valor);
+      });
+
+    const selecionadas = [...getSetSelecaoFiltroExcel(config.id)];
+    valores.push(...selecionadas);
+
+    const especiaisPorCampo = {
+      referencia: ["Campo vazio"],
+      silk: ["Preenchido", "Campo vazio", "Sem silk"],
+      dataTecido: ["Preenchido", "Campo vazio", "Sem tecido"],
+      fase: ["Campo vazio"],
+      quantidade: ["Campo vazio"],
+      cor: ["Campo vazio"],
+      necessidade: ["URGENTE", "Campo vazio", "Sem necessidade"]
+    };
+    valores.unshift(...(especiaisPorCampo[config.campo] || []));
+
+    const vistos = new Set();
+    return valores
+      .map(valor => String(valor || "").trim())
+      .filter(valor => {
+        const chave = normalizarFiltroExcelManejo(valor);
+        if (!chave || vistos.has(chave)) return false;
+        vistos.add(chave);
+        return true;
+      })
+      .sort((a, b) => {
+        const especiais = especiaisPorCampo[config.campo] || [];
+        const ia = especiais.findIndex(item => normalizarFiltroExcelManejo(item) === normalizarFiltroExcelManejo(a));
+        const ib = especiais.findIndex(item => normalizarFiltroExcelManejo(item) === normalizarFiltroExcelManejo(b));
+        if (ia >= 0 || ib >= 0) {
+          if (ia < 0) return 1;
+          if (ib < 0) return -1;
+          return ia - ib;
+        }
+        return a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" });
+      });
+  }
+
+  function opcaoFiltroExcelCombina(config, opcaoOriginal, valorOriginal) {
+    const opcao = normalizarFiltroExcelManejo(opcaoOriginal);
+    const valor = normalizarFiltroExcelManejo(valorOriginal);
+
+    const vazios = new Set([
+      "CAMPO VAZIO", "VAZIO", "SEM PREENCHIMENTO", "SEM PREENCHER",
+      "NAO PREENCHIDO", "EM BRANCO", "SEM SILK", "SEM TECIDO", "SEM NECESSIDADE"
+    ]);
+    const preenchidos = new Set([
+      "PREENCHIDO", "PREENCHIDA", "PREENCHIDOS", "COM PREENCHIMENTO",
+      "COM SILK", "SILK PREENCHIDO"
+    ]);
+
+    if (vazios.has(opcao)) return !valor;
+    if (preenchidos.has(opcao)) return Boolean(valor);
+    if (config.campo === "necessidade" && opcao === "URGENTE") {
+      return valor.includes("URGENTE");
+    }
+    return valor === opcao;
+  }
+
+  function linhaCombinaSelecoesExcel(linha) {
+    return CONFIG_FILTROS_EXCEL_MANEJO.every(config => {
+      const selecionadas = getSetSelecaoFiltroExcel(config.id);
+      if (!selecionadas.size) return true;
+      const valor = valorLinhaFiltroExcel(linha, config);
+      return [...selecionadas].some(opcao => opcaoFiltroExcelCombina(config, opcao, valor));
+    });
+  }
+
+  function atualizarIndicadorFiltroExcel(config) {
+    const campo = document.getElementById(config.id);
+    const botao = document.querySelector(`.btn-filtro-excel-manejo[data-filtro-id="${config.id}"]`);
+    if (!campo || !botao) return;
+
+    const selecionadas = getSetSelecaoFiltroExcel(config.id);
+    const badge = botao.querySelector(".filtro-excel-count");
+    botao.classList.toggle("ativo", selecionadas.size > 0);
+    botao.setAttribute(
+      "aria-label",
+      selecionadas.size
+        ? `${config.label}: ${selecionadas.size} opções selecionadas`
+        : `Selecionar várias opções de ${config.label}`
+    );
+    botao.title = botao.getAttribute("aria-label");
+    if (badge) {
+      badge.textContent = selecionadas.size ? String(selecionadas.size) : "";
+      badge.hidden = !selecionadas.size;
+    }
+
+    if (selecionadas.size) {
+      campo.dataset.excelSelecaoAtiva = "1";
+      campo.dataset.excelInterno = "1";
+      campo.value = "";
+      delete campo.dataset.excelInterno;
+      campo.placeholder = selecionadas.size === 1
+        ? [...selecionadas][0]
+        : `${selecionadas.size} selecionados`;
+      campo.classList.add("filtro-excel-ativo");
+    } else {
+      delete campo.dataset.excelSelecaoAtiva;
+      campo.placeholder = campo.dataset.excelPlaceholderOriginal || campo.placeholder || "Todos";
+      campo.classList.remove("filtro-excel-ativo");
+    }
+  }
+
+  function atualizarTodosIndicadoresFiltroExcel() {
+    CONFIG_FILTROS_EXCEL_MANEJO.forEach(atualizarIndicadorFiltroExcel);
+  }
+
+  function garantirRenderCompletoFiltrosExcel() {
+    if (!haSelecaoAcumulativaManejo()) return;
+    const setor = setorAtualFiltroExcelManejo();
+    if (setoresManejoComRenderCompleto.has(setor)) return;
+
+    const chave = `manejo-${setor}`;
+    if (typeof window.mostrarTodosRenderTabela !== "function") {
+      setTimeout(garantirRenderCompletoFiltrosExcel, 250);
+      return;
+    }
+
+    setoresManejoComRenderCompleto.add(setor);
+    try {
+      window.mostrarTodosRenderTabela(chave);
+    } catch (error) {
+      setoresManejoComRenderCompleto.delete(setor);
+      console.warn("Não foi possível ampliar a renderização do Manejo.", error);
+    }
+  }
+
+  function criarLinhaResumoAgrupadoFiltroExcel(tbody, grupos, labelVazio) {
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    const ordenados = [...grupos.entries()]
+      .sort((a, b) => b[1].pecas - a[1].pecas || a[0].localeCompare(b[0], "pt-BR", { numeric: true }));
+
+    if (!ordenados.length) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="3" class="empty">${escaparHtmlFiltroExcelManejo(labelVazio)}</td>`;
+      tbody.appendChild(tr);
+      return;
+    }
+
+    ordenados.forEach(([nome, dados]) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escaparHtmlFiltroExcelManejo(nome)}</td>
+        <td>${formatarNumeroFiltroExcelManejo(dados.ops)}</td>
+        <td>${formatarNumeroFiltroExcelManejo(dados.pecas)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function textoFiltrosExcelAtivos() {
+    const partes = [];
+    const busca = document.getElementById("buscaManejoLinha")?.value?.trim();
+    const op = document.getElementById("filtroManejoOP")?.value?.trim();
+    if (busca) partes.push(`Busca: ${busca}`);
+    if (op) partes.push(`OP: ${op}`);
+
+    CONFIG_FILTROS_EXCEL_MANEJO.forEach(config => {
+      const campo = document.getElementById(config.id);
+      const selecionadas = [...getSetSelecaoFiltroExcel(config.id)];
+      if (selecionadas.length) {
+        const exibidas = selecionadas.length > 4
+          ? `${selecionadas.slice(0, 4).join(", ")} +${selecionadas.length - 4}`
+          : selecionadas.join(", ");
+        partes.push(`${config.label}: ${exibidas}`);
+      } else if (campo?.value) {
+        const label = campo instanceof HTMLSelectElement
+          ? campo.selectedOptions?.[0]?.textContent || campo.value
+          : campo.value;
+        partes.push(`${config.label}: ${label}`);
+      }
+    });
+
+    const ordenacao = document.getElementById("filtroManejoOrdenacao");
+    if (ordenacao?.value && ordenacao.value !== "padrao") {
+      partes.push(`Ordenação: ${ordenacao.selectedOptions?.[0]?.textContent || ordenacao.value}`);
+    }
+    return partes.length ? `Filtro: ${partes.join(" + ")}` : "Filtro: todos os registros";
+  }
+
+  function atualizarResumoPelasLinhasExcel(linhasVisiveis) {
+    const totalOps = linhasVisiveis.length;
+    let totalPecas = 0;
+    let totalFalta = 0;
+    let organizadas = 0;
+    let pendentes = 0;
+    const fases = new Map();
+    const cores = new Map();
+
+    linhasVisiveis.forEach(linha => {
+      const qti = Number(String(linha.dataset.qti || "0").replace(",", ".")) || 0;
+      const falta = Number(String(linha.dataset.falta || "0").replace(",", ".")) || 0;
+      const status = normalizarFiltroExcelManejo(linha.dataset.status || "PENDENTE");
+      const fase = String(valorLinhaFiltroExcel(linha, configFiltroExcelPorId("filtroManejoFase")) || "Sem fase").trim() || "Sem fase";
+      const cor = String(valorLinhaFiltroExcel(linha, configFiltroExcelPorId("filtroManejoCor")) || "Sem cor").trim() || "Sem cor";
+
+      totalPecas += qti;
+      totalFalta += falta;
+      if (status === "ORGANIZADA" || status === "BIPADO") organizadas += 1;
+      else if (status === "PENDENTE") pendentes += 1;
+
+      const grupoFase = fases.get(fase) || { ops: 0, pecas: 0 };
+      grupoFase.ops += 1;
+      grupoFase.pecas += qti;
+      fases.set(fase, grupoFase);
+
+      const grupoCor = cores.get(cor) || { ops: 0, pecas: 0 };
+      grupoCor.ops += 1;
+      grupoCor.pecas += qti;
+      cores.set(cor, grupoCor);
+    });
+
+    const setText = (id, valor) => {
+      const elemento = document.getElementById(id);
+      if (elemento) elemento.textContent = valor;
+    };
+    setText("somaManejoOps", formatarNumeroFiltroExcelManejo(totalOps));
+    setText("somaManejoPecas", formatarNumeroFiltroExcelManejo(totalPecas));
+    setText("somaManejoFalta", formatarNumeroFiltroExcelManejo(totalFalta));
+    setText("somaManejoStatus", `${formatarNumeroFiltroExcelManejo(organizadas)} org. | ${formatarNumeroFiltroExcelManejo(pendentes)} pend.`);
+    setText("somaManejoPecasCompacto", `${formatarNumeroFiltroExcelManejo(totalPecas)} peças`);
+    setText("somaManejoFiltroAtivo", textoFiltrosExcelAtivos());
+    setText(
+      "somaManejoResumoCompacto",
+      `${formatarNumeroFiltroExcelManejo(totalOps)} OPs | ${formatarNumeroFiltroExcelManejo(totalFalta)} falta | ${formatarNumeroFiltroExcelManejo(organizadas)} org. | ${formatarNumeroFiltroExcelManejo(pendentes)} pend.`
+    );
+
+    criarLinhaResumoAgrupadoFiltroExcel(document.getElementById("somaManejoFases"), fases, "Nenhuma fase nos filtros atuais.");
+    criarLinhaResumoAgrupadoFiltroExcel(document.getElementById("somaManejoCores"), cores, "Nenhuma cor nos filtros atuais.");
+  }
+
+  function controlarMensagemSemResultadoFiltroExcel(linhasVisiveis) {
+    const tbody = document.getElementById("listaManejoInline");
+    if (!tbody) return;
+    let aviso = document.getElementById("filtrosExcelManejoSemResultado");
+
+    if (linhasVisiveis.length || !haSelecaoAcumulativaManejo()) {
+      aviso?.remove();
+      return;
+    }
+
+    if (!aviso) {
+      aviso = document.createElement("tr");
+      aviso.id = "filtrosExcelManejoSemResultado";
+      aviso.innerHTML = `
+        <td colspan="10" class="empty">
+          Nenhuma peça corresponde à combinação selecionada. Use a seta dos filtros para ajustar as opções.
+        </td>
+      `;
+      tbody.appendChild(aviso);
+    }
+  }
+
+  function aplicarFiltrosExcelManejo() {
+    if (aplicandoFiltrosExcelManejo) return;
+    aplicandoFiltrosExcelManejo = true;
+    try {
+      const linhas = [...document.querySelectorAll("#listaManejoInline tr[data-manejo-row='1']")];
+      const ativo = haSelecaoAcumulativaManejo();
+      const visiveis = [];
+
+      linhas.forEach(linha => {
+        const mostrar = !ativo || linhaCombinaSelecoesExcel(linha);
+        linha.hidden = !mostrar;
+        linha.classList.toggle("linha-oculta-filtro-excel", !mostrar);
+        if (mostrar) visiveis.push(linha);
+      });
+
+      controlarMensagemSemResultadoFiltroExcel(visiveis);
+      if (ativo) atualizarResumoPelasLinhasExcel(visiveis);
+    } finally {
+      aplicandoFiltrosExcelManejo = false;
+    }
+  }
+
+  function agendarAplicacaoFiltrosExcelManejo() {
+    cancelAnimationFrame(rafAplicacaoFiltrosExcelManejo);
+    rafAplicacaoFiltrosExcelManejo = requestAnimationFrame(() => {
+      garantirRenderCompletoFiltrosExcel();
+      aplicarFiltrosExcelManejo();
+    });
+  }
+
+  function fecharPopupFiltroExcelManejo() {
+    popupFiltroExcelManejo?.remove();
+    popupFiltroExcelManejo = null;
+    configPopupFiltroExcelManejo = null;
+  }
+
+  function atualizarEstadoSelecionarTudoPopup() {
+    if (!popupFiltroExcelManejo) return;
+    const caixas = [...popupFiltroExcelManejo.querySelectorAll('.filtro-excel-opcao input[type="checkbox"]')]
+      .filter(input => !input.closest(".filtro-excel-opcao")?.hidden);
+    const todos = popupFiltroExcelManejo.querySelector("#filtroExcelSelecionarTodos");
+    if (!todos) return;
+    const marcadas = caixas.filter(input => input.checked).length;
+    todos.checked = caixas.length > 0 && marcadas === caixas.length;
+    todos.indeterminate = marcadas > 0 && marcadas < caixas.length;
+  }
+
+  function filtrarOpcoesPopupFiltroExcel(termo) {
+    if (!popupFiltroExcelManejo) return;
+    const busca = normalizarFiltroExcelManejo(termo);
+    popupFiltroExcelManejo.querySelectorAll(".filtro-excel-opcao").forEach(label => {
+      const texto = normalizarFiltroExcelManejo(label.dataset.valor || label.textContent);
+      label.hidden = Boolean(busca && !texto.includes(busca));
+    });
+    atualizarEstadoSelecionarTudoPopup();
+  }
+
+  function posicionarPopupFiltroExcel(botao) {
+    if (!popupFiltroExcelManejo || !botao) return;
+    const rect = botao.getBoundingClientRect();
+    const largura = Math.min(360, Math.max(280, window.innerWidth - 24));
+    let esquerda = rect.right - largura;
+    esquerda = Math.max(12, Math.min(esquerda, window.innerWidth - largura - 12));
+    let topo = rect.bottom + 8;
+    const alturaEstimada = Math.min(520, window.innerHeight - 24);
+    if (topo + alturaEstimada > window.innerHeight && rect.top > alturaEstimada / 2) {
+      topo = Math.max(12, rect.top - alturaEstimada - 8);
+    }
+    popupFiltroExcelManejo.style.width = `${largura}px`;
+    popupFiltroExcelManejo.style.left = `${esquerda}px`;
+    popupFiltroExcelManejo.style.top = `${topo}px`;
+  }
+
+  function abrirPopupFiltroExcelManejo(config, botao) {
+    fecharPopupFiltroExcelManejo();
+    configPopupFiltroExcelManejo = config;
+    const opcoes = coletarOpcoesFiltroExcel(config);
+    const selecionadasAtuais = getSetSelecaoFiltroExcel(config.id);
+
+    const popup = document.createElement("div");
+    popup.id = "popupFiltroExcelManejo";
+    popup.className = "popup-filtro-excel-manejo";
+    popup.setAttribute("role", "dialog");
+    popup.setAttribute("aria-label", `Filtrar ${config.label}`);
+    popup.innerHTML = `
+      <div class="filtro-excel-cabecalho">
+        <div>
+          <strong>${escaparHtmlFiltroExcelManejo(config.label)}</strong>
+          <small>Marque uma ou mais opções</small>
+        </div>
+        <button type="button" class="filtro-excel-fechar" aria-label="Fechar">×</button>
+      </div>
+      <input class="filtro-excel-busca" type="search" placeholder="Pesquisar nas opções..." autocomplete="off" />
+      <label class="filtro-excel-selecionar-todos">
+        <input id="filtroExcelSelecionarTodos" type="checkbox" />
+        <span>Selecionar tudo</span>
+      </label>
+      <div class="filtro-excel-lista">
+        ${opcoes.length ? opcoes.map((opcao, indice) => {
+          const marcada = [...selecionadasAtuais]
+            .some(item => normalizarFiltroExcelManejo(item) === normalizarFiltroExcelManejo(opcao));
+          return `
+            <label class="filtro-excel-opcao" data-valor="${escaparHtmlFiltroExcelManejo(opcao)}">
+              <input type="checkbox" value="${escaparHtmlFiltroExcelManejo(opcao)}" ${marcada ? "checked" : ""} />
+              <span>${escaparHtmlFiltroExcelManejo(opcao)}</span>
+            </label>
+          `;
+        }).join("") : '<div class="filtro-excel-vazio">Nenhuma opção disponível neste setor.</div>'}
+      </div>
+      <div class="filtro-excel-rodape">
+        <button type="button" class="btn-filtro-excel-limpar">Limpar</button>
+        <div>
+          <button type="button" class="btn-filtro-excel-cancelar">Cancelar</button>
+          <button type="button" class="btn-filtro-excel-aplicar">Aplicar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(popup);
+    popupFiltroExcelManejo = popup;
+    posicionarPopupFiltroExcel(botao);
+    atualizarEstadoSelecionarTudoPopup();
+
+    popup.querySelector(".filtro-excel-fechar")?.addEventListener("click", fecharPopupFiltroExcelManejo);
+    popup.querySelector(".btn-filtro-excel-cancelar")?.addEventListener("click", fecharPopupFiltroExcelManejo);
+    popup.querySelector(".filtro-excel-busca")?.addEventListener("input", event => {
+      filtrarOpcoesPopupFiltroExcel(event.target.value);
+    });
+    popup.querySelector(".filtro-excel-lista")?.addEventListener("change", atualizarEstadoSelecionarTudoPopup);
+    popup.querySelector("#filtroExcelSelecionarTodos")?.addEventListener("change", event => {
+      popup.querySelectorAll('.filtro-excel-opcao:not([hidden]) input[type="checkbox"]')
+        .forEach(input => { input.checked = event.target.checked; });
+      atualizarEstadoSelecionarTudoPopup();
+    });
+    popup.querySelector(".btn-filtro-excel-limpar")?.addEventListener("click", () => {
+      popup.querySelectorAll('.filtro-excel-opcao input[type="checkbox"]')
+        .forEach(input => { input.checked = false; });
+      atualizarEstadoSelecionarTudoPopup();
+    });
+    popup.querySelector(".btn-filtro-excel-aplicar")?.addEventListener("click", () => {
+      const marcadas = [...popup.querySelectorAll('.filtro-excel-opcao input[type="checkbox"]:checked')]
+        .map(input => String(input.value || "").trim())
+        .filter(Boolean);
+      const totalOpcoes = popup.querySelectorAll('.filtro-excel-opcao input[type="checkbox"]').length;
+      const set = getSetSelecaoFiltroExcel(config.id);
+      set.clear();
+      // Marcar todas equivale a não restringir a coluna.
+      if (marcadas.length && marcadas.length < totalOpcoes) {
+        marcadas.forEach(valor => set.add(valor));
+      }
+
+      const campo = document.getElementById(config.id);
+      if (campo) {
+        campo.dataset.excelInterno = "1";
+        campo.value = "";
+        campo.dispatchEvent(new Event("input", { bubbles: true }));
+        campo.dispatchEvent(new Event("change", { bubbles: true }));
+        delete campo.dataset.excelInterno;
+      }
+      atualizarIndicadorFiltroExcel(config);
+      fecharPopupFiltroExcelManejo();
+      garantirRenderCompletoFiltrosExcel();
+      setTimeout(agendarAplicacaoFiltrosExcelManejo, 40);
+      setTimeout(agendarAplicacaoFiltrosExcelManejo, 180);
+    });
+
+    setTimeout(() => popup.querySelector(".filtro-excel-busca")?.focus(), 0);
+  }
+
+  function injetarEstilosFiltrosExcelManejo() {
+    if (document.getElementById("estilosFiltrosExcelManejo")) return;
+    const style = document.createElement("style");
+    style.id = "estilosFiltrosExcelManejo";
+    style.textContent = `
+      .manejo-filter-row th.filtro-excel-host {
+        position: relative;
+        min-width: 115px;
+      }
+      .manejo-filter-row th.filtro-excel-host > input,
+      .manejo-filter-row th.filtro-excel-host > select {
+        width: 100%;
+        padding-right: 44px !important;
+      }
+      .manejo-filter-row th.filtro-excel-host > input.filtro-excel-ativo,
+      .manejo-filter-row th.filtro-excel-host > select.filtro-excel-ativo {
+        border-color: #2563eb !important;
+        background: #eff6ff !important;
+        font-weight: 800;
+      }
+      .btn-filtro-excel-manejo {
+        position: absolute;
+        right: 5px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 34px;
+        height: 30px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #334155;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        cursor: pointer;
+        z-index: 3;
+        font-weight: 900;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, .08);
+      }
+      .btn-filtro-excel-manejo:hover,
+      .btn-filtro-excel-manejo:focus-visible {
+        border-color: #2563eb;
+        color: #1d4ed8;
+        outline: none;
+      }
+      .btn-filtro-excel-manejo.ativo {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #ffffff;
+      }
+      .filtro-excel-count {
+        min-width: 15px;
+        height: 15px;
+        padding: 0 3px;
+        border-radius: 999px;
+        background: #ffffff;
+        color: #1d4ed8;
+        font-size: 9px;
+        line-height: 15px;
+        text-align: center;
+      }
+      .popup-filtro-excel-manejo {
+        position: fixed;
+        z-index: 2147483000;
+        max-height: min(520px, calc(100vh - 24px));
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 14px;
+        background: #ffffff;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, .28);
+        font-family: Arial, sans-serif;
+        color: #0f172a;
+      }
+      .filtro-excel-cabecalho,
+      .filtro-excel-rodape,
+      .filtro-excel-rodape > div {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .filtro-excel-cabecalho strong { display: block; font-size: 15px; }
+      .filtro-excel-cabecalho small { display: block; margin-top: 2px; color: #64748b; }
+      .filtro-excel-fechar {
+        width: 32px;
+        height: 32px;
+        border: 0;
+        border-radius: 8px;
+        background: #f1f5f9;
+        cursor: pointer;
+        font-size: 20px;
+      }
+      .filtro-excel-busca {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 9px;
+        padding: 10px 11px;
+        font-size: 13px;
+      }
+      .filtro-excel-selecionar-todos,
+      .filtro-excel-opcao {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 9px;
+        border-radius: 8px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .filtro-excel-selecionar-todos {
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-weight: 800;
+      }
+      .filtro-excel-opcao:hover { background: #f8fafc; }
+      .filtro-excel-opcao input,
+      .filtro-excel-selecionar-todos input {
+        width: 17px;
+        height: 17px;
+        accent-color: #2563eb;
+        flex: 0 0 auto;
+      }
+      .filtro-excel-lista {
+        min-height: 70px;
+        max-height: 290px;
+        overflow: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 4px;
+      }
+      .filtro-excel-vazio { padding: 18px 10px; text-align: center; color: #64748b; }
+      .filtro-excel-rodape {
+        padding-top: 4px;
+        border-top: 1px solid #e2e8f0;
+      }
+      .filtro-excel-rodape button {
+        border: 1px solid #cbd5e1;
+        border-radius: 9px;
+        padding: 9px 12px;
+        background: #ffffff;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .filtro-excel-rodape .btn-filtro-excel-aplicar {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #ffffff;
+      }
+      .filtro-excel-rodape .btn-filtro-excel-limpar { color: #b91c1c; }
+      #avisoFiltrosExcelManejo {
+        margin: 8px 0 10px;
+        padding: 9px 12px;
+        border: 1px solid #bfdbfe;
+        border-radius: 10px;
+        background: #eff6ff;
+        color: #1e40af;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      tr.linha-oculta-filtro-excel { display: none !important; }
+      @media (max-width: 780px) {
+        .popup-filtro-excel-manejo {
+          left: 10px !important;
+          right: 10px !important;
+          top: 10px !important;
+          width: auto !important;
+          max-height: calc(100vh - 20px);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function prepararControleFiltroExcel(config) {
+    const campo = document.getElementById(config.id);
+    if (!campo || campo.dataset.excelFiltroPreparado === "1") return;
+    const th = campo.closest("th");
+    if (!th) return;
+
+    campo.dataset.excelFiltroPreparado = "1";
+    campo.dataset.excelPlaceholderOriginal = campo.placeholder || "Todos";
+    if (campo instanceof HTMLInputElement && campo.hasAttribute("list")) {
+      campo.dataset.excelListId = campo.getAttribute("list") || "";
+      campo.removeAttribute("list");
+    }
+    th.classList.add("filtro-excel-host");
+
+    const botao = document.createElement("button");
+    botao.type = "button";
+    botao.className = "btn-filtro-excel-manejo";
+    botao.dataset.filtroId = config.id;
+    botao.innerHTML = '<span aria-hidden="true">▾</span><span class="filtro-excel-count" hidden></span>';
+    botao.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      abrirPopupFiltroExcelManejo(config, botao);
+    });
+    th.appendChild(botao);
+
+    campo.addEventListener("input", () => {
+      if (campo.dataset.excelInterno === "1") return;
+      const set = getSetSelecaoFiltroExcel(config.id);
+      if (set.size) {
+        set.clear();
+        atualizarIndicadorFiltroExcel(config);
+      }
+      setTimeout(agendarAplicacaoFiltrosExcelManejo, 30);
+    });
+    campo.addEventListener("change", () => {
+      if (campo.dataset.excelInterno === "1") return;
+      const set = getSetSelecaoFiltroExcel(config.id);
+      if (set.size) {
+        set.clear();
+        atualizarIndicadorFiltroExcel(config);
+      }
+      setTimeout(agendarAplicacaoFiltrosExcelManejo, 30);
+    });
+
+    atualizarIndicadorFiltroExcel(config);
+  }
+
+  function inserirAvisoFiltrosExcelManejo() {
+    if (document.getElementById("avisoFiltrosExcelManejo")) return;
+    const tabela = document.querySelector("#manejo .manejo-inline-table");
+    const wrap = tabela?.closest(".table-wrap");
+    if (!wrap) return;
+    const aviso = document.createElement("div");
+    aviso.id = "avisoFiltrosExcelManejo";
+    aviso.innerHTML = "Filtros acumulativos: use a seta ▾ para marcar várias opções. Dentro da mesma coluna vale <strong>OU</strong>; entre colunas vale <strong>E</strong>.";
+    wrap.before(aviso);
+  }
+
+  function limparSelecoesFiltrosExcelManejo() {
+    selecoesFiltrosExcelManejo.forEach(set => set.clear());
+    fecharPopupFiltroExcelManejo();
+    atualizarTodosIndicadoresFiltroExcel();
+    document.querySelectorAll("#listaManejoInline tr[data-manejo-row='1']")
+      .forEach(linha => {
+        linha.hidden = false;
+        linha.classList.remove("linha-oculta-filtro-excel");
+      });
+    document.getElementById("filtrosExcelManejoSemResultado")?.remove();
+  }
+
+  function textoDaCelulaParaImpressao(linha, indice) {
+    const celula = linha.cells?.[indice];
+    if (!celula) return "";
+    if (indice === 2 || indice === 3) {
+      return [...celula.querySelectorAll("input")]
+        .map(input => String(input.value || "").trim())
+        .filter(Boolean)
+        .join(" / ");
+    }
+    return celula.querySelector("input, textarea, select")?.value
+      || celula.textContent?.trim()
+      || "";
+  }
+
+  function imprimirManejoComFiltrosExcel() {
+    const linhas = [...document.querySelectorAll("#listaManejoInline tr[data-manejo-row='1']")]
+      .filter(linha => !linha.hidden && !linha.classList.contains("linha-oculta-filtro-excel"));
+    const janela = window.open("", "_blank", "width=1200,height=820");
+    if (!janela) {
+      showUpdateToast("O navegador bloqueou a janela de impressão. Libere pop-ups e tente novamente.");
+      return;
+    }
+
+    const cabecalhos = ["OP", "REF", "SILK", "TECIDO", "FASE", "QTI", "COR", "NECESSIDADE", "STATUS"];
+    const corpo = linhas.map(linha => {
+      const valores = cabecalhos.map((_, indice) => textoDaCelulaParaImpressao(linha, indice));
+      return `<tr>${valores.map(valor => `<td>${escaparHtmlFiltroExcelManejo(valor || "-")}</td>`).join("")}</tr>`;
+    }).join("");
+    const setor = setorAtualFiltroExcelManejo() === "calcinha" ? "Calcinha" : "Sutiã";
+
+    janela.document.write(`
+      <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Manejo ${setor}</title>
+      <style>
+        body{font-family:Arial,sans-serif;color:#111827;margin:24px}h1{font-size:22px;margin:0 0 6px}p{margin:0 0 16px;color:#475569;font-size:12px}
+        table{width:100%;border-collapse:collapse;font-size:10px}th,td{border:1px solid #cbd5e1;padding:6px;text-align:left;vertical-align:top}th{background:#e2e8f0}
+        @page{size:landscape;margin:10mm}
+      </style></head><body>
+      <h1>Manejo ${setor} — itens filtrados</h1>
+      <p>${escaparHtmlFiltroExcelManejo(textoFiltrosExcelAtivos())} • ${linhas.length} OP(s)</p>
+      <table><thead><tr>${cabecalhos.map(item => `<th>${item}</th>`).join("")}</tr></thead><tbody>${corpo || '<tr><td colspan="9">Nenhum item encontrado.</td></tr>'}</tbody></table>
+      </body></html>
+    `);
+    janela.document.close();
+    janela.focus();
+    setTimeout(() => janela.print(), 250);
+  }
+
+  function instalarEventosGlobaisFiltrosExcelManejo() {
+    if (eventosFiltrosExcelManejoInstalados) return;
+    eventosFiltrosExcelManejoInstalados = true;
+
+    document.addEventListener("pointerdown", event => {
+      if (!popupFiltroExcelManejo) return;
+      if (popupFiltroExcelManejo.contains(event.target)) return;
+      if (event.target.closest?.(".btn-filtro-excel-manejo")) return;
+      fecharPopupFiltroExcelManejo();
+    }, true);
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && popupFiltroExcelManejo) fecharPopupFiltroExcelManejo();
+    }, true);
+
+    document.addEventListener("click", event => {
+      if (event.target.closest("#btnLimparFiltrosManejo")) {
+        limparSelecoesFiltrosExcelManejo();
+        setTimeout(agendarAplicacaoFiltrosExcelManejo, 80);
+      }
+      const setorBtn = event.target.closest(".manejo-setor-btn");
+      if (setorBtn) {
+        limparSelecoesFiltrosExcelManejo();
+        setTimeout(() => {
+          prepararFiltrosExcelManejo();
+          agendarAplicacaoFiltrosExcelManejo();
+        }, 100);
+      }
+    }, true);
+
+    document.addEventListener("click", event => {
+      const botaoImprimir = event.target.closest("#btnImprimirManejoFiltrado");
+      if (!botaoImprimir || !haSelecaoAcumulativaManejo()) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      imprimirManejoComFiltrosExcel();
+    }, true);
+
+    document.addEventListener("input", event => {
+      if (event.target?.closest?.("#listaManejoInline")) {
+        setTimeout(agendarAplicacaoFiltrosExcelManejo, 20);
+      }
+    }, true);
+
+    window.addEventListener("resize", () => {
+      const botao = configPopupFiltroExcelManejo
+        ? document.querySelector(`.btn-filtro-excel-manejo[data-filtro-id="${configPopupFiltroExcelManejo.id}"]`)
+        : null;
+      if (botao) posicionarPopupFiltroExcel(botao);
+    });
+  }
+
+  function iniciarObserverFiltrosExcelManejo() {
+    if (observerFiltrosExcelManejo) return;
+    const alvo = document.getElementById("listaManejoInline");
+    if (!alvo) {
+      setTimeout(iniciarObserverFiltrosExcelManejo, 300);
+      return;
+    }
+    observerFiltrosExcelManejo = new MutationObserver(() => {
+      prepararFiltrosExcelManejo();
+      agendarAplicacaoFiltrosExcelManejo();
+    });
+    observerFiltrosExcelManejo.observe(alvo, { childList: true, subtree: true });
+  }
+
+  function prepararFiltrosExcelManejo() {
+    injetarEstilosFiltrosExcelManejo();
+    CONFIG_FILTROS_EXCEL_MANEJO.forEach(prepararControleFiltroExcel);
+    inserirAvisoFiltrosExcelManejo();
+    atualizarTodosIndicadoresFiltroExcel();
+  }
+
+  function iniciarFiltrosExcelManejo() {
+    prepararFiltrosExcelManejo();
+    instalarEventosGlobaisFiltrosExcelManejo();
+    iniciarObserverFiltrosExcelManejo();
+    setTimeout(prepararFiltrosExcelManejo, 250);
+    setTimeout(prepararFiltrosExcelManejo, 900);
+    setTimeout(agendarAplicacaoFiltrosExcelManejo, 1000);
+  }
+
+
   function iniciarRecursosDaVersao() {
     iniciarHotfixChegadaManual();
     iniciarHotfixNecessidade();
@@ -3906,6 +4840,7 @@
     iniciarMovimentacoesRegistradasUsuario();
     iniciarEdicaoLocalUsuarios();
     iniciarExibicaoEditarLocalUsuarios();
+    iniciarFiltrosExcelManejo();
   }
 
   window.addEventListener("load", () => {

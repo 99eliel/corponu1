@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-editar-local-rastreamento-usuarios-3",
-  "updatedAt": "2026-07-28T11:20:00-03:00",
-  "notes": "Atualização cumulativa. Corrige definitivamente a exibição da função Editar local para usuários comuns ativos. O botão passa a aparecer nas linhas da aba Rastreamento, ao lado de Chegada e Bipar, também na busca global e no histórico detalhado. Mantém o botão no Manejo, o motivo obrigatório, a auditoria e todas as correções anteriores."
+  "version": "2026-07-28-filtros-excel-acumulativos-manejo-1",
+  "updatedAt": "2026-07-28T10:36:00-03:00",
+  "notes": "Atualização cumulativa. Adiciona filtros acumulativos no Manejo com lógica semelhante ao Excel: permite selecionar várias opções na mesma coluna, combinando-as com OU, e acumular filtros entre colunas com E. Atualiza totais e impressão conforme a seleção e mantém todas as correções anteriores."
 }
