@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-calcinha-sem-silk-envio-historico-2",
-  "updatedAt": "2026-07-28T18:40:00-03:00",
-  "notes": "Correção cumulativa do fluxo de calcinha: oculta Silk e Tecido no Manejo de Calcinha e na impressão; mantém o fluxo de sutiã intacto; OPs históricas importadas passam a solicitar serviço e facção no momento de Enviar para facção; novas OPs continuam usando serviço e facção definidos no planejamento."
+  "version": "2026-07-28-historico-completo-op-1",
+  "updatedAt": "2026-07-28T19:35:00-03:00",
+  "notes": "Adiciona a Linha do Tempo completa da OP no Rastreamento, reunindo cadastro, manejo, envios, chegadas, reenvios, bipagens, pagamentos e correções, com data, hora e usuário responsável. Mantém os fluxos atuais de Sutiã e Calcinha."
 }

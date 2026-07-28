@@ -1,47 +1,71 @@
-ATUALIZAÇÃO CORPONU — CALCINHA SEM SILK/TECIDO E ENVIO HISTÓRICO MANUAL
+CORPONU — HISTÓRICO COMPLETO / LINHA DO TEMPO DA OP
+Versão: 2026-07-28-historico-completo-op-1
 
-VERSÃO
-2026-07-28-calcinha-sem-silk-envio-historico-2
+OBJETIVO
+Adicionar, dentro da aba Rastreamento, uma consulta completa por OP que reúna:
+- cadastro ou importação da OP;
+- alterações do Manejo de Sutiã ou Calcinha;
+- envio para facção ou célula;
+- chegada e quantidade recebida;
+- faltas e descontos registrados;
+- reenvios e encaminhamentos;
+- bipagens e finalizações;
+- correções de localização/processo;
+- geração e situação de pagamentos quando o usuário tiver acesso;
+- usuário responsável, data e hora de cada ação encontrada.
 
 ARQUIVOS PARA SUBSTITUIR NA RAIZ DO GITHUB
-- update.js
-- sw.js
-- version.json
-- corponu-dual-mode.js
+1. update.js
+2. sw.js
+3. version.json
+4. firebase-rules.txt
 
-NÃO ALTERAR
+ARQUIVO NOVO PARA ADICIONAR NA RAIZ DO GITHUB
+5. corponu-auditoria-op.js
+
+ARQUIVO ESPELHO OPCIONAL
+- firestore-rules.txt possui o mesmo conteúdo de firebase-rules.txt. Pode substituir o arquivo homônimo no GitHub para manter a cópia organizada.
+
+NÃO ALTERAR NESTA ATUALIZAÇÃO
 - app.js
 - index.html
 - style.css
-- firebase-rules.txt
-- firestore-rules.txt
-- storage-rules.txt
+- corponu-dual-mode.js
 - calcinhas-historico-2026.json
 - valores-processos-corponu-2026.json
+- storage-rules.txt
 
-NÃO É NECESSÁRIO REPUBLICAR AS REGRAS DO FIREBASE.
+PASSO OBRIGATÓRIO NO FIREBASE
+1. Abra Firebase Console.
+2. Entre no projeto CorpoNu.
+3. Abra Firestore Database > Rules.
+4. Apague as regras atuais.
+5. Cole todo o conteúdo de firebase-rules.txt.
+6. Clique em Publicar.
 
-O QUE MUDA
-1. No Manejo Calcinha, as colunas e filtros Silk e Tecido ficam ocultos.
-2. A impressão de Calcinha também não mostra Silk ou Tecido.
-3. O Manejo Sutiã permanece exatamente com Silk e Tecido.
-4. OPs históricas originadas da planilha antiga, ao usar os três pontos > Enviar para facção, abrem uma janela para escolher:
-   - CALCINHA MONTAGEM ou CALCINHA COMPLETA
-   - a facção filtrada pelo serviço
-5. Novas OPs de calcinha continuam seguindo o planejamento: serviço e facção já vêm definidos e o usuário apenas confirma o envio.
-6. O serviço/facção escolhido para uma OP histórica é gravado na movimentação e no Manejo, mas não transforma a OP histórica em uma OP planejada nova.
+As novas regras liberam para usuários ativos somente a leitura dos logs operacionais usados na linha do tempo. Logs de login, usuários e outras ações administrativas continuam restritos ao administrador. Ajustes de localização passam a ser consultáveis por usuários ativos, mas continuam protegidos contra edição/exclusão por usuários comuns.
 
-COMO PUBLICAR
-1. Substitua os quatro arquivos em um único commit.
-2. Abra o sistema e clique em Atualizar.
-3. Caso necessário, pressione Ctrl+F5 uma vez.
+COMO USAR
+1. Entre na aba Rastreamento.
+2. Em cada linha aparecerá o botão Histórico.
+3. Clique no botão ou use o painel "Linha do tempo completa da OP".
+4. Digite o número da OP e clique em Consultar histórico.
+5. A tela mostrará os eventos em ordem cronológica, com usuário, data, hora, origem e detalhes.
+6. Use Imprimir histórico para gerar uma impressão organizada somente daquela OP.
 
-TESTE RECOMENDADO
-A. Abra Manejo > Sutiã e confirme que Silk e Tecido continuam aparecendo.
-B. Abra Manejo > Calcinha e confirme que Silk e Tecido desapareceram.
-C. Em uma OP histórica, abra os três pontos e clique Enviar para facção. Confirme que o sistema pergunta serviço e depois mostra as facções correspondentes.
-D. Em uma OP nova de calcinha, confirme que o envio usa automaticamente o serviço e a facção definidos na OP.
+OBSERVAÇÕES IMPORTANTES
+- Registros antigos aparecem com os dados de autoria que já existirem no Firebase.
+- OPs importadas da planilha podem aparecer como "Importação histórica" quando não havia um usuário individual registrado na origem.
+- A consulta busca somente documentos e logs ligados à OP pesquisada; não carrega toda a coleção de auditoria.
+- Usuários comuns continuam sem acesso aos logs administrativos completos.
+- Informações financeiras aparecem conforme as permissões atuais da coleção de pagamentos.
 
-ROLLBACK
-Se houver comportamento inesperado, restaure os quatro arquivos da versão anterior:
-2026-07-28-sistema-duplo-sutia-calcinha-1
+PUBLICAÇÃO
+1. Faça um único commit com os arquivos alterados/adicionados.
+2. Publique as regras no Firebase.
+3. Abra o sistema e clique em Atualizar.
+4. Se necessário, pressione Ctrl + F5 uma vez.
+5. Teste uma OP que tenha Manejo, envio, chegada e bipagem.
+
+RETORNO RÁPIDO
+Se houver qualquer comportamento inesperado, volte update.js, sw.js e version.json para a versão anterior. O novo módulo não altera nem migra dados existentes; ele apenas consulta e organiza o histórico.

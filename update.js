@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-calcinha-sem-silk-envio-historico-2";
+  const APP_VERSION = "2026-07-28-historico-completo-op-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -4883,6 +4883,16 @@
     document.head.appendChild(script);
   }
 
+  function iniciarAuditoriaCompletaOP() {
+    if (document.querySelector('script[data-corponu-auditoria-op="1"]')) return;
+    const script = document.createElement("script");
+    script.src = `corponu-auditoria-op.js?v=${encodeURIComponent(APP_VERSION)}`;
+    script.dataset.corponuAuditoriaOp = "1";
+    script.async = true;
+    script.onerror = () => showUpdateToast("Não foi possível carregar o histórico completo da OP. O restante do sistema continua disponível.");
+    document.head.appendChild(script);
+  }
+
   function iniciarRecursosDaVersao() {
     iniciarHotfixChegadaManual();
     iniciarHotfixNecessidade();
@@ -4893,6 +4903,7 @@
     iniciarEdicaoLocalUsuarios();
     iniciarExibicaoEditarLocalUsuarios();
     iniciarSistemaDuploSutiaCalcinha();
+    iniciarAuditoriaCompletaOP();
     iniciarFiltrosExcelManejo();
   }
 

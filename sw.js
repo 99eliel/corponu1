@@ -1,14 +1,15 @@
-const APP_VERSION = "2026-07-28-calcinha-sem-silk-envio-historico-2";
+const APP_VERSION = "2026-07-28-historico-completo-op-1";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 
 const CORE_ASSETS = [
   "./index.html",
   "./style.css?v=2026-07-27-resgate-chegada-manual-faccao-1",
   "./app.js?v=2026-07-27-resgate-chegada-manual-faccao-1",
-  "./update.js?v=2026-07-28-calcinha-sem-silk-envio-historico-2",
-  "./corponu-dual-mode.js?v=2026-07-28-calcinha-sem-silk-envio-historico-2",
-  "./calcinhas-historico-2026.json?v=2026-07-28-calcinha-sem-silk-envio-historico-2",
-  "./valores-processos-corponu-2026.json?v=2026-07-28-calcinha-sem-silk-envio-historico-2"
+  "./update.js?v=2026-07-28-historico-completo-op-1",
+  "./corponu-dual-mode.js?v=2026-07-28-historico-completo-op-1",
+  "./corponu-auditoria-op.js?v=2026-07-28-historico-completo-op-1",
+  "./calcinhas-historico-2026.json?v=2026-07-28-historico-completo-op-1",
+  "./valores-processos-corponu-2026.json?v=2026-07-28-historico-completo-op-1"
 ];
 
 self.addEventListener("install", event => {
@@ -79,6 +80,7 @@ self.addEventListener("fetch", event => {
     url.pathname.endsWith("/style.css") ||
     url.pathname.endsWith("/update.js") ||
     url.pathname.endsWith("/corponu-dual-mode.js") ||
+    url.pathname.endsWith("/corponu-auditoria-op.js") ||
     url.pathname.endsWith("/calcinhas-historico-2026.json") ||
     url.pathname.endsWith("/version.json") ||
     url.pathname.endsWith("/dados-ligia-migracao.json") ||
