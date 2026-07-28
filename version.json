@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-historico-completo-op-1",
-  "updatedAt": "2026-07-28T19:35:00-03:00",
-  "notes": "Adiciona a Linha do Tempo completa da OP no Rastreamento, reunindo cadastro, manejo, envios, chegadas, reenvios, bipagens, pagamentos e correções, com data, hora e usuário responsável. Mantém os fluxos atuais de Sutiã e Calcinha."
+  "version": "2026-07-28-faccoes-sem-chegada-retornou-1",
+  "updatedAt": "2026-07-28T20:10:00-03:00",
+  "notes": "Na aba Facções, remove o botão Chegada das movimentações com status Retornou. O botão permanece apenas para itens em andamento, evitando lançamento duplicado e pagamento incorreto. Mantém todas as correções anteriores."
 }

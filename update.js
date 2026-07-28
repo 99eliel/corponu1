@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-historico-completo-op-1";
+  const APP_VERSION = "2026-07-28-faccoes-sem-chegada-retornou-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -4893,6 +4893,96 @@
     document.head.appendChild(script);
   }
 
+
+  // =========================================================
+  // HOTFIX: NÃO EXIBIR "CHEGADA" QUANDO A FACÇÃO JÁ RETORNOU
+  // - O botão aparece somente enquanto a movimentação estiver em andamento.
+  // - Remove o botão também após filtros, atualização em tempo real ou nova renderização.
+  // - Mantém Bipar, Reenviar facção e Mandar célula conforme as regras atuais.
+  // =========================================================
+  let observerChegadaFaccaoRetornada = null;
+  let aplicandoChegadaFaccaoRetornada = false;
+
+  function linhaFaccaoJaRetornou(linha) {
+    if (!linha) return false;
+    const badge = linha.querySelector('.badge');
+    const status = normalizarComparacao(badge?.textContent || '');
+    return status === 'RETORNOU' ||
+      status === 'RETORNO' ||
+      Boolean(linha.querySelector('.badge.bipado'));
+  }
+
+  function removerBotoesChegadaDeRetornadas() {
+    if (aplicandoChegadaFaccaoRetornada) return;
+    aplicandoChegadaFaccaoRetornada = true;
+    try {
+      const tabela = document.getElementById('listaFaccoesMovimentacoes');
+      if (!tabela) return;
+
+      tabela.querySelectorAll('tr').forEach(linha => {
+        const retornou = linhaFaccaoJaRetornou(linha);
+        linha.dataset.faccaoRetornou = retornou ? '1' : '0';
+        if (!retornou) return;
+
+        linha.querySelectorAll('button[onclick*="registrarChegadaMovimentacao"]').forEach(botao => {
+          botao.remove();
+        });
+      });
+    } finally {
+      aplicandoChegadaFaccaoRetornada = false;
+    }
+  }
+
+  function injetarEstiloChegadaFaccaoRetornada() {
+    if (document.getElementById('styleSemChegadaFaccaoRetornada')) return;
+    const style = document.createElement('style');
+    style.id = 'styleSemChegadaFaccaoRetornada';
+    style.textContent = `
+      #listaFaccoesMovimentacoes tr[data-faccao-retornou="1"]
+      button[onclick*="registrarChegadaMovimentacao"],
+      #listaFaccoesMovimentacoes tr:has(.badge.bipado)
+      button[onclick*="registrarChegadaMovimentacao"] {
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function iniciarSemChegadaFaccaoRetornada() {
+    injetarEstiloChegadaFaccaoRetornada();
+    removerBotoesChegadaDeRetornadas();
+
+    const tabela = document.getElementById('listaFaccoesMovimentacoes');
+    if (!tabela) {
+      setTimeout(iniciarSemChegadaFaccaoRetornada, 300);
+      return;
+    }
+
+    if (!tabela.dataset.bloqueioCliqueChegadaRetornada) {
+      tabela.dataset.bloqueioCliqueChegadaRetornada = APP_VERSION;
+      tabela.addEventListener('click', event => {
+        const botao = event.target?.closest?.('button[onclick*="registrarChegadaMovimentacao"]');
+        if (!botao) return;
+        const linha = botao.closest('tr');
+        if (!linhaFaccaoJaRetornou(linha)) return;
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        botao.remove();
+        mostrarAvisoFormulario('Esta movimentação já retornou. Use Movimentações registradas para corrigir a chegada.');
+      }, true);
+    }
+
+    if (observerChegadaFaccaoRetornada) observerChegadaFaccaoRetornada.disconnect();
+    observerChegadaFaccaoRetornada = new MutationObserver(() => {
+      queueMicrotask(removerBotoesChegadaDeRetornadas);
+    });
+    observerChegadaFaccaoRetornada.observe(tabela, { childList: true, subtree: true });
+
+    setTimeout(removerBotoesChegadaDeRetornadas, 100);
+    setTimeout(removerBotoesChegadaDeRetornadas, 600);
+  }
+
   function iniciarRecursosDaVersao() {
     iniciarHotfixChegadaManual();
     iniciarHotfixNecessidade();
@@ -4905,6 +4995,7 @@
     iniciarSistemaDuploSutiaCalcinha();
     iniciarAuditoriaCompletaOP();
     iniciarFiltrosExcelManejo();
+    iniciarSemChegadaFaccaoRetornada();
   }
 
   window.addEventListener("load", () => {

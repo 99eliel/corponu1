@@ -1,71 +1,34 @@
-CORPONU — HISTÓRICO COMPLETO / LINHA DO TEMPO DA OP
-Versão: 2026-07-28-historico-completo-op-1
+ATUALIZAÇÃO CORPONU — FACÇÕES SEM BOTÃO CHEGADA APÓS RETORNO
 
-OBJETIVO
-Adicionar, dentro da aba Rastreamento, uma consulta completa por OP que reúna:
-- cadastro ou importação da OP;
-- alterações do Manejo de Sutiã ou Calcinha;
-- envio para facção ou célula;
-- chegada e quantidade recebida;
-- faltas e descontos registrados;
-- reenvios e encaminhamentos;
-- bipagens e finalizações;
-- correções de localização/processo;
-- geração e situação de pagamentos quando o usuário tiver acesso;
-- usuário responsável, data e hora de cada ação encontrada.
+VERSÃO
+2026-07-28-faccoes-sem-chegada-retornou-1
 
 ARQUIVOS PARA SUBSTITUIR NA RAIZ DO GITHUB
-1. update.js
-2. sw.js
-3. version.json
-4. firebase-rules.txt
-
-ARQUIVO NOVO PARA ADICIONAR NA RAIZ DO GITHUB
-5. corponu-auditoria-op.js
-
-ARQUIVO ESPELHO OPCIONAL
-- firestore-rules.txt possui o mesmo conteúdo de firebase-rules.txt. Pode substituir o arquivo homônimo no GitHub para manter a cópia organizada.
+- update.js
+- sw.js
+- version.json
 
 NÃO ALTERAR NESTA ATUALIZAÇÃO
 - app.js
 - index.html
 - style.css
-- corponu-dual-mode.js
-- calcinhas-historico-2026.json
-- valores-processos-corponu-2026.json
+- firebase-rules.txt
+- firestore-rules.txt
 - storage-rules.txt
 
-PASSO OBRIGATÓRIO NO FIREBASE
-1. Abra Firebase Console.
-2. Entre no projeto CorpoNu.
-3. Abra Firestore Database > Rules.
-4. Apague as regras atuais.
-5. Cole todo o conteúdo de firebase-rules.txt.
-6. Clique em Publicar.
+NÃO É NECESSÁRIO ALTERAR AS REGRAS DO FIREBASE.
 
-As novas regras liberam para usuários ativos somente a leitura dos logs operacionais usados na linha do tempo. Logs de login, usuários e outras ações administrativas continuam restritos ao administrador. Ajustes de localização passam a ser consultáveis por usuários ativos, mas continuam protegidos contra edição/exclusão por usuários comuns.
+O QUE FOI CORRIGIDO
+- Na aba Facções, o botão Chegada aparece somente enquanto a movimentação estiver em andamento.
+- Quando o status estiver Retornou, o botão Chegada é removido.
+- A correção é reaplicada após filtros, atualizações em tempo real e redesenho da tabela.
+- Existe uma proteção adicional contra clique caso algum botão antigo permaneça na tela por cache.
+- Para corrigir uma chegada já registrada, use o botão Movimentações registradas.
+- Os botões Bipar, Mandar célula e Reenviar facção continuam seguindo a lógica atual.
 
-COMO USAR
-1. Entre na aba Rastreamento.
-2. Em cada linha aparecerá o botão Histórico.
-3. Clique no botão ou use o painel "Linha do tempo completa da OP".
-4. Digite o número da OP e clique em Consultar histórico.
-5. A tela mostrará os eventos em ordem cronológica, com usuário, data, hora, origem e detalhes.
-6. Use Imprimir histórico para gerar uma impressão organizada somente daquela OP.
-
-OBSERVAÇÕES IMPORTANTES
-- Registros antigos aparecem com os dados de autoria que já existirem no Firebase.
-- OPs importadas da planilha podem aparecer como "Importação histórica" quando não havia um usuário individual registrado na origem.
-- A consulta busca somente documentos e logs ligados à OP pesquisada; não carrega toda a coleção de auditoria.
-- Usuários comuns continuam sem acesso aos logs administrativos completos.
-- Informações financeiras aparecem conforme as permissões atuais da coleção de pagamentos.
-
-PUBLICAÇÃO
-1. Faça um único commit com os arquivos alterados/adicionados.
-2. Publique as regras no Firebase.
+COMO PUBLICAR
+1. Substitua update.js, sw.js e version.json no GitHub.
+2. Faça um único commit com os três arquivos.
 3. Abra o sistema e clique em Atualizar.
-4. Se necessário, pressione Ctrl + F5 uma vez.
-5. Teste uma OP que tenha Manejo, envio, chegada e bipagem.
-
-RETORNO RÁPIDO
-Se houver qualquer comportamento inesperado, volte update.js, sw.js e version.json para a versão anterior. O novo módulo não altera nem migra dados existentes; ele apenas consulta e organiza o histórico.
+4. Caso o navegador mantenha a versão anterior, pressione Ctrl + F5 uma vez.
+5. Abra Facções e confira uma linha com status Retornou: o botão Chegada não deve aparecer.
