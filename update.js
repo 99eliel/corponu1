@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-edicao-local-usuarios-1";
+  const APP_VERSION = "2026-07-28-botao-editar-local-usuarios-2";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -3638,6 +3638,172 @@
   }
 
 
+
+  // ---------------------------------------------------------------------------
+  // HOTFIX VISUAL: exibir "Mover / editar local" para usuários comuns.
+  // A versão anterior liberou o salvamento, mas algumas renderizações do app.js
+  // ainda escondiam a opção. Este bloco garante a ação no menu e na própria linha.
+  // ---------------------------------------------------------------------------
+  function usuarioComumAtivoPodeVerEditarLocal() {
+    const perfil = contextoMovUsuario?.perfil;
+    const user = contextoMovUsuario?.user;
+    return Boolean(user && perfil?.ativo === true && perfil?.tipo === "usuario");
+  }
+
+  function extrairOrdemIdDoKebab(botao) {
+    const codigo = String(botao?.getAttribute("onclick") || "");
+    const match = codigo.match(/toggleMenuAcoesManejo\s*\(\s*event\s*,\s*['\"]([^'\"]+)['\"]\s*\)/i);
+    return match?.[1] || "";
+  }
+
+  function abrirEdicaoLocalUsuarioPelaInterface(ordemId) {
+    if (!ordemId) {
+      mostrarAvisoAjusteUsuario("Não foi possível identificar a OP desta linha.", "error");
+      return;
+    }
+
+    window.fecharMenusAcoesManejo?.();
+    if (typeof window.abrirModalAjusteMigracao !== "function") {
+      mostrarAvisoAjusteUsuario("A tela de edição de local ainda não foi carregada.", "error");
+      return;
+    }
+
+    window.abrirModalAjusteMigracao(ordemId);
+  }
+
+  function injetarEstiloBotaoEditarLocalUsuario() {
+    if (document.getElementById("hotfix-editar-local-usuario-style")) return;
+    const style = document.createElement("style");
+    style.id = "hotfix-editar-local-usuario-style";
+    style.textContent = `
+      #listaManejoInline .btn-editar-local-usuario {
+        min-width: 34px;
+        height: 34px;
+        padding: 0 9px;
+        border: 0;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        line-height: 1;
+        font-weight: 800;
+        background: #2563eb;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #listaManejoInline .btn-editar-local-usuario:hover {
+        filter: brightness(.94);
+      }
+      #listaManejoInline .btn-editar-local-usuario:focus-visible {
+        outline: 3px solid rgba(37, 99, 235, .28);
+        outline-offset: 2px;
+      }
+      #menu-acoes-manejo-global .btn-menu-editar-local-usuario {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function garantirBotaoEditarLocalNasLinhas() {
+    if (!usuarioComumAtivoPodeVerEditarLocal()) return;
+
+    document.querySelectorAll("#listaManejoInline .manejo-actions-inline").forEach(container => {
+      if (container.querySelector(".btn-editar-local-usuario")) return;
+
+      const kebab = container.querySelector(".btn-kebab");
+      const ordemId = extrairOrdemIdDoKebab(kebab);
+      if (!ordemId) return;
+
+      const botao = document.createElement("button");
+      botao.type = "button";
+      botao.className = "btn-editar-local-usuario";
+      botao.textContent = "✎";
+      botao.title = "Mover / editar local";
+      botao.setAttribute("aria-label", "Mover ou editar o local desta OP");
+      botao.dataset.ordemId = ordemId;
+      botao.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        abrirEdicaoLocalUsuarioPelaInterface(ordemId);
+      });
+
+      const menuWrap = container.querySelector(".action-menu-wrap");
+      container.insertBefore(botao, menuWrap || null);
+    });
+  }
+
+  function garantirOpcaoEditarLocalNoMenu() {
+    if (!usuarioComumAtivoPodeVerEditarLocal()) return;
+
+    const menu = document.getElementById("menu-acoes-manejo-global");
+    if (!menu || !menu.classList.contains("open")) return;
+
+    const ordemId = String(menu.dataset.ordemId || "");
+    if (!ordemId) return;
+
+    const botaoExistente = [...menu.querySelectorAll("button")].find(botao =>
+      /mover\s*\/\s*editar\s*local|editar\s*local/i.test(String(botao.textContent || ""))
+    );
+
+    if (botaoExistente) {
+      botaoExistente.classList.remove("hidden", "admin-only");
+      botaoExistente.classList.add("btn-menu-editar-local-usuario");
+      botaoExistente.disabled = false;
+      botaoExistente.removeAttribute("hidden");
+      botaoExistente.style.removeProperty("display");
+      botaoExistente.style.removeProperty("visibility");
+      botaoExistente.style.removeProperty("opacity");
+      return;
+    }
+
+    const botao = document.createElement("button");
+    botao.type = "button";
+    botao.className = "btn-menu-editar-local-usuario";
+    botao.textContent = "Mover / editar local";
+    botao.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      abrirEdicaoLocalUsuarioPelaInterface(ordemId);
+    });
+
+    const botaoHistorico = [...menu.querySelectorAll("button")].find(item =>
+      /hist[oó]rico|rastreamento/i.test(String(item.textContent || ""))
+    );
+    menu.insertBefore(botao, botaoHistorico || null);
+  }
+
+  function iniciarExibicaoEditarLocalUsuarios() {
+    injetarEstiloBotaoEditarLocalUsuario();
+
+    const atualizar = () => {
+      garantirBotaoEditarLocalNasLinhas();
+      garantirOpcaoEditarLocalNoMenu();
+    };
+
+    if (!document.documentElement.dataset.hotfixExibirEditarLocalUsuario) {
+      document.documentElement.dataset.hotfixExibirEditarLocalUsuario = "1";
+
+      document.addEventListener("click", event => {
+        if (event.target.closest("#listaManejoInline .btn-kebab")) {
+          setTimeout(garantirOpcaoEditarLocalNoMenu, 0);
+          setTimeout(garantirOpcaoEditarLocalNoMenu, 40);
+        }
+      }, true);
+
+      const observer = new MutationObserver(() => atualizar());
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    atualizar();
+    setTimeout(atualizar, 150);
+    setTimeout(atualizar, 700);
+    setTimeout(atualizar, 1800);
+  }
+
   function iniciarRecursosDaVersao() {
     iniciarHotfixChegadaManual();
     iniciarHotfixNecessidade();
@@ -3646,6 +3812,7 @@
     iniciarImportacaoValoresPlanilha();
     iniciarMovimentacoesRegistradasUsuario();
     iniciarEdicaoLocalUsuarios();
+    iniciarExibicaoEditarLocalUsuarios();
   }
 
   window.addEventListener("load", () => {

@@ -1,46 +1,44 @@
-CORPONU — LIBERAR EDIÇÃO DE LOCAL PARA USUÁRIOS COMUNS
+CORPONU — CORREÇÃO DO BOTÃO EDITAR LOCAL PARA USUÁRIOS COMUNS
 
 VERSÃO
-2026-07-28-edicao-local-usuarios-1
+2026-07-28-botao-editar-local-usuarios-2
 
-ARQUIVOS PARA SUBSTITUIR NA RAIZ DO GITHUB
+ARQUIVOS PARA SUBSTITUIR NO GITHUB
 - update.js
 - sw.js
 - version.json
+
+NÃO É NECESSÁRIO ALTERAR NESTA ATUALIZAÇÃO
+- app.js
+- index.html
+- style.css
 - firebase-rules.txt
+- firestore-rules.txt
+- storage-rules.txt
 
-ARQUIVO ALTERNATIVO DAS REGRAS
-- firestore-rules.txt possui exatamente o mesmo conteúdo de firebase-rules.txt.
-- Use somente um deles para copiar e colar no Firebase.
+O QUE FOI CORRIGIDO
+A versão anterior já permitia que o usuário comum salvasse a correção do local, porém a opção dependia do menu montado pelo app.js e podia não aparecer para perfis não administradores.
 
-PASSO OBRIGATÓRIO NO FIREBASE
-1. Abra Firebase Console.
-2. Entre em Firestore Database > Rules.
-3. Apague as regras antigas.
-4. Cole todo o conteúdo de firebase-rules.txt.
-5. Clique em Publicar.
+Agora, para usuários comuns ativos com acesso ao Manejo:
+1. aparece um botão azul compacto com lápis na linha da OP;
+2. a opção Mover / editar local também é garantida dentro do menu de três pontos;
+3. o botão é recriado automaticamente quando a tabela é filtrada ou redesenhada;
+4. o formulário usa o mesmo salvamento seguro da versão anterior;
+5. o motivo continua obrigatório e a alteração continua registrada no histórico.
 
-FUNCIONAMENTO
-- O botão Mover / editar local continua na linha da aba Manejo.
-- Usuário comum ativo agora consegue salvar a correção.
-- O motivo continua obrigatório.
-- A OP recebe o local, destino, processo e datas corrigidos.
-- Se o novo local for facção ou célula, é criada a movimentação correspondente.
-- A ação fica registrada em ajustesMigracao e logsAlteracoes com UID, nome e data.
-- O administrador continua usando a rotina original do sistema.
-
-SEGURANÇA
-- Usuário comum só pode criar e ler o próprio registro de ajuste.
-- Somente o administrador pode alterar ou excluir registros de ajuste.
-- Exclusão de OP, cadastros gerais, valores e configurações continuam restritos.
+COMO PUBLICAR
+1. Substitua update.js, sw.js e version.json na raiz do repositório.
+2. Faça um único commit com os três arquivos.
+3. Abra o sistema com um usuário comum.
+4. Pressione Ctrl + F5 uma vez caso a atualização não apareça automaticamente.
+5. Entre na aba Manejo e procure o botão de lápis ao lado do botão verde de salvar e do menu de três pontos.
 
 TESTE RECOMENDADO
-1. Faça login com usuário comum.
-2. Abra Manejo.
-3. No menu de uma OP, clique em Mover / editar local.
-4. Altere local/destino e informe o motivo.
-5. Salve e confira se a linha atualizou.
-6. Faça login como administrador e confira o histórico/log.
+- Abrir o Manejo com usuário comum.
+- Clicar no lápis de uma OP.
+- Alterar o local e informar o motivo.
+- Salvar e confirmar que a OP foi atualizada.
+- Abrir novamente pelo menu de três pontos e confirmar que Mover / editar local também aparece.
 
-ATUALIZAÇÃO DO CACHE
-Depois do commit e da publicação das regras, abra o sistema e pressione Ctrl + F5 uma vez se a nova versão não carregar automaticamente.
+OBSERVAÇÃO
+As regras do Firestore entregues na atualização anterior continuam válidas. Não é necessário republicá-las apenas para corrigir a exibição do botão.

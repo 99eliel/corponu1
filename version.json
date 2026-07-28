@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-edicao-local-usuarios-1",
-  "updatedAt": "2026-07-28T09:48:00-03:00",
-  "notes": "Atualização cumulativa. Libera para usuários comuns ativos a função Mover / editar local na aba Manejo. A correção mantém obrigatório o motivo, atualiza o local e o manejo da OP, cria a movimentação correspondente quando o destino for facção ou célula e registra tudo em ajustesMigracao e logsAlteracoes. Administradores continuam com o fluxo original e configurações, exclusões e demais ações críticas permanecem restritas."
+  "version": "2026-07-28-botao-editar-local-usuarios-2",
+  "updatedAt": "2026-07-28T10:30:00-03:00",
+  "notes": "Atualização cumulativa. Corrige a exibição da função Mover / editar local para usuários comuns ativos na aba Manejo. A opção passa a aparecer no menu de três pontos e também como botão compacto de lápis na própria linha. Mantém a edição com motivo obrigatório, auditoria e regras de segurança da versão anterior."
 }
