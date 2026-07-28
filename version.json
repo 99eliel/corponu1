@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-importacao-valores-processos-1",
-  "updatedAt": "2026-07-28T07:45:00-03:00",
-  "notes": "Atualização cumulativa. Adiciona importação administrativa segura de 134 valores da nova planilha para CALCINHA MONTAGEM, SUTIÃ MONTAGEM, CALCINHA COMPLETA e ENCAPAR BOJO. A rotina adiciona somente combinações ausentes e nunca sobrescreve valores já cadastrados, preservando especialmente os valores existentes de ENCAPAR BOJO. As referências 580 e 617 permanecem pendentes porque vieram sem preço na planilha."
+  "version": "2026-07-28-movimentacoes-registradas-usuario-1",
+  "updatedAt": "2026-07-28T08:30:00-03:00",
+  "notes": "Atualização cumulativa. Adiciona na aba Facções o botão Movimentações registradas, permitindo que cada usuário visualize somente as chegadas que registrou, corrija data, quantidade recebida, falta automática, desconto e observação, e recalcule o pagamento pendente. Chegadas manuais também permitem corrigir OP, referência, cor, processo, facção e data de envio. Ao excluir uma chegada normal, a remessa volta para Em facção; ao excluir uma chegada manual, o registro é cancelado sem apagar o histórico. Pagamentos já marcados como pagos ficam bloqueados e exigem o administrador."
 }

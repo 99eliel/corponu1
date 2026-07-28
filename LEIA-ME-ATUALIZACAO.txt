@@ -1,57 +1,56 @@
-ATUALIZAÇÃO CORPONU — IMPORTAÇÃO SEGURA DA NOVA TABELA DE VALORES
+CORPONU — MOVIMENTAÇÕES REGISTRADAS PELO USUÁRIO
+Versão: 2026-07-28-movimentacoes-registradas-usuario-1
 
-Versão:
-2026-07-28-importacao-valores-processos-1
+ARQUIVOS PARA SUBSTITUIR NA RAIZ DO GITHUB
+1. update.js
+2. sw.js
+3. version.json
+4. firebase-rules.txt
 
-ARQUIVOS PARA SUBSTITUIR/ADICIONAR NO GITHUB
-1. update.js              (substituir)
-2. sw.js                  (substituir)
-3. version.json           (substituir)
-4. valores-processos-corponu-2026.json (adicionar na raiz)
+O arquivo firestore-rules.txt possui o mesmo conteúdo de firebase-rules.txt e foi incluído para facilitar copiar e colar no Firebase.
 
-NÃO ALTERAR
+PASSO OBRIGATÓRIO NO FIREBASE
+1. Abra Firebase Console.
+2. Entre em Firestore Database > Rules.
+3. Copie todo o conteúdo de firebase-rules.txt ou firestore-rules.txt.
+4. Substitua as regras atuais.
+5. Clique em Publicar.
+
+Sem publicar as regras novas, o usuário comum poderá ver o botão, mas não conseguirá consultar/corrigir/excluir o pagamento criado por ele.
+
+NOVO BOTÃO
+Facções > Movimentações registradas
+
+FUNCIONAMENTO
+- Cada usuário vê somente as chegadas registradas pelo próprio usuário.
+- A lista mostra OP, referência, facção, processo, quantidade recebida, data e pagamento.
+- Editar uma chegada recalcula automaticamente o pagamento pendente.
+- Em chegada normal, OP, referência, processo e facção ficam protegidos. O usuário corrige data, quantidade recebida, desconto e observação.
+- Em chegada manual, o usuário também pode corrigir OP, referência, cor, processo, facção e data de envio.
+- Se não existir preço para referência + processo, o pagamento fica como pendente de valor.
+- Se o pagamento já estiver marcado como pago, editar/excluir fica bloqueado e exige o administrador.
+- Etapas já encaminhadas ficam bloqueadas para o usuário, evitando quebrar o rastreamento.
+- Movimentações já bipadas ainda podem ter a chegada editada, mas não podem ser excluídas pelo usuário.
+
+EXCLUSÃO / DESFAZER
+- Chegada normal: remove a chegada, apaga o pagamento pendente e devolve a remessa para o status Em facção.
+- Chegada manual: cancela o registro, remove o pagamento pendente e preserva o histórico para auditoria.
+
+TESTE RECOMENDADO
+1. Entre com um usuário comum.
+2. Registre a chegada de uma movimentação de facção.
+3. Abra Movimentações registradas.
+4. Edite quantidade ou data e salve.
+5. Confira o valor na aba Pagamentos com o administrador.
+6. Faça outro teste usando Desfazer chegada.
+7. Confirme que a remessa voltou para Em facção e o pagamento pendente desapareceu.
+
+ATUALIZAÇÃO DO NAVEGADOR
+Depois do commit, aguarde o GitHub Pages publicar. Abra o sistema e pressione Ctrl + F5 uma vez caso a nova versão não apareça automaticamente.
+
+NÃO É NECESSÁRIO ALTERAR
 - app.js
 - index.html
 - style.css
-- firebase-rules.txt
 - storage-rules.txt
-- dados-ligia-migracao.json
-
-O QUE A ATUALIZAÇÃO IMPORTA
-- CALCINHA MONTAGEM: 89 valores
-- SUTIÃ MONTAGEM: 11 valores
-- CALCINHA COMPLETA: 17 valores
-- ENCAPAR BOJO: 17 valores
-Total: 134 valores válidos
-
-REFERÊNCIAS SEM PREÇO NA PLANILHA
-- Ref. 580 — SUTIÃ MONTAGEM
-- Ref. 617 — CALCINHA COMPLETA
-Essas duas não serão cadastradas com valor zero.
-
-REGRA DE SEGURANÇA
-A importação adiciona somente REF + PROCESSO + SETOR que ainda não existem.
-Nenhum valor já salvo será alterado.
-Os valores existentes de ENCAPAR BOJO serão preservados.
-A rotina pode ser executada novamente sem duplicar ou sobrescrever registros.
-
-COMO USAR
-1. Envie os quatro arquivos para a raiz do repositório.
-2. Faça o commit de todos juntos.
-3. Abra o sistema e pressione Ctrl + F5 uma vez, caso a atualização não entre automaticamente.
-4. Entre com uma conta administradora.
-5. Abra Pagamentos.
-6. Clique em Gerenciar valores.
-7. No bloco verde “Importar nova tabela de valores”, clique em “Importar valores ausentes”.
-8. Leia a confirmação e confirme.
-9. Aguarde o resumo final mostrando adicionados, preservados e referências sem preço.
-
-MAPEAMENTO UTILIZADO
-- “montagem calcinha” da planilha -> CALCINHA MONTAGEM / setor calcinha
-- “sutia montagem” -> SUTIÃ MONTAGEM / setor sutia
-- “calcinha pronta” -> CALCINHA COMPLETA / setor calcinha
-- “encapar bojo” -> ENCAPAR BOJO / setor bojo
-
-OBSERVAÇÃO
-Pagamentos antigos que já estejam marcados como “sem valor” não são recalculados automaticamente por esta atualização.
-A importação prepara os valores para os próximos lançamentos e mantém todo o histórico existente intacto.
+- valores-processos-corponu-2026.json

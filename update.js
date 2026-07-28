@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-importacao-valores-processos-1";
+  const APP_VERSION = "2026-07-28-movimentacoes-registradas-usuario-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -2332,6 +2332,1019 @@
 
   window.importarTabelaValoresCorpoNu = importarTabelaValoresCorpoNu;
 
+  // =========================================================
+  // MOVIMENTAÇÕES REGISTRADAS PELO USUÁRIO — ABA FACÇÕES
+  // - Botão próprio na aba Facções.
+  // - Cada usuário visualiza somente as chegadas que registrou.
+  // - Permite corrigir chegada e recalcular o pagamento pendente.
+  // - Permite desfazer/excluir a chegada e remover o pagamento pendente.
+  // - Pagamentos já pagos ficam bloqueados e exigem o administrador.
+  // =========================================================
+
+  const ID_PAINEL_MOV_USUARIO = "painelMovimentacoesRegistradasUsuario";
+  const ID_MODAL_MOV_USUARIO = "modalEditarMovimentacaoUsuario";
+  const ID_ESTILO_MOV_USUARIO = "estiloMovimentacoesRegistradasUsuario";
+  let contextoMovUsuario = null;
+  let unsubscribeAuthMovUsuario = null;
+  let movimentosRegistradosUsuario = [];
+  let pagamentosMovUsuario = [];
+  let painelMovUsuarioAberto = false;
+  let carregandoMovUsuario = false;
+  let movimentoEmEdicaoUsuario = null;
+
+  function escapeHtmlMovUsuario(valor) {
+    return String(valor ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function normalizarTextoMovUsuario(valor) {
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase();
+  }
+
+  function normalizarReferenciaMovUsuario(valor) {
+    return String(valor || "").trim().replace(/\.0+$/, "").toUpperCase();
+  }
+
+  function docIdSeguroMovUsuario(valor) {
+    return normalizarTextoMovUsuario(valor)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 180) || `registro-${Date.now()}`;
+  }
+
+  function numeroSeguroMovUsuario(valor, padrao = 0) {
+    const numero = Number(valor);
+    return Number.isFinite(numero) ? numero : padrao;
+  }
+
+  function formatarMoedaMovUsuario(valor) {
+    return numeroSeguroMovUsuario(valor).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    });
+  }
+
+  function dataBRMovUsuario(valor) {
+    const texto = String(valor || "").trim();
+    if (!texto) return "-";
+    const partes = texto.slice(0, 10).split("-");
+    if (partes.length !== 3) return texto;
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  }
+
+  function timestampMovUsuario(valor) {
+    if (!valor) return 0;
+    if (typeof valor.toMillis === "function") return valor.toMillis();
+    if (typeof valor.seconds === "number") return valor.seconds * 1000;
+    const data = new Date(valor);
+    return Number.isNaN(data.getTime()) ? 0 : data.getTime();
+  }
+
+  function movimentoManualUsuario(mov) {
+    return Boolean(mov?.origemManual || mov?.origem === "chegada_manual_faccao");
+  }
+
+  function movimentoPertenceAoUsuario(mov, uid) {
+    if (!mov || !uid || !mov.dataChegada || mov.excluido === true) return false;
+    if (mov.tipoDestino !== "faccao") return false;
+    const proprietarioExplicito = [
+      mov.chegadaRegistradaPor,
+      mov.chegadaPor,
+      mov.retornoRegistradoPor
+    ].some(valor => String(valor || "") === uid);
+    const manualDoUsuario = movimentoManualUsuario(mov) && String(mov.criadoPor || "") === uid;
+    const pagamentoDoUsuario = pagamentosMovUsuario.some(item =>
+      String(item.movimentacaoId || "") === String(mov.id || "") &&
+      String(item.criadoPor || "") === uid
+    );
+    const legadoAindaRetornado =
+      String(mov.atualizadoPor || "") === uid &&
+      String(mov.status || "retornou") === "retornou" &&
+      mov.bipado !== true &&
+      mov.encaminhado !== true;
+    return proprietarioExplicito || manualDoUsuario || pagamentoDoUsuario || legadoAindaRetornado;
+  }
+
+  function pagamentosDaMovimentacaoUsuario(movId) {
+    return pagamentosMovUsuario.filter(item => String(item.movimentacaoId || "") === String(movId || ""));
+  }
+
+  function pagamentoPagoDaMovimentacao(movId) {
+    return pagamentosDaMovimentacaoUsuario(movId)
+      .some(item => String(item.statusPagamento || "pendente") === "pago");
+  }
+
+  function resumoPagamentoMovUsuario(movId) {
+    const itens = pagamentosDaMovimentacaoUsuario(movId);
+    if (!itens.length) return { label: "Não gerado", classe: "warning", total: 0, pago: false };
+    const pago = itens.some(item => String(item.statusPagamento || "") === "pago");
+    const semValor = itens.some(item => String(item.statusPagamento || "") === "sem_valor" || item.valorPendente === true);
+    const total = itens.reduce((soma, item) => soma + numeroSeguroMovUsuario(item.total), 0);
+    if (pago) return { label: `Pago — ${formatarMoedaMovUsuario(total)}`, classe: "ok", total, pago: true };
+    if (semValor) return { label: "Pendente de valor", classe: "warning", total, pago: false };
+    return { label: `Pendente — ${formatarMoedaMovUsuario(total)}`, classe: "info", total, pago: false };
+  }
+
+  function injetarEstiloMovUsuario() {
+    if (document.getElementById(ID_ESTILO_MOV_USUARIO)) return;
+    const style = document.createElement("style");
+    style.id = ID_ESTILO_MOV_USUARIO;
+    style.textContent = `
+      #${ID_PAINEL_MOV_USUARIO} {
+        margin: 14px 0 18px;
+        border: 1px solid #cbd5e1;
+        border-radius: 16px;
+        background: #f8fafc;
+        overflow: hidden;
+      }
+      #${ID_PAINEL_MOV_USUARIO}.hidden { display: none !important; }
+      #${ID_PAINEL_MOV_USUARIO} .mov-usuario-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border-bottom: 1px solid #e2e8f0;
+        background: #ffffff;
+      }
+      #${ID_PAINEL_MOV_USUARIO} .mov-usuario-header h3 { margin: 0 0 3px; }
+      #${ID_PAINEL_MOV_USUARIO} .mov-usuario-header p { margin: 0; color: #64748b; font-size: 13px; }
+      #${ID_PAINEL_MOV_USUARIO} .mov-usuario-toolbar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 12px 16px;
+      }
+      #${ID_PAINEL_MOV_USUARIO} .mov-usuario-toolbar input { min-width: 240px; flex: 1; }
+      #${ID_PAINEL_MOV_USUARIO} .mov-usuario-resumo {
+        padding: 0 16px 12px;
+        font-size: 12px;
+        color: #475569;
+      }
+      #${ID_PAINEL_MOV_USUARIO} .table-wrap { margin: 0 16px 16px; background: #fff; }
+      #${ID_PAINEL_MOV_USUARIO} .badge.warning,
+      #${ID_MODAL_MOV_USUARIO} .badge.warning { background: #fef3c7; color: #92400e; }
+      #${ID_PAINEL_MOV_USUARIO} .badge.info,
+      #${ID_MODAL_MOV_USUARIO} .badge.info { background: #dbeafe; color: #1e40af; }
+      #${ID_PAINEL_MOV_USUARIO} .badge.ok,
+      #${ID_MODAL_MOV_USUARIO} .badge.ok { background: #dcfce7; color: #166534; }
+      #${ID_MODAL_MOV_USUARIO} .mov-usuario-readonly {
+        background: #f1f5f9 !important;
+        color: #475569 !important;
+      }
+      #${ID_MODAL_MOV_USUARIO} .mov-usuario-alerta {
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: #fff7ed;
+        color: #9a3412;
+        font-size: 12px;
+        margin-bottom: 10px;
+      }
+      @media (max-width: 760px) {
+        #${ID_PAINEL_MOV_USUARIO} .mov-usuario-header { align-items: flex-start; flex-direction: column; }
+        #${ID_PAINEL_MOV_USUARIO} .mov-usuario-toolbar input { min-width: 100%; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function criarBotaoMovUsuario() {
+    if (document.getElementById("btnMovimentacoesRegistradasUsuario")) return;
+    const btnChegada = document.getElementById("btnAbrirChegadaManualFaccao");
+    const actions = btnChegada?.parentElement;
+    if (!actions) {
+      setTimeout(criarBotaoMovUsuario, 400);
+      return;
+    }
+    const botao = document.createElement("button");
+    botao.id = "btnMovimentacoesRegistradasUsuario";
+    botao.type = "button";
+    botao.className = "btn btn-primary";
+    botao.textContent = "Movimentações registradas";
+    botao.addEventListener("click", alternarPainelMovUsuario);
+    btnChegada.insertAdjacentElement("afterend", botao);
+  }
+
+  function criarPainelMovUsuario() {
+    if (document.getElementById(ID_PAINEL_MOV_USUARIO)) return;
+    const cards = document.querySelector("#faccoes .faccoes-cards");
+    if (!cards) {
+      setTimeout(criarPainelMovUsuario, 400);
+      return;
+    }
+    const painel = document.createElement("div");
+    painel.id = ID_PAINEL_MOV_USUARIO;
+    painel.className = "hidden";
+    painel.innerHTML = `
+      <div class="mov-usuario-header">
+        <div>
+          <h3>Movimentações registradas por mim</h3>
+          <p>Consulte, corrija ou desfaça somente as chegadas registradas pelo seu usuário.</p>
+        </div>
+        <button id="btnFecharMovimentacoesUsuario" class="btn" type="button">Fechar</button>
+      </div>
+      <div class="mov-usuario-toolbar">
+        <input id="buscaMovimentacoesUsuario" class="search" type="text" placeholder="Buscar OP, referência, facção ou processo..." />
+        <button id="btnAtualizarMovimentacoesUsuario" class="btn" type="button">Atualizar lista</button>
+      </div>
+      <div id="resumoMovimentacoesUsuario" class="mov-usuario-resumo">Abra a lista para carregar seus registros.</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>OP</th>
+              <th>REF</th>
+              <th>Facção</th>
+              <th>Processo</th>
+              <th>Qtd. recebida</th>
+              <th>Chegada</th>
+              <th>Pagamento</th>
+              <th>Tipo</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="listaMovimentacoesUsuario">
+            <tr><td colspan="9" class="empty">Clique em “Movimentações registradas” para carregar.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+    cards.insertAdjacentElement("afterend", painel);
+    painel.querySelector("#btnFecharMovimentacoesUsuario")?.addEventListener("click", fecharPainelMovUsuario);
+    painel.querySelector("#btnAtualizarMovimentacoesUsuario")?.addEventListener("click", carregarMovimentacoesUsuario);
+    painel.querySelector("#buscaMovimentacoesUsuario")?.addEventListener("input", renderMovimentacoesUsuario);
+    painel.querySelector("#listaMovimentacoesUsuario")?.addEventListener("click", event => {
+      const editar = event.target.closest("[data-editar-mov-usuario]");
+      if (editar) abrirModalEditarMovUsuario(editar.dataset.editarMovUsuario);
+      const excluir = event.target.closest("[data-excluir-mov-usuario]");
+      if (excluir) excluirChegadaMovUsuario(excluir.dataset.excluirMovUsuario);
+    });
+  }
+
+  function criarModalMovUsuario() {
+    if (document.getElementById(ID_MODAL_MOV_USUARIO)) return;
+    const modal = document.createElement("div");
+    modal.id = ID_MODAL_MOV_USUARIO;
+    modal.className = "modal-backdrop hidden";
+    modal.innerHTML = `
+      <div class="modal-card chegada-modal-card" style="max-width:820px;">
+        <div class="modal-header">
+          <div>
+            <h3>Editar chegada registrada</h3>
+            <p>Ao salvar, o pagamento pendente será recalculado automaticamente.</p>
+          </div>
+          <button id="btnFecharModalMovUsuario" class="modal-close" type="button">×</button>
+        </div>
+        <form id="formEditarMovUsuario" class="form movimentacao-form">
+          <input id="editarMovUsuarioId" type="hidden" />
+          <div id="alertaEditarMovUsuario" class="mov-usuario-alerta hidden"></div>
+          <div class="form-grid three">
+            <label>OP<input id="editarMovUsuarioOP" type="text" required /></label>
+            <label>Referência<input id="editarMovUsuarioRef" type="text" required /></label>
+            <label>Cor<input id="editarMovUsuarioCor" type="text" required /></label>
+          </div>
+          <div class="form-grid two">
+            <label>Processo<input id="editarMovUsuarioProcesso" type="text" required /></label>
+            <label>Facção<input id="editarMovUsuarioFaccao" type="text" required /></label>
+          </div>
+          <div class="form-grid three">
+            <label>Data de envio<input id="editarMovUsuarioDataEnvio" type="date" /></label>
+            <label>Data de chegada<input id="editarMovUsuarioDataChegada" type="date" required /></label>
+            <label>Quantidade recebida<input id="editarMovUsuarioQuantidade" type="number" min="1" step="1" required /></label>
+          </div>
+          <label>Desconto por defeito (R$)<input id="editarMovUsuarioDefeito" type="number" min="0" step="0.01" value="0" /></label>
+          <label>Observação da chegada<textarea id="editarMovUsuarioObs" rows="2" placeholder="Opcional"></textarea></label>
+          <div id="resumoPagamentoEditarMovUsuario" class="notice small"></div>
+          <div class="actions">
+            <button id="btnSalvarEditarMovUsuario" class="btn btn-primary" type="submit">Salvar correção</button>
+            <button id="btnCancelarEditarMovUsuario" class="btn" type="button">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.querySelector("#btnFecharModalMovUsuario")?.addEventListener("click", fecharModalEditarMovUsuario);
+    modal.querySelector("#btnCancelarEditarMovUsuario")?.addEventListener("click", fecharModalEditarMovUsuario);
+    modal.querySelector("#formEditarMovUsuario")?.addEventListener("submit", salvarEdicaoMovUsuario);
+    modal.addEventListener("click", event => {
+      if (event.target === modal) fecharModalEditarMovUsuario();
+    });
+  }
+
+  async function alternarPainelMovUsuario() {
+    criarPainelMovUsuario();
+    const painel = document.getElementById(ID_PAINEL_MOV_USUARIO);
+    if (!painel) return;
+    painelMovUsuarioAberto = painel.classList.contains("hidden");
+    painel.classList.toggle("hidden", !painelMovUsuarioAberto);
+    const botao = document.getElementById("btnMovimentacoesRegistradasUsuario");
+    if (botao) botao.textContent = painelMovUsuarioAberto ? "Ocultar movimentações" : "Movimentações registradas";
+    if (painelMovUsuarioAberto) await carregarMovimentacoesUsuario();
+  }
+
+  function fecharPainelMovUsuario() {
+    painelMovUsuarioAberto = false;
+    document.getElementById(ID_PAINEL_MOV_USUARIO)?.classList.add("hidden");
+    const botao = document.getElementById("btnMovimentacoesRegistradasUsuario");
+    if (botao) botao.textContent = "Movimentações registradas";
+  }
+
+  async function consultarPorCampoMovUsuario(campo, uid) {
+    const { firestore, db } = contextoMovUsuario;
+    try {
+      return await firestore.getDocs(
+        firestore.query(
+          firestore.collection(db, "movimentacoesProducao"),
+          firestore.where(campo, "==", uid)
+        )
+      );
+    } catch (error) {
+      console.warn(`Falha ao consultar movimentações por ${campo}.`, error);
+      return null;
+    }
+  }
+
+  async function carregarPagamentosMovUsuario(uid) {
+    const { firestore, db } = contextoMovUsuario;
+    const snapshot = await firestore.getDocs(
+      firestore.query(
+        firestore.collection(db, "entregasPagamento"),
+        firestore.where("criadoPor", "==", uid)
+      )
+    );
+    pagamentosMovUsuario = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+  }
+
+  async function marcarProprietarioChegadaLegada(movimentos, uid) {
+    const candidatos = movimentos.filter(mov =>
+      !mov.chegadaRegistradaPor && movimentoPertenceAoUsuario(mov, uid)
+    );
+    if (!candidatos.length) return;
+    const { firestore, db } = contextoMovUsuario;
+    let batch = firestore.writeBatch(db);
+    let quantidade = 0;
+    for (const mov of candidatos) {
+      batch.set(firestore.doc(db, "movimentacoesProducao", mov.id), {
+        chegadaRegistradaPor: uid,
+        chegadaRegistradaEm: mov.atualizadoEm || mov.criadoEm || firestore.serverTimestamp(),
+        proprietarioChegadaMigradoEm: firestore.serverTimestamp(),
+        proprietarioChegadaMigradoVersao: APP_VERSION
+      }, { merge: true });
+      quantidade += 1;
+      if (quantidade >= 400) {
+        await batch.commit();
+        batch = firestore.writeBatch(db);
+        quantidade = 0;
+      }
+    }
+    if (quantidade) await batch.commit();
+    candidatos.forEach(mov => { mov.chegadaRegistradaPor = uid; });
+  }
+
+  async function carregarMovimentacoesUsuario() {
+    if (!contextoMovUsuario?.user || carregandoMovUsuario) return;
+    carregandoMovUsuario = true;
+    const tbody = document.getElementById("listaMovimentacoesUsuario");
+    const resumo = document.getElementById("resumoMovimentacoesUsuario");
+    const botao = document.getElementById("btnAtualizarMovimentacoesUsuario");
+    if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="empty">Carregando suas movimentações...</td></tr>';
+    if (resumo) resumo.textContent = "Conferindo movimentações e pagamentos do seu usuário...";
+    if (botao) botao.disabled = true;
+    try {
+      const uid = contextoMovUsuario.user.uid;
+      await carregarPagamentosMovUsuario(uid);
+      const [porChegada, porAtualizacao, porCriacao] = await Promise.all([
+        consultarPorCampoMovUsuario("chegadaRegistradaPor", uid),
+        consultarPorCampoMovUsuario("atualizadoPor", uid),
+        consultarPorCampoMovUsuario("criadoPor", uid)
+      ]);
+      const mapa = new Map();
+      [porChegada, porAtualizacao, porCriacao].filter(Boolean).forEach(snapshot => {
+        snapshot.docs.forEach(item => mapa.set(item.id, { id: item.id, ...item.data() }));
+      });
+      const idsPagamentos = [...new Set(
+        pagamentosMovUsuario.map(item => String(item.movimentacaoId || "")).filter(Boolean)
+      )].filter(id => !mapa.has(id));
+      if (idsPagamentos.length) {
+        const snapshotsPagamentos = await Promise.all(idsPagamentos.map(id =>
+          contextoMovUsuario.firestore.getDoc(
+            contextoMovUsuario.firestore.doc(contextoMovUsuario.db, "movimentacoesProducao", id)
+          ).catch(() => null)
+        ));
+        snapshotsPagamentos.filter(item => item?.exists?.()).forEach(item => {
+          mapa.set(item.id, { id: item.id, ...item.data() });
+        });
+      }
+      movimentosRegistradosUsuario = [...mapa.values()]
+        .filter(mov => movimentoPertenceAoUsuario(mov, uid))
+        .sort((a, b) => {
+          const dataB = String(b.dataChegada || "").localeCompare(String(a.dataChegada || ""));
+          return dataB || timestampMovUsuario(b.atualizadoEm || b.criadoEm) - timestampMovUsuario(a.atualizadoEm || a.criadoEm);
+        });
+      await marcarProprietarioChegadaLegada(movimentosRegistradosUsuario, uid);
+      renderMovimentacoesUsuario();
+    } catch (error) {
+      console.error("Erro ao carregar movimentações registradas pelo usuário.", error);
+      if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="empty">Não foi possível carregar. Publique as regras novas do Firebase e tente novamente.</td></tr>';
+      if (resumo) resumo.textContent = "Erro ao consultar movimentações ou pagamentos do usuário.";
+    } finally {
+      carregandoMovUsuario = false;
+      if (botao) botao.disabled = false;
+    }
+  }
+
+  function renderMovimentacoesUsuario() {
+    const tbody = document.getElementById("listaMovimentacoesUsuario");
+    const resumo = document.getElementById("resumoMovimentacoesUsuario");
+    if (!tbody) return;
+    const busca = normalizarTextoMovUsuario(document.getElementById("buscaMovimentacoesUsuario")?.value);
+    const filtrados = movimentosRegistradosUsuario.filter(mov => {
+      if (!busca) return true;
+      return normalizarTextoMovUsuario([
+        mov.numeroOP, mov.referencia, mov.cor, mov.destino, mov.processo,
+        mov.dataChegada, mov.observacaoChegada, mov.observacoes
+      ].join(" ")).includes(busca);
+    });
+    const totalPecas = filtrados.reduce((soma, mov) => soma + numeroSeguroMovUsuario(mov.quantidadeRecebida || mov.quantidadeEnviada), 0);
+    const totalPagamentos = filtrados.reduce((soma, mov) => soma + resumoPagamentoMovUsuario(mov.id).total, 0);
+    if (resumo) {
+      resumo.innerHTML = `<strong>${filtrados.length}</strong> registro(s) | <strong>${totalPecas.toLocaleString("pt-BR")}</strong> peça(s) | pagamentos exibidos: <strong>${escapeHtmlMovUsuario(formatarMoedaMovUsuario(totalPagamentos))}</strong>`;
+    }
+    if (!filtrados.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty">Nenhuma chegada registrada por este usuário foi encontrada.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = filtrados.map(mov => {
+      const pagamento = resumoPagamentoMovUsuario(mov.id);
+      const manual = movimentoManualUsuario(mov);
+      const fluxoPosterior = mov.status === "encaminhado" || Boolean(mov.movimentacaoDestinoId);
+      const finalizado = mov.status === "finalizado" || mov.bipado === true;
+      const bloqueadoExcluir = pagamento.pago || fluxoPosterior || finalizado;
+      return `
+        <tr>
+          <td><strong>${escapeHtmlMovUsuario(mov.numeroOP || "-")}</strong></td>
+          <td>${escapeHtmlMovUsuario(mov.referencia || "-")}</td>
+          <td><strong>${escapeHtmlMovUsuario(mov.destino || "-")}</strong></td>
+          <td>${escapeHtmlMovUsuario(mov.processo || "-")}</td>
+          <td><strong>${numeroSeguroMovUsuario(mov.quantidadeRecebida || mov.quantidadeEnviada).toLocaleString("pt-BR")}</strong></td>
+          <td>${escapeHtmlMovUsuario(dataBRMovUsuario(mov.dataChegada))}</td>
+          <td><span class="badge ${pagamento.classe}">${escapeHtmlMovUsuario(pagamento.label)}</span></td>
+          <td><span class="badge ${manual ? "info" : "ok"}">${manual ? "Manual" : "Retorno"}</span></td>
+          <td>
+            <button class="btn btn-sm" type="button" data-editar-mov-usuario="${escapeHtmlMovUsuario(mov.id)}" ${pagamento.pago || fluxoPosterior ? `disabled title="${pagamento.pago ? "Pagamento já pago" : "A etapa já foi encaminhada"}"` : ""}>Editar</button>
+            <button class="btn btn-sm btn-danger" type="button" data-excluir-mov-usuario="${escapeHtmlMovUsuario(mov.id)}" ${bloqueadoExcluir ? `disabled title="${pagamento.pago ? "Pagamento já pago" : fluxoPosterior ? "A etapa já foi encaminhada" : "A movimentação já foi bipada"}"` : ""}>${manual ? "Excluir" : "Desfazer chegada"}</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function definirCampoSomenteLeitura(id, readonly) {
+    const campo = document.getElementById(id);
+    if (!campo) return;
+    campo.readOnly = readonly;
+    campo.classList.toggle("mov-usuario-readonly", readonly);
+  }
+
+  function abrirModalEditarMovUsuario(id) {
+    criarModalMovUsuario();
+    const mov = movimentosRegistradosUsuario.find(item => item.id === id);
+    if (!mov) {
+      mostrarAvisoFormulario("Movimentação não encontrada. Atualize a lista.");
+      return;
+    }
+    const pagamento = resumoPagamentoMovUsuario(id);
+    if (pagamento.pago) {
+      mostrarAvisoFormulario("Esse pagamento já foi marcado como pago. Peça ao administrador para reabrir antes de corrigir.");
+      return;
+    }
+    if (mov.status === "encaminhado" || mov.movimentacaoDestinoId) {
+      mostrarAvisoFormulario("Essa etapa já foi encaminhada para outro local. A correção precisa ser feita pelo administrador para não quebrar o rastreamento.");
+      return;
+    }
+    movimentoEmEdicaoUsuario = mov;
+    const manual = movimentoManualUsuario(mov);
+    document.getElementById("editarMovUsuarioId").value = mov.id;
+    document.getElementById("editarMovUsuarioOP").value = mov.numeroOP || "";
+    document.getElementById("editarMovUsuarioRef").value = mov.referencia || "";
+    document.getElementById("editarMovUsuarioCor").value = mov.cor || "";
+    document.getElementById("editarMovUsuarioProcesso").value = mov.processo || "";
+    document.getElementById("editarMovUsuarioFaccao").value = mov.destino || "";
+    document.getElementById("editarMovUsuarioDataEnvio").value = mov.dataEnvio || "";
+    document.getElementById("editarMovUsuarioDataChegada").value = mov.dataChegada || "";
+    document.getElementById("editarMovUsuarioQuantidade").value = numeroSeguroMovUsuario(mov.quantidadeRecebida || mov.quantidadeEnviada);
+    document.getElementById("editarMovUsuarioDefeito").value = numeroSeguroMovUsuario(mov.descontoDefeito ?? mov.defeito);
+    document.getElementById("editarMovUsuarioObs").value = mov.observacaoChegada || mov.observacoes || "";
+    [
+      "editarMovUsuarioOP", "editarMovUsuarioRef", "editarMovUsuarioCor",
+      "editarMovUsuarioProcesso", "editarMovUsuarioFaccao", "editarMovUsuarioDataEnvio"
+    ].forEach(campo => definirCampoSomenteLeitura(campo, !manual));
+    const qtd = document.getElementById("editarMovUsuarioQuantidade");
+    if (qtd) qtd.max = manual ? "" : String(numeroSeguroMovUsuario(mov.quantidadeEnviada));
+    const alerta = document.getElementById("alertaEditarMovUsuario");
+    if (alerta) {
+      alerta.classList.toggle("hidden", manual);
+      alerta.textContent = manual
+        ? ""
+        : `Esta é uma chegada de uma remessa já enviada. OP, referência, processo, facção e envio permanecem protegidos; você pode corrigir somente os dados da chegada.`;
+    }
+    const resumo = document.getElementById("resumoPagamentoEditarMovUsuario");
+    if (resumo) resumo.innerHTML = `<strong>Pagamento atual:</strong> ${escapeHtmlMovUsuario(pagamento.label)}. Ao salvar, o pagamento pendente será substituído pelo valor corrigido.`;
+    document.getElementById(ID_MODAL_MOV_USUARIO)?.classList.remove("hidden");
+    document.getElementById("editarMovUsuarioDataChegada")?.focus();
+  }
+
+  function fecharModalEditarMovUsuario() {
+    movimentoEmEdicaoUsuario = null;
+    document.getElementById(ID_MODAL_MOV_USUARIO)?.classList.add("hidden");
+    document.getElementById("formEditarMovUsuario")?.reset();
+  }
+
+  async function buscarPrecoMovUsuario(referencia, processo) {
+    const { firestore, db } = contextoMovUsuario;
+    const refNormalizada = normalizarReferenciaMovUsuario(referencia);
+    const procNormalizado = normalizarTextoMovUsuario(processo);
+    let docs = [];
+    try {
+      const exato = await firestore.getDocs(
+        firestore.query(
+          firestore.collection(db, "precosReferencia"),
+          firestore.where("referencia", "==", refNormalizada)
+        )
+      );
+      docs = exato.docs;
+    } catch (error) {
+      console.warn("Consulta exata de preço falhou; usando leitura de compatibilidade.", error);
+    }
+    if (!docs.length) {
+      const todos = await firestore.getDocs(firestore.collection(db, "precosReferencia"));
+      docs = todos.docs;
+    }
+    const candidatos = docs
+      .map(item => ({ id: item.id, ...item.data() }))
+      .filter(item => item.ativo !== false)
+      .filter(item => normalizarReferenciaMovUsuario(item.referencia) === refNormalizada)
+      .filter(item => normalizarTextoMovUsuario(item.processo || item.servicoNome) === procNormalizado);
+    return candidatos[0] || null;
+  }
+
+  function montarPagamentoMovUsuario(mov, preco, uid, firestore) {
+    const quantidade = Math.max(numeroSeguroMovUsuario(mov.quantidadeRecebida), 0);
+    const descontoDefeito = Math.max(numeroSeguroMovUsuario(mov.descontoDefeito), 0);
+    const pagamentoReenvio = Boolean(mov.movimentacaoOrigemId || mov.reenvio || mov.origem === "movimentacao");
+    if (!preco) {
+      return {
+        id: docIdSeguroMovUsuario(`mov-${mov.id}-sem-valor`),
+        dados: {
+          origem: "movimentacao",
+          movimentacaoId: mov.id,
+          movimentacaoOrigemId: mov.movimentacaoOrigemId || "",
+          pagamentoReenvio,
+          opId: mov.opId || "",
+          numeroOP: mov.numeroOP || "",
+          referencia: mov.referencia || "",
+          cor: mov.cor || "",
+          produtoNome: mov.produtoNome || "",
+          faccao: mov.destino || "",
+          precoReferenciaId: "",
+          processo: mov.processo || "",
+          processoMovimentacao: mov.processo || "",
+          servicoId: "",
+          servicoNome: mov.processo || "",
+          setor: mov.setor || "sutia",
+          setorLabel: String(mov.setor || "sutia").toLowerCase() === "calcinha" ? "Calcinha" : "Sutiã",
+          dataEntrega: mov.dataChegada,
+          quantidade,
+          falta: numeroSeguroMovUsuario(mov.falta),
+          descontoDefeito,
+          subtotal: 0,
+          valorUnitario: 0,
+          total: 0,
+          statusPagamento: "sem_valor",
+          valorPendente: true,
+          avisoPagamento: `Adicionar valor para Ref. ${mov.referencia || "-"} + ${mov.processo || "-"}.`,
+          observacoes: "Pagamento recalculado após correção da chegada; ainda não existe valor para REF + PROCESSO.",
+          criadoPor: uid,
+          criadoEm: firestore.serverTimestamp(),
+          atualizadoPor: uid,
+          atualizadoEm: firestore.serverTimestamp(),
+          corrigidoPeloUsuario: true,
+          versaoCorrecao: APP_VERSION
+        }
+      };
+    }
+    const valorUnitario = numeroSeguroMovUsuario(preco.valor);
+    const subtotal = quantidade * valorUnitario;
+    const total = Math.max(subtotal - descontoDefeito, 0);
+    return {
+      id: docIdSeguroMovUsuario(`mov-${mov.id}-${preco.id}`),
+      dados: {
+        origem: "movimentacao",
+        movimentacaoId: mov.id,
+        movimentacaoOrigemId: mov.movimentacaoOrigemId || "",
+        pagamentoReenvio,
+        opId: mov.opId || "",
+        numeroOP: mov.numeroOP || "",
+        referencia: mov.referencia || "",
+        cor: mov.cor || "",
+        produtoNome: mov.produtoNome || "",
+        faccao: mov.destino || "",
+        precoReferenciaId: preco.id,
+        processo: preco.processo || mov.processo || "",
+        processoMovimentacao: mov.processo || preco.processo || "",
+        servicoId: preco.id,
+        servicoNome: preco.processo || mov.processo || "",
+        setor: preco.setor || mov.setor || "sutia",
+        setorLabel: preco.setorLabel || (String(preco.setor || mov.setor).toLowerCase() === "calcinha" ? "Calcinha" : "Sutiã"),
+        dataEntrega: mov.dataChegada,
+        quantidade,
+        falta: numeroSeguroMovUsuario(mov.falta),
+        descontoDefeito,
+        subtotal,
+        valorUnitario,
+        total,
+        statusPagamento: "pendente",
+        valorPendente: false,
+        observacoes: "Pagamento recalculado automaticamente após correção da chegada pelo usuário responsável.",
+        criadoPor: uid,
+        criadoEm: firestore.serverTimestamp(),
+        atualizadoPor: uid,
+        atualizadoEm: firestore.serverTimestamp(),
+        corrigidoPeloUsuario: true,
+        versaoCorrecao: APP_VERSION
+      }
+    };
+  }
+
+  async function registrarLogMovUsuario(acao, mov, detalhes) {
+    if (!contextoMovUsuario?.user) return;
+    const { firestore, db, user, perfil } = contextoMovUsuario;
+    try {
+      await firestore.addDoc(firestore.collection(db, "logsAlteracoes"), {
+        acao,
+        tipoAlvo: "movimentacaoProducao",
+        alvoId: mov.id,
+        detalhes,
+        usuarioUid: user.uid,
+        usuarioNome: perfil?.nome || "",
+        usuarioEmail: perfil?.email || user.email || "",
+        usuarioTipo: perfil?.tipo || "usuario",
+        criadoEm: firestore.serverTimestamp()
+      });
+    } catch (error) {
+      console.warn("Não foi possível registrar o log da correção de chegada.", error);
+    }
+  }
+
+  async function salvarEdicaoMovUsuario(event) {
+    event.preventDefault();
+    if (!contextoMovUsuario?.user || !movimentoEmEdicaoUsuario) return;
+    const mov = movimentoEmEdicaoUsuario;
+    if (pagamentoPagoDaMovimentacao(mov.id)) {
+      mostrarAvisoFormulario("O pagamento já foi marcado como pago. Solicite ao administrador que reabra o pagamento.");
+      return;
+    }
+    const manual = movimentoManualUsuario(mov);
+    const numeroOP = String(document.getElementById("editarMovUsuarioOP")?.value || "").trim();
+    const referencia = normalizarReferenciaMovUsuario(document.getElementById("editarMovUsuarioRef")?.value);
+    const cor = normalizarTextoMovUsuario(document.getElementById("editarMovUsuarioCor")?.value);
+    const processo = normalizarTextoMovUsuario(document.getElementById("editarMovUsuarioProcesso")?.value);
+    const faccao = normalizarTextoMovUsuario(document.getElementById("editarMovUsuarioFaccao")?.value);
+    const dataEnvio = document.getElementById("editarMovUsuarioDataEnvio")?.value || "";
+    const dataChegada = document.getElementById("editarMovUsuarioDataChegada")?.value || "";
+    const quantidadeRecebida = Math.max(0, Math.floor(numeroSeguroMovUsuario(document.getElementById("editarMovUsuarioQuantidade")?.value)));
+    const descontoDefeito = Math.max(0, numeroSeguroMovUsuario(document.getElementById("editarMovUsuarioDefeito")?.value));
+    const observacao = String(document.getElementById("editarMovUsuarioObs")?.value || "").trim();
+    if (!numeroOP || !referencia || !cor || !processo || !faccao || !dataChegada || quantidadeRecebida <= 0) {
+      mostrarAvisoFormulario("Preencha os dados obrigatórios e informe uma quantidade recebida maior que zero.");
+      return;
+    }
+    const quantidadeEnviada = manual ? quantidadeRecebida : numeroSeguroMovUsuario(mov.quantidadeEnviada);
+    if (!manual && quantidadeRecebida > quantidadeEnviada) {
+      mostrarAvisoFormulario("A quantidade recebida não pode ser maior que a quantidade enviada.");
+      return;
+    }
+    const falta = Math.max(quantidadeEnviada - quantidadeRecebida, 0);
+    const uid = contextoMovUsuario.user.uid;
+    const { firestore, db } = contextoMovUsuario;
+    const botao = document.getElementById("btnSalvarEditarMovUsuario");
+    if (botao) { botao.disabled = true; botao.textContent = "Salvando..."; }
+    try {
+      const pagamentosAntigos = pagamentosDaMovimentacaoUsuario(mov.id);
+      if (pagamentosAntigos.some(item => String(item.statusPagamento || "") === "pago")) {
+        throw new Error("Pagamento já pago");
+      }
+      const movAtualizada = {
+        ...mov,
+        numeroOP: manual ? numeroOP : mov.numeroOP,
+        referencia: manual ? referencia : mov.referencia,
+        cor: manual ? cor : mov.cor,
+        processo: manual ? processo : mov.processo,
+        destino: manual ? faccao : mov.destino,
+        dataEnvio: manual ? dataEnvio : mov.dataEnvio,
+        dataEnvioNaoInformada: manual ? !dataEnvio : mov.dataEnvioNaoInformada,
+        dataChegada,
+        quantidadeEnviada,
+        quantidadeRecebida,
+        falta,
+        descontoDefeito,
+        defeito: descontoDefeito,
+        status: manual ? "retornou" : (mov.status || "retornou"),
+        observacaoChegada: observacao,
+        ...(manual ? { observacoes: observacao || "Chegada manual corrigida pelo usuário responsável." } : {})
+      };
+      const preco = await buscarPrecoMovUsuario(movAtualizada.referencia, movAtualizada.processo);
+      const pagamentoNovo = montarPagamentoMovUsuario(movAtualizada, preco, uid, firestore);
+      const batch = firestore.writeBatch(db);
+      batch.set(firestore.doc(db, "movimentacoesProducao", mov.id), {
+        numeroOP: movAtualizada.numeroOP,
+        referencia: movAtualizada.referencia,
+        cor: movAtualizada.cor,
+        processo: movAtualizada.processo,
+        destino: movAtualizada.destino,
+        dataEnvio: movAtualizada.dataEnvio || "",
+        dataEnvioNaoInformada: !movAtualizada.dataEnvio,
+        dataChegada,
+        quantidadeEnviada,
+        quantidadeRecebida,
+        falta,
+        descontoDefeito,
+        defeito: descontoDefeito,
+        status: movAtualizada.status,
+        observacaoChegada: observacao,
+        ...(manual ? { observacoes: movAtualizada.observacoes } : {}),
+        chegadaRegistradaPor: uid,
+        chegadaRegistradaEm: mov.chegadaRegistradaEm || firestore.serverTimestamp(),
+        chegadaEditadaPor: uid,
+        chegadaEditadaEm: firestore.serverTimestamp(),
+        atualizadoPor: uid,
+        atualizadoEm: firestore.serverTimestamp(),
+        versaoUltimaCorrecaoChegada: APP_VERSION
+      }, { merge: true });
+      pagamentosAntigos.forEach(item => {
+        if (item.id !== pagamentoNovo.id) {
+          batch.delete(firestore.doc(db, "entregasPagamento", item.id));
+        }
+      });
+      batch.set(
+        firestore.doc(db, "entregasPagamento", pagamentoNovo.id),
+        pagamentoNovo.dados,
+        { merge: false }
+      );
+      await batch.commit();
+      await registrarLogMovUsuario(
+        "chegada_corrigida_pelo_responsavel",
+        mov,
+        `OP ${movAtualizada.numeroOP} | ${movAtualizada.destino} | ${movAtualizada.processo} | recebido ${quantidadeRecebida} | falta ${falta}`
+      );
+      fecharModalEditarMovUsuario();
+      showUpdateToast(preco
+        ? `Chegada corrigida e pagamento recalculado: ${formatarMoedaMovUsuario(pagamentoNovo.dados.total)}.`
+        : "Chegada corrigida. O pagamento ficou pendente de valor para esta referência e processo.");
+      await carregarMovimentacoesUsuario();
+      setTimeout(() => document.getElementById("btnAtualizarServidor")?.click(), 400);
+    } catch (error) {
+      console.error("Erro ao corrigir chegada e pagamento.", error);
+      mostrarAvisoFormulario(
+        String(error?.message || "").includes("pago")
+          ? "O pagamento já está pago e não pode ser alterado pelo usuário. Procure o administrador."
+          : "Não foi possível salvar a correção. Confira as regras do Firebase e tente novamente."
+      );
+    } finally {
+      if (botao) { botao.disabled = false; botao.textContent = "Salvar correção"; }
+    }
+  }
+
+  async function excluirChegadaMovUsuario(id) {
+    if (!contextoMovUsuario?.user) return;
+    const mov = movimentosRegistradosUsuario.find(item => item.id === id);
+    if (!mov) return;
+    if (pagamentoPagoDaMovimentacao(id)) {
+      mostrarAvisoFormulario("O pagamento já foi marcado como pago. Solicite ao administrador que reabra antes de excluir.");
+      return;
+    }
+    if (mov.status === "encaminhado" || mov.movimentacaoDestinoId) {
+      mostrarAvisoFormulario("Essa etapa já foi encaminhada. Somente o administrador pode desfazer sem quebrar o rastreamento.");
+      return;
+    }
+    if (mov.status === "finalizado" || mov.bipado === true) {
+      mostrarAvisoFormulario("Essa movimentação já foi bipada. Somente o administrador pode desfazer a chegada.");
+      return;
+    }
+    const manual = movimentoManualUsuario(mov);
+    const mensagem = manual
+      ? `Excluir a chegada manual da OP ${mov.numeroOP || "-"}?\n\nO registro será cancelado e o pagamento pendente será removido.`
+      : `Desfazer a chegada da OP ${mov.numeroOP || "-"}?\n\nA remessa voltará para “Em facção” e o pagamento pendente será removido.`;
+    if (!window.confirm(mensagem)) return;
+    const uid = contextoMovUsuario.user.uid;
+    const { firestore, db } = contextoMovUsuario;
+    try {
+      const pagamentos = pagamentosDaMovimentacaoUsuario(id);
+      if (pagamentos.some(item => String(item.statusPagamento || "") === "pago")) {
+        throw new Error("Pagamento já pago");
+      }
+      const batch = firestore.writeBatch(db);
+      if (manual) {
+        batch.set(firestore.doc(db, "movimentacoesProducao", id), {
+          tipoDestino: "faccao_cancelada",
+          tipoDestinoLabel: "Facção cancelada",
+          status: "cancelado",
+          excluido: true,
+          chegadaCanceladaPor: uid,
+          chegadaCanceladaEm: firestore.serverTimestamp(),
+          motivoCancelamentoChegada: "Exclusão solicitada pelo usuário que registrou a chegada manual.",
+          atualizadoPor: uid,
+          atualizadoEm: firestore.serverTimestamp(),
+          versaoUltimaCorrecaoChegada: APP_VERSION
+        }, { merge: true });
+      } else {
+        batch.set(firestore.doc(db, "movimentacoesProducao", id), {
+          dataChegada: firestore.deleteField(),
+          quantidadeRecebida: 0,
+          falta: 0,
+          descontoDefeito: 0,
+          defeito: 0,
+          observacaoChegada: firestore.deleteField(),
+          status: "em_andamento",
+          chegadaRegistradaPor: firestore.deleteField(),
+          chegadaRegistradaEm: firestore.deleteField(),
+          chegadaDesfeitaPor: uid,
+          chegadaDesfeitaEm: firestore.serverTimestamp(),
+          atualizadoPor: uid,
+          atualizadoEm: firestore.serverTimestamp(),
+          versaoUltimaCorrecaoChegada: APP_VERSION
+        }, { merge: true });
+      }
+      pagamentos.forEach(item => batch.delete(firestore.doc(db, "entregasPagamento", item.id)));
+      await batch.commit();
+      await registrarLogMovUsuario(
+        manual ? "chegada_manual_excluida_pelo_responsavel" : "chegada_desfeita_pelo_responsavel",
+        mov,
+        `OP ${mov.numeroOP || "-"} | ${mov.destino || "-"} | ${mov.processo || "-"} | pagamento pendente removido`
+      );
+      showUpdateToast(manual
+        ? "Chegada manual excluída e pagamento pendente removido."
+        : "Chegada desfeita. A remessa voltou para a facção e o pagamento pendente foi removido.");
+      await carregarMovimentacoesUsuario();
+      setTimeout(() => document.getElementById("btnAtualizarServidor")?.click(), 400);
+    } catch (error) {
+      console.error("Erro ao excluir/desfazer chegada.", error);
+      mostrarAvisoFormulario(
+        String(error?.message || "").includes("pago")
+          ? "O pagamento já está pago e não pode ser excluído pelo usuário. Procure o administrador."
+          : "Não foi possível excluir/desfazer a chegada. Confira as regras do Firebase e tente novamente."
+      );
+    }
+  }
+
+  async function marcarChegadaNormalAposSalvar(id, dataEsperada, tentativa = 0) {
+    if (!contextoMovUsuario?.user || !id) return;
+    const { firestore, db, user } = contextoMovUsuario;
+    try {
+      const ref = firestore.doc(db, "movimentacoesProducao", id);
+      const snapshot = await firestore.getDoc(ref);
+      if (!snapshot.exists()) return;
+      const dados = snapshot.data();
+      if (!dados.dataChegada || (dataEsperada && dados.dataChegada !== dataEsperada)) {
+        if (tentativa < 5) setTimeout(() => marcarChegadaNormalAposSalvar(id, dataEsperada, tentativa + 1), 500);
+        return;
+      }
+      await firestore.setDoc(ref, {
+        chegadaRegistradaPor: user.uid,
+        chegadaRegistradaEm: dados.chegadaRegistradaEm || firestore.serverTimestamp(),
+        atualizadoPor: user.uid,
+        atualizadoEm: firestore.serverTimestamp()
+      }, { merge: true });
+    } catch (error) {
+      console.warn("Não foi possível identificar automaticamente o responsável pela chegada.", error);
+    }
+  }
+
+  async function marcarChegadaManualAposSalvar(dadosEsperados, tentativa = 0) {
+    if (!contextoMovUsuario?.user) return;
+    const { firestore, db, user } = contextoMovUsuario;
+    try {
+      const snapshot = await firestore.getDocs(
+        firestore.query(
+          firestore.collection(db, "movimentacoesProducao"),
+          firestore.where("criadoPor", "==", user.uid)
+        )
+      );
+      const candidatos = snapshot.docs
+        .map(item => ({ id: item.id, ...item.data() }))
+        .filter(item => movimentoManualUsuario(item) && item.dataChegada)
+        .filter(item => normalizarTextoMovUsuario(item.numeroOP) === normalizarTextoMovUsuario(dadosEsperados.numeroOP))
+        .filter(item => normalizarTextoMovUsuario(item.processo) === normalizarTextoMovUsuario(dadosEsperados.processo))
+        .filter(item => normalizarTextoMovUsuario(item.destino) === normalizarTextoMovUsuario(dadosEsperados.faccao))
+        .filter(item => String(item.dataChegada || "") === String(dadosEsperados.dataChegada || ""));
+      for (const item of candidatos) {
+        await firestore.setDoc(firestore.doc(db, "movimentacoesProducao", item.id), {
+          chegadaRegistradaPor: user.uid,
+          chegadaRegistradaEm: item.chegadaRegistradaEm || firestore.serverTimestamp(),
+          atualizadoPor: user.uid,
+          atualizadoEm: firestore.serverTimestamp()
+        }, { merge: true });
+      }
+      if (!candidatos.length && tentativa < 5) {
+        setTimeout(() => marcarChegadaManualAposSalvar(dadosEsperados, tentativa + 1), 500);
+      }
+    } catch (error) {
+      console.warn("Não foi possível identificar automaticamente a chegada manual.", error);
+    }
+  }
+
+  function instalarCapturaResponsavelChegada() {
+    const formNormal = document.getElementById("formChegadaMovimentacao");
+    if (formNormal && !formNormal.dataset.capturaResponsavelChegada) {
+      formNormal.dataset.capturaResponsavelChegada = APP_VERSION;
+      formNormal.addEventListener("submit", () => {
+        const id = document.getElementById("chegadaMovimentacaoId")?.value || "";
+        const data = document.getElementById("chegadaData")?.value || "";
+        setTimeout(() => marcarChegadaNormalAposSalvar(id, data), 700);
+      }, true);
+    }
+    const formManual = document.getElementById("formChegadaManualFaccao");
+    if (formManual && !formManual.dataset.capturaResponsavelChegada) {
+      formManual.dataset.capturaResponsavelChegada = APP_VERSION;
+      formManual.addEventListener("submit", () => {
+        const dados = {
+          numeroOP: document.getElementById("chegadaManualOP")?.value || "",
+          processo: document.getElementById("chegadaManualProcesso")?.value || "",
+          faccao: document.getElementById("chegadaManualFaccao")?.value || "",
+          dataChegada: document.getElementById("chegadaManualDataChegada")?.value || ""
+        };
+        setTimeout(() => marcarChegadaManualAposSalvar(dados), 900);
+      }, true);
+    }
+  }
+
+  async function configurarUsuarioMovUsuario(user) {
+    if (!contextoMovUsuario) return;
+    if (!user) {
+      contextoMovUsuario = { ...contextoMovUsuario, user: null, perfil: null };
+      movimentosRegistradosUsuario = [];
+      pagamentosMovUsuario = [];
+      fecharPainelMovUsuario();
+      return;
+    }
+    const { firestore, db } = contextoMovUsuario;
+    try {
+      const perfilSnapshot = await firestore.getDoc(firestore.doc(db, "usuarios", user.uid));
+      const perfil = perfilSnapshot.exists() ? perfilSnapshot.data() : {};
+      contextoMovUsuario = { ...contextoMovUsuario, user, perfil };
+      criarBotaoMovUsuario();
+      criarPainelMovUsuario();
+      criarModalMovUsuario();
+      instalarCapturaResponsavelChegada();
+    } catch (error) {
+      console.error("Não foi possível iniciar as movimentações registradas do usuário.", error);
+    }
+  }
+
+  async function conectarFirebaseMovUsuario(tentativa = 0) {
+    if (contextoMovUsuario?.auth) return;
+    try {
+      const [firebaseApp, firestore, firebaseAuth] = await Promise.all([
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js")
+      ]);
+      if (!firebaseApp.getApps().length) throw new Error("Firebase ainda não inicializado.");
+      const appAtual = firebaseApp.getApp();
+      const auth = firebaseAuth.getAuth(appAtual);
+      const db = firestore.getFirestore(appAtual);
+      contextoMovUsuario = { firestore, firebaseAuth, auth, db, user: null, perfil: null };
+      if (unsubscribeAuthMovUsuario) unsubscribeAuthMovUsuario();
+      unsubscribeAuthMovUsuario = firebaseAuth.onAuthStateChanged(auth, configurarUsuarioMovUsuario);
+    } catch (error) {
+      if (tentativa < 20) {
+        setTimeout(() => conectarFirebaseMovUsuario(tentativa + 1), 300);
+        return;
+      }
+      console.error("Não foi possível iniciar a função Movimentações registradas.", error);
+    }
+  }
+
+  function iniciarMovimentacoesRegistradasUsuario() {
+    injetarEstiloMovUsuario();
+    criarBotaoMovUsuario();
+    criarPainelMovUsuario();
+    criarModalMovUsuario();
+    instalarCapturaResponsavelChegada();
+    conectarFirebaseMovUsuario();
+  }
+
 
   function iniciarRecursosDaVersao() {
     iniciarHotfixChegadaManual();
@@ -2339,6 +3352,7 @@
     iniciarGestaoSugestoesFases();
     iniciarSetasListasManejo();
     iniciarImportacaoValoresPlanilha();
+    iniciarMovimentacoesRegistradasUsuario();
   }
 
   window.addEventListener("load", () => {
