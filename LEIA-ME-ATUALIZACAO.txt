@@ -1,56 +1,46 @@
-CORPONU — MOVIMENTAÇÕES REGISTRADAS PELO USUÁRIO
-Versão: 2026-07-28-movimentacoes-registradas-usuario-1
+CORPONU — LIBERAR EDIÇÃO DE LOCAL PARA USUÁRIOS COMUNS
+
+VERSÃO
+2026-07-28-edicao-local-usuarios-1
 
 ARQUIVOS PARA SUBSTITUIR NA RAIZ DO GITHUB
-1. update.js
-2. sw.js
-3. version.json
-4. firebase-rules.txt
+- update.js
+- sw.js
+- version.json
+- firebase-rules.txt
 
-O arquivo firestore-rules.txt possui o mesmo conteúdo de firebase-rules.txt e foi incluído para facilitar copiar e colar no Firebase.
+ARQUIVO ALTERNATIVO DAS REGRAS
+- firestore-rules.txt possui exatamente o mesmo conteúdo de firebase-rules.txt.
+- Use somente um deles para copiar e colar no Firebase.
 
 PASSO OBRIGATÓRIO NO FIREBASE
 1. Abra Firebase Console.
 2. Entre em Firestore Database > Rules.
-3. Copie todo o conteúdo de firebase-rules.txt ou firestore-rules.txt.
-4. Substitua as regras atuais.
+3. Apague as regras antigas.
+4. Cole todo o conteúdo de firebase-rules.txt.
 5. Clique em Publicar.
 
-Sem publicar as regras novas, o usuário comum poderá ver o botão, mas não conseguirá consultar/corrigir/excluir o pagamento criado por ele.
-
-NOVO BOTÃO
-Facções > Movimentações registradas
-
 FUNCIONAMENTO
-- Cada usuário vê somente as chegadas registradas pelo próprio usuário.
-- A lista mostra OP, referência, facção, processo, quantidade recebida, data e pagamento.
-- Editar uma chegada recalcula automaticamente o pagamento pendente.
-- Em chegada normal, OP, referência, processo e facção ficam protegidos. O usuário corrige data, quantidade recebida, desconto e observação.
-- Em chegada manual, o usuário também pode corrigir OP, referência, cor, processo, facção e data de envio.
-- Se não existir preço para referência + processo, o pagamento fica como pendente de valor.
-- Se o pagamento já estiver marcado como pago, editar/excluir fica bloqueado e exige o administrador.
-- Etapas já encaminhadas ficam bloqueadas para o usuário, evitando quebrar o rastreamento.
-- Movimentações já bipadas ainda podem ter a chegada editada, mas não podem ser excluídas pelo usuário.
+- O botão Mover / editar local continua na linha da aba Manejo.
+- Usuário comum ativo agora consegue salvar a correção.
+- O motivo continua obrigatório.
+- A OP recebe o local, destino, processo e datas corrigidos.
+- Se o novo local for facção ou célula, é criada a movimentação correspondente.
+- A ação fica registrada em ajustesMigracao e logsAlteracoes com UID, nome e data.
+- O administrador continua usando a rotina original do sistema.
 
-EXCLUSÃO / DESFAZER
-- Chegada normal: remove a chegada, apaga o pagamento pendente e devolve a remessa para o status Em facção.
-- Chegada manual: cancela o registro, remove o pagamento pendente e preserva o histórico para auditoria.
+SEGURANÇA
+- Usuário comum só pode criar e ler o próprio registro de ajuste.
+- Somente o administrador pode alterar ou excluir registros de ajuste.
+- Exclusão de OP, cadastros gerais, valores e configurações continuam restritos.
 
 TESTE RECOMENDADO
-1. Entre com um usuário comum.
-2. Registre a chegada de uma movimentação de facção.
-3. Abra Movimentações registradas.
-4. Edite quantidade ou data e salve.
-5. Confira o valor na aba Pagamentos com o administrador.
-6. Faça outro teste usando Desfazer chegada.
-7. Confirme que a remessa voltou para Em facção e o pagamento pendente desapareceu.
+1. Faça login com usuário comum.
+2. Abra Manejo.
+3. No menu de uma OP, clique em Mover / editar local.
+4. Altere local/destino e informe o motivo.
+5. Salve e confira se a linha atualizou.
+6. Faça login como administrador e confira o histórico/log.
 
-ATUALIZAÇÃO DO NAVEGADOR
-Depois do commit, aguarde o GitHub Pages publicar. Abra o sistema e pressione Ctrl + F5 uma vez caso a nova versão não apareça automaticamente.
-
-NÃO É NECESSÁRIO ALTERAR
-- app.js
-- index.html
-- style.css
-- storage-rules.txt
-- valores-processos-corponu-2026.json
+ATUALIZAÇÃO DO CACHE
+Depois do commit e da publicação das regras, abra o sistema e pressione Ctrl + F5 uma vez se a nova versão não carregar automaticamente.

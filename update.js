@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-movimentacoes-registradas-usuario-1";
+  const APP_VERSION = "2026-07-28-edicao-local-usuarios-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -3346,6 +3346,298 @@
   }
 
 
+  // ---------------------------------------------------------------------------
+  // HOTFIX: permitir que usuários comuns corrijam o local das OPs no Manejo.
+  // O app principal mantém o fluxo original para administradores. Para usuário
+  // comum, este listener em modo de captura salva a mesma correção com histórico.
+  // ---------------------------------------------------------------------------
+  const LOCAIS_AJUSTE_USUARIO_LABELS = {
+    MANEJO_AGUARDANDO_DESTINO: "Manejo / aguardando destino",
+    DISPONIVEL_CASA: "Disponível casa",
+    EM_FACCAO: "Em facção / aguardando chegada",
+    EM_CELULA: "Em célula",
+    RELATORIO_CELULAS: "Relatório células",
+    FINALIZADO_BIPADO: "Finalizado / bipado",
+    CANCELADA: "Cancelada"
+  };
+
+  function textoAjusteUsuario(valor) {
+    return String(valor ?? "").trim().replace(/\s+/g, " ");
+  }
+
+  function textoNormalizadoAjusteUsuario(valor) {
+    return textoAjusteUsuario(valor)
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  }
+
+  function docIdSeguroAjusteUsuario(valor) {
+    return textoNormalizadoAjusteUsuario(valor)
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 180) || `registro-${Date.now()}`;
+  }
+
+  function setorDaOrdemAjusteUsuario(ordem) {
+    const texto = textoNormalizadoAjusteUsuario([
+      ordem?.tipoPeca,
+      ordem?.tipoPecaLabel,
+      ordem?.produtoNome,
+      ordem?.observacoes,
+      ordem?.pendencia
+    ].filter(Boolean).join(" "));
+
+    if (texto.includes("calcinha")) return "calcinha";
+    if (texto.includes("sutia")) return "sutia";
+    if (ordem?.manejosSetores?.calcinha && !ordem?.manejosSetores?.sutia) return "calcinha";
+    return "sutia";
+  }
+
+  function mostrarAvisoAjusteUsuario(mensagem, tipo = "info") {
+    const toastPrincipal = document.getElementById("toast");
+    if (toastPrincipal) {
+      toastPrincipal.textContent = mensagem;
+      toastPrincipal.classList.remove("hidden");
+      toastPrincipal.dataset.tipo = tipo;
+      clearTimeout(mostrarAvisoAjusteUsuario.timer);
+      mostrarAvisoAjusteUsuario.timer = setTimeout(() => {
+        toastPrincipal.classList.add("hidden");
+      }, 4200);
+      return;
+    }
+    showUpdateToast(mensagem);
+  }
+
+  function perfilComumPodeAjustarLocal() {
+    const perfil = contextoMovUsuario?.perfil;
+    const user = contextoMovUsuario?.user;
+    return Boolean(user && perfil?.ativo === true && perfil?.tipo === "usuario");
+  }
+
+  async function salvarAjusteLocalComoUsuario(event) {
+    const form = event.currentTarget;
+    const perfil = contextoMovUsuario?.perfil;
+    const user = contextoMovUsuario?.user;
+
+    // Administrador continua usando a função original do app.js.
+    if (perfil?.tipo === "admin") return;
+
+    // Evita que a função antiga mostre "Apenas admin" enquanto o perfil carrega.
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    if (!user || !perfil) {
+      mostrarAvisoAjusteUsuario("Aguarde o carregamento do seu usuário e tente novamente.", "warning");
+      return;
+    }
+    if (!perfilComumPodeAjustarLocal()) {
+      mostrarAvisoAjusteUsuario("Seu usuário não possui permissão ativa para corrigir o local.", "warning");
+      return;
+    }
+    if (form.dataset.salvandoLocalUsuario === "1") return;
+
+    const { firestore, db } = contextoMovUsuario;
+    const ordemId = textoAjusteUsuario(document.getElementById("ajusteMigracaoOpId")?.value);
+    const local = textoAjusteUsuario(document.getElementById("ajusteMigracaoLocal")?.value).toUpperCase();
+    const destino = textoAjusteUsuario(document.getElementById("ajusteMigracaoDestino")?.value).toUpperCase();
+    const processo = textoAjusteUsuario(document.getElementById("ajusteMigracaoProcesso")?.value).toUpperCase();
+    const dataEnvio = document.getElementById("ajusteMigracaoDataEnvio")?.value || "";
+    const dataChegada = document.getElementById("ajusteMigracaoDataChegada")?.value || "";
+    const proximoDestino = textoAjusteUsuario(document.getElementById("ajusteMigracaoProximoDestino")?.value).toUpperCase();
+    const motivo = textoAjusteUsuario(document.getElementById("ajusteMigracaoMotivo")?.value);
+
+    if (!ordemId) {
+      mostrarAvisoAjusteUsuario("OP não encontrada para a correção.", "warning");
+      return;
+    }
+    if (!LOCAIS_AJUSTE_USUARIO_LABELS[local]) {
+      mostrarAvisoAjusteUsuario("Selecione um local válido.", "warning");
+      return;
+    }
+    if (!motivo) {
+      mostrarAvisoAjusteUsuario("Informe o motivo da correção.", "warning");
+      document.getElementById("ajusteMigracaoMotivo")?.focus();
+      return;
+    }
+    if (["EM_FACCAO", "EM_CELULA"].includes(local) && !destino) {
+      mostrarAvisoAjusteUsuario("Informe a facção ou célula de destino.", "warning");
+      document.getElementById("ajusteMigracaoDestino")?.focus();
+      return;
+    }
+
+    const botaoSalvar = form.querySelector('button[type="submit"]');
+    const textoBotao = botaoSalvar?.textContent || "Salvar correção";
+    form.dataset.salvandoLocalUsuario = "1";
+    if (botaoSalvar) {
+      botaoSalvar.disabled = true;
+      botaoSalvar.textContent = "Salvando...";
+    }
+
+    try {
+      const ordemRef = firestore.doc(db, "ordensProducao", ordemId);
+      const ordemSnap = await firestore.getDoc(ordemRef);
+      if (!ordemSnap.exists()) throw new Error("OP não encontrada no servidor.");
+
+      const ordem = { id: ordemSnap.id, ...ordemSnap.data() };
+      const setor = setorDaOrdemAjusteUsuario(ordem);
+      const ocultarDoManejo = ["RELATORIO_CELULAS", "FINALIZADO_BIPADO", "CANCELADA"].includes(local);
+      const timestamp = firestore.serverTimestamp();
+
+      const patch = {
+        statusMigracaoLigia: local,
+        localAtualMigracao: local,
+        destinoAtualMigracao: destino,
+        processoAtualMigracao: processo,
+        dataEnvioAtualMigracao: dataEnvio,
+        dataChegadaAtualMigracao: dataChegada,
+        proximoDestinoMigracao: proximoDestino,
+        ocultarDoManejo,
+        ajusteManualMigracao: true,
+        ultimoMotivoAjusteMigracao: motivo,
+        relatorioMigracao: ocultarDoManejo ? LOCAIS_AJUSTE_USUARIO_LABELS[local] : "",
+        atualizadoPor: user.uid,
+        atualizadoEm: timestamp
+      };
+
+      if (!ocultarDoManejo) {
+        const manejoExistente = ordem?.manejosSetores?.[setor] || {};
+        const faseCorrigida = processo || (
+          local === "DISPONIVEL_CASA" ? "DISPONÍVEL P CASA" :
+          local === "EM_FACCAO" ? "AGUARDANDO CHEGADA FACÇÃO" :
+          local === "EM_CELULA" ? "PRODUÇÃO / CÉLULA" :
+          "AGUARDANDO DESTINO"
+        );
+        const manejoCorrigido = {
+          ...manejoExistente,
+          fase: faseCorrigida,
+          data: dataEnvio || manejoExistente.data || "",
+          chegada: dataChegada || manejoExistente.chegada || "",
+          faccao: local === "EM_FACCAO" ? destino : (manejoExistente.faccao || ""),
+          celu: local === "EM_CELULA" ? destino : (manejoExistente.celu || ""),
+          proximoDestino,
+          processoAtualMigracao: processo,
+          statusMigracao: local,
+          observacoes: [
+            manejoExistente.observacoes || "",
+            `Ajustado manualmente por ${perfil.nome || user.email || "usuário"}: ${motivo}`
+          ].filter(Boolean).join(" | ")
+        };
+
+        patch.manejosSetores = { [setor]: manejoCorrigido };
+        patch.manejoStatusSetores = { [setor]: "organizada" };
+        patch.bipadoSetores = { [setor]: false };
+      }
+
+      const batch = firestore.writeBatch(db);
+      const ajusteRef = firestore.doc(firestore.collection(db, "ajustesMigracao"));
+      const logRef = firestore.doc(firestore.collection(db, "logsAlteracoes"));
+
+      batch.set(ordemRef, patch, { merge: true });
+      batch.set(ajusteRef, {
+        opId: ordemId,
+        numeroOP: ordem.numeroOP || "",
+        referencia: ordem.referencia || "",
+        antes: {
+          statusMigracaoLigia: ordem.statusMigracaoLigia || "",
+          localAtualMigracao: ordem.localAtualMigracao || "",
+          destinoAtualMigracao: ordem.destinoAtualMigracao || "",
+          processoAtualMigracao: ordem.processoAtualMigracao || ""
+        },
+        depois: {
+          statusMigracaoLigia: local,
+          localAtualMigracao: local,
+          destinoAtualMigracao: destino,
+          processoAtualMigracao: processo,
+          dataEnvioAtualMigracao: dataEnvio,
+          dataChegadaAtualMigracao: dataChegada,
+          proximoDestinoMigracao: proximoDestino,
+          ocultarDoManejo
+        },
+        motivo,
+        criadoPor: user.uid,
+        criadoPorNome: perfil.nome || user.email || "Usuário",
+        criadoPorTipo: perfil.tipo || "usuario",
+        criadoEm: firestore.serverTimestamp()
+      });
+
+      if (["EM_FACCAO", "EM_CELULA"].includes(local) && destino) {
+        const tipoDestino = local === "EM_CELULA" ? "celula" : "faccao";
+        const movId = docIdSeguroAjusteUsuario(
+          `ajuste-${ordem.numeroOP || ordem.id}-${tipoDestino}-${destino}-${Date.now()}`
+        );
+        batch.set(firestore.doc(db, "movimentacoesProducao", movId), {
+          origem: "ajuste_migracao",
+          ajusteMigracaoId: ajusteRef.id,
+          opId: ordemId,
+          numeroOP: ordem.numeroOP || "",
+          referencia: ordem.referencia || "",
+          cor: ordem.cor || "",
+          produtoNome: ordem.produtoNome || "",
+          tipoDestino,
+          tipoDestinoLabel: tipoDestino === "faccao" ? "Facção" : "Célula",
+          destino,
+          destinoId: docIdSeguroAjusteUsuario(destino),
+          processo: tipoDestino === "celula" ? "CÉLULA INTERNA" : (processo || "PROCESSO A DEFINIR"),
+          setor,
+          setorLabel: setor === "calcinha" ? "Calcinha" : "Sutiã",
+          quantidadeEnviada: Number(ordem.quantidade || 0),
+          dataEnvio,
+          dataChegada,
+          falta: 0,
+          quantidadeRecebida: dataChegada ? Number(ordem.quantidade || 0) : 0,
+          status: dataChegada ? "retornou" : "em_andamento",
+          observacoes: `Criado por correção de local. Motivo: ${motivo}`,
+          criadoPor: user.uid,
+          criadoPorNome: perfil.nome || user.email || "Usuário",
+          criadoEm: firestore.serverTimestamp(),
+          atualizadoPor: user.uid,
+          atualizadoEm: firestore.serverTimestamp()
+        }, { merge: true });
+      }
+
+      batch.set(logRef, {
+        acao: "ajuste_migracao_op",
+        tipoAlvo: "ordensProducao",
+        alvoId: ordemId,
+        detalhes: `OP ${ordem.numeroOP || ordemId} | ${local} | ${destino || "sem destino"} | ${motivo}`,
+        usuarioUid: user.uid,
+        usuarioNome: perfil.nome || user.email || "Usuário",
+        usuarioEmail: user.email || perfil.email || "",
+        usuarioTipo: perfil.tipo || "usuario",
+        criadoEm: firestore.serverTimestamp()
+      });
+
+      await batch.commit();
+
+      document.getElementById("modalAjusteMigracao")?.classList.add("hidden");
+      form.reset();
+      mostrarAvisoAjusteUsuario("Local corrigido e registrado no histórico.", "success");
+    } catch (error) {
+      console.error("Erro ao corrigir local como usuário comum:", error);
+      const mensagem = String(error?.code || error?.message || "");
+      if (mensagem.includes("permission-denied")) {
+        mostrarAvisoAjusteUsuario("Permissão negada. Publique o novo firebase-rules.txt no Firestore.", "error");
+      } else {
+        mostrarAvisoAjusteUsuario("Não foi possível salvar a correção do local.", "error");
+      }
+    } finally {
+      delete form.dataset.salvandoLocalUsuario;
+      if (botaoSalvar) {
+        botaoSalvar.disabled = false;
+        botaoSalvar.textContent = textoBotao;
+      }
+    }
+  }
+
+  function iniciarEdicaoLocalUsuarios() {
+    const form = document.getElementById("formAjusteMigracao");
+    if (!form || form.dataset.hotfixEdicaoLocalUsuarios === "1") return;
+    form.dataset.hotfixEdicaoLocalUsuarios = "1";
+    form.addEventListener("submit", salvarAjusteLocalComoUsuario, true);
+  }
+
+
   function iniciarRecursosDaVersao() {
     iniciarHotfixChegadaManual();
     iniciarHotfixNecessidade();
@@ -3353,6 +3645,7 @@
     iniciarSetasListasManejo();
     iniciarImportacaoValoresPlanilha();
     iniciarMovimentacoesRegistradasUsuario();
+    iniciarEdicaoLocalUsuarios();
   }
 
   window.addEventListener("load", () => {

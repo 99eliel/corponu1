@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-movimentacoes-registradas-usuario-1",
-  "updatedAt": "2026-07-28T08:30:00-03:00",
-  "notes": "Atualização cumulativa. Adiciona na aba Facções o botão Movimentações registradas, permitindo que cada usuário visualize somente as chegadas que registrou, corrija data, quantidade recebida, falta automática, desconto e observação, e recalcule o pagamento pendente. Chegadas manuais também permitem corrigir OP, referência, cor, processo, facção e data de envio. Ao excluir uma chegada normal, a remessa volta para Em facção; ao excluir uma chegada manual, o registro é cancelado sem apagar o histórico. Pagamentos já marcados como pagos ficam bloqueados e exigem o administrador."
+  "version": "2026-07-28-edicao-local-usuarios-1",
+  "updatedAt": "2026-07-28T09:48:00-03:00",
+  "notes": "Atualização cumulativa. Libera para usuários comuns ativos a função Mover / editar local na aba Manejo. A correção mantém obrigatório o motivo, atualiza o local e o manejo da OP, cria a movimentação correspondente quando o destino for facção ou célula e registra tudo em ajustesMigracao e logsAlteracoes. Administradores continuam com o fluxo original e configurações, exclusões e demais ações críticas permanecem restritas."
 }
