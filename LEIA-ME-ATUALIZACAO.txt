@@ -1,44 +1,30 @@
-ATUALIZAÇÃO: Reconfirmar processo e facção ao registrar chegada
+ATUALIZAÇÃO: Coluna Linha somente na Calcinha
 
-ARQUIVOS PARA SUBSTITUIR NO GITHUB
+SUBSTITUIR NO GITHUB:
 - update.js
 - sw.js
 - version.json
 
-NÃO ALTERAR
+NÃO ALTERAR:
 - app.js
 - index.html
 - style.css
-- firebase-rules.txt
-- firestore-rules.txt
-- storage-rules.txt
+- corponu-dual-mode.js
+- regras do Firebase
 
-NOVO FLUXO
-1. Na aba Facções, clicar em Chegada.
-2. O sistema mostra o processo e a facção informados no envio.
-3. O usuário precisa selecionar novamente o processo realizado.
-4. Depois precisa selecionar novamente quem fez o serviço.
-5. Informa data, falta e desconto.
-6. A chegada e o pagamento são gravados juntos.
+O QUE MUDA:
+- No Manejo Sutiã, a coluna LINHA, o filtro LINHA e os valores SUTIÃ deixam de aparecer.
+- Na impressão do Manejo Sutiã, a coluna LINHA também foi removida.
+- No Manejo Calcinha, a coluna continua aparecendo normalmente para Cotton Line / Corpo Nu.
+- Ao trocar da Calcinha para Sutiã, qualquer filtro acumulativo de Linha é limpo para não esconder OPs por engano.
 
-SE O ENVIO ESTIVER ERRADO
-- O usuário pode escolher o processo e/ou facção corretos.
-- O sistema pede uma confirmação adicional.
-- A movimentação é corrigida e guarda os dados originais para auditoria.
-- O pagamento é gerado usando os dados confirmados na chegada.
+SEGURANÇA:
+- Não altera OPs nem dados do Firebase.
+- Não adiciona MutationObserver.
+- Não modifica pagamentos, facções ou cálculos.
 
-PROTEÇÕES
-- Não permite confirmar sem processo e facção.
-- A facção precisa estar vinculada ao processo.
-- Bloqueia chegada ou pagamento duplicado.
-- Usa transação do Firestore: movimentação, pagamento e log são salvos juntos.
-- Em caso de falha, nenhuma parte fica salva pela metade.
-- Não utiliza MutationObserver.
-
-DEPOIS DO COMMIT
-1. Testar primeiro em aba anônima.
-2. Abrir Facções e escolher uma remessa em andamento.
-3. Clicar em Chegada.
-4. Confirmar processo e facção.
-5. Usar uma falta/desconto de teste apenas em registro apropriado.
-6. Conferir o pagamento criado.
+DEPOIS DO COMMIT:
+1. Teste primeiro em aba anônima.
+2. Abra Manejo > Sutiã e confirme que LINHA não aparece.
+3. Abra Manejo > Calcinha e confirme que LINHA aparece.
+4. Teste a impressão de ambos os modos.

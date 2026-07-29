@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-chegada-reconfirma-processo-faccao-1";
+  const APP_VERSION = "2026-07-29-sutia-sem-coluna-linha-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -4799,7 +4799,6 @@
       : [
           { label: "OP", indice: 0 },
           { label: "REF", indice: 1 },
-          { label: "LINHA", indice: 2 },
           { label: "SILK", indice: 3 },
           { label: "TECIDO", indice: 4 },
           { label: "FASE", indice: 5 },
@@ -10974,8 +10973,97 @@
   }
 
 
+
+
+  // =========================================================
+  // HOTFIX: COLUNA LINHA SOMENTE NO MANEJO CALCINHA
+  // - A coluna Linha é exclusiva da Calcinha (Cotton Line / Corpo Nu).
+  // - No Sutiã, cabeçalho, filtro e células ficam totalmente ocultos.
+  // - Ao voltar para Sutiã, qualquer seleção acumulativa de Linha é limpa.
+  // =========================================================
+  function injetarEstilosLinhaExclusivaCalcinha() {
+    if (document.getElementById('styleLinhaExclusivaCalcinha')) return;
+
+    const style = document.createElement('style');
+    style.id = 'styleLinhaExclusivaCalcinha';
+    style.textContent = `
+      body[data-corponu-manejo-tipo="sutia"] #manejo [data-corponu-line-head="1"],
+      body[data-corponu-manejo-tipo="sutia"] #manejo [data-corponu-line-filter="1"],
+      body[data-corponu-manejo-tipo="sutia"] #manejo [data-corponu-line-cell="1"] {
+        display: none !important;
+      }
+
+      body[data-corponu-manejo-tipo="calcinha"] #manejo th[data-corponu-line-head="1"],
+      body[data-corponu-manejo-tipo="calcinha"] #manejo th[data-corponu-line-filter="1"],
+      body[data-corponu-manejo-tipo="calcinha"] #manejo td[data-corponu-line-cell="1"] {
+        display: table-cell !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function limparFiltroLinhaAoAbrirSutia() {
+    const setor = document.querySelector('.manejo-setor-btn.active')?.dataset?.setor || 'sutia';
+    if (setor === 'calcinha') return;
+
+    const campo = document.getElementById('filtroManejoLinhaCalcinha');
+    if (campo && campo.value) {
+      campo.dataset.excelInterno = '1';
+      campo.value = '';
+      campo.dispatchEvent(new Event('change', { bubbles: true }));
+      delete campo.dataset.excelInterno;
+    }
+
+    try {
+      const selecionadas = getSetSelecaoFiltroExcel('filtroManejoLinhaCalcinha');
+      if (selecionadas.size) {
+        selecionadas.clear();
+        const config = configFiltroExcelPorId('filtroManejoLinhaCalcinha');
+        if (config) atualizarIndicadorFiltroExcel(config);
+      }
+
+      if (configPopupFiltroExcelManejo?.id === 'filtroManejoLinhaCalcinha') {
+        fecharPopupFiltroExcelManejo();
+      }
+
+      setTimeout(agendarAplicacaoFiltrosExcelManejo, 20);
+    } catch (error) {
+      console.warn('Não foi possível limpar o filtro Linha ao abrir o Sutiã.', error);
+    }
+  }
+
+  function aplicarLinhaExclusivaCalcinha() {
+    injetarEstilosLinhaExclusivaCalcinha();
+    limparFiltroLinhaAoAbrirSutia();
+  }
+
+  function iniciarLinhaExclusivaCalcinha() {
+    aplicarLinhaExclusivaCalcinha();
+
+    if (document.documentElement.dataset.eventoLinhaExclusivaCalcinha === APP_VERSION) return;
+    document.documentElement.dataset.eventoLinhaExclusivaCalcinha = APP_VERSION;
+
+    document.addEventListener('click', event => {
+      const botaoSetor = event.target?.closest?.('.manejo-setor-btn');
+      if (!botaoSetor) return;
+
+      // O corponu-dual-mode atualiza o atributo do body logo após a troca.
+      setTimeout(aplicarLinhaExclusivaCalcinha, 0);
+      setTimeout(aplicarLinhaExclusivaCalcinha, 80);
+      setTimeout(aplicarLinhaExclusivaCalcinha, 260);
+    });
+
+    document.addEventListener('click', event => {
+      const botaoManejo = event.target?.closest?.('.nav-btn[data-page="manejo"]');
+      if (!botaoManejo) return;
+      setTimeout(aplicarLinhaExclusivaCalcinha, 80);
+      setTimeout(aplicarLinhaExclusivaCalcinha, 300);
+    });
+  }
+
   function iniciarRecursosDaVersao() {
     iniciarTelasExclusivasGerenciamento();
+    iniciarLinhaExclusivaCalcinha();
     iniciarProcessosFaccoesGerenciados();
     iniciarConcluirInteligenteManejo();
     iniciarGerenciarValoresOrganizadoSeguro();
