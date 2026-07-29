@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-sutia-valor-total-manual-op-1";
+  const APP_VERSION = "2026-07-29-lateral-tres-opcoes-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -2937,10 +2937,13 @@
           falta: numeroSeguroMovUsuario(mov.falta),
           descontoDefeito,
           lateralPronta: mov.lateralPronta ?? mov.lateralProntaChegada ?? null,
+          lateralProntaStatus: mov.lateralProntaStatus ?? mov.lateralProntaChegadaStatus ?? respostaComponenteSutiaSelect(mov.lateralPronta ?? mov.lateralProntaChegada ?? null),
           bojoPronto: mov.bojoPronto ?? mov.bojoProntoChegada ?? null,
           lateralProntaEnvio: mov.lateralProntaEnvio ?? null,
+          lateralProntaEnvioStatus: mov.lateralProntaEnvioStatus ?? respostaComponenteSutiaSelect(mov.lateralProntaEnvio ?? null),
           bojoProntoEnvio: mov.bojoProntoEnvio ?? null,
           lateralProntaChegada: mov.lateralProntaChegada ?? mov.lateralPronta ?? null,
+          lateralProntaChegadaStatus: mov.lateralProntaChegadaStatus ?? mov.lateralProntaStatus ?? respostaComponenteSutiaSelect(mov.lateralProntaChegada ?? mov.lateralPronta ?? null),
           bojoProntoChegada: mov.bojoProntoChegada ?? mov.bojoPronto ?? null,
           subtotal: 0,
           valorUnitario: 0,
@@ -2986,10 +2989,13 @@
         falta: numeroSeguroMovUsuario(mov.falta),
         descontoDefeito,
         lateralPronta: mov.lateralPronta ?? mov.lateralProntaChegada ?? null,
+        lateralProntaStatus: mov.lateralProntaStatus ?? mov.lateralProntaChegadaStatus ?? respostaComponenteSutiaSelect(mov.lateralPronta ?? mov.lateralProntaChegada ?? null),
         bojoPronto: mov.bojoPronto ?? mov.bojoProntoChegada ?? null,
         lateralProntaEnvio: mov.lateralProntaEnvio ?? null,
+        lateralProntaEnvioStatus: mov.lateralProntaEnvioStatus ?? respostaComponenteSutiaSelect(mov.lateralProntaEnvio ?? null),
         bojoProntoEnvio: mov.bojoProntoEnvio ?? null,
         lateralProntaChegada: mov.lateralProntaChegada ?? mov.lateralPronta ?? null,
+        lateralProntaChegadaStatus: mov.lateralProntaChegadaStatus ?? mov.lateralProntaStatus ?? respostaComponenteSutiaSelect(mov.lateralProntaChegada ?? mov.lateralPronta ?? null),
         bojoProntoChegada: mov.bojoProntoChegada ?? mov.bojoPronto ?? null,
         subtotal,
         valorUnitario,
@@ -10344,8 +10350,8 @@
       el.faccao?.focus();
       return;
     }
-    if (exigeComponentesSutia && !respostaComponenteSutiaValida(lateralResposta)) {
-      mostrarAvisoFormulario("Informe se a lateral foi pronta.");
+    if (exigeComponentesSutia && !respostaLateralSutiaValida(lateralResposta)) {
+      mostrarAvisoFormulario("Selecione a situação da lateral: Sim, Não ou Não informado.");
       el.lateral?.focus();
       return;
     }
@@ -10451,8 +10457,10 @@
         defeito: descontoDefeito,
         ...(exigeComponentesSutia ? {
           lateralPronta,
+          lateralProntaStatus: lateralResposta,
           bojoPronto,
           lateralProntaChegada: lateralPronta,
+          lateralProntaChegadaStatus: lateralResposta,
           bojoProntoChegada: bojoPronto,
           componentesSutiaInformadosNaChegada: true,
           componentesSutiaChegadaPor: user.uid,
@@ -10491,8 +10499,10 @@
         descontoDefeito,
         ...(exigeComponentesSutia ? {
           lateralPronta,
+          lateralProntaStatus: lateralResposta,
           bojoPronto,
           lateralProntaChegada: lateralPronta,
+          lateralProntaChegadaStatus: lateralResposta,
           bojoProntoChegada: bojoPronto
         } : {}),
         subtotal: valorTotalManualFinanceiro ? 0 : (preco ? subtotal : 0),
@@ -11177,8 +11187,8 @@
       document.getElementById('chegadaData')?.focus();
       return;
     }
-    if (exigeComponentesSutia && !respostaComponenteSutiaValida(lateralResposta)) {
-      mostrarAvisoFormulario('Confirme se a lateral foi pronta.');
+    if (exigeComponentesSutia && !respostaLateralSutiaValida(lateralResposta)) {
+      mostrarAvisoFormulario('Confirme a situação da lateral: Sim, Não ou Não informado.');
       document.getElementById('chegadaLateralPronta')?.focus();
       return;
     }
@@ -11318,8 +11328,10 @@
           quantidadeRecebida,
           ...(exigeComponentesSutia ? {
             lateralPronta,
+            lateralProntaStatus: lateralResposta,
             bojoPronto,
             lateralProntaChegada: lateralPronta,
+            lateralProntaChegadaStatus: lateralResposta,
             bojoProntoChegada: bojoPronto,
             componentesSutiaInformadosNaChegada: true,
             componentesSutiaChegadaPor: user.uid,
@@ -11380,10 +11392,13 @@
           descontoDefeito: desconto,
           ...(exigeComponentesSutia ? {
             lateralPronta,
+            lateralProntaStatus: lateralResposta,
             bojoPronto,
             lateralProntaEnvio: movServidor.lateralProntaEnvio ?? null,
+            lateralProntaEnvioStatus: movServidor.lateralProntaEnvioStatus ?? respostaComponenteSutiaSelect(movServidor.lateralProntaEnvio),
             bojoProntoEnvio: movServidor.bojoProntoEnvio ?? null,
             lateralProntaChegada: lateralPronta,
+            lateralProntaChegadaStatus: lateralResposta,
             bojoProntoChegada: bojoPronto
           } : {}),
           subtotal,
@@ -11481,9 +11496,9 @@
   // HOTFIX: COMPONENTES DO SUTIÃ NAS FACÇÕES
   // Processos: SUTIÃ MONTAGEM e SUTIÃ COMPLETO.
   // Pergunta no envio e confirma novamente na chegada:
-  // - Lateral foi pronta?
-  // - Bojo foi pronto?
-  // As respostas ficam na movimentação, no pagamento e no relatório financeiro.
+  // - Lateral foi pronta? (Sim / Não / Não informado)
+  // - Bojo foi pronto? (Sim / Não)
+  // As respostas ficam na movimentação, no pagamento e no relatório financeiro. A lateral aceita Não informado de forma explícita.
   // =========================================================
   const PROCESSOS_COMPONENTES_SUTIA = new Set([
     'SUTIA MONTAGEM',
@@ -11501,6 +11516,10 @@
     return valor === 'sim' || valor === 'nao';
   }
 
+  function respostaLateralSutiaValida(valor) {
+    return valor === 'sim' || valor === 'nao' || valor === 'nao_informado';
+  }
+
   function respostaComponenteSutiaBooleano(valor) {
     if (valor === 'sim') return true;
     if (valor === 'nao') return false;
@@ -11510,12 +11529,14 @@
   function respostaComponenteSutiaTexto(valor) {
     if (valor === true || valor === 'sim') return 'Sim';
     if (valor === false || valor === 'nao') return 'Não';
+    if (valor === 'nao_informado' || valor === null) return 'Não informado';
     return 'Não informado';
   }
 
   function respostaComponenteSutiaSelect(valor) {
     if (valor === true || valor === 'sim') return 'sim';
     if (valor === false || valor === 'nao') return 'nao';
+    if (valor === 'nao_informado' || valor === null) return 'nao_informado';
     return '';
   }
 
@@ -11602,6 +11623,7 @@
             <option value="">Selecione</option>
             <option value="sim">Sim</option>
             <option value="nao">Não</option>
+            <option value="nao_informado">Não informado</option>
           </select>
         </label>
         <label>
@@ -11699,6 +11721,7 @@
             firestore.doc(db, 'movimentacoesProducao', candidato.id),
             {
               lateralProntaEnvio: lateralPronta,
+              lateralProntaEnvioStatus: dados.lateralResposta,
               bojoProntoEnvio: bojoPronto,
               componentesSutiaInformadosNoEnvio: true,
               componentesSutiaEnvioPor: user.uid,
@@ -11743,10 +11766,10 @@
     const dadosCampos = dadosComponentesSutiaEnvioAtuais();
     if (tipo !== 'faccao' || !dadosCampos.exige) return;
 
-    if (!respostaComponenteSutiaValida(dadosCampos.lateralResposta)) {
+    if (!respostaLateralSutiaValida(dadosCampos.lateralResposta)) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      mostrarAvisoFormulario('Informe se a lateral foi pronta antes de enviar para a facção.');
+      mostrarAvisoFormulario('Informe a situação da lateral: Sim, Não ou Não informado.');
       document.getElementById('movimentacaoLateralPronta')?.focus();
       return;
     }
@@ -11845,7 +11868,7 @@
     const original = document.getElementById('componentesSutiaEnvioOriginalChegada');
     if (original) {
       original.textContent = mostrar
-        ? `Informado no envio — Lateral: ${respostaComponenteSutiaTexto(mov.lateralProntaEnvio)} | Bojo: ${respostaComponenteSutiaTexto(mov.bojoProntoEnvio)}. Confirme novamente conforme o serviço realmente recebido.`
+        ? `Informado no envio — Lateral: ${respostaComponenteSutiaTexto(mov.lateralProntaEnvioStatus ?? mov.lateralProntaEnvio)} | Bojo: ${respostaComponenteSutiaTexto(mov.bojoProntoEnvio)}. Confirme novamente conforme o serviço realmente recebido.`
         : '';
     }
   }
@@ -11888,7 +11911,7 @@
 
   function textoComponentesSutiaPagamento(item) {
     if (!processoExigeComponentesSutia(item?.processo || item?.processoMovimentacao || item?.servicoNome)) return '';
-    const lateral = item?.lateralPronta ?? item?.lateralProntaChegada ?? item?.lateralProntaEnvio;
+    const lateral = item?.lateralProntaStatus ?? item?.lateralProntaChegadaStatus ?? item?.lateralProntaEnvioStatus ?? item?.lateralPronta ?? item?.lateralProntaChegada ?? item?.lateralProntaEnvio;
     const bojo = item?.bojoPronto ?? item?.bojoProntoChegada ?? item?.bojoProntoEnvio;
     return `Lateral: ${respostaComponenteSutiaTexto(lateral)} | Bojo: ${respostaComponenteSutiaTexto(bojo)}`;
   }

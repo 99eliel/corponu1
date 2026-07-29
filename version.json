@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-29-sutia-valor-total-manual-op-1",
-  "updatedAt": "2026-07-29T13:29:00-03:00",
-  "notes": "Sutia Montagem e Sutia Completo sempre geram pagamento em aberto. O financeiro informa apenas o valor total final de cada OP, sem cadastrar preco padrao por referencia."
+  "version": "2026-07-29-lateral-tres-opcoes-1",
+  "updatedAt": "2026-07-29T14:41:00-03:00",
+  "notes": "Lateral pronta agora possui tres opcoes: Sim, Nao e Nao informado. Bojo pronto continua com Sim e Nao. Aplicado no envio, chegada normal, chegada manual e financeiro."
 }

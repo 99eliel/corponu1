@@ -1,32 +1,28 @@
-ATUALIZAÇÃO: VALOR TOTAL MANUAL POR OP — SUTIÃ
+ATUALIZAÇÃO: LATERAL COM TRÊS OPÇÕES
 
 VERSÃO
-2026-07-29-sutia-valor-total-manual-op-1
+2026-07-29-lateral-tres-opcoes-1
 
 SUBSTITUIR NO GITHUB
 - update.js
 - sw.js
 - version.json
 
-PUBLICAR NO FIREBASE
-- Firestore Database > Rules > colar todo o conteúdo de firestore-rules.txt > Publicar
-
 NÃO ALTERAR
 - app.js
 - index.html
 - style.css
 - corponu-dual-mode.js
+- firestore-rules.txt
+- firebase-rules.txt
+- storage-rules.txt
 
-NOVO FLUXO
-1. SUTIÃ MONTAGEM e SUTIÃ COMPLETO sempre geram pagamento aguardando o financeiro.
-2. Mesmo que exista preço cadastrado para a referência, ele não é usado nesses dois processos.
-3. Na aba Pagamentos aparece o botão “Informar valor”.
-4. O financeiro digita apenas o valor total final da OP, por exemplo R$ 500,00.
-5. Ao salvar, o lançamento muda para Pendente e pode ser marcado como pago.
-6. O valor não vira preço padrão da referência e não afeta outras OPs.
-7. Lateral pronta, bojo pronto, falta e desconto aparecem para conferência.
+NÃO É NECESSÁRIO PUBLICAR REGRAS NOVAS NO FIREBASE.
 
-PERMISSÕES
-- Admin pode informar o valor.
-- Usuário ativo com Gerenciar valores ou Marcar pagamentos também pode informar.
-- As regras limitam a edição aos campos financeiros do pagamento.
+NOVO FUNCIONAMENTO
+1. Para SUTIÃ MONTAGEM e SUTIÃ COMPLETO, “Lateral foi pronta?” passa a ter Sim, Não e Não informado.
+2. “Bojo foi pronto?” continua com Sim e Não.
+3. A escolha da lateral é gravada de forma explícita na movimentação e no pagamento.
+4. A mudança vale no envio, na chegada normal e na chegada manual.
+5. Pagamentos e relatórios mostram “Lateral: Não informado” quando essa opção for selecionada.
+6. Registros antigos sem informação continuam compatíveis e aparecem como “Não informado”.
