@@ -1,14 +1,11 @@
-ATUALIZAÇÃO SEGURA — TELA DE PAGAMENTOS
+ATUALIZAÇÃO: Sugestões separadas para Sutiã e Calcinha
 
-VERSÃO
-2026-07-29-pagamentos-interface-segura-1
-
-SUBSTITUIR NO GITHUB
+SUBSTITUIR NO GITHUB:
 - update.js
 - sw.js
 - version.json
 
-NÃO ALTERAR
+NÃO ALTERAR:
 - app.js
 - index.html
 - style.css
@@ -16,31 +13,27 @@ NÃO ALTERAR
 - firestore-rules.txt
 - storage-rules.txt
 
-O QUE FOI ALTERADO
-- A tela Pagamentos foi separada visualmente em filtros, resumo, conferência, resumo por facção e pagamentos gerados.
-- Os botões foram organizados em uma faixa própria.
-- Os textos dos botões ficaram mais claros.
-- As tabelas ganharam cabeçalho fixo, melhor leitura e separação visual.
-- O relatório com PIX, cálculos e geração de pagamentos foram preservados.
+NOVO FUNCIONAMENTO:
+- Na aba Usuários, o administrador terá dois painéis separados:
+  1. Sugestões de fases — Sutiã
+  2. Sugestões de fases — Calcinha
+- Cada lista é independente.
+- As sugestões de Sutiã aparecem somente no Manejo > Sutiã.
+- As sugestões de Calcinha aparecem somente no Manejo > Calcinha.
+- Usuários comuns continuam podendo digitar uma fase livremente.
+- Apenas o administrador adiciona ou remove sugestões oficiais.
+- Remover uma sugestão não altera OPs antigas.
 
-PROTEÇÃO CONTRA NOVO LOOP
-- Não foi criado nenhum MutationObserver.
-- Não foi alterada a autenticação.
-- Não foi alterada a inicialização do Firebase.
-- Não foi criado nenhum novo recarregamento automático.
-- A organização é aplicada apenas uma vez e repetida somente quando o usuário abre a aba Pagamentos.
+SEGURANÇA:
+- A atualização não altera cálculos, pagamentos ou movimentações.
+- Não adiciona MutationObserver de DOM.
+- Usa somente eventos pontuais ao trocar de aba/setor ou focar o campo Fase.
+- Não precisa publicar novas regras do Firebase.
 
-COMO PUBLICAR
-1. Fazer backup dos três arquivos atuais.
-2. Substituir update.js, sw.js e version.json juntos.
-3. Fazer um único commit.
-4. Testar primeiro em uma aba anônima.
-5. Depois clicar em Atualizar no sistema normal.
-
-TESTE RÁPIDO
-- Entrar no sistema.
-- Abrir Pagamentos.
-- Testar os filtros.
-- Conferir os totais.
-- Gerar relatório com PIX.
-- Não marcar pagamentos reais como pagos durante o teste.
+DEPOIS DO COMMIT:
+1. Testar primeiro em aba anônima.
+2. Entrar como administrador.
+3. Abrir Usuários e conferir os dois painéis.
+4. Adicionar uma sugestão de teste na Calcinha.
+5. Abrir Manejo > Calcinha e conferir a seta do campo Fase.
+6. Voltar para Manejo > Sutiã e confirmar que a sugestão de Calcinha não aparece.

@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-pagamentos-interface-segura-1";
+  const APP_VERSION = "2026-07-29-sugestoes-sutia-calcinha-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -7261,6 +7261,387 @@
     });
   }
 
+
+
+  // =========================================================
+  // CONTROLE SEPARADO DE SUGESTÕES: SUTIÃ E CALCINHA
+  // - Mantém configuracoes/fasesManejo como lista oficial do Sutiã.
+  // - Cria configuracoes/fasesManejoCalcinha para a Calcinha.
+  // - Não usa MutationObserver de DOM; aplica a lista por eventos pontuais.
+  // =========================================================
+  const FASES_CALCINHA_CONFIG_DOCUMENTO = "fasesManejoCalcinha";
+  const ID_DATALIST_FASES_CALCINHA = "manejoFasesListCalcinha";
+  const ID_PAINEL_FASES_CALCINHA = "painelSugestoesFasesCalcinhaAdmin";
+  let fasesCalcinhaGerenciadas = [];
+  let configuracaoFasesCalcinhaExiste = false;
+  let usuarioEhAdminFasesCalcinha = false;
+  let contextoFirebaseFasesCalcinha = null;
+  let unsubscribeConfiguracaoFasesCalcinha = null;
+  let unsubscribeAuthFasesCalcinha = null;
+  let eventosFasesCalcinhaInstalados = false;
+  let tentativasPainelFasesCalcinha = 0;
+
+  function garantirDatalistFasesCalcinha() {
+    let datalist = document.getElementById(ID_DATALIST_FASES_CALCINHA);
+    if (datalist) return datalist;
+    datalist = document.createElement("datalist");
+    datalist.id = ID_DATALIST_FASES_CALCINHA;
+    (document.body || document.documentElement).appendChild(datalist);
+    return datalist;
+  }
+
+  function renderDatalistFasesCalcinha() {
+    const datalist = garantirDatalistFasesCalcinha();
+    const lista = ordenarFasesGerenciadas(fasesCalcinhaGerenciadas);
+    const atual = [...datalist.querySelectorAll("option")]
+      .map(option => normalizarFaseGerenciada(option.value || option.textContent || ""));
+    const igual = atual.length === lista.length && atual.every((item, indice) =>
+      chaveFaseGerenciada(item) === chaveFaseGerenciada(lista[indice])
+    );
+    if (!igual) {
+      datalist.innerHTML = lista
+        .map(fase => `<option value="${escapeHtmlFases(fase)}"></option>`)
+        .join("");
+    }
+  }
+
+  function tipoManejoAtualSugestoes() {
+    const peloBody = String(document.body?.dataset?.corponuManejoTipo || "").toLowerCase();
+    if (peloBody === "calcinha" || peloBody === "sutia") return peloBody;
+    const setor = String(document.querySelector(".manejo-setor-btn.active")?.dataset?.setor || "").toLowerCase();
+    return setor === "calcinha" ? "calcinha" : "sutia";
+  }
+
+  function campoFaseDoManejo(elemento) {
+    if (!(elemento instanceof HTMLInputElement)) return false;
+    if (!elemento.closest("#manejo")) return false;
+    return elemento.id.endsWith("-fase") ||
+      elemento.getAttribute("list") === "manejoFasesList" ||
+      elemento.getAttribute("list") === ID_DATALIST_FASES_CALCINHA;
+  }
+
+  function aplicarListaCorretaNosCamposFaseManejo() {
+    const tipo = tipoManejoAtualSugestoes();
+    const listaId = tipo === "calcinha" ? ID_DATALIST_FASES_CALCINHA : "manejoFasesList";
+    if (tipo === "calcinha") renderDatalistFasesCalcinha();
+
+    document.querySelectorAll('#manejo input[id$="-fase"], #manejo input[list="manejoFasesList"], #manejo input[list="manejoFasesListCalcinha"]')
+      .forEach(input => {
+        input.setAttribute("list", listaId);
+        input.dataset.listaFaseTipo = tipo;
+        input.title = tipo === "calcinha"
+          ? "Digite a fase da calcinha ou escolha uma sugestão cadastrada pelo administrador."
+          : "Digite a fase do sutiã ou escolha uma sugestão cadastrada pelo administrador.";
+      });
+  }
+
+  function agendarAplicacaoListaPorSetor() {
+    [40, 180, 500, 950].forEach(delay => {
+      setTimeout(aplicarListaCorretaNosCamposFaseManejo, delay);
+    });
+  }
+
+  function ajustarTituloPainelSugestoesSutia() {
+    const painel = document.getElementById("painelSugestoesFasesAdmin");
+    if (!painel) return false;
+    const titulo = painel.querySelector(".panel-header h3");
+    const descricao = painel.querySelector(".panel-header p");
+    const aviso = painel.querySelector(".notice.small");
+    if (titulo) titulo.textContent = "Sugestões de fases — Sutiã";
+    if (descricao) descricao.textContent = "Gerencie somente as opções mostradas no campo Fase do manejo de sutiãs.";
+    if (aviso) aviso.innerHTML = "Os usuários podem digitar livremente. A opção só entra na lista oficial do <strong>Sutiã</strong> quando o administrador adicioná-la aqui.";
+    painel.dataset.tipoSugestoesFase = "sutia";
+    return true;
+  }
+
+  function renderListaAdminFasesCalcinha() {
+    const lista = document.getElementById("listaSugestoesFasesCalcinhaAdmin");
+    const contador = document.getElementById("contadorSugestoesFasesCalcinhaAdmin");
+    const status = document.getElementById("statusSugestoesFasesCalcinhaAdmin");
+    if (!lista) return;
+
+    if (contador) contador.textContent = `${fasesCalcinhaGerenciadas.length} sugestão(ões)`;
+    if (status) {
+      status.textContent = configuracaoFasesCalcinhaExiste
+        ? "Lista oficial da Calcinha sincronizada com todos os usuários."
+        : "A lista da Calcinha ainda está vazia. Adicione as sugestões desejadas.";
+    }
+
+    if (!fasesCalcinhaGerenciadas.length) {
+      lista.innerHTML = `
+        <div style="padding:14px;border:1px dashed #c4b5fd;border-radius:10px;color:#6b21a8;text-align:center;background:#faf5ff;">
+          Nenhuma sugestão de calcinha cadastrada.
+        </div>
+      `;
+      return;
+    }
+
+    lista.innerHTML = fasesCalcinhaGerenciadas.map(fase => `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 10px;border:1px solid #e9d5ff;border-radius:10px;background:#fff;">
+        <strong style="font-size:13px;overflow-wrap:anywhere;">${escapeHtmlFases(fase)}</strong>
+        <button type="button" class="btn" data-remover-fase-calcinha-admin="${escapeHtmlFases(fase)}"
+          style="padding:7px 10px;color:#b91c1c;border-color:#fecaca;background:#fff7f7;flex:0 0 auto;">
+          Remover
+        </button>
+      </div>
+    `).join("");
+  }
+
+  function criarPainelAdminFasesCalcinha() {
+    ajustarTituloPainelSugestoesSutia();
+
+    if (!usuarioEhAdminFasesCalcinha) {
+      document.getElementById(ID_PAINEL_FASES_CALCINHA)?.remove();
+      return;
+    }
+
+    const existente = document.getElementById(ID_PAINEL_FASES_CALCINHA);
+    if (existente) {
+      renderListaAdminFasesCalcinha();
+      return;
+    }
+
+    const formularioUsuario = document.getElementById("formUsuario");
+    const painelSutia = document.getElementById("painelSugestoesFasesAdmin");
+    if (!formularioUsuario) {
+      if (tentativasPainelFasesCalcinha < 15) {
+        tentativasPainelFasesCalcinha += 1;
+        setTimeout(criarPainelAdminFasesCalcinha, 350);
+      }
+      return;
+    }
+
+    const painel = document.createElement("section");
+    painel.id = ID_PAINEL_FASES_CALCINHA;
+    painel.className = "panel";
+    painel.style.gridColumn = "1 / -1";
+    painel.style.borderColor = "#c4b5fd";
+    painel.style.background = "linear-gradient(180deg, #ffffff 0%, #faf5ff 100%)";
+    painel.innerHTML = `
+      <div class="panel-header" style="align-items:flex-start;gap:16px;">
+        <div>
+          <h3>Sugestões de fases — Calcinha</h3>
+          <p>Gerencie somente as opções mostradas no campo Fase do manejo de calcinhas.</p>
+        </div>
+        <span id="contadorSugestoesFasesCalcinhaAdmin" class="badge ok">0 sugestão(ões)</span>
+      </div>
+      <div class="notice small" style="margin-bottom:12px;border-color:#c4b5fd;background:#faf5ff;">
+        Os usuários podem digitar livremente. A opção só entra na lista oficial da <strong>Calcinha</strong> quando o administrador adicioná-la aqui.
+      </div>
+      <form id="formSugestaoFaseCalcinhaAdmin" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;">
+        <label style="flex:1;min-width:240px;">
+          Nova sugestão para calcinha
+          <input id="novaSugestaoFaseCalcinhaAdmin" type="text" placeholder="Ex: MONTAGEM, REVISÃO, ACABAMENTO" autocomplete="off" maxlength="80" />
+        </label>
+        <button class="btn btn-primary" type="submit">Adicionar sugestão</button>
+      </form>
+      <div id="statusSugestoesFasesCalcinhaAdmin" style="font-size:12px;color:#64748b;margin-bottom:10px;">Carregando lista oficial...</div>
+      <div id="listaSugestoesFasesCalcinhaAdmin" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;"></div>
+    `;
+
+    if (painelSutia?.parentElement) painelSutia.insertAdjacentElement("afterend", painel);
+    else formularioUsuario.insertAdjacentElement("afterend", painel);
+
+    painel.querySelector("#formSugestaoFaseCalcinhaAdmin")?.addEventListener("submit", async event => {
+      event.preventDefault();
+      const input = document.getElementById("novaSugestaoFaseCalcinhaAdmin");
+      const fase = normalizarFaseGerenciada(input?.value);
+      if (!fase) {
+        mostrarAvisoFormulario("Digite o nome da fase da calcinha antes de adicionar.");
+        input?.focus();
+        return;
+      }
+      await adicionarSugestaoFaseCalcinhaAdmin(fase);
+      if (input) input.value = "";
+      input?.focus();
+    });
+
+    painel.querySelector("#listaSugestoesFasesCalcinhaAdmin")?.addEventListener("click", async event => {
+      const botao = event.target?.closest?.("[data-remover-fase-calcinha-admin]");
+      if (!botao) return;
+      await removerSugestaoFaseCalcinhaAdmin(botao.dataset.removerFaseCalcinhaAdmin || "");
+    });
+
+    renderListaAdminFasesCalcinha();
+  }
+
+  async function registrarLogFaseCalcinhaAdmin(acao, fase) {
+    if (!contextoFirebaseFasesCalcinha?.user || !contextoFirebaseFasesCalcinha?.perfil) return;
+    const { firestore, db, user, perfil } = contextoFirebaseFasesCalcinha;
+    try {
+      await firestore.addDoc(firestore.collection(db, "logsAlteracoes"), {
+        acao,
+        tipoAlvo: "Sugestão de fase da Calcinha",
+        alvoId: fase,
+        detalhes: `${acao}: ${fase}`,
+        usuarioUid: user.uid,
+        usuarioNome: perfil.nome || "",
+        usuarioEmail: perfil.email || user.email || "",
+        usuarioTipo: perfil.tipo || "admin",
+        criadoEm: firestore.serverTimestamp()
+      });
+    } catch (error) {
+      console.warn("Não foi possível registrar o log da sugestão da calcinha.", error);
+    }
+  }
+
+  async function alterarListaFasesCalcinhaComTransacao(transformar) {
+    if (!usuarioEhAdminFasesCalcinha || !contextoFirebaseFasesCalcinha) {
+      mostrarAvisoFormulario("Somente o administrador pode gerenciar sugestões da calcinha.");
+      return null;
+    }
+
+    const { firestore, db, user } = contextoFirebaseFasesCalcinha;
+    const referencia = firestore.doc(db, "configuracoes", FASES_CALCINHA_CONFIG_DOCUMENTO);
+    return firestore.runTransaction(db, async transacao => {
+      const snapshot = await transacao.get(referencia);
+      const listaAtual = ordenarFasesGerenciadas(
+        snapshot.exists() ? snapshot.data()?.sugestoes : fasesCalcinhaGerenciadas
+      );
+      const proximaLista = ordenarFasesGerenciadas(transformar(listaAtual));
+      transacao.set(referencia, {
+        sugestoes: proximaLista,
+        atualizadoEm: firestore.serverTimestamp(),
+        atualizadoPor: user.uid,
+        versaoGerenciamento: APP_VERSION,
+        tipoPeca: "calcinha"
+      }, { merge: true });
+      return proximaLista;
+    });
+  }
+
+  async function adicionarSugestaoFaseCalcinhaAdmin(faseInformada) {
+    const fase = normalizarFaseGerenciada(faseInformada);
+    if (!fase) return;
+    if (fasesCalcinhaGerenciadas.some(item => chaveFaseGerenciada(item) === chaveFaseGerenciada(fase))) {
+      mostrarAvisoFormulario(`A fase "${fase}" já está cadastrada para a Calcinha.`);
+      return;
+    }
+    try {
+      await alterarListaFasesCalcinhaComTransacao(lista => [...lista, fase]);
+      await registrarLogFaseCalcinhaAdmin("Sugestão de fase da Calcinha adicionada", fase);
+      showUpdateToast(`Sugestão "${fase}" adicionada para o manejo de calcinhas.`);
+    } catch (error) {
+      console.error("Erro ao adicionar sugestão da calcinha.", error);
+      mostrarAvisoFormulario("Não foi possível adicionar a sugestão da calcinha.");
+    }
+  }
+
+  async function removerSugestaoFaseCalcinhaAdmin(faseInformada) {
+    const fase = normalizarFaseGerenciada(faseInformada);
+    if (!fase) return;
+    if (!window.confirm(`Remover "${fase}" das sugestões da Calcinha?\n\nAs OPs antigas não serão alteradas.`)) return;
+    try {
+      await alterarListaFasesCalcinhaComTransacao(lista =>
+        lista.filter(item => chaveFaseGerenciada(item) !== chaveFaseGerenciada(fase))
+      );
+      await registrarLogFaseCalcinhaAdmin("Sugestão de fase da Calcinha removida", fase);
+      showUpdateToast(`Sugestão "${fase}" removida da Calcinha.`);
+    } catch (error) {
+      console.error("Erro ao remover sugestão da calcinha.", error);
+      mostrarAvisoFormulario("Não foi possível remover a sugestão da calcinha.");
+    }
+  }
+
+  function iniciarSnapshotConfiguracaoFasesCalcinha() {
+    if (!contextoFirebaseFasesCalcinha) return;
+    unsubscribeConfiguracaoFasesCalcinha?.();
+    const { firestore, db } = contextoFirebaseFasesCalcinha;
+    const referencia = firestore.doc(db, "configuracoes", FASES_CALCINHA_CONFIG_DOCUMENTO);
+    unsubscribeConfiguracaoFasesCalcinha = firestore.onSnapshot(referencia, snapshot => {
+      configuracaoFasesCalcinhaExiste = snapshot.exists();
+      fasesCalcinhaGerenciadas = ordenarFasesGerenciadas(
+        snapshot.exists() ? snapshot.data()?.sugestoes : []
+      );
+      renderDatalistFasesCalcinha();
+      criarPainelAdminFasesCalcinha();
+      if (tipoManejoAtualSugestoes() === "calcinha") agendarAplicacaoListaPorSetor();
+    }, error => {
+      console.error("Erro ao carregar sugestões da Calcinha.", error);
+    });
+  }
+
+  async function configurarUsuarioGestaoFasesCalcinha(user) {
+    if (!user || !contextoFirebaseFasesCalcinha) {
+      usuarioEhAdminFasesCalcinha = false;
+      document.getElementById(ID_PAINEL_FASES_CALCINHA)?.remove();
+      unsubscribeConfiguracaoFasesCalcinha?.();
+      unsubscribeConfiguracaoFasesCalcinha = null;
+      return;
+    }
+    const { firestore, db } = contextoFirebaseFasesCalcinha;
+    try {
+      const perfilSnapshot = await firestore.getDoc(firestore.doc(db, "usuarios", user.uid));
+      const perfil = perfilSnapshot.exists() ? perfilSnapshot.data() : {};
+      usuarioEhAdminFasesCalcinha = perfil?.tipo === "admin" && perfil?.ativo !== false;
+      contextoFirebaseFasesCalcinha = { ...contextoFirebaseFasesCalcinha, user, perfil };
+      iniciarSnapshotConfiguracaoFasesCalcinha();
+      criarPainelAdminFasesCalcinha();
+    } catch (error) {
+      usuarioEhAdminFasesCalcinha = false;
+      console.error("Não foi possível validar o administrador das sugestões da Calcinha.", error);
+    }
+  }
+
+  async function conectarFirebaseGestaoFasesCalcinha(tentativa = 0) {
+    if (contextoFirebaseFasesCalcinha?.auth) return;
+    try {
+      const [firebaseApp, firestore, firebaseAuth] = await Promise.all([
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js")
+      ]);
+      const apps = firebaseApp.getApps();
+      if (!apps.length) throw new Error("Firebase ainda não inicializado.");
+      const appAtual = firebaseApp.getApp();
+      const auth = firebaseAuth.getAuth(appAtual);
+      const db = firestore.getFirestore(appAtual);
+      contextoFirebaseFasesCalcinha = { firestore, firebaseAuth, auth, db, user: null, perfil: null };
+      unsubscribeAuthFasesCalcinha?.();
+      unsubscribeAuthFasesCalcinha = firebaseAuth.onAuthStateChanged(auth, configurarUsuarioGestaoFasesCalcinha);
+    } catch (error) {
+      if (tentativa < 20) {
+        setTimeout(() => conectarFirebaseGestaoFasesCalcinha(tentativa + 1), 300);
+        return;
+      }
+      console.error("Não foi possível iniciar a gestão das sugestões da Calcinha.", error);
+    }
+  }
+
+  function instalarEventosSugestoesPorTipo() {
+    if (eventosFasesCalcinhaInstalados) return;
+    eventosFasesCalcinhaInstalados = true;
+
+    document.addEventListener("focusin", event => {
+      if (!campoFaseDoManejo(event.target)) return;
+      const tipo = tipoManejoAtualSugestoes();
+      event.target.setAttribute("list", tipo === "calcinha" ? ID_DATALIST_FASES_CALCINHA : "manejoFasesList");
+    }, true);
+
+    document.addEventListener("click", event => {
+      if (event.target?.closest?.(".manejo-setor-btn")) agendarAplicacaoListaPorSetor();
+      if (event.target?.closest?.('.nav-btn[data-page="manejo"]')) agendarAplicacaoListaPorSetor();
+      if (event.target?.closest?.('.nav-btn[data-page="usuarios"]')) {
+        [80, 350, 800].forEach(delay => setTimeout(() => {
+          ajustarTituloPainelSugestoesSutia();
+          criarPainelAdminFasesCalcinha();
+        }, delay));
+      }
+    }, true);
+  }
+
+  function iniciarGestaoSugestoesSeparadasSutiaCalcinha() {
+    garantirDatalistFasesCalcinha();
+    instalarEventosSugestoesPorTipo();
+    conectarFirebaseGestaoFasesCalcinha();
+    [150, 600, 1400].forEach(delay => setTimeout(() => {
+      ajustarTituloPainelSugestoesSutia();
+      criarPainelAdminFasesCalcinha();
+      aplicarListaCorretaNosCamposFaseManejo();
+    }, delay));
+  }
+
+
   function iniciarRecursosDaVersao() {
     iniciarTelasExclusivasGerenciamento();
     // Instalada primeiro para barrar a ação antes das rotinas antigas de salvamento.
@@ -7270,6 +7651,7 @@
     iniciarHotfixChegadaManual();
     iniciarHotfixNecessidade();
     iniciarGestaoSugestoesFases();
+    iniciarGestaoSugestoesSeparadasSutiaCalcinha();
     iniciarSetasListasManejo();
     iniciarImportacaoValoresPlanilha();
     iniciarMovimentacoesRegistradasUsuario();
