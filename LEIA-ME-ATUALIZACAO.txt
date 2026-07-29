@@ -1,11 +1,11 @@
-ATUALIZAÇÃO: Sugestões separadas para Sutiã e Calcinha
+ATUALIZAÇÃO — GERENCIAR VALORES ORGANIZADO E SEGURO
 
-SUBSTITUIR NO GITHUB:
+Substituir no GitHub:
 - update.js
 - sw.js
 - version.json
 
-NÃO ALTERAR:
+Não alterar:
 - app.js
 - index.html
 - style.css
@@ -13,27 +13,30 @@ NÃO ALTERAR:
 - firestore-rules.txt
 - storage-rules.txt
 
-NOVO FUNCIONAMENTO:
-- Na aba Usuários, o administrador terá dois painéis separados:
-  1. Sugestões de fases — Sutiã
-  2. Sugestões de fases — Calcinha
-- Cada lista é independente.
-- As sugestões de Sutiã aparecem somente no Manejo > Sutiã.
-- As sugestões de Calcinha aparecem somente no Manejo > Calcinha.
-- Usuários comuns continuam podendo digitar uma fase livremente.
-- Apenas o administrador adiciona ou remove sugestões oficiais.
-- Remover uma sugestão não altera OPs antigas.
+O que foi mantido:
+- A nova organização da aba Pagamentos.
+- Relatório completo com PIX.
+- Conferência financeira e travas de pagamento.
+- Sugestões separadas de Sutiã e Calcinha.
+- Todas as demais correções cumulativas.
 
-SEGURANÇA:
-- A atualização não altera cálculos, pagamentos ou movimentações.
-- Não adiciona MutationObserver de DOM.
-- Usa somente eventos pontuais ao trocar de aba/setor ou focar o campo Fase.
-- Não precisa publicar novas regras do Firebase.
+O que mudou dentro de Gerenciar valores:
+1. Escolher o processo.
+2. Cadastrar ou editar valor por referência.
+3. Consultar os valores cadastrados.
 
-DEPOIS DO COMMIT:
-1. Testar primeiro em aba anônima.
-2. Entrar como administrador.
-3. Abrir Usuários e conferir os dois painéis.
-4. Adicionar uma sugestão de teste na Calcinha.
-5. Abrir Manejo > Calcinha e conferir a seta do campo Fase.
-6. Voltar para Manejo > Sutiã e confirmar que a sugestão de Calcinha não aparece.
+- A área de importação foi retirada da tela.
+- A rotina automática da importação de valores não é mais iniciada.
+- Criar e renomear processos ficaram dentro de Opções avançadas.
+- O botão duplicado e o cabeçalho antigo ficam ocultos na tela exclusiva.
+- Nenhum cálculo ou dado do Firebase é alterado.
+- Nenhum novo MutationObserver foi criado.
+
+Publicação segura:
+1. Salve uma cópia dos três arquivos atuais.
+2. Substitua update.js, sw.js e version.json juntos.
+3. Faça um único commit.
+4. Teste primeiro em aba anônima do Chrome.
+5. Abra Pagamentos e confirme que a organização anterior continua.
+6. Abra Gerenciar valores e confira a tela simplificada.
+7. Se necessário, pressione Ctrl + F5 uma vez.

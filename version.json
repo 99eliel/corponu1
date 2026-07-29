@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-29-sugestoes-sutia-calcinha-1",
-  "updatedAt": "2026-07-29T08:20:00-03:00",
-  "notes": "Controle separado de sugestões de fases para Sutiã e Calcinha na aba Usuários, sem MutationObserver adicional."
+  "version": "2026-07-29-gerenciar-valores-organizado-seguro-1",
+  "updatedAt": "2026-07-29T08:35:00-03:00",
+  "notes": "Mantém a interface organizada de Pagamentos e simplifica Gerenciar valores sem MutationObserver novo; importações retiradas da tela."
 }

@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-sugestoes-sutia-calcinha-1";
+  const APP_VERSION = "2026-07-29-gerenciar-valores-organizado-seguro-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -7642,8 +7642,299 @@
   }
 
 
+
+
+  // =========================================================
+  // GERENCIAR VALORES — INTERFACE ORGANIZADA E SEGURA
+  // Aplicação pontual, sem MutationObserver e sem alterar a lógica financeira.
+  // =========================================================
+  function injetarEstilosGerenciarValoresOrganizado() {
+    if (document.getElementById("styleGerenciarValoresOrganizadoSeguro")) return;
+
+    const style = document.createElement("style");
+    style.id = "styleGerenciarValoresOrganizadoSeguro";
+    style.textContent = `
+      #painelGerenciarValores.gerenciar-valores-organizado > .panel-header {
+        display: none !important;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .importar-valores-box,
+      #painelGerenciarValores.gerenciar-valores-organizado #painelImportacaoTabelaValoresCorpoNu {
+        display: none !important;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .valores-workspace {
+        display: grid !important;
+        grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) !important;
+        align-items: start !important;
+        gap: 18px !important;
+        max-width: 1500px;
+        margin: 0 auto;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .valores-sidebar {
+        position: sticky;
+        top: 104px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px !important;
+        border: 1px solid #dbe3ee;
+        border-radius: 16px;
+        background: #ffffff;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .valores-main {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-width: 0;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .valores-step-card,
+      #painelGerenciarValores.gerenciar-valores-organizado .valores-step-card.horizontal {
+        margin: 0 !important;
+        padding: 14px 16px !important;
+        border: 1px solid #ddd6fe !important;
+        border-radius: 14px !important;
+        background: #f5f3ff !important;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .valores-toolbox {
+        display: grid;
+        gap: 10px;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .processos-valores-title {
+        margin-top: 2px;
+        padding-top: 12px;
+        border-top: 1px solid #e2e8f0;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .processos-valores-list {
+        max-height: 44vh;
+        overflow: auto;
+        padding-right: 4px;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .valores-cards {
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(120px, 1fr)) !important;
+        gap: 10px !important;
+        margin: 0 !important;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .valores-cards .processo-card {
+        min-height: 86px;
+        padding: 14px !important;
+        border-radius: 14px !important;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .valores-form-organizado {
+        display: grid !important;
+        grid-template-columns: minmax(150px, 0.8fr) minmax(210px, 1.4fr) minmax(150px, 0.8fr) auto !important;
+        align-items: end !important;
+        gap: 12px !important;
+        padding: 18px !important;
+        border: 1px solid #dbe3ee !important;
+        border-radius: 16px !important;
+        background: #ffffff !important;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .valores-form-organizado .actions {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 8px;
+        margin: 0 !important;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .precos-referencia-wrap {
+        max-height: 54vh;
+        overflow: auto;
+        border: 1px solid #dbe3ee;
+        border-radius: 14px;
+        background: #ffffff;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .gerenciar-valores-avancado {
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        background: #ffffff;
+        overflow: hidden;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .gerenciar-valores-avancado > summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 14px 16px;
+        color: #475569;
+        font-size: 13px;
+        font-weight: 800;
+        user-select: none;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .gerenciar-valores-avancado > summary::-webkit-details-marker {
+        display: none;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .gerenciar-valores-avancado > summary::before {
+        content: "▸";
+        display: inline-block;
+        margin-right: 8px;
+        transition: transform .15s ease;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .gerenciar-valores-avancado[open] > summary::before {
+        transform: rotate(90deg);
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .gerenciar-valores-avancado-conteudo {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        padding: 0 14px 14px;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .gerenciar-valores-avancado .valores-novo-processo,
+      #painelGerenciarValores.gerenciar-valores-organizado .gerenciar-valores-avancado .valor-processo-editor {
+        margin: 0 !important;
+        height: 100%;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .gerenciar-valores-intro {
+        max-width: 1500px;
+        margin: 0 auto 16px;
+        padding: 14px 16px;
+        border: 1px solid #bfdbfe;
+        border-radius: 14px;
+        background: #eff6ff;
+        color: #1e3a8a;
+        line-height: 1.45;
+      }
+
+      #painelGerenciarValores.gerenciar-valores-organizado .gerenciar-valores-intro strong {
+        display: block;
+        margin-bottom: 3px;
+        color: #1e40af;
+      }
+
+      @media (max-width: 1050px) {
+        #painelGerenciarValores.gerenciar-valores-organizado .valores-workspace {
+          grid-template-columns: 1fr !important;
+        }
+
+        #painelGerenciarValores.gerenciar-valores-organizado .valores-sidebar {
+          position: static;
+        }
+
+        #painelGerenciarValores.gerenciar-valores-organizado .processos-valores-list {
+          max-height: 240px;
+        }
+
+        #painelGerenciarValores.gerenciar-valores-organizado .valores-form-organizado {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+      }
+
+      @media (max-width: 700px) {
+        #painelGerenciarValores.gerenciar-valores-organizado .valores-cards,
+        #painelGerenciarValores.gerenciar-valores-organizado .gerenciar-valores-avancado-conteudo,
+        #painelGerenciarValores.gerenciar-valores-organizado .valores-form-organizado {
+          grid-template-columns: 1fr !important;
+        }
+
+        #painelGerenciarValores.gerenciar-valores-organizado .valores-form-organizado .actions {
+          flex-wrap: wrap;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function organizarGerenciarValoresUmaVez() {
+    const painel = document.getElementById("painelGerenciarValores");
+    if (!painel) return;
+
+    injetarEstilosGerenciarValoresOrganizado();
+    painel.classList.add("gerenciar-valores-organizado");
+
+    if (!painel.querySelector(".gerenciar-valores-intro")) {
+      const intro = document.createElement("div");
+      intro.className = "gerenciar-valores-intro";
+      intro.innerHTML = `
+        <strong>Gerenciamento simplificado</strong>
+        Escolha um processo, cadastre ou edite o valor da referência e consulte a lista abaixo.
+        As ferramentas de importação foram retiradas desta tela porque os valores já estão cadastrados.
+      `;
+
+      const toolbar = painel.querySelector(".gerenciamento-exclusivo-toolbar");
+      if (toolbar) toolbar.insertAdjacentElement("afterend", intro);
+      else painel.prepend(intro);
+    }
+
+    const etapaCadastro = painel.querySelector(".valores-step-card.horizontal strong");
+    if (etapaCadastro) etapaCadastro.textContent = "2. Cadastrar ou editar valor por referência";
+
+    const textoEtapaCadastro = painel.querySelector(".valores-step-card.horizontal span");
+    if (textoEtapaCadastro) {
+      textoEtapaCadastro.textContent = "Escolha o processo, informe a referência e o valor por peça.";
+    }
+
+    const tituloTabela = document.getElementById("tituloTabelaValores");
+    if (tituloTabela) tituloTabela.textContent = "3. Valores cadastrados";
+
+    const caixaImportacao = painel.querySelector(".importar-valores-box");
+    if (caixaImportacao) {
+      caixaImportacao.hidden = true;
+      caixaImportacao.setAttribute("aria-hidden", "true");
+    }
+
+    document.getElementById("painelImportacaoTabelaValoresCorpoNu")?.remove();
+
+    if (!painel.querySelector(".gerenciar-valores-avancado")) {
+      const criarProcesso = painel.querySelector(".valores-novo-processo");
+      const renomearProcesso = painel.querySelector(".valor-processo-editor");
+      const valoresMain = painel.querySelector(".valores-main");
+
+      if (valoresMain && (criarProcesso || renomearProcesso)) {
+        const detalhes = document.createElement("details");
+        detalhes.className = "gerenciar-valores-avancado";
+        detalhes.innerHTML = `
+          <summary>Opções avançadas: criar ou renomear processo</summary>
+          <div class="gerenciar-valores-avancado-conteudo"></div>
+        `;
+
+        const conteudo = detalhes.querySelector(".gerenciar-valores-avancado-conteudo");
+        if (criarProcesso) conteudo.appendChild(criarProcesso);
+        if (renomearProcesso) conteudo.appendChild(renomearProcesso);
+        valoresMain.prepend(detalhes);
+      }
+    }
+  }
+
+  function iniciarGerenciarValoresOrganizadoSeguro() {
+    organizarGerenciarValoresUmaVez();
+
+    const botaoAbrir = document.getElementById("btnToggleGerenciarValores");
+    if (botaoAbrir && !botaoAbrir.dataset.organizacaoValoresSegura) {
+      botaoAbrir.dataset.organizacaoValoresSegura = "1";
+      botaoAbrir.addEventListener("click", () => {
+        [0, 80, 250].forEach(atraso => setTimeout(organizarGerenciarValoresUmaVez, atraso));
+      });
+    }
+
+    [150, 700, 1600].forEach(atraso => setTimeout(organizarGerenciarValoresUmaVez, atraso));
+  }
+
+
   function iniciarRecursosDaVersao() {
     iniciarTelasExclusivasGerenciamento();
+    iniciarGerenciarValoresOrganizadoSeguro();
     // Instalada primeiro para barrar a ação antes das rotinas antigas de salvamento.
     iniciarTravasDuplicidadeFaccaoPagamento();
     iniciarRevisaoFinalPagamentos();
@@ -7653,7 +7944,6 @@
     iniciarGestaoSugestoesFases();
     iniciarGestaoSugestoesSeparadasSutiaCalcinha();
     iniciarSetasListasManejo();
-    iniciarImportacaoValoresPlanilha();
     iniciarMovimentacoesRegistradasUsuario();
     iniciarEdicaoLocalUsuarios();
     iniciarExibicaoEditarLocalUsuarios();
