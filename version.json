@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-pagamentos-relatorio-pix-auditoria-1",
-  "updatedAt": "2026-07-28T09:10:00-03:00",
-  "notes": "Revisão final da área de pagamentos para apresentação: acrescenta conferência financeira, identifica pagamentos sem valor, possíveis duplicidades e facções sem PIX, impede fechar itens sem valor e substitui a impressão por relatório detalhado por facção com PIX, titular, cidade, telefone, OPs, faltas, descontos e totais. Mantém todas as correções anteriores."
+  "version": "2026-07-29-telas-exclusivas-gerenciamento-1",
+  "updatedAt": "2026-07-29T07:20:00-03:00",
+  "notes": "Gerenciar valores e Gerenciar facções agora abrem em telas exclusivas de página inteira, com botão Voltar e sem misturar o cadastro com pagamentos ou movimentações. Mantém os formulários, eventos, permissões e correções anteriores."
 }

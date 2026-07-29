@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-pagamentos-relatorio-pix-auditoria-1";
+  const APP_VERSION = "2026-07-29-telas-exclusivas-gerenciamento-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -6479,7 +6479,420 @@
     }, 1200);
   }
 
+
+  // =========================================================
+  // HOTFIX: TELAS EXCLUSIVAS DE GERENCIAMENTO
+  // - Gerenciar valores abre como uma tela própria sobre Pagamentos.
+  // - Gerenciar facções abre como uma tela própria sobre Facções.
+  // - Preserva os painéis, formulários, IDs e eventos originais do app.js.
+  // =========================================================
+  const TELAS_EXCLUSIVAS_GERENCIAMENTO = Object.freeze({
+    valores: {
+      painelId: "painelGerenciarValores",
+      botaoId: "btnToggleGerenciarValores",
+      botaoFecharId: "btnFecharGerenciarValores",
+      titulo: "Gerenciar valores",
+      subtitulo: "Cadastre e organize valores por referência e processo sem misturar com o fechamento de pagamentos.",
+      voltar: "Voltar para pagamentos",
+      textoBotaoPrincipal: "Gerenciar valores"
+    },
+    faccoes: {
+      painelId: "painelGerenciarFaccoes",
+      botaoId: "btnToggleGerenciarFaccoes",
+      botaoFecharId: "",
+      titulo: "Gerenciar facções",
+      subtitulo: "Cadastre, edite e organize as facções em uma área separada da movimentação operacional.",
+      voltar: "Voltar para facções",
+      textoBotaoPrincipal: "Gerenciar facções"
+    }
+  });
+
+  let telaExclusivaGerenciamentoAtiva = "";
+  let observerTelasExclusivasGerenciamento = null;
+  let overflowAnteriorTelaExclusiva = "";
+
+  function injetarEstilosTelasExclusivasGerenciamento() {
+    if (document.getElementById("styleTelasExclusivasGerenciamento")) return;
+
+    const style = document.createElement("style");
+    style.id = "styleTelasExclusivasGerenciamento";
+    style.textContent = `
+      body.gerenciamento-exclusivo-aberto {
+        overflow: hidden !important;
+      }
+
+      #painelGerenciarValores.painel-tela-exclusiva-ativo,
+      #painelGerenciarFaccoes.painel-tela-exclusiva-ativo {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 100000 !important;
+        display: block !important;
+        width: 100vw !important;
+        max-width: none !important;
+        height: 100vh !important;
+        max-height: none !important;
+        margin: 0 !important;
+        padding: 0 24px 40px !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: #f8fafc !important;
+        box-shadow: none !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+      }
+
+      .gerenciamento-exclusivo-toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 16px;
+        min-height: 82px;
+        margin: 0 -24px 22px;
+        padding: 14px 24px;
+        border-bottom: 1px solid #dbe3ee;
+        background: rgba(248, 250, 252, 0.97);
+        backdrop-filter: blur(12px);
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.07);
+      }
+
+      .gerenciamento-exclusivo-toolbar .btn-voltar-gerenciamento {
+        min-width: 150px;
+        min-height: 42px;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 10px 14px;
+        background: #ffffff;
+        color: #0f172a;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .gerenciamento-exclusivo-toolbar .btn-voltar-gerenciamento:hover {
+        background: #f1f5f9;
+      }
+
+      .gerenciamento-exclusivo-titulo {
+        min-width: 0;
+      }
+
+      .gerenciamento-exclusivo-titulo strong {
+        display: block;
+        color: #0f172a;
+        font-size: 22px;
+        line-height: 1.15;
+      }
+
+      .gerenciamento-exclusivo-titulo span {
+        display: block;
+        margin-top: 4px;
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      #painelGerenciarValores.painel-tela-exclusiva-ativo > .panel-header,
+      #painelGerenciarFaccoes.painel-tela-exclusiva-ativo > .panel-subheader {
+        margin-top: 0 !important;
+      }
+
+      #painelGerenciarValores.painel-tela-exclusiva-ativo .valores-workspace,
+      #painelGerenciarFaccoes.painel-tela-exclusiva-ativo .table-wrap {
+        width: 100%;
+      }
+
+      @media (max-width: 780px) {
+        #painelGerenciarValores.painel-tela-exclusiva-ativo,
+        #painelGerenciarFaccoes.painel-tela-exclusiva-ativo {
+          padding: 0 12px 28px !important;
+        }
+
+        .gerenciamento-exclusivo-toolbar {
+          grid-template-columns: 1fr;
+          gap: 10px;
+          margin: 0 -12px 16px;
+          padding: 12px;
+        }
+
+        .gerenciamento-exclusivo-toolbar .btn-voltar-gerenciamento {
+          width: 100%;
+        }
+
+        .gerenciamento-exclusivo-titulo strong {
+          font-size: 19px;
+        }
+      }
+
+      @media print {
+        .gerenciamento-exclusivo-toolbar {
+          display: none !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function getConfiguracaoTelaExclusivaPorPainel(painel) {
+    if (!painel) return null;
+    return Object.entries(TELAS_EXCLUSIVAS_GERENCIAMENTO)
+      .find(([, config]) => config.painelId === painel.id) || null;
+  }
+
+  function garantirToolbarTelaExclusiva(chave, config, painel) {
+    let toolbar = painel.querySelector(":scope > .gerenciamento-exclusivo-toolbar");
+    if (!toolbar) {
+      toolbar = document.createElement("div");
+      toolbar.className = "gerenciamento-exclusivo-toolbar";
+      toolbar.innerHTML = `
+        <button class="btn-voltar-gerenciamento" type="button"></button>
+        <div class="gerenciamento-exclusivo-titulo">
+          <strong></strong>
+          <span></span>
+        </div>
+      `;
+      painel.insertBefore(toolbar, painel.firstChild);
+    }
+
+    const botaoVoltar = toolbar.querySelector(".btn-voltar-gerenciamento");
+    const titulo = toolbar.querySelector("strong");
+    const subtitulo = toolbar.querySelector("span");
+
+    if (botaoVoltar) {
+      botaoVoltar.textContent = `← ${config.voltar}`;
+      botaoVoltar.dataset.fecharTelaGerenciamento = chave;
+    }
+    if (titulo) titulo.textContent = config.titulo;
+    if (subtitulo) subtitulo.textContent = config.subtitulo;
+
+    return toolbar;
+  }
+
+  function abrirTelaExclusivaGerenciamento(chave, opcoes = {}) {
+    const config = TELAS_EXCLUSIVAS_GERENCIAMENTO[chave];
+    if (!config) return false;
+
+    const painel = document.getElementById(config.painelId);
+    if (!painel) return false;
+
+    if (
+      telaExclusivaGerenciamentoAtiva &&
+      telaExclusivaGerenciamentoAtiva !== chave
+    ) {
+      fecharTelaExclusivaGerenciamento(telaExclusivaGerenciamentoAtiva, {
+        manterFoco: false
+      });
+    }
+
+    injetarEstilosTelasExclusivasGerenciamento();
+    garantirToolbarTelaExclusiva(chave, config, painel);
+
+    painel.classList.remove("hidden");
+    painel.classList.add("painel-tela-exclusiva-ativo");
+    painel.setAttribute("role", "dialog");
+    painel.setAttribute("aria-modal", "true");
+    painel.setAttribute("aria-label", config.titulo);
+
+    if (!document.body.classList.contains("gerenciamento-exclusivo-aberto")) {
+      overflowAnteriorTelaExclusiva = document.body.style.overflow || "";
+    }
+    document.body.classList.add("gerenciamento-exclusivo-aberto");
+    document.body.style.overflow = "hidden";
+
+    telaExclusivaGerenciamentoAtiva = chave;
+
+    const botaoPrincipal = document.getElementById(config.botaoId);
+    if (botaoPrincipal) {
+      botaoPrincipal.textContent = config.textoBotaoPrincipal;
+      botaoPrincipal.setAttribute("aria-expanded", "true");
+    }
+
+    if (config.botaoFecharId) {
+      const botaoFecharOriginal = document.getElementById(config.botaoFecharId);
+      if (botaoFecharOriginal) {
+        botaoFecharOriginal.textContent = config.voltar;
+        botaoFecharOriginal.title = config.voltar;
+      }
+    }
+
+    if (opcoes.rolarTopo !== false) {
+      painel.scrollTop = 0;
+    }
+
+    setTimeout(() => {
+      painel.querySelector(".btn-voltar-gerenciamento")?.focus({ preventScroll: true });
+    }, 40);
+
+    return true;
+  }
+
+  function fecharTelaExclusivaGerenciamento(chave = telaExclusivaGerenciamentoAtiva, opcoes = {}) {
+    const config = TELAS_EXCLUSIVAS_GERENCIAMENTO[chave];
+    if (!config) return false;
+
+    const painel = document.getElementById(config.painelId);
+    if (painel) {
+      painel.classList.remove("painel-tela-exclusiva-ativo");
+      painel.classList.add("hidden");
+      painel.removeAttribute("role");
+      painel.removeAttribute("aria-modal");
+      painel.removeAttribute("aria-label");
+    }
+
+    const botaoPrincipal = document.getElementById(config.botaoId);
+    if (botaoPrincipal) {
+      botaoPrincipal.textContent = config.textoBotaoPrincipal;
+      botaoPrincipal.setAttribute("aria-expanded", "false");
+    }
+
+    if (config.botaoFecharId) {
+      const botaoFecharOriginal = document.getElementById(config.botaoFecharId);
+      if (botaoFecharOriginal) {
+        botaoFecharOriginal.textContent = "Ocultar valores";
+        botaoFecharOriginal.title = "";
+      }
+    }
+
+    if (telaExclusivaGerenciamentoAtiva === chave) {
+      telaExclusivaGerenciamentoAtiva = "";
+    }
+
+    const aindaAberta = Object.values(TELAS_EXCLUSIVAS_GERENCIAMENTO).some(item => {
+      return document.getElementById(item.painelId)?.classList.contains("painel-tela-exclusiva-ativo");
+    });
+
+    if (!aindaAberta) {
+      document.body.classList.remove("gerenciamento-exclusivo-aberto");
+      document.body.style.overflow = overflowAnteriorTelaExclusiva;
+    }
+
+    if (opcoes.manterFoco !== false) {
+      setTimeout(() => botaoPrincipal?.focus({ preventScroll: true }), 20);
+    }
+
+    return true;
+  }
+
+  function sincronizarPainelComoTelaExclusiva(chave) {
+    const config = TELAS_EXCLUSIVAS_GERENCIAMENTO[chave];
+    const painel = config ? document.getElementById(config.painelId) : null;
+    if (!painel) return;
+
+    if (!painel.classList.contains("hidden")) {
+      abrirTelaExclusivaGerenciamento(chave, { rolarTopo: false });
+    }
+  }
+
+  function instalarEventosTelasExclusivasGerenciamento() {
+    if (document.__eventosTelasExclusivasGerenciamentoInstalados) return;
+    document.__eventosTelasExclusivasGerenciamentoInstalados = true;
+
+    document.addEventListener("click", event => {
+      const alvo = event.target?.closest?.(
+        "#btnToggleGerenciarValores, #btnToggleGerenciarFaccoes"
+      );
+      if (!alvo) return;
+
+      const chave = alvo.id === "btnToggleGerenciarValores" ? "valores" : "faccoes";
+
+      // O listener original do app.js abre e prepara o painel primeiro.
+      // Em seguida, transformamos o mesmo painel em uma tela exclusiva.
+      setTimeout(() => sincronizarPainelComoTelaExclusiva(chave), 0);
+    });
+
+    document.addEventListener("click", event => {
+      const botaoVoltar = event.target?.closest?.("[data-fechar-tela-gerenciamento]");
+      if (botaoVoltar) {
+        event.preventDefault();
+        event.stopPropagation();
+        fecharTelaExclusivaGerenciamento(
+          botaoVoltar.dataset.fecharTelaGerenciamento || telaExclusivaGerenciamentoAtiva
+        );
+        return;
+      }
+
+      const fecharValores = event.target?.closest?.("#btnFecharGerenciarValores");
+      if (fecharValores && telaExclusivaGerenciamentoAtiva === "valores") {
+        setTimeout(() => fecharTelaExclusivaGerenciamento("valores"), 0);
+      }
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key !== "Escape" || !telaExclusivaGerenciamentoAtiva) return;
+      event.preventDefault();
+      fecharTelaExclusivaGerenciamento(telaExclusivaGerenciamentoAtiva);
+    });
+  }
+
+  function instalarObserverTelasExclusivasGerenciamento() {
+    if (observerTelasExclusivasGerenciamento) return;
+
+    observerTelasExclusivasGerenciamento = new MutationObserver(mutations => {
+      mutations.forEach(mutation => {
+        const painel = mutation.target;
+        const entrada = getConfiguracaoTelaExclusivaPorPainel(painel);
+        if (!entrada) return;
+
+        const [chave] = entrada;
+        if (
+          !painel.classList.contains("hidden") &&
+          !painel.classList.contains("painel-tela-exclusiva-ativo")
+        ) {
+          setTimeout(() => abrirTelaExclusivaGerenciamento(chave, {
+            rolarTopo: false
+          }), 0);
+        }
+
+        if (
+          painel.classList.contains("hidden") &&
+          painel.classList.contains("painel-tela-exclusiva-ativo")
+        ) {
+          painel.classList.remove("painel-tela-exclusiva-ativo");
+          if (telaExclusivaGerenciamentoAtiva === chave) {
+            telaExclusivaGerenciamentoAtiva = "";
+            document.body.classList.remove("gerenciamento-exclusivo-aberto");
+            document.body.style.overflow = overflowAnteriorTelaExclusiva;
+          }
+        }
+      });
+    });
+
+    Object.values(TELAS_EXCLUSIVAS_GERENCIAMENTO).forEach(config => {
+      const painel = document.getElementById(config.painelId);
+      if (painel) {
+        observerTelasExclusivasGerenciamento.observe(painel, {
+          attributes: true,
+          attributeFilter: ["class"]
+        });
+      }
+    });
+  }
+
+  function iniciarTelasExclusivasGerenciamento() {
+    injetarEstilosTelasExclusivasGerenciamento();
+    instalarEventosTelasExclusivasGerenciamento();
+    instalarObserverTelasExclusivasGerenciamento();
+
+    Object.entries(TELAS_EXCLUSIVAS_GERENCIAMENTO).forEach(([chave, config]) => {
+      const painel = document.getElementById(config.painelId);
+      const botao = document.getElementById(config.botaoId);
+
+      if (painel && !painel.classList.contains("hidden")) {
+        abrirTelaExclusivaGerenciamento(chave, { rolarTopo: false });
+      }
+
+      if (botao) {
+        botao.setAttribute("aria-haspopup", "dialog");
+        botao.setAttribute("aria-expanded", "false");
+        botao.title = `${config.titulo} em uma tela exclusiva`;
+      }
+    });
+  }
+
   function iniciarRecursosDaVersao() {
+    iniciarTelasExclusivasGerenciamento();
     // Instalada primeiro para barrar a ação antes das rotinas antigas de salvamento.
     iniciarTravasDuplicidadeFaccaoPagamento();
     iniciarRevisaoFinalPagamentos();
