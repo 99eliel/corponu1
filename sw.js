@@ -1,11 +1,11 @@
-const APP_VERSION = "2026-07-29-calcinha-fase-nao-desaparece-1";
+const APP_VERSION = "2026-07-29-sutia-valor-total-manual-op-1";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 
 const CORE_ASSETS = [
   "./index.html",
   "./style.css?v=2026-07-27-resgate-chegada-manual-faccao-1",
   "./app.js?v=2026-07-27-resgate-chegada-manual-faccao-1",
-  "./update.js?v=2026-07-29-calcinha-fase-nao-desaparece-1",
+  "./update.js?v=2026-07-29-sutia-valor-total-manual-op-1",
   "./corponu-dual-mode.js?v=2026-07-28-pagamentos-relatorio-pix-auditoria-1",
   "./corponu-auditoria-op.js?v=2026-07-28-pagamentos-relatorio-pix-auditoria-1",
   "./calcinhas-historico-2026.json?v=2026-07-28-pagamentos-relatorio-pix-auditoria-1",

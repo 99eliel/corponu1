@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-calcinha-fase-nao-desaparece-1";
+  const APP_VERSION = "2026-07-29-sutia-valor-total-manual-op-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -2936,6 +2936,12 @@
           quantidade,
           falta: numeroSeguroMovUsuario(mov.falta),
           descontoDefeito,
+          lateralPronta: mov.lateralPronta ?? mov.lateralProntaChegada ?? null,
+          bojoPronto: mov.bojoPronto ?? mov.bojoProntoChegada ?? null,
+          lateralProntaEnvio: mov.lateralProntaEnvio ?? null,
+          bojoProntoEnvio: mov.bojoProntoEnvio ?? null,
+          lateralProntaChegada: mov.lateralProntaChegada ?? mov.lateralPronta ?? null,
+          bojoProntoChegada: mov.bojoProntoChegada ?? mov.bojoPronto ?? null,
           subtotal: 0,
           valorUnitario: 0,
           total: 0,
@@ -2979,6 +2985,12 @@
         quantidade,
         falta: numeroSeguroMovUsuario(mov.falta),
         descontoDefeito,
+        lateralPronta: mov.lateralPronta ?? mov.lateralProntaChegada ?? null,
+        bojoPronto: mov.bojoPronto ?? mov.bojoProntoChegada ?? null,
+        lateralProntaEnvio: mov.lateralProntaEnvio ?? null,
+        bojoProntoEnvio: mov.bojoProntoEnvio ?? null,
+        lateralProntaChegada: mov.lateralProntaChegada ?? mov.lateralPronta ?? null,
+        bojoProntoChegada: mov.bojoProntoChegada ?? mov.bojoPronto ?? null,
         subtotal,
         valorUnitario,
         total,
@@ -5752,7 +5764,22 @@
     return texto || "-";
   }
 
+  function processoValorTotalManualFinanceiro(valor) {
+    const processo = normalizarNomePagamentoFinal(valor);
+    return processo === "SUTIA MONTAGEM" || processo === "SUTIA COMPLETO";
+  }
+
+  function pagamentoAguardandoValorTotalManual(item) {
+    if (!processoValorTotalManualFinanceiro(item?.processo || item?.servicoNome || item?.processoMovimentacao)) {
+      return false;
+    }
+    const statusSalvo = String(item?.statusPagamento || "pendente").toLowerCase();
+    if (statusSalvo === "pago") return false;
+    return item?.valorTotalDefinidoManualmente !== true;
+  }
+
   function statusPagamentoFinal(item) {
+    if (pagamentoAguardandoValorTotalManual(item)) return "sem_valor";
     if (item?.valorPendente === true || String(item?.statusPagamento || "") === "sem_valor") {
       return "sem_valor";
     }
@@ -5835,9 +5862,16 @@
     );
     const perfil = perfilSnap.exists() ? perfilSnap.data() : {};
     const ehAdminAtivo = perfil?.tipo === "admin" && perfil?.ativo === true;
+    const podeOrganizarFinanceiro = Boolean(
+      perfil?.ativo === true && (
+        ehAdminAtivo ||
+        perfil?.permissoes?.recursos?.gerenciarValores === true ||
+        perfil?.permissoes?.recursos?.marcarPagamentos === true
+      )
+    );
 
     const pagamentosRef = firestore.collection(db, "entregasPagamento");
-    const consultaPagamentos = ehAdminAtivo
+    const consultaPagamentos = podeOrganizarFinanceiro
       ? pagamentosRef
       : firestore.query(pagamentosRef, firestore.where("criadoPor", "==", usuario.uid));
 
@@ -5851,7 +5885,8 @@
       pagamentos: pagamentosSnap.docs.map(item => ({ id: item.id, ...item.data() })),
       faccoes: faccoesSnap.docs.map(item => ({ id: item.id, ...item.data() })),
       usuarioUid: usuario.uid,
-      ehAdmin: ehAdminAtivo
+      ehAdmin: ehAdminAtivo,
+      podeOrganizarFinanceiro
     };
     return cachePagamentoFinal;
   }
@@ -6015,7 +6050,7 @@
       <div class="pagamento-final-cards">
         <div class="pagamento-final-card"><span>Itens filtrados</span><strong id="confPagamentoItens">0</strong></div>
         <div class="pagamento-final-card"><span>Total filtrado</span><strong id="confPagamentoTotal">R$ 0,00</strong></div>
-        <div class="pagamento-final-card alerta"><span>Sem valor na base</span><strong id="confPagamentoSemValor">0</strong></div>
+        <div class="pagamento-final-card alerta"><span>Aguardando valor</span><strong id="confPagamentoSemValor">0</strong></div>
         <div class="pagamento-final-card alerta"><span>Facções sem PIX</span><strong id="confPagamentoSemPix">0</strong></div>
         <div class="pagamento-final-card erro"><span>Possíveis duplicidades</span><strong id="confPagamentoDuplicados">0</strong></div>
       </div>
@@ -6045,7 +6080,7 @@
         const cadastro = dadosCadastroFaccaoPagamentoFinal(nome, dados.faccoes);
         return !cadastro.chavePix;
       });
-      const total = filtrados.reduce((soma, item) => soma + Number(item.total || 0), 0);
+      const total = filtrados.reduce((soma, item) => soma + (statusPagamentoFinal(item) === "sem_valor" ? 0 : Number(item.total || 0)), 0);
 
       setTextoPagamentoFinal("confPagamentoItens", filtrados.length.toLocaleString("pt-BR"));
       setTextoPagamentoFinal("confPagamentoTotal", formatarMoedaPagamentoFinal(total));
@@ -6055,7 +6090,7 @@
 
       const avisos = [];
       if (semValorBase.length) {
-        avisos.push(`${semValorBase.length} pagamento(s) estão sem valor cadastrado. Use o filtro “Pendentes sem valor” antes de fechar o período.`);
+        avisos.push(`${semValorBase.length} pagamento(s) aguardam definição de valor. Para Sutiã Montagem e Sutiã Completo, informe diretamente o valor total final da OP.`);
       }
       if (semPix.length) {
         avisos.push(`Sem PIX cadastrado no filtro atual: ${semPix.slice(0, 8).join(", ")}${semPix.length > 8 ? "..." : ""}.`);
@@ -6107,14 +6142,21 @@
         const status = statusPagamentoFinal(item);
         if (status !== "sem_valor") return;
 
+        const valorTotalManual = pagamentoAguardandoValorTotalManual(item);
         const badge = linha.querySelector(".badge");
         if (badge) {
-          badge.textContent = "Sem valor";
+          badge.textContent = valorTotalManual ? "Aguardando financeiro" : "Sem valor";
           badge.classList.add("badge-pagamento-sem-valor");
         }
+        if (valorTotalManual && linha.children?.[6]) {
+          linha.children[6].innerHTML = "<strong>A definir</strong>";
+          linha.children[6].title = "O financeiro informará o valor total final desta OP.";
+        }
         if (botao) {
-          botao.textContent = "Cadastrar valor";
-          botao.title = "Cadastre o valor da referência e processo antes de pagar.";
+          botao.textContent = valorTotalManual ? "Informar valor" : "Cadastrar valor";
+          botao.title = valorTotalManual
+            ? "Informe o valor total final calculado pelo financeiro para esta OP."
+            : "Cadastre o valor da referência e processo antes de pagar.";
           botao.classList.remove("btn-success");
           botao.classList.add("btn-warning");
         }
@@ -6193,21 +6235,24 @@
         const pecasFaccao = itens.reduce((soma, item) => soma + Number(item.quantidade || 0), 0);
         const linhas = itens.map(item => {
           const status = statusPagamentoFinal(item);
+          const aguardandoValorManual = pagamentoAguardandoValorTotalManual(item);
           const subtotal = Number(item.subtotal ?? (Number(item.quantidade || 0) * Number(item.valorUnitario || 0)));
           const desconto = Number(item.descontoDefeito || 0);
+          const componentes = textoComponentesSutiaPagamento(item);
           return `
             <tr class="${status === "sem_valor" ? "sem-valor" : ""}">
               <td>${escapeHtmlPagamentoFinal(dataPagamentoFinalBR(item.dataEntrega))}</td>
               <td><strong>${escapeHtmlPagamentoFinal(item.numeroOP || "-")}</strong></td>
               <td>${escapeHtmlPagamentoFinal(item.referencia || "-")}</td>
               <td>${escapeHtmlPagamentoFinal(item.processo || item.servicoNome || "-")}${item.pagamentoReenvio ? `<br><small>Reenvio</small>` : ""}</td>
+              <td>${componentes ? escapeHtmlPagamentoFinal(componentes) : "-"}</td>
               <td class="num">${formatarNumeroPagamentoFinal(item.quantidade)}</td>
               <td class="num">${formatarNumeroPagamentoFinal(item.falta)}</td>
-              <td class="num">${formatarMoedaPagamentoFinal(item.valorUnitario)}</td>
-              <td class="num">${formatarMoedaPagamentoFinal(subtotal)}</td>
+              <td class="num">${aguardandoValorManual ? "-" : formatarMoedaPagamentoFinal(item.valorUnitario)}</td>
+              <td class="num">${aguardandoValorManual ? "-" : formatarMoedaPagamentoFinal(subtotal)}</td>
               <td class="num">${formatarMoedaPagamentoFinal(desconto)}</td>
-              <td class="num"><strong>${formatarMoedaPagamentoFinal(item.total)}</strong></td>
-              <td>${status === "pago" ? "Pago" : status === "sem_valor" ? "SEM VALOR" : "Pendente"}</td>
+              <td class="num"><strong>${aguardandoValorManual ? "A DEFINIR" : formatarMoedaPagamentoFinal(item.total)}</strong></td>
+              <td>${status === "pago" ? "Pago" : aguardandoValorManual ? "AGUARDANDO FINANCEIRO" : status === "sem_valor" ? "SEM VALOR" : "Pendente"}</td>
             </tr>
           `;
         }).join("");
@@ -6236,7 +6281,7 @@
             <table>
               <thead>
                 <tr>
-                  <th>Data</th><th>OP</th><th>Ref.</th><th>Processo</th><th>Qtd.</th><th>Falta</th>
+                  <th>Data</th><th>OP</th><th>Ref.</th><th>Processo</th><th>Componentes</th><th>Qtd.</th><th>Falta</th>
                   <th>Valor unit.</th><th>Subtotal</th><th>Desconto</th><th>Total</th><th>Status</th>
                 </tr>
               </thead>
@@ -6445,6 +6490,10 @@
       const statusAtual = statusPagamentoFinal(item);
 
       if (statusAtual === "sem_valor") {
+        if (pagamentoAguardandoValorTotalManual(item)) {
+          abrirModalValorTotalManual(id);
+          return;
+        }
         mostrarAvisoFormulario(`Pagamento da OP ${item.numeroOP || "-"} bloqueado: cadastre o valor de ${item.referencia || "-"} + ${item.processo || item.servicoNome || "processo"} antes de pagar.`);
         return;
       }
@@ -6505,9 +6554,272 @@
     }
   }
 
+  function numeroMoedaBRValorManual(valor) {
+    let texto = String(valor ?? '').trim().replace(/\s/g, '').replace(/R\$/gi, '');
+    if (!texto) return 0;
+    if (texto.includes(',')) {
+      texto = texto.replace(/\./g, '').replace(',', '.');
+    } else {
+      texto = texto.replace(/[^0-9.-]/g, '');
+    }
+    const numero = Number(texto);
+    return Number.isFinite(numero) ? numero : 0;
+  }
+
+  function injetarModalValorTotalManual() {
+    if (document.getElementById('modalValorTotalManualOP')) return;
+    const modal = document.createElement('div');
+    modal.id = 'modalValorTotalManualOP';
+    modal.className = 'modal hidden';
+    modal.innerHTML = `
+      <div class="modal-content valor-total-manual-modal">
+        <div class="modal-header">
+          <div>
+            <h3>Informar valor total da OP</h3>
+            <p>Use o valor final calculado pelo financeiro para esta ordem de produção.</p>
+          </div>
+          <button type="button" class="icon-btn" id="btnFecharValorTotalManual" aria-label="Fechar">×</button>
+        </div>
+        <form id="formValorTotalManualOP">
+          <input type="hidden" id="valorTotalManualPagamentoId" />
+          <div id="resumoValorTotalManualOP" class="valor-total-manual-resumo"></div>
+          <label class="field">
+            <span>Valor total final do pagamento</span>
+            <input id="valorTotalManualOP" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: 500,00" required />
+            <small>Digite somente o valor final da OP, já considerando falta, desconto, lateral e bojo.</small>
+          </label>
+          <div class="valor-total-manual-alerta">
+            Este valor será salvo diretamente no pagamento desta OP. Ele não será cadastrado como preço padrão da referência.
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn" id="btnCancelarValorTotalManual">Cancelar</button>
+            <button type="submit" class="btn btn-success" id="btnSalvarValorTotalManual">Salvar valor</button>
+          </div>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    if (!document.getElementById('styleValorTotalManualOP')) {
+      const style = document.createElement('style');
+      style.id = 'styleValorTotalManualOP';
+      style.textContent = `
+        .valor-total-manual-modal { max-width: 620px; width: min(620px, calc(100vw - 28px)); }
+        .valor-total-manual-modal .modal-header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
+        .valor-total-manual-modal .modal-header h3 { margin:0; }
+        .valor-total-manual-modal .modal-header p { margin:5px 0 0; color:#64748b; font-size:13px; }
+        .valor-total-manual-resumo { margin:14px 0; padding:13px; border:1px solid #cbd5e1; border-radius:12px; background:#f8fafc; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+        .valor-total-manual-resumo div { min-width:0; }
+        .valor-total-manual-resumo span { display:block; color:#64748b; font-size:11px; font-weight:800; text-transform:uppercase; }
+        .valor-total-manual-resumo strong { display:block; margin-top:3px; overflow-wrap:anywhere; }
+        .valor-total-manual-modal #valorTotalManualOP { min-height:50px; font-size:22px; font-weight:900; }
+        .valor-total-manual-alerta { margin:12px 0; padding:10px 12px; border:1px solid #fbbf24; background:#fffbeb; color:#92400e; border-radius:10px; font-size:12px; font-weight:700; }
+        @media (max-width:600px) { .valor-total-manual-resumo { grid-template-columns:1fr; } }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+
+  function fecharModalValorTotalManual() {
+    document.getElementById('modalValorTotalManualOP')?.classList.add('hidden');
+    const form = document.getElementById('formValorTotalManualOP');
+    if (form) form.reset();
+    const id = document.getElementById('valorTotalManualPagamentoId');
+    if (id) id.value = '';
+  }
+
+  async function perfilPodeInformarValorTotalManual(contexto) {
+    const usuario = contexto.auth.currentUser;
+    if (!usuario) return { ok: false, usuario: null, perfil: null };
+    const snap = await contexto.firestore.getDoc(contexto.firestore.doc(contexto.db, 'usuarios', usuario.uid));
+    const perfil = snap.exists() ? snap.data() : null;
+    const ok = Boolean(
+      perfil?.ativo === true && (
+        perfil?.tipo === 'admin' ||
+        perfil?.permissoes?.recursos?.gerenciarValores === true ||
+        perfil?.permissoes?.recursos?.marcarPagamentos === true
+      )
+    );
+    return { ok, usuario, perfil };
+  }
+
+  async function abrirModalValorTotalManual(id) {
+    try {
+      injetarModalValorTotalManual();
+      const contexto = await obterContextoTravasDuplicidade();
+      const acesso = await perfilPodeInformarValorTotalManual(contexto);
+      if (!acesso.ok) {
+        mostrarAvisoFormulario('Seu usuário não possui permissão para definir valores financeiros.');
+        return;
+      }
+      const ref = contexto.firestore.doc(contexto.db, 'entregasPagamento', id);
+      const snap = await contexto.firestore.getDoc(ref);
+      if (!snap.exists()) {
+        mostrarAvisoFormulario('Pagamento não encontrado. Atualize a tela e tente novamente.');
+        return;
+      }
+      const item = { id: snap.id, ...snap.data() };
+      if (!processoValorTotalManualFinanceiro(item.processo || item.servicoNome || item.processoMovimentacao)) {
+        mostrarAvisoFormulario('Este pagamento utiliza a tabela normal de valores por referência.');
+        return;
+      }
+      if (String(item.statusPagamento || '').toLowerCase() === 'pago') {
+        mostrarAvisoFormulario('Este pagamento já foi quitado e não pode ter o valor alterado.');
+        return;
+      }
+
+      document.getElementById('valorTotalManualPagamentoId').value = id;
+      const input = document.getElementById('valorTotalManualOP');
+      if (input) {
+        input.value = item.valorTotalDefinidoManualmente === true && Number(item.total || 0) > 0
+          ? Number(item.total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          : '';
+      }
+      const resumo = document.getElementById('resumoValorTotalManualOP');
+      if (resumo) {
+        resumo.innerHTML = `
+          <div><span>OP</span><strong>${escapeHtmlPagamentoFinal(item.numeroOP || '-')}</strong></div>
+          <div><span>Facção</span><strong>${escapeHtmlPagamentoFinal(item.faccao || '-')}</strong></div>
+          <div><span>Processo</span><strong>${escapeHtmlPagamentoFinal(item.processo || item.servicoNome || '-')}</strong></div>
+          <div><span>Referência</span><strong>${escapeHtmlPagamentoFinal(item.referencia || '-')}</strong></div>
+          <div><span>Quantidade recebida</span><strong>${Number(item.quantidade || 0).toLocaleString('pt-BR')}</strong></div>
+          <div><span>Falta</span><strong>${Number(item.falta || 0).toLocaleString('pt-BR')}</strong></div>
+          <div><span>Desconto registrado</span><strong>${formatarMoedaPagamentoFinal(item.descontoDefeito || 0)}</strong></div>
+          <div><span>Componentes</span><strong>${escapeHtmlPagamentoFinal(textoComponentesSutiaPagamento(item) || '-')}</strong></div>
+        `;
+      }
+      document.getElementById('modalValorTotalManualOP')?.classList.remove('hidden');
+      setTimeout(() => input?.focus(), 80);
+    } catch (error) {
+      console.error('Erro ao abrir valor total manual.', error);
+      mostrarAvisoFormulario('Não foi possível abrir o pagamento para edição.');
+    }
+  }
+
+  async function salvarValorTotalManual(event) {
+    event.preventDefault();
+    const id = String(document.getElementById('valorTotalManualPagamentoId')?.value || '');
+    const input = document.getElementById('valorTotalManualOP');
+    const valorTotal = numeroMoedaBRValorManual(input?.value);
+    if (!id) {
+      mostrarAvisoFormulario('Pagamento não identificado. Feche e abra novamente.');
+      return;
+    }
+    if (!(valorTotal > 0)) {
+      mostrarAvisoFormulario('Informe um valor total maior que zero.');
+      input?.focus();
+      return;
+    }
+
+    const botao = document.getElementById('btnSalvarValorTotalManual');
+    if (botao?.disabled) return;
+    if (botao) {
+      botao.disabled = true;
+      botao.dataset.textoOriginal = botao.textContent;
+      botao.textContent = 'Salvando...';
+    }
+
+    try {
+      const contexto = await obterContextoTravasDuplicidade();
+      const acesso = await perfilPodeInformarValorTotalManual(contexto);
+      if (!acesso.ok) throw Object.assign(new Error('Sem permissão financeira.'), { code: 'permission-denied' });
+      const ref = contexto.firestore.doc(contexto.db, 'entregasPagamento', id);
+      let dadosLog = null;
+
+      await contexto.firestore.runTransaction(contexto.db, async transacao => {
+        const snap = await transacao.get(ref);
+        if (!snap.exists()) throw new Error('Pagamento não encontrado.');
+        const item = snap.data();
+        if (!processoValorTotalManualFinanceiro(item.processo || item.servicoNome || item.processoMovimentacao)) {
+          throw new Error('Processo não utiliza valor total manual.');
+        }
+        if (String(item.statusPagamento || '').toLowerCase() === 'pago') {
+          throw new Error('Pagamento já quitado.');
+        }
+        const quantidade = Math.max(0, Number(item.quantidade || 0));
+        const desconto = Math.max(0, Number(item.descontoDefeito || 0));
+        const subtotalContabil = valorTotal + desconto;
+        const valorUnitarioCalculado = quantidade > 0 ? subtotalContabil / quantidade : 0;
+
+        transacao.set(ref, {
+          total: valorTotal,
+          subtotal: subtotalContabil,
+          valorUnitario: valorUnitarioCalculado,
+          statusPagamento: 'pendente',
+          valorPendente: false,
+          valorManualFinanceiroPendente: false,
+          valorManualFinanceiro: true,
+          valorTotalDefinidoManualmente: true,
+          valorTotalManual: valorTotal,
+          formaValorPagamento: 'total_manual_op',
+          motivoValorPendente: '',
+          avisoPagamento: '',
+          valorInformadoPor: acesso.usuario.uid,
+          valorInformadoEm: contexto.firestore.serverTimestamp(),
+          atualizadoPor: acesso.usuario.uid,
+          atualizadoEm: contexto.firestore.serverTimestamp(),
+          versaoValorManual: APP_VERSION,
+          observacoes: 'Valor total final da OP informado manualmente pelo financeiro.'
+        }, { merge: true });
+        dadosLog = {
+          numeroOP: item.numeroOP || '-',
+          faccao: item.faccao || '-',
+          processo: item.processo || item.servicoNome || '-',
+          anterior: Number(item.total || 0)
+        };
+      });
+
+      try {
+        await contexto.firestore.addDoc(contexto.firestore.collection(contexto.db, 'logsAlteracoes'), {
+          acao: 'valor_total_manual_pagamento_definido',
+          tipoAlvo: 'entregaPagamento',
+          alvoId: id,
+          detalhes: `OP ${dadosLog?.numeroOP || '-'} | ${dadosLog?.faccao || '-'} | ${dadosLog?.processo || '-'} | valor total ${formatarMoedaPagamentoFinal(valorTotal)}`,
+          usuarioUid: acesso.usuario.uid,
+          usuarioNome: acesso.perfil?.nome || '',
+          usuarioEmail: acesso.perfil?.email || acesso.usuario.email || '',
+          usuarioTipo: acesso.perfil?.tipo || 'usuario',
+          criadoEm: contexto.firestore.serverTimestamp()
+        });
+      } catch (erroLog) {
+        console.warn('Valor salvo, mas o log financeiro adicional não foi criado.', erroLog);
+      }
+
+      cachePagamentoFinal.expiraEm = 0;
+      fecharModalValorTotalManual();
+      mostrarAvisoFormulario(`Valor total de ${formatarMoedaPagamentoFinal(valorTotal)} salvo para a OP ${dadosLog?.numeroOP || '-'}.`);
+      setTimeout(() => {
+        atualizarConferenciaPagamentoFinal(true);
+        if (typeof window.atualizarDadosServidorAgora === 'function') {
+          window.atualizarDadosServidorAgora();
+        }
+      }, 350);
+    } catch (error) {
+      console.error('Erro ao salvar valor total manual.', error);
+      if (String(error?.code || '').includes('permission-denied')) {
+        mostrarAvisoFormulario('Seu usuário não possui permissão para alterar este pagamento. Publique também as novas regras do Firestore.');
+      } else {
+        mostrarAvisoFormulario(error?.message || 'Não foi possível salvar o valor total.');
+      }
+    } finally {
+      if (botao) {
+        botao.disabled = false;
+        botao.textContent = botao.dataset.textoOriginal || 'Salvar valor';
+      }
+    }
+  }
+
   function instalarEventosPagamentoFinal() {
     if (document.documentElement.dataset.pagamentoFinalEventos === APP_VERSION) return;
     document.documentElement.dataset.pagamentoFinalEventos = APP_VERSION;
+    injetarModalValorTotalManual();
+
+    document.getElementById('formValorTotalManualOP')?.addEventListener('submit', salvarValorTotalManual);
+    document.getElementById('btnFecharValorTotalManual')?.addEventListener('click', fecharModalValorTotalManual);
+    document.getElementById('btnCancelarValorTotalManual')?.addEventListener('click', fecharModalValorTotalManual);
+    document.getElementById('modalValorTotalManualOP')?.addEventListener('click', event => {
+      if (event.target?.id === 'modalValorTotalManualOP') fecharModalValorTotalManual();
+    });
 
     document.addEventListener("click", event => {
       const imprimir = event.target?.closest?.("#btnImprimirPagamento");
@@ -6564,6 +6876,7 @@
 
   function iniciarRevisaoFinalPagamentos() {
     injetarEstilosPagamentoFinal();
+    injetarModalValorTotalManual();
     garantirOpcaoSemValorPagamentoFinal();
     inserirPainelConferenciaPagamentoFinal();
     instalarEventosPagamentoFinal();
@@ -9658,6 +9971,8 @@
       faccao: document.getElementById("chegadaManualFaccao"),
       falta: document.getElementById("chegadaManualFalta"),
       desconto: document.getElementById("chegadaManualDesconto"),
+      lateral: document.getElementById("chegadaManualLateralPronta"),
+      bojo: document.getElementById("chegadaManualBojoPronto"),
       recebido: document.getElementById("chegadaManualQuantidadeRecebidaCalculada"),
       submit: document.querySelector('#formChegadaManualFaccao button[type="submit"]')
     };
@@ -9695,6 +10010,13 @@
       el.desconto.value = "0";
       el.desconto.disabled = true;
     }
+    [el.lateral, el.bojo].forEach(campo => {
+      if (!campo) return;
+      campo.value = "";
+      campo.disabled = true;
+      campo.required = false;
+    });
+    document.getElementById("grupoComponentesSutiaChegadaManual")?.classList.add("hidden");
     if (el.recebido) el.recebido.textContent = "-";
     if (el.submit) el.submit.disabled = true;
     definirStatusOPChegadaManualSimplificada("Digite a OP para carregar os dados automaticamente.");
@@ -9998,6 +10320,11 @@
     const faccao = normalizarNomeFaccaoGerenciada(el.faccao?.value || "");
     const falta = Math.max(0, numeroChegadaManualSimplificada(el.falta?.value));
     const descontoDefeito = Math.max(0, numeroChegadaManualSimplificada(el.desconto?.value));
+    const exigeComponentesSutia = processoExigeComponentesSutia(processo);
+    const lateralResposta = String(el.lateral?.value || "");
+    const bojoResposta = String(el.bojo?.value || "");
+    const lateralPronta = respostaComponenteSutiaBooleano(lateralResposta);
+    const bojoPronto = respostaComponenteSutiaBooleano(bojoResposta);
     const quantidadeRecebida = Math.max(quantidadeEnviada - falta, 0);
     const dataChegada = hojeISOChegadaManualSimplificada();
     const dataEnvio = dataEnvioDaOPChegadaManualSimplificada(op, setor);
@@ -10015,6 +10342,16 @@
     if (!faccao || !faccoesPermitidas.some(nome => normalizarComparacao(nome) === normalizarComparacao(faccao))) {
       mostrarAvisoFormulario("Selecione uma facção vinculada ao processo escolhido.");
       el.faccao?.focus();
+      return;
+    }
+    if (exigeComponentesSutia && !respostaComponenteSutiaValida(lateralResposta)) {
+      mostrarAvisoFormulario("Informe se a lateral foi pronta.");
+      el.lateral?.focus();
+      return;
+    }
+    if (exigeComponentesSutia && !respostaComponenteSutiaValida(bojoResposta)) {
+      mostrarAvisoFormulario("Informe se o bojo foi pronto.");
+      el.bojo?.focus();
       return;
     }
     if (falta > quantidadeEnviada) {
@@ -10060,7 +10397,10 @@
       const user = auth.currentUser;
       if (!user) throw new Error("Usuário não autenticado.");
 
-      const preco = await buscarPrecoChegadaManualSimplificada(firestore, db, referencia, processo);
+      const valorTotalManualFinanceiro = processoValorTotalManualFinanceiro(processo);
+      const preco = valorTotalManualFinanceiro
+        ? null
+        : await buscarPrecoChegadaManualSimplificada(firestore, db, referencia, processo);
       const chaveMov = textoChaveTrava(numeroOP, referencia, faccao, processo, dataChegada);
       const movimentacaoId = idSeguroChegadaManualSimplificada(`manual-chegada-${hashTravaDuplicidade(chaveMov)}`);
       const movimentoRef = firestore.doc(db, "movimentacoesProducao", movimentacaoId);
@@ -10070,11 +10410,13 @@
         return;
       }
 
-      const valorUnitario = numeroChegadaManualSimplificada(preco?.valor);
-      const subtotal = quantidadeRecebida * valorUnitario;
-      const total = Math.max(subtotal - descontoDefeito, 0);
+      const valorUnitario = valorTotalManualFinanceiro ? 0 : numeroChegadaManualSimplificada(preco?.valor);
+      const subtotal = valorTotalManualFinanceiro ? 0 : quantidadeRecebida * valorUnitario;
+      const total = valorTotalManualFinanceiro ? 0 : Math.max(subtotal - descontoDefeito, 0);
       const pagamentoId = idSeguroChegadaManualSimplificada(
-        preco ? `mov-${movimentacaoId}-${preco.id}` : `mov-${movimentacaoId}-sem-valor`
+        valorTotalManualFinanceiro
+          ? `mov-${movimentacaoId}-valor-total-manual`
+          : (preco ? `mov-${movimentacaoId}-${preco.id}` : `mov-${movimentacaoId}-sem-valor`)
       );
       const pagamentoRef = firestore.doc(db, "entregasPagamento", pagamentoId);
       const pagamentoExistente = await firestore.getDoc(pagamentoRef);
@@ -10107,6 +10449,15 @@
         falta,
         descontoDefeito,
         defeito: descontoDefeito,
+        ...(exigeComponentesSutia ? {
+          lateralPronta,
+          bojoPronto,
+          lateralProntaChegada: lateralPronta,
+          bojoProntoChegada: bojoPronto,
+          componentesSutiaInformadosNaChegada: true,
+          componentesSutiaChegadaPor: user.uid,
+          componentesSutiaChegadaEm: agoraServidor
+        } : {}),
         status: "retornou",
         observacoes: `Chegada manual pela OP. Recebido: ${quantidadeRecebida}; falta: ${falta}; desconto: ${formatarMoedaChegadaManualSimplificada(descontoDefeito)}.`,
         criadoPor: user.uid,
@@ -10127,26 +10478,40 @@
         cor,
         produtoNome: op.produtoNome || op.nomeProduto || op.nome || "",
         faccao,
-        precoReferenciaId: preco?.id || "",
-        processo: preco?.processo || processo,
+        precoReferenciaId: valorTotalManualFinanceiro ? "" : (preco?.id || ""),
+        processo,
         processoMovimentacao: processo,
-        servicoId: preco?.id || "",
-        servicoNome: preco?.processo || processo,
-        setor: preco?.setor || setor,
-        setorLabel: labelSetorChegadaManualSimplificada(preco?.setor || setor),
+        servicoId: valorTotalManualFinanceiro ? "" : (preco?.id || ""),
+        servicoNome: processo,
+        setor: valorTotalManualFinanceiro ? setor : (preco?.setor || setor),
+        setorLabel: labelSetorChegadaManualSimplificada(valorTotalManualFinanceiro ? setor : (preco?.setor || setor)),
         dataEntrega: dataChegada,
         quantidade: quantidadeRecebida,
         falta,
         descontoDefeito,
-        subtotal: preco ? subtotal : 0,
-        valorUnitario: preco ? valorUnitario : 0,
-        total: preco ? total : 0,
-        statusPagamento: preco ? "pendente" : "sem_valor",
-        valorPendente: !preco,
-        avisoPagamento: preco ? "" : `Adicionar valor para Ref. ${referencia} + ${processo}.`,
-        observacoes: preco
-          ? "Gerado automaticamente pela chegada manual simplificada."
-          : "Pagamento ficou em aberto porque não existe valor cadastrado para REF + PROCESSO.",
+        ...(exigeComponentesSutia ? {
+          lateralPronta,
+          bojoPronto,
+          lateralProntaChegada: lateralPronta,
+          bojoProntoChegada: bojoPronto
+        } : {}),
+        subtotal: valorTotalManualFinanceiro ? 0 : (preco ? subtotal : 0),
+        valorUnitario: valorTotalManualFinanceiro ? 0 : (preco ? valorUnitario : 0),
+        total: valorTotalManualFinanceiro ? 0 : (preco ? total : 0),
+        statusPagamento: valorTotalManualFinanceiro ? "sem_valor" : (preco ? "pendente" : "sem_valor"),
+        valorPendente: valorTotalManualFinanceiro || !preco,
+        valorManualFinanceiroPendente: valorTotalManualFinanceiro,
+        valorTotalDefinidoManualmente: false,
+        formaValorPagamento: valorTotalManualFinanceiro ? "total_manual_op" : "valor_unitario_base",
+        motivoValorPendente: valorTotalManualFinanceiro ? "processo_exige_total_manual" : (!preco ? "preco_base_nao_cadastrado" : ""),
+        avisoPagamento: valorTotalManualFinanceiro
+          ? "Financeiro deve informar o valor total final desta OP."
+          : (preco ? "" : `Adicionar valor para Ref. ${referencia} + ${processo}.`),
+        observacoes: valorTotalManualFinanceiro
+          ? "Sutiã Montagem/Sutiã Completo: valor total da OP deve ser informado manualmente pelo financeiro."
+          : (preco
+            ? "Gerado automaticamente pela chegada manual simplificada."
+            : "Pagamento ficou em aberto porque não existe valor cadastrado para REF + PROCESSO."),
         atualizadoPor: user.uid,
         atualizadoEm: agoraServidor,
         criadoPor: user.uid,
@@ -10162,7 +10527,7 @@
         acao: "chegada_manual_faccao_simplificada",
         entidade: "movimentacaoProducao",
         entidadeId: movimentacaoId,
-        detalhes: `OP ${numeroOP} | ${faccao} | ${processo} | OP ${quantidadeEnviada} | falta ${falta} | recebido ${quantidadeRecebida} | desconto ${formatarMoedaChegadaManualSimplificada(descontoDefeito)}`,
+        detalhes: `OP ${numeroOP} | ${faccao} | ${processo} | OP ${quantidadeEnviada} | falta ${falta} | recebido ${quantidadeRecebida} | desconto ${formatarMoedaChegadaManualSimplificada(descontoDefeito)}${exigeComponentesSutia ? ` | lateral ${respostaComponenteSutiaTexto(lateralPronta)} | bojo ${respostaComponenteSutiaTexto(bojoPronto)}` : ""}`,
         usuarioId: user.uid,
         usuarioEmail: user.email || "",
         versao: APP_VERSION,
@@ -10175,9 +10540,11 @@
       el.form?.reset();
       limparOPChegadaManualSimplificada();
       mostrarAvisoFormulario(
-        preco
-          ? `Chegada salva. ${quantidadeRecebida.toLocaleString("pt-BR")} peças recebidas e pagamento de ${formatarMoedaChegadaManualSimplificada(total)} gerado.`
-          : `Chegada salva. ${quantidadeRecebida.toLocaleString("pt-BR")} peças recebidas; o pagamento ficou pendente de valor.`
+        valorTotalManualFinanceiro
+          ? `Chegada salva. ${quantidadeRecebida.toLocaleString("pt-BR")} peças recebidas; o financeiro deverá informar o valor total desta OP.`
+          : (preco
+            ? `Chegada salva. ${quantidadeRecebida.toLocaleString("pt-BR")} peças recebidas e pagamento de ${formatarMoedaChegadaManualSimplificada(total)} gerado.`
+            : `Chegada salva. ${quantidadeRecebida.toLocaleString("pt-BR")} peças recebidas; o pagamento ficou pendente de valor.`)
       );
     } catch (error) {
       console.error("Erro ao salvar chegada manual simplificada.", error);
@@ -10237,6 +10604,14 @@
           <option value="">Escolha o processo primeiro</option>
         </select>
       </label>
+
+      <div id="grupoComponentesSutiaChegadaManual" class="componentes-sutia-box hidden">
+        ${htmlCamposComponentesSutia(
+          "chegadaManual",
+          "Componentes do Sutiã",
+          "Obrigatório para Sutiã Montagem e Sutiã Completo. Será exibido ao financeiro."
+        )}
+      </div>
 
       <div class="form-grid two">
         <label>
@@ -10353,7 +10728,10 @@
 
     const el = elementosChegadaManualSimplificada();
     el.form?.addEventListener("submit", salvarChegadaManualSimplificada, true);
-    el.processo?.addEventListener("change", atualizarFaccoesChegadaManualSimplificada);
+    el.processo?.addEventListener("change", () => {
+      atualizarFaccoesChegadaManualSimplificada();
+      atualizarCamposComponentesSutiaChegadaManual();
+    });
     el.falta?.addEventListener("input", recalcularRecebidoChegadaManualSimplificada);
     document.getElementById("btnBuscarOPChegadaManual")?.addEventListener("click", carregarOPChegadaManualSimplificada);
     el.op?.addEventListener("blur", carregarOPChegadaManualSimplificada);
@@ -10556,6 +10934,7 @@
       document.getElementById('chegadaConfirmarProcesso')?.addEventListener('change', () => {
         preencherFaccoesConfirmacaoChegadaFaccao();
         atualizarResumoConfirmacaoChegadaFaccao();
+        atualizarCamposComponentesSutiaChegada({ resetar: true });
       });
       document.getElementById('chegadaConfirmarFaccao')?.addEventListener('change', atualizarResumoConfirmacaoChegadaFaccao);
     }
@@ -10705,6 +11084,7 @@
       preencherProcessosConfirmacaoChegadaFaccao(mov);
       preencherFaccoesConfirmacaoChegadaFaccao();
       atualizarResumoConfirmacaoChegadaFaccao();
+      atualizarCamposComponentesSutiaChegada({ resetar: true });
       document.getElementById('modalChegadaResumo').textContent = 'Confirme novamente o processo e a facção. Depois informe data, falta e desconto.';
       setTimeout(() => document.getElementById('chegadaConfirmarProcesso')?.focus(), 60);
     } catch (error) {
@@ -10729,6 +11109,15 @@
       faccao.innerHTML = '<option value="">Escolha o processo primeiro</option>';
       faccao.disabled = true;
     }
+    const blocoComponentes = document.getElementById('grupoComponentesSutiaChegada');
+    blocoComponentes?.classList.add('hidden');
+    ['chegadaLateralPronta', 'chegadaBojoPronto'].forEach(id => {
+      const campo = document.getElementById(id);
+      if (!campo) return;
+      campo.value = '';
+      campo.disabled = true;
+      campo.required = false;
+    });
   }
 
   async function buscarPrecoConfirmacaoChegada(firestore, db, referencia, processo) {
@@ -10763,6 +11152,11 @@
     const dataChegada = String(document.getElementById('chegadaData')?.value || '').trim();
     const falta = Math.max(0, numeroConfirmacaoChegada(document.getElementById('chegadaFalta')?.value || 0));
     const desconto = Math.max(0, numeroConfirmacaoChegada(document.getElementById('chegadaDefeito')?.value || 0));
+    const exigeComponentesSutia = processoExigeComponentesSutia(processo);
+    const lateralResposta = String(document.getElementById('chegadaLateralPronta')?.value || '');
+    const bojoResposta = String(document.getElementById('chegadaBojoPronto')?.value || '');
+    const lateralPronta = respostaComponenteSutiaBooleano(lateralResposta);
+    const bojoPronto = respostaComponenteSutiaBooleano(bojoResposta);
 
     if (!id) {
       mostrarAvisoFormulario('Movimentação não encontrada. Feche a tela e abra novamente.');
@@ -10781,6 +11175,16 @@
     if (!dataChegada) {
       mostrarAvisoFormulario('Informe a data de chegada.');
       document.getElementById('chegadaData')?.focus();
+      return;
+    }
+    if (exigeComponentesSutia && !respostaComponenteSutiaValida(lateralResposta)) {
+      mostrarAvisoFormulario('Confirme se a lateral foi pronta.');
+      document.getElementById('chegadaLateralPronta')?.focus();
+      return;
+    }
+    if (exigeComponentesSutia && !respostaComponenteSutiaValida(bojoResposta)) {
+      mostrarAvisoFormulario('Confirme se o bojo foi pronto.');
+      document.getElementById('chegadaBojoPronto')?.focus();
       return;
     }
 
@@ -10832,10 +11236,15 @@
         throw erro;
       }
 
-      const preco = await buscarPrecoConfirmacaoChegada(firestore, db, movTela.referencia || '', processo);
-      const pagamentoId = preco
-        ? idSeguroConfirmacaoChegada(`mov-${id}-${preco.id}`)
-        : idSeguroConfirmacaoChegada(`mov-${id}-sem-valor`);
+      const valorTotalManualFinanceiro = processoValorTotalManualFinanceiro(processo);
+      const preco = valorTotalManualFinanceiro
+        ? null
+        : await buscarPrecoConfirmacaoChegada(firestore, db, movTela.referencia || '', processo);
+      const pagamentoId = valorTotalManualFinanceiro
+        ? idSeguroConfirmacaoChegada(`mov-${id}-valor-total-manual`)
+        : (preco
+          ? idSeguroConfirmacaoChegada(`mov-${id}-${preco.id}`)
+          : idSeguroConfirmacaoChegada(`mov-${id}-sem-valor`));
       const movRef = firestore.doc(db, 'movimentacoesProducao', id);
       const pagamentoRef = firestore.doc(db, 'entregasPagamento', pagamentoId);
       const pagamentoSemValorRef = firestore.doc(db, 'entregasPagamento', idSeguroConfirmacaoChegada(`mov-${id}-sem-valor`));
@@ -10907,6 +11316,15 @@
           descontoDefeito: desconto,
           defeito: desconto,
           quantidadeRecebida,
+          ...(exigeComponentesSutia ? {
+            lateralPronta,
+            bojoPronto,
+            lateralProntaChegada: lateralPronta,
+            bojoProntoChegada: bojoPronto,
+            componentesSutiaInformadosNaChegada: true,
+            componentesSutiaChegadaPor: user.uid,
+            componentesSutiaChegadaEm: firestore.serverTimestamp()
+          } : {}),
           status: 'retornou',
           confirmacaoProcessoFaccaoNaChegada: true,
           processoConfirmadoNaChegada: processo,
@@ -10929,10 +11347,14 @@
           movServidor.reenvio ||
           movServidor.origem === 'movimentacao'
         );
-        const setorPagamento = preco?.setor || movServidor.setor || setorConfirmacaoChegada(movServidor);
-        const valorUnitario = preco ? Math.max(0, numeroConfirmacaoChegada(preco.valor || 0)) : 0;
-        const subtotal = quantidadeRecebida * valorUnitario;
-        const total = Math.max(subtotal - desconto, 0);
+        const setorPagamento = valorTotalManualFinanceiro
+          ? (movServidor.setor || setorConfirmacaoChegada(movServidor))
+          : (preco?.setor || movServidor.setor || setorConfirmacaoChegada(movServidor));
+        const valorUnitario = (!valorTotalManualFinanceiro && preco)
+          ? Math.max(0, numeroConfirmacaoChegada(preco.valor || 0))
+          : 0;
+        const subtotal = valorTotalManualFinanceiro ? 0 : quantidadeRecebida * valorUnitario;
+        const total = valorTotalManualFinanceiro ? 0 : Math.max(subtotal - desconto, 0);
 
         const dadosPagamento = {
           origem: 'movimentacao',
@@ -10945,28 +11367,44 @@
           cor: movServidor.cor || '',
           produtoNome: movServidor.produtoNome || '',
           faccao,
-          precoReferenciaId: preco?.id || '',
-          processo: preco?.processo || processo,
+          precoReferenciaId: valorTotalManualFinanceiro ? '' : (preco?.id || ''),
+          processo,
           processoMovimentacao: processo,
-          servicoId: preco?.id || '',
-          servicoNome: preco?.processo || processo,
+          servicoId: valorTotalManualFinanceiro ? '' : (preco?.id || ''),
+          servicoNome: processo,
           setor: setorPagamento,
           setorLabel: labelSetorConfirmacaoChegada(setorPagamento),
           dataEntrega: dataChegada,
           quantidade: quantidadeRecebida,
           falta,
           descontoDefeito: desconto,
+          ...(exigeComponentesSutia ? {
+            lateralPronta,
+            bojoPronto,
+            lateralProntaEnvio: movServidor.lateralProntaEnvio ?? null,
+            bojoProntoEnvio: movServidor.bojoProntoEnvio ?? null,
+            lateralProntaChegada: lateralPronta,
+            bojoProntoChegada: bojoPronto
+          } : {}),
           subtotal,
           valorUnitario,
           total,
-          statusPagamento: preco ? 'pendente' : 'sem_valor',
-          valorPendente: !preco,
-          avisoPagamento: preco ? '' : `Adicionar valor para Ref. ${movServidor.referencia || '-'} + ${processo}.`,
-          observacoes: preco
-            ? (pagamentoReenvio
-              ? 'Gerado na chegada confirmada de um reenvio. Processo e facção foram reconferidos antes do pagamento.'
-              : 'Gerado na chegada com reconfirmação obrigatória de processo e facção.')
-            : 'Pagamento ficou em aberto porque não existe valor cadastrado para REF + PROCESSO confirmado na chegada.',
+          statusPagamento: valorTotalManualFinanceiro ? 'sem_valor' : (preco ? 'pendente' : 'sem_valor'),
+          valorPendente: valorTotalManualFinanceiro || !preco,
+          valorManualFinanceiroPendente: valorTotalManualFinanceiro,
+          valorTotalDefinidoManualmente: false,
+          formaValorPagamento: valorTotalManualFinanceiro ? 'total_manual_op' : 'valor_unitario_base',
+          motivoValorPendente: valorTotalManualFinanceiro ? 'processo_exige_total_manual' : (!preco ? 'preco_base_nao_cadastrado' : ''),
+          avisoPagamento: valorTotalManualFinanceiro
+            ? 'Financeiro deve informar o valor total final desta OP.'
+            : (preco ? '' : `Adicionar valor para Ref. ${movServidor.referencia || '-'} + ${processo}.`),
+          observacoes: valorTotalManualFinanceiro
+            ? 'Sutiã Montagem/Sutiã Completo: valor total da OP deve ser informado manualmente pelo financeiro.'
+            : (preco
+              ? (pagamentoReenvio
+                ? 'Gerado na chegada confirmada de um reenvio. Processo e facção foram reconferidos antes do pagamento.'
+                : 'Gerado na chegada com reconfirmação obrigatória de processo e facção.')
+              : 'Pagamento ficou em aberto porque não existe valor cadastrado para REF + PROCESSO confirmado na chegada.'),
           atualizadoPor: user.uid,
           atualizadoEm: firestore.serverTimestamp(),
           criadoPor: user.uid,
@@ -10981,21 +11419,23 @@
             : 'chegada_confirmada_processo_faccao',
           entidade: 'movimentacaoProducao',
           entidadeId: id,
-          detalhes: `OP ${movServidor.numeroOP || '-'} | envio ${movServidor.processo || '-'} / ${movServidor.destino || '-'} | chegada confirmada ${processo} / ${faccao} | recebeu ${quantidadeRecebida} | falta ${falta} | desconto ${formatarMoedaConfirmacaoChegada(desconto)}`,
+          detalhes: `OP ${movServidor.numeroOP || '-'} | envio ${movServidor.processo || '-'} / ${movServidor.destino || '-'} | chegada confirmada ${processo} / ${faccao} | recebeu ${quantidadeRecebida} | falta ${falta} | desconto ${formatarMoedaConfirmacaoChegada(desconto)}${exigeComponentesSutia ? ` | lateral ${respostaComponenteSutiaTexto(lateralPronta)} | bojo ${respostaComponenteSutiaTexto(bojoPronto)}` : ''}`,
           usuarioId: user.uid,
           usuarioEmail: user.email || '',
           criadoEm: firestore.serverTimestamp(),
           versao: APP_VERSION
         });
 
-        return { preco, total, quantidadeRecebida, corrigiu };
+        return { preco, total, quantidadeRecebida, corrigiu, valorTotalManualFinanceiro };
       });
 
       document.getElementById('btnFecharModalChegada')?.click();
       limparConfirmacaoChegadaFaccao();
-      mostrarAvisoFormulario(resultado.preco
-        ? `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada e pagamento gerado: ${formatarMoedaConfirmacaoChegada(resultado.total)}.`
-        : `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada. O pagamento ficou pendente porque ainda não existe valor para a referência e o processo.`
+      mostrarAvisoFormulario(resultado.valorTotalManualFinanceiro
+        ? `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada. O financeiro deverá informar o valor total desta OP.`
+        : (resultado.preco
+          ? `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada e pagamento gerado: ${formatarMoedaConfirmacaoChegada(resultado.total)}.`
+          : `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada. O pagamento ficou pendente porque ainda não existe valor para a referência e o processo.`)
       );
     } catch (error) {
       console.error('Erro ao registrar chegada com reconfirmação.', error);
@@ -11035,6 +11475,476 @@
     form.addEventListener('submit', confirmarChegadaFaccaoComRevalidacao, true);
   }
 
+
+
+  // =========================================================
+  // HOTFIX: COMPONENTES DO SUTIÃ NAS FACÇÕES
+  // Processos: SUTIÃ MONTAGEM e SUTIÃ COMPLETO.
+  // Pergunta no envio e confirma novamente na chegada:
+  // - Lateral foi pronta?
+  // - Bojo foi pronto?
+  // As respostas ficam na movimentação, no pagamento e no relatório financeiro.
+  // =========================================================
+  const PROCESSOS_COMPONENTES_SUTIA = new Set([
+    'SUTIA MONTAGEM',
+    'SUTIA COMPLETO'
+  ]);
+
+  let envioComponentesSutiaPreparando = false;
+  let monitoramentoEnvioComponentesSutia = null;
+
+  function processoExigeComponentesSutia(processo) {
+    return PROCESSOS_COMPONENTES_SUTIA.has(normalizarComparacao(processo || ''));
+  }
+
+  function respostaComponenteSutiaValida(valor) {
+    return valor === 'sim' || valor === 'nao';
+  }
+
+  function respostaComponenteSutiaBooleano(valor) {
+    if (valor === 'sim') return true;
+    if (valor === 'nao') return false;
+    return null;
+  }
+
+  function respostaComponenteSutiaTexto(valor) {
+    if (valor === true || valor === 'sim') return 'Sim';
+    if (valor === false || valor === 'nao') return 'Não';
+    return 'Não informado';
+  }
+
+  function respostaComponenteSutiaSelect(valor) {
+    if (valor === true || valor === 'sim') return 'sim';
+    if (valor === false || valor === 'nao') return 'nao';
+    return '';
+  }
+
+  function escapeHtmlComponentesSutia(valor) {
+    return String(valor ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function injetarEstilosComponentesSutia() {
+    if (document.getElementById('styleComponentesSutiaFaccao')) return;
+    const style = document.createElement('style');
+    style.id = 'styleComponentesSutiaFaccao';
+    style.textContent = `
+      .componentes-sutia-box {
+        display: grid;
+        gap: 10px;
+        padding: 13px;
+        border: 1px solid #c4b5fd;
+        border-radius: 13px;
+        background: linear-gradient(135deg, #faf5ff, #f5f3ff);
+      }
+      .componentes-sutia-box.hidden { display: none !important; }
+      .componentes-sutia-cabecalho strong {
+        display: block;
+        color: #5b21b6;
+        font-size: 14px;
+      }
+      .componentes-sutia-cabecalho span {
+        display: block;
+        margin-top: 3px;
+        color: #6b7280;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+      .componentes-sutia-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .componentes-sutia-grid label {
+        display: grid;
+        gap: 6px;
+        font-weight: 800;
+        color: #1f2937;
+      }
+      .componentes-sutia-grid select { min-height: 44px; width: 100%; }
+      .componentes-sutia-envio-original {
+        padding: 8px 10px;
+        border-radius: 9px;
+        background: #fff;
+        color: #475569;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+      .info-componentes-sutia-pagamento {
+        display: block;
+        margin-top: 3px;
+        color: #6d28d9;
+        font-size: 10px;
+        font-weight: 800;
+        line-height: 1.3;
+      }
+      @media (max-width: 680px) {
+        .componentes-sutia-grid { grid-template-columns: 1fr; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function htmlCamposComponentesSutia(prefixo, titulo, texto) {
+    return `
+      <div class="componentes-sutia-cabecalho">
+        <strong>${escapeHtmlComponentesSutia(titulo)}</strong>
+        <span>${escapeHtmlComponentesSutia(texto)}</span>
+      </div>
+      <div class="componentes-sutia-grid">
+        <label>
+          Lateral foi pronta?
+          <select id="${prefixo}LateralPronta">
+            <option value="">Selecione</option>
+            <option value="sim">Sim</option>
+            <option value="nao">Não</option>
+          </select>
+        </label>
+        <label>
+          Bojo foi pronto?
+          <select id="${prefixo}BojoPronto">
+            <option value="">Selecione</option>
+            <option value="sim">Sim</option>
+            <option value="nao">Não</option>
+          </select>
+        </label>
+      </div>
+    `;
+  }
+
+  // ---------- ENVIO PARA FACÇÃO ----------
+  function garantirCamposComponentesSutiaEnvio() {
+    const form = document.getElementById('formMovimentacaoProducao');
+    if (!form) return null;
+    let bloco = document.getElementById('grupoComponentesSutiaEnvio');
+    if (bloco) return bloco;
+
+    bloco = document.createElement('div');
+    bloco.id = 'grupoComponentesSutiaEnvio';
+    bloco.className = 'componentes-sutia-box hidden';
+    bloco.innerHTML = htmlCamposComponentesSutia(
+      'movimentacao',
+      'Informações do Sutiã para o financeiro',
+      'Obrigatório para Sutiã Montagem e Sutiã Completo.'
+    );
+
+    const destinoLabel = document.getElementById('movimentacaoDestino')?.closest('label');
+    if (destinoLabel?.parentElement === form) destinoLabel.insertAdjacentElement('afterend', bloco);
+    else {
+      const acoes = form.querySelector('.actions');
+      if (acoes) form.insertBefore(bloco, acoes);
+      else form.appendChild(bloco);
+    }
+    return bloco;
+  }
+
+  function atualizarCamposComponentesSutiaEnvio() {
+    const bloco = garantirCamposComponentesSutiaEnvio();
+    if (!bloco) return;
+    const tipo = String(document.getElementById('movimentacaoTipoDestino')?.value || '').toLowerCase();
+    const processo = String(
+      document.getElementById('movimentacaoProcessoSelect')?.value ||
+      document.getElementById('movimentacaoProcesso')?.value || ''
+    );
+    const mostrar = tipo === 'faccao' && processoExigeComponentesSutia(processo);
+    const lateral = document.getElementById('movimentacaoLateralPronta');
+    const bojo = document.getElementById('movimentacaoBojoPronto');
+    bloco.classList.toggle('hidden', !mostrar);
+    [lateral, bojo].forEach(campo => {
+      if (!campo) return;
+      campo.required = mostrar;
+      campo.disabled = !mostrar;
+      if (!mostrar) campo.value = '';
+    });
+  }
+
+  function dadosComponentesSutiaEnvioAtuais() {
+    const processo = String(
+      document.getElementById('movimentacaoProcessoSelect')?.value ||
+      document.getElementById('movimentacaoProcesso')?.value || ''
+    ).trim();
+    return {
+      processo,
+      exige: processoExigeComponentesSutia(processo),
+      lateralResposta: String(document.getElementById('movimentacaoLateralPronta')?.value || ''),
+      bojoResposta: String(document.getElementById('movimentacaoBojoPronto')?.value || '')
+    };
+  }
+
+  async function registrarComponentesSutiaNoNovoEnvio(dados) {
+    if (monitoramentoEnvioComponentesSutia) clearTimeout(monitoramentoEnvioComponentesSutia);
+    const inicio = Date.now();
+    const tentar = async () => {
+      try {
+        const movimentos = await carregarMovimentacoesServidorDuplicidade({ opId: dados.opId });
+        const candidato = movimentos
+          .filter(mov => !dados.idsAntes.has(String(mov.id || '')))
+          .filter(mov => normalizarComparacao(mov.tipoDestino) === 'FACCAO')
+          .filter(mov => normalizarComparacao(mov.processo) === normalizarComparacao(dados.processo))
+          .filter(mov => normalizarComparacao(mov.destino) === normalizarComparacao(dados.destino))
+          .filter(mov => Number(mov.quantidadeEnviada || 0) === dados.quantidade)
+          .sort((a, b) => String(b.id || '').localeCompare(String(a.id || '')))[0];
+
+        if (candidato) {
+          const { firestore, db, auth } = await obterContextoTravasDuplicidade();
+          const user = auth.currentUser;
+          if (!user) return;
+          const lateralPronta = respostaComponenteSutiaBooleano(dados.lateralResposta);
+          const bojoPronto = respostaComponenteSutiaBooleano(dados.bojoResposta);
+          await firestore.updateDoc(
+            firestore.doc(db, 'movimentacoesProducao', candidato.id),
+            {
+              lateralProntaEnvio: lateralPronta,
+              bojoProntoEnvio: bojoPronto,
+              componentesSutiaInformadosNoEnvio: true,
+              componentesSutiaEnvioPor: user.uid,
+              componentesSutiaEnvioEm: firestore.serverTimestamp(),
+              versaoComponentesSutiaEnvio: APP_VERSION
+            }
+          );
+          try {
+            await firestore.addDoc(firestore.collection(db, 'logsAlteracoes'), {
+              acao: 'componentes_sutia_informados_no_envio',
+              entidade: 'movimentacaoProducao',
+              entidadeId: candidato.id,
+              detalhes: `OP ${candidato.numeroOP || '-'} | ${dados.processo} | ${dados.destino} | lateral ${respostaComponenteSutiaTexto(lateralPronta)} | bojo ${respostaComponenteSutiaTexto(bojoPronto)}`,
+              usuarioId: user.uid,
+              usuarioEmail: user.email || '',
+              criadoEm: firestore.serverTimestamp(),
+              versao: APP_VERSION
+            });
+          } catch (erroLog) {
+            console.warn('Envio salvo, mas o log dos componentes não foi gravado.', erroLog);
+          }
+          delete dados.form.dataset.componentesSutiaPreparado;
+          return;
+        }
+      } catch (error) {
+        console.warn('Aguardando a movimentação para vincular lateral/bojo.', error);
+      }
+
+      if (Date.now() - inicio < 18000) {
+        monitoramentoEnvioComponentesSutia = setTimeout(tentar, 600);
+      } else {
+        delete dados.form.dataset.componentesSutiaPreparado;
+      }
+    };
+    monitoramentoEnvioComponentesSutia = setTimeout(tentar, 450);
+  }
+
+  async function prepararEnvioComComponentesSutia(event) {
+    const form = document.getElementById('formMovimentacaoProducao');
+    if (!form || event.target !== form) return;
+    const tipo = String(document.getElementById('movimentacaoTipoDestino')?.value || '').toLowerCase();
+    const dadosCampos = dadosComponentesSutiaEnvioAtuais();
+    if (tipo !== 'faccao' || !dadosCampos.exige) return;
+
+    if (!respostaComponenteSutiaValida(dadosCampos.lateralResposta)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      mostrarAvisoFormulario('Informe se a lateral foi pronta antes de enviar para a facção.');
+      document.getElementById('movimentacaoLateralPronta')?.focus();
+      return;
+    }
+    if (!respostaComponenteSutiaValida(dadosCampos.bojoResposta)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      mostrarAvisoFormulario('Informe se o bojo foi pronto antes de enviar para a facção.');
+      document.getElementById('movimentacaoBojoPronto')?.focus();
+      return;
+    }
+
+    // Reenvios internos da trava podem disparar submit novamente. A preparação é feita uma única vez.
+    if (form.dataset.componentesSutiaPreparado === '1') return;
+    if (envioComponentesSutiaPreparando) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    envioComponentesSutiaPreparando = true;
+    try {
+      const opId = String(document.getElementById('movimentacaoOrdemId')?.value || '').trim();
+      const destino = String(document.getElementById('movimentacaoDestino')?.value || '').trim();
+      const quantidade = Math.max(0, Number(document.getElementById('movimentacaoQuantidade')?.value || 0));
+      if (!opId || !destino || quantidade <= 0) {
+        mostrarAvisoFormulario('Confira OP, facção e quantidade antes de enviar.');
+        return;
+      }
+      const anteriores = await carregarMovimentacoesServidorDuplicidade({ opId });
+      const dados = {
+        form,
+        opId,
+        destino,
+        quantidade,
+        processo: dadosCampos.processo,
+        lateralResposta: dadosCampos.lateralResposta,
+        bojoResposta: dadosCampos.bojoResposta,
+        idsAntes: new Set(anteriores.map(item => String(item.id || '')))
+      };
+      form.dataset.componentesSutiaPreparado = '1';
+      const submitter = event.submitter || form.querySelector('button[type="submit"], input[type="submit"]');
+      setTimeout(() => {
+        if (typeof form.requestSubmit === 'function') form.requestSubmit(submitter || undefined);
+        else form.submit();
+      }, 0);
+      registrarComponentesSutiaNoNovoEnvio(dados);
+    } catch (error) {
+      console.error('Erro ao preparar informações de lateral/bojo no envio.', error);
+      delete form.dataset.componentesSutiaPreparado;
+      mostrarAvisoFormulario('Não foi possível preparar as informações do Sutiã. Confira a internet e tente novamente.');
+    } finally {
+      envioComponentesSutiaPreparando = false;
+    }
+  }
+
+  // ---------- CHEGADA NORMAL ----------
+  function garantirCamposComponentesSutiaChegada() {
+    const blocoConfirmacao = document.getElementById('grupoConfirmacaoChegadaFaccao');
+    if (!blocoConfirmacao) return null;
+    let bloco = document.getElementById('grupoComponentesSutiaChegada');
+    if (bloco) return bloco;
+    bloco = document.createElement('div');
+    bloco.id = 'grupoComponentesSutiaChegada';
+    bloco.className = 'componentes-sutia-box hidden';
+    bloco.innerHTML = `
+      ${htmlCamposComponentesSutia(
+        'chegada',
+        'Confirme os componentes do Sutiã',
+        'Essas respostas serão gravadas no pagamento e exibidas no relatório financeiro.'
+      )}
+      <div class="componentes-sutia-envio-original" id="componentesSutiaEnvioOriginalChegada"></div>
+    `;
+    const resumo = document.getElementById('resumoAlteracaoChegadaFaccao');
+    if (resumo) resumo.insertAdjacentElement('beforebegin', bloco);
+    else blocoConfirmacao.appendChild(bloco);
+    return bloco;
+  }
+
+  function atualizarCamposComponentesSutiaChegada({ resetar = false } = {}) {
+    const bloco = garantirCamposComponentesSutiaChegada();
+    if (!bloco) return;
+    const processo = String(document.getElementById('chegadaConfirmarProcesso')?.value || '');
+    const mostrar = processoExigeComponentesSutia(processo);
+    const lateral = document.getElementById('chegadaLateralPronta');
+    const bojo = document.getElementById('chegadaBojoPronto');
+    bloco.classList.toggle('hidden', !mostrar);
+    [lateral, bojo].forEach(campo => {
+      if (!campo) return;
+      campo.required = mostrar;
+      campo.disabled = !mostrar;
+      if (!mostrar || resetar) campo.value = '';
+    });
+    const mov = confirmacaoChegadaFaccaoAtual?.movimentacao || {};
+    const original = document.getElementById('componentesSutiaEnvioOriginalChegada');
+    if (original) {
+      original.textContent = mostrar
+        ? `Informado no envio — Lateral: ${respostaComponenteSutiaTexto(mov.lateralProntaEnvio)} | Bojo: ${respostaComponenteSutiaTexto(mov.bojoProntoEnvio)}. Confirme novamente conforme o serviço realmente recebido.`
+        : '';
+    }
+  }
+
+  // ---------- CHEGADA MANUAL ----------
+  function garantirCamposComponentesSutiaChegadaManual() {
+    const form = document.getElementById('formChegadaManualFaccao');
+    if (!form) return null;
+    let bloco = document.getElementById('grupoComponentesSutiaChegadaManual');
+    if (bloco) return bloco;
+    bloco = document.createElement('div');
+    bloco.id = 'grupoComponentesSutiaChegadaManual';
+    bloco.className = 'componentes-sutia-box hidden';
+    bloco.innerHTML = htmlCamposComponentesSutia(
+      'chegadaManual',
+      'Componentes do Sutiã',
+      'Obrigatório para Sutiã Montagem e Sutiã Completo. Será exibido ao financeiro.'
+    );
+    const faccaoLabel = document.getElementById('chegadaManualFaccao')?.closest('label');
+    if (faccaoLabel) faccaoLabel.insertAdjacentElement('afterend', bloco);
+    else form.appendChild(bloco);
+    return bloco;
+  }
+
+  function atualizarCamposComponentesSutiaChegadaManual() {
+    const bloco = garantirCamposComponentesSutiaChegadaManual();
+    if (!bloco) return;
+    const processo = String(document.getElementById('chegadaManualProcesso')?.value || '');
+    const mostrar = processoExigeComponentesSutia(processo);
+    const lateral = document.getElementById('chegadaManualLateralPronta');
+    const bojo = document.getElementById('chegadaManualBojoPronto');
+    bloco.classList.toggle('hidden', !mostrar);
+    [lateral, bojo].forEach(campo => {
+      if (!campo) return;
+      campo.required = mostrar;
+      campo.disabled = !mostrar;
+      if (!mostrar) campo.value = '';
+    });
+  }
+
+  function textoComponentesSutiaPagamento(item) {
+    if (!processoExigeComponentesSutia(item?.processo || item?.processoMovimentacao || item?.servicoNome)) return '';
+    const lateral = item?.lateralPronta ?? item?.lateralProntaChegada ?? item?.lateralProntaEnvio;
+    const bojo = item?.bojoPronto ?? item?.bojoProntoChegada ?? item?.bojoProntoEnvio;
+    return `Lateral: ${respostaComponenteSutiaTexto(lateral)} | Bojo: ${respostaComponenteSutiaTexto(bojo)}`;
+  }
+
+  function iniciarComponentesSutiaFaccaoFinanceiro() {
+    injetarEstilosComponentesSutia();
+    garantirCamposComponentesSutiaEnvio();
+    garantirCamposComponentesSutiaChegada();
+    garantirCamposComponentesSutiaChegadaManual();
+    atualizarCamposComponentesSutiaEnvio();
+    atualizarCamposComponentesSutiaChegadaManual();
+
+    const formEnvio = document.getElementById('formMovimentacaoProducao');
+    if (formEnvio && formEnvio.dataset.componentesSutiaEventos !== APP_VERSION) {
+      formEnvio.dataset.componentesSutiaEventos = APP_VERSION;
+      formEnvio.addEventListener('submit', prepararEnvioComComponentesSutia, true);
+      formEnvio.addEventListener('reset', () => {
+        delete formEnvio.dataset.componentesSutiaPreparado;
+        setTimeout(atualizarCamposComponentesSutiaEnvio, 0);
+      });
+    }
+
+    ['movimentacaoProcessoSelect', 'movimentacaoProcesso', 'movimentacaoTipoDestino'].forEach(id => {
+      const campo = document.getElementById(id);
+      if (!campo || campo.dataset.componentesSutiaChange === APP_VERSION) return;
+      campo.dataset.componentesSutiaChange = APP_VERSION;
+      campo.addEventListener('change', atualizarCamposComponentesSutiaEnvio);
+      campo.addEventListener('input', atualizarCamposComponentesSutiaEnvio);
+    });
+
+    const processoChegada = document.getElementById('chegadaConfirmarProcesso');
+    if (processoChegada && processoChegada.dataset.componentesSutiaChange !== APP_VERSION) {
+      processoChegada.dataset.componentesSutiaChange = APP_VERSION;
+      processoChegada.addEventListener('change', () => atualizarCamposComponentesSutiaChegada({ resetar: true }));
+    }
+
+    const processoManual = document.getElementById('chegadaManualProcesso');
+    if (processoManual && processoManual.dataset.componentesSutiaChange !== APP_VERSION) {
+      processoManual.dataset.componentesSutiaChange = APP_VERSION;
+      processoManual.addEventListener('change', atualizarCamposComponentesSutiaChegadaManual);
+    }
+
+    if (document.documentElement.dataset.componentesSutiaCliques !== APP_VERSION) {
+      document.documentElement.dataset.componentesSutiaCliques = APP_VERSION;
+      document.addEventListener('click', event => {
+        if (event.target?.closest?.('button[onclick*="registrarChegadaMovimentacao"]')) {
+          setTimeout(() => atualizarCamposComponentesSutiaChegada({ resetar: true }), 100);
+          setTimeout(() => atualizarCamposComponentesSutiaChegada({ resetar: true }), 260);
+        }
+        if (event.target?.closest?.('[onclick*="abrirModalMovimentacao"], [onclick*="abrirMovimentacao"], [data-abrir-movimentacao]')) {
+          setTimeout(atualizarCamposComponentesSutiaEnvio, 80);
+          setTimeout(atualizarCamposComponentesSutiaEnvio, 240);
+        }
+      });
+    }
+  }
 
 
 
@@ -11131,8 +12041,11 @@
     iniciarConcluirInteligenteManejo();
     iniciarGerenciarValoresOrganizadoSeguro();
     // Instalada primeiro para barrar a ação antes das rotinas antigas de salvamento.
+    iniciarComponentesSutiaFaccaoFinanceiro();
     iniciarTravasDuplicidadeFaccaoPagamento();
     iniciarConfirmacaoObrigatoriaChegadaFaccao();
+    // A confirmação cria seus campos; esta segunda chamada conecta lateral/bojo à chegada.
+    iniciarComponentesSutiaFaccaoFinanceiro();
     iniciarRevisaoFinalPagamentos();
     iniciarTelaPagamentosSegura();
     iniciarHotfixChegadaManual();

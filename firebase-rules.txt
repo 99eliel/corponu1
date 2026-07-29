@@ -27,8 +27,55 @@ service cloud.firestore {
     }
 
     function usuarioComum() {
-      return ativo()
-        && meuPerfil().data.tipo in ["admin", "usuario"];
+      // Todo perfil autenticado e ativo pode executar as rotinas operacionais.
+      // O tipo "admin" continua necessário somente nas áreas administrativas.
+      return ativo();
+    }
+
+
+    function financeiroPodeDefinirValor() {
+      return admin() || (
+        ativo()
+        && meuPerfil().data.keys().hasAny(["permissoes"])
+        && meuPerfil().data.permissoes.keys().hasAny(["recursos"])
+        && (
+          (
+            meuPerfil().data.permissoes.recursos.keys().hasAny(["gerenciarValores"])
+            && meuPerfil().data.permissoes.recursos.gerenciarValores == true
+          )
+          || (
+            meuPerfil().data.permissoes.recursos.keys().hasAny(["marcarPagamentos"])
+            && meuPerfil().data.permissoes.recursos.marcarPagamentos == true
+          )
+        )
+      );
+    }
+
+    function alteracaoValorTotalManualPermitida() {
+      return financeiroPodeDefinirValor()
+        && resource.data.statusPagamento != "pago"
+        && request.resource.data.statusPagamento == "pendente"
+        && request.resource.data.atualizadoPor == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "total",
+          "subtotal",
+          "valorUnitario",
+          "statusPagamento",
+          "valorPendente",
+          "valorManualFinanceiroPendente",
+          "valorManualFinanceiro",
+          "valorTotalDefinidoManualmente",
+          "valorTotalManual",
+          "formaValorPagamento",
+          "motivoValorPendente",
+          "avisoPagamento",
+          "valorInformadoPor",
+          "valorInformadoEm",
+          "atualizadoPor",
+          "atualizadoEm",
+          "versaoValorManual",
+          "observacoes"
+        ]);
     }
 
     function pagamentoDoUsuario() {
@@ -40,6 +87,23 @@ service cloud.firestore {
       return usuarioComum()
         && request.resource.data.criadoPor == request.auth.uid
         && request.resource.data.atualizadoPor == request.auth.uid;
+    }
+
+    function novoLogDoUsuario() {
+      return usuarioComum() && (
+        (
+          request.resource.data.keys().hasAny(["usuarioUid"])
+          && request.resource.data.usuarioUid == request.auth.uid
+        )
+        || (
+          request.resource.data.keys().hasAny(["usuarioId"])
+          && request.resource.data.usuarioId == request.auth.uid
+        )
+        || (
+          request.resource.data.keys().hasAny(["criadoPor"])
+          && request.resource.data.criadoPor == request.auth.uid
+        )
+      );
     }
 
     match /usuarios/{userId} {
@@ -79,8 +143,11 @@ service cloud.firestore {
 
     match /logsAlteracoes/{logId} {
       allow read: if admin();
-      allow create: if usuarioComum()
-        && request.resource.data.usuarioUid == request.auth.uid;
+
+      // As rotinas atuais usam usuarioUid, usuarioId ou criadoPor,
+      // dependendo da tela. Todos precisam apontar para o usuário logado.
+      allow create: if novoLogDoUsuario();
+
       allow update, delete: if false;
     }
 
@@ -106,24 +173,28 @@ service cloud.firestore {
     }
 
     match /entregasPagamento/{entregaId} {
-      // O administrador continua vendo e alterando todos os pagamentos.
-      // O usuário comum vê somente pagamentos criados pelo próprio UID.
-      allow read: if admin() || pagamentoDoUsuario();
+      // A chegada precisa pesquisar pagamentos ligados à movimentação para
+      // impedir duplicidade, inclusive quando o lançamento foi criado por
+      // outro usuário. Por isso, todo usuário ativo pode consultar a coleção.
+      allow read: if usuarioComum();
 
-      // Corrige o problema em que a chegada era salva, mas o pagamento
-      // falhava para usuário comum. O usuário cria apenas em seu próprio nome.
+      // Usuário operacional cria somente pagamentos vinculados ao próprio UID.
       allow create: if admin() || novoPagamentoDoUsuario();
 
-      // O usuário pode corrigir somente o próprio pagamento enquanto não pago.
-      allow update: if admin() || (
-        pagamentoDoUsuario()
-        && resource.data.statusPagamento != "pago"
-        && novoPagamentoDoUsuario()
-        && request.resource.data.statusPagamento != "pago"
-      );
+      // Financeiro autorizado pode informar o valor total de Sutiã Montagem/
+      // Sutiã Completo. A regra limita exatamente os campos financeiros alterados.
+      // Usuário operacional continua podendo corrigir apenas o próprio pagamento.
+      allow update: if admin()
+        || alteracaoValorTotalManualPermitida()
+        || (
+          pagamentoDoUsuario()
+          && resource.data.statusPagamento != "pago"
+          && novoPagamentoDoUsuario()
+          && request.resource.data.statusPagamento != "pago"
+        );
 
-      // Exclusão pelo usuário é permitida apenas para o próprio pagamento
-      // pendente/sem valor. Pagamento já pago exige administrador.
+      // Exclusão pelo usuário é permitida somente para o próprio lançamento
+      // pendente/sem valor. Pagamentos quitados continuam restritos ao ADM.
       allow delete: if admin() || (
         pagamentoDoUsuario()
         && resource.data.statusPagamento != "pago"
