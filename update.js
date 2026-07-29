@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-legibilidade-sem-rolagem-1";
+  const APP_VERSION = "2026-07-29-alca-valor-padrao-x2-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -2881,6 +2881,9 @@
 
   async function buscarPrecoMovUsuario(referencia, processo) {
     const { firestore, db } = contextoMovUsuario;
+    if (processoPagamentoAlca(processo)) {
+      return buscarPrecoPadraoAlca(firestore, db);
+    }
     const refNormalizada = normalizarReferenciaMovUsuario(referencia);
     const procNormalizado = normalizarTextoMovUsuario(processo);
     let docs = [];
@@ -2911,6 +2914,7 @@
     const quantidade = Math.max(numeroSeguroMovUsuario(mov.quantidadeRecebida), 0);
     const descontoDefeito = Math.max(numeroSeguroMovUsuario(mov.descontoDefeito), 0);
     const pagamentoReenvio = Boolean(mov.movimentacaoOrigemId || mov.reenvio || mov.origem === "movimentacao");
+    const pagamentoAlca = processoPagamentoAlca(mov.processo || preco?.processo || "");
     if (!preco) {
       return {
         id: docIdSeguroMovUsuario(`mov-${mov.id}-sem-valor`),
@@ -2934,6 +2938,9 @@
           setorLabel: String(mov.setor || "sutia").toLowerCase() === "calcinha" ? "Calcinha" : "Sutiã",
           dataEntrega: mov.dataChegada,
           quantidade,
+          quantidadeAlcas: pagamentoAlca ? quantidade * 2 : 0,
+          multiplicadorAlcas: pagamentoAlca ? 2 : 0,
+          valorUnitarioAlca: 0,
           falta: numeroSeguroMovUsuario(mov.falta),
           descontoDefeito,
           lateralPronta: mov.lateralPronta ?? mov.lateralProntaChegada ?? null,
@@ -2950,8 +2957,14 @@
           total: 0,
           statusPagamento: "sem_valor",
           valorPendente: true,
-          avisoPagamento: `Adicionar valor para Ref. ${mov.referencia || "-"} + ${mov.processo || "-"}.`,
-          observacoes: "Pagamento recalculado após correção da chegada; ainda não existe valor para REF + PROCESSO.",
+          formaValorPagamento: pagamentoAlca ? "valor_padrao_alca_x2" : "valor_unitario_base",
+          motivoValorPendente: pagamentoAlca ? "valor_padrao_alca_nao_cadastrado" : "preco_base_nao_cadastrado",
+          avisoPagamento: pagamentoAlca
+            ? "Cadastrar o valor padrão de cada alça. O sistema multiplicará por 2 para cada sutiã."
+            : `Adicionar valor para Ref. ${mov.referencia || "-"} + ${mov.processo || "-"}.`,
+          observacoes: pagamentoAlca
+            ? "Pagamento de Alça aguardando o valor padrão global. Cada sutiã corresponde a duas alças."
+            : "Pagamento recalculado após correção da chegada; ainda não existe valor para REF + PROCESSO.",
           criadoPor: uid,
           criadoEm: firestore.serverTimestamp(),
           atualizadoPor: uid,
@@ -2961,7 +2974,10 @@
         }
       };
     }
-    const valorUnitario = numeroSeguroMovUsuario(preco.valor);
+    const valorUnitarioAlca = pagamentoAlca ? numeroSeguroMovUsuario(preco.valor) : 0;
+    const valorUnitario = pagamentoAlca
+      ? valorUnitarioAlca * 2
+      : numeroSeguroMovUsuario(preco.valor);
     const subtotal = quantidade * valorUnitario;
     const total = Math.max(subtotal - descontoDefeito, 0);
     return {
@@ -2986,6 +3002,9 @@
         setorLabel: preco.setorLabel || (String(preco.setor || mov.setor).toLowerCase() === "calcinha" ? "Calcinha" : "Sutiã"),
         dataEntrega: mov.dataChegada,
         quantidade,
+        quantidadeAlcas: pagamentoAlca ? quantidade * 2 : 0,
+        multiplicadorAlcas: pagamentoAlca ? 2 : 0,
+        valorUnitarioAlca,
         falta: numeroSeguroMovUsuario(mov.falta),
         descontoDefeito,
         lateralPronta: mov.lateralPronta ?? mov.lateralProntaChegada ?? null,
@@ -3002,16 +3021,23 @@
         total,
         statusPagamento: "pendente",
         valorPendente: false,
-        observacoes: "Pagamento recalculado automaticamente após correção da chegada pelo usuário responsável.",
+        formaValorPagamento: pagamentoAlca ? "valor_padrao_alca_x2" : "valor_unitario_base",
+        motivoValorPendente: "",
+        avisoPagamento: "",
+        observacoes: pagamentoAlca
+          ? `Pagamento de Alça calculado automaticamente: ${quantidade} sutiã(s) × 2 alças × valor padrão.`
+          : "Pagamento recalculado automaticamente após correção da chegada pelo usuário responsável.",
         criadoPor: uid,
         criadoEm: firestore.serverTimestamp(),
         atualizadoPor: uid,
         atualizadoEm: firestore.serverTimestamp(),
         corrigidoPeloUsuario: true,
-        versaoCorrecao: APP_VERSION
+        versaoCorrecao: APP_VERSION,
+        ...(pagamentoAlca ? { versaoValorAlca: APP_VERSION } : {})
       }
     };
   }
+
 
   async function registrarLogMovUsuario(acao, mov, detalhes) {
     if (!contextoMovUsuario?.user) return;
@@ -6096,7 +6122,7 @@
 
       const avisos = [];
       if (semValorBase.length) {
-        avisos.push(`${semValorBase.length} pagamento(s) aguardam definição de valor. Para Sutiã Montagem e Sutiã Completo, informe diretamente o valor total final da OP.`);
+        avisos.push(`${semValorBase.length} pagamento(s) aguardam definição de valor. Para Sutiã Montagem e Sutiã Completo, informe o total final da OP. Para Alça, cadastre o valor padrão de uma alça; o sistema multiplicará por 2 em cada sutiã.`);
       }
       if (semPix.length) {
         avisos.push(`Sem PIX cadastrado no filtro atual: ${semPix.slice(0, 8).join(", ")}${semPix.length > 8 ? "..." : ""}.`);
@@ -6149,20 +6175,29 @@
         if (status !== "sem_valor") return;
 
         const valorTotalManual = pagamentoAguardandoValorTotalManual(item);
+        const valorAlcaPendente = processoPagamentoAlca(item.processo || item.servicoNome || item.processoMovimentacao);
         const badge = linha.querySelector(".badge");
         if (badge) {
-          badge.textContent = valorTotalManual ? "Aguardando financeiro" : "Sem valor";
+          badge.textContent = valorTotalManual
+            ? "Aguardando financeiro"
+            : (valorAlcaPendente ? "Valor da alça pendente" : "Sem valor");
           badge.classList.add("badge-pagamento-sem-valor");
         }
-        if (valorTotalManual && linha.children?.[6]) {
+        if ((valorTotalManual || valorAlcaPendente) && linha.children?.[6]) {
           linha.children[6].innerHTML = "<strong>A definir</strong>";
-          linha.children[6].title = "O financeiro informará o valor total final desta OP.";
+          linha.children[6].title = valorTotalManual
+            ? "O financeiro informará o valor total final desta OP."
+            : "Defina o valor padrão de cada alça; o sistema usará duas alças por sutiã.";
         }
         if (botao) {
-          botao.textContent = valorTotalManual ? "Informar valor" : "Cadastrar valor";
+          botao.textContent = valorTotalManual
+            ? "Informar valor"
+            : (valorAlcaPendente ? "Definir valor da alça" : "Cadastrar valor");
           botao.title = valorTotalManual
             ? "Informe o valor total final calculado pelo financeiro para esta OP."
-            : "Cadastre o valor da referência e processo antes de pagar.";
+            : (valorAlcaPendente
+              ? "Defina o valor padrão de uma alça. O pagamento será quantidade de sutiãs × 2 × valor da alça."
+              : "Cadastre o valor da referência e processo antes de pagar.");
           botao.classList.remove("btn-success");
           botao.classList.add("btn-warning");
         }
@@ -6242,23 +6277,36 @@
         const linhas = itens.map(item => {
           const status = statusPagamentoFinal(item);
           const aguardandoValorManual = pagamentoAguardandoValorTotalManual(item);
+          const valorIndefinido = status === "sem_valor";
           const subtotal = Number(item.subtotal ?? (Number(item.quantidade || 0) * Number(item.valorUnitario || 0)));
           const desconto = Number(item.descontoDefeito || 0);
           const componentes = textoComponentesSutiaPagamento(item);
+          const pagamentoAlca = processoPagamentoAlca(item.processo || item.servicoNome || item.processoMovimentacao);
+          const quantidadeAlcas = pagamentoAlca
+            ? Number(item.quantidadeAlcas || (Number(item.quantidade || 0) * 2))
+            : 0;
+          const valorAlca = pagamentoAlca
+            ? Number(item.valorUnitarioAlca || (Number(item.valorUnitario || 0) / 2))
+            : 0;
+          const detalheProcesso = pagamentoAlca ? `<br><small>2 alças por sutiã</small>` : "";
+          const detalheQuantidade = pagamentoAlca ? `<br><small>${formatarNumeroPagamentoFinal(quantidadeAlcas)} alças</small>` : "";
+          const detalheValor = pagamentoAlca && !valorIndefinido
+            ? `${formatarMoedaPagamentoFinal(valorAlca)}<br><small>${formatarMoedaPagamentoFinal(item.valorUnitario)} por sutiã</small>`
+            : (valorIndefinido ? "-" : formatarMoedaPagamentoFinal(item.valorUnitario));
           return `
             <tr class="${status === "sem_valor" ? "sem-valor" : ""}">
               <td>${escapeHtmlPagamentoFinal(dataPagamentoFinalBR(item.dataEntrega))}</td>
               <td><strong>${escapeHtmlPagamentoFinal(item.numeroOP || "-")}</strong></td>
               <td>${escapeHtmlPagamentoFinal(item.referencia || "-")}</td>
-              <td>${escapeHtmlPagamentoFinal(item.processo || item.servicoNome || "-")}${item.pagamentoReenvio ? `<br><small>Reenvio</small>` : ""}</td>
+              <td>${escapeHtmlPagamentoFinal(item.processo || item.servicoNome || "-")}${detalheProcesso}${item.pagamentoReenvio ? `<br><small>Reenvio</small>` : ""}</td>
               <td>${componentes ? escapeHtmlPagamentoFinal(componentes) : "-"}</td>
-              <td class="num">${formatarNumeroPagamentoFinal(item.quantidade)}</td>
+              <td class="num">${formatarNumeroPagamentoFinal(item.quantidade)}${detalheQuantidade}</td>
               <td class="num">${formatarNumeroPagamentoFinal(item.falta)}</td>
-              <td class="num">${aguardandoValorManual ? "-" : formatarMoedaPagamentoFinal(item.valorUnitario)}</td>
-              <td class="num">${aguardandoValorManual ? "-" : formatarMoedaPagamentoFinal(subtotal)}</td>
+              <td class="num">${detalheValor}</td>
+              <td class="num">${valorIndefinido ? "-" : formatarMoedaPagamentoFinal(subtotal)}</td>
               <td class="num">${formatarMoedaPagamentoFinal(desconto)}</td>
-              <td class="num"><strong>${aguardandoValorManual ? "A DEFINIR" : formatarMoedaPagamentoFinal(item.total)}</strong></td>
-              <td>${status === "pago" ? "Pago" : aguardandoValorManual ? "AGUARDANDO FINANCEIRO" : status === "sem_valor" ? "SEM VALOR" : "Pendente"}</td>
+              <td class="num"><strong>${valorIndefinido ? "A DEFINIR" : formatarMoedaPagamentoFinal(item.total)}</strong></td>
+              <td>${status === "pago" ? "Pago" : aguardandoValorManual ? "AGUARDANDO FINANCEIRO" : pagamentoAlca && valorIndefinido ? "VALOR PADRÃO DA ALÇA" : status === "sem_valor" ? "SEM VALOR" : "Pendente"}</td>
             </tr>
           `;
         }).join("");
@@ -6498,6 +6546,11 @@
       if (statusAtual === "sem_valor") {
         if (pagamentoAguardandoValorTotalManual(item)) {
           abrirModalValorTotalManual(id);
+          return;
+        }
+        if (processoPagamentoAlca(item.processo || item.servicoNome || item.processoMovimentacao)) {
+          abrirGerenciarValorPadraoAlca();
+          mostrarAvisoFormulario("Defina o valor padrão de cada alça. O sistema aplicará duas alças por sutiã e recalculará os pagamentos em aberto.");
           return;
         }
         mostrarAvisoFormulario(`Pagamento da OP ${item.numeroOP || "-"} bloqueado: cadastre o valor de ${item.referencia || "-"} + ${item.processo || item.servicoNome || "processo"} antes de pagar.`);
@@ -10284,6 +10337,9 @@
   }
 
   async function buscarPrecoChegadaManualSimplificada(firestore, db, referencia, processo) {
+    if (processoPagamentoAlca(processo)) {
+      return buscarPrecoPadraoAlca(firestore, db);
+    }
     const snap = await firestore.getDocs(firestore.collection(db, "precosReferencia"));
     return snap.docs
       .map(item => ({ id: item.id, ...item.data() }))
@@ -10404,6 +10460,7 @@
       if (!user) throw new Error("Usuário não autenticado.");
 
       const valorTotalManualFinanceiro = processoValorTotalManualFinanceiro(processo);
+      const pagamentoAlca = processoPagamentoAlca(processo);
       const preco = valorTotalManualFinanceiro
         ? null
         : await buscarPrecoChegadaManualSimplificada(firestore, db, referencia, processo);
@@ -10416,7 +10473,12 @@
         return;
       }
 
-      const valorUnitario = valorTotalManualFinanceiro ? 0 : numeroChegadaManualSimplificada(preco?.valor);
+      const valorUnitarioAlca = pagamentoAlca && preco
+        ? numeroChegadaManualSimplificada(preco.valor)
+        : 0;
+      const valorUnitario = valorTotalManualFinanceiro
+        ? 0
+        : (pagamentoAlca ? valorUnitarioAlca * 2 : numeroChegadaManualSimplificada(preco?.valor));
       const subtotal = valorTotalManualFinanceiro ? 0 : quantidadeRecebida * valorUnitario;
       const total = valorTotalManualFinanceiro ? 0 : Math.max(subtotal - descontoDefeito, 0);
       const pagamentoId = idSeguroChegadaManualSimplificada(
@@ -10495,6 +10557,9 @@
         setorLabel: labelSetorChegadaManualSimplificada(valorTotalManualFinanceiro ? setor : (preco?.setor || setor)),
         dataEntrega: dataChegada,
         quantidade: quantidadeRecebida,
+        quantidadeAlcas: pagamentoAlca ? quantidadeRecebida * 2 : 0,
+        multiplicadorAlcas: pagamentoAlca ? 2 : 0,
+        valorUnitarioAlca,
         falta,
         descontoDefeito,
         ...(exigeComponentesSutia ? {
@@ -10512,16 +10577,30 @@
         valorPendente: valorTotalManualFinanceiro || !preco,
         valorManualFinanceiroPendente: valorTotalManualFinanceiro,
         valorTotalDefinidoManualmente: false,
-        formaValorPagamento: valorTotalManualFinanceiro ? "total_manual_op" : "valor_unitario_base",
-        motivoValorPendente: valorTotalManualFinanceiro ? "processo_exige_total_manual" : (!preco ? "preco_base_nao_cadastrado" : ""),
+        formaValorPagamento: valorTotalManualFinanceiro
+          ? "total_manual_op"
+          : (pagamentoAlca ? "valor_padrao_alca_x2" : "valor_unitario_base"),
+        motivoValorPendente: valorTotalManualFinanceiro
+          ? "processo_exige_total_manual"
+          : (!preco
+            ? (pagamentoAlca ? "valor_padrao_alca_nao_cadastrado" : "preco_base_nao_cadastrado")
+            : ""),
         avisoPagamento: valorTotalManualFinanceiro
           ? "Financeiro deve informar o valor total final desta OP."
-          : (preco ? "" : `Adicionar valor para Ref. ${referencia} + ${processo}.`),
+          : (preco
+            ? ""
+            : (pagamentoAlca
+              ? "Cadastrar o valor padrão de cada alça. O sistema multiplicará por 2 para cada sutiã."
+              : `Adicionar valor para Ref. ${referencia} + ${processo}.`)),
         observacoes: valorTotalManualFinanceiro
           ? "Sutiã Montagem/Sutiã Completo: valor total da OP deve ser informado manualmente pelo financeiro."
           : (preco
-            ? "Gerado automaticamente pela chegada manual simplificada."
-            : "Pagamento ficou em aberto porque não existe valor cadastrado para REF + PROCESSO."),
+            ? (pagamentoAlca
+              ? `Alça calculada automaticamente: ${quantidadeRecebida} sutiã(s) × 2 alças × valor padrão.`
+              : "Gerado automaticamente pela chegada manual simplificada.")
+            : (pagamentoAlca
+              ? "Pagamento de Alça ficou em aberto porque o valor padrão global ainda não foi cadastrado."
+              : "Pagamento ficou em aberto porque não existe valor cadastrado para REF + PROCESSO.")),
         atualizadoPor: user.uid,
         atualizadoEm: agoraServidor,
         criadoPor: user.uid,
@@ -10553,8 +10632,10 @@
         valorTotalManualFinanceiro
           ? `Chegada salva. ${quantidadeRecebida.toLocaleString("pt-BR")} peças recebidas; o financeiro deverá informar o valor total desta OP.`
           : (preco
-            ? `Chegada salva. ${quantidadeRecebida.toLocaleString("pt-BR")} peças recebidas e pagamento de ${formatarMoedaChegadaManualSimplificada(total)} gerado.`
-            : `Chegada salva. ${quantidadeRecebida.toLocaleString("pt-BR")} peças recebidas; o pagamento ficou pendente de valor.`)
+            ? `Chegada salva. ${quantidadeRecebida.toLocaleString("pt-BR")} peças recebidas e pagamento de ${formatarMoedaChegadaManualSimplificada(total)} gerado.${pagamentoAlca ? ` Foram consideradas ${(quantidadeRecebida * 2).toLocaleString("pt-BR")} alças.` : ""}`
+            : (pagamentoAlca
+              ? `Chegada salva. Cadastre o valor padrão da alça; o pagamento considerará duas alças por sutiã.`
+              : `Chegada salva. ${quantidadeRecebida.toLocaleString("pt-BR")} peças recebidas; o pagamento ficou pendente de valor.`))
       );
     } catch (error) {
       console.error("Erro ao salvar chegada manual simplificada.", error);
@@ -11131,6 +11212,9 @@
   }
 
   async function buscarPrecoConfirmacaoChegada(firestore, db, referencia, processo) {
+    if (processoPagamentoAlca(processo)) {
+      return buscarPrecoPadraoAlca(firestore, db);
+    }
     const snapshot = await firestore.getDocs(firestore.collection(db, 'precosReferencia'));
     const refChave = normalizarComparacao(referencia);
     const processoChave = normalizarComparacao(processo);
@@ -11247,6 +11331,7 @@
       }
 
       const valorTotalManualFinanceiro = processoValorTotalManualFinanceiro(processo);
+      const pagamentoAlca = processoPagamentoAlca(processo);
       const preco = valorTotalManualFinanceiro
         ? null
         : await buscarPrecoConfirmacaoChegada(firestore, db, movTela.referencia || '', processo);
@@ -11362,8 +11447,13 @@
         const setorPagamento = valorTotalManualFinanceiro
           ? (movServidor.setor || setorConfirmacaoChegada(movServidor))
           : (preco?.setor || movServidor.setor || setorConfirmacaoChegada(movServidor));
-        const valorUnitario = (!valorTotalManualFinanceiro && preco)
+        const valorUnitarioAlca = pagamentoAlca && preco
           ? Math.max(0, numeroConfirmacaoChegada(preco.valor || 0))
+          : 0;
+        const valorUnitario = (!valorTotalManualFinanceiro && preco)
+          ? (pagamentoAlca
+            ? valorUnitarioAlca * 2
+            : Math.max(0, numeroConfirmacaoChegada(preco.valor || 0)))
           : 0;
         const subtotal = valorTotalManualFinanceiro ? 0 : quantidadeRecebida * valorUnitario;
         const total = valorTotalManualFinanceiro ? 0 : Math.max(subtotal - desconto, 0);
@@ -11388,6 +11478,9 @@
           setorLabel: labelSetorConfirmacaoChegada(setorPagamento),
           dataEntrega: dataChegada,
           quantidade: quantidadeRecebida,
+          quantidadeAlcas: pagamentoAlca ? quantidadeRecebida * 2 : 0,
+          multiplicadorAlcas: pagamentoAlca ? 2 : 0,
+          valorUnitarioAlca,
           falta,
           descontoDefeito: desconto,
           ...(exigeComponentesSutia ? {
@@ -11408,18 +11501,32 @@
           valorPendente: valorTotalManualFinanceiro || !preco,
           valorManualFinanceiroPendente: valorTotalManualFinanceiro,
           valorTotalDefinidoManualmente: false,
-          formaValorPagamento: valorTotalManualFinanceiro ? 'total_manual_op' : 'valor_unitario_base',
-          motivoValorPendente: valorTotalManualFinanceiro ? 'processo_exige_total_manual' : (!preco ? 'preco_base_nao_cadastrado' : ''),
+          formaValorPagamento: valorTotalManualFinanceiro
+            ? 'total_manual_op'
+            : (pagamentoAlca ? 'valor_padrao_alca_x2' : 'valor_unitario_base'),
+          motivoValorPendente: valorTotalManualFinanceiro
+            ? 'processo_exige_total_manual'
+            : (!preco
+              ? (pagamentoAlca ? 'valor_padrao_alca_nao_cadastrado' : 'preco_base_nao_cadastrado')
+              : ''),
           avisoPagamento: valorTotalManualFinanceiro
             ? 'Financeiro deve informar o valor total final desta OP.'
-            : (preco ? '' : `Adicionar valor para Ref. ${movServidor.referencia || '-'} + ${processo}.`),
+            : (preco
+              ? ''
+              : (pagamentoAlca
+                ? 'Cadastrar o valor padrão de cada alça. O sistema multiplicará por 2 para cada sutiã.'
+                : `Adicionar valor para Ref. ${movServidor.referencia || '-'} + ${processo}.`)),
           observacoes: valorTotalManualFinanceiro
             ? 'Sutiã Montagem/Sutiã Completo: valor total da OP deve ser informado manualmente pelo financeiro.'
             : (preco
-              ? (pagamentoReenvio
-                ? 'Gerado na chegada confirmada de um reenvio. Processo e facção foram reconferidos antes do pagamento.'
-                : 'Gerado na chegada com reconfirmação obrigatória de processo e facção.')
-              : 'Pagamento ficou em aberto porque não existe valor cadastrado para REF + PROCESSO confirmado na chegada.'),
+              ? (pagamentoAlca
+                ? `Alça calculada automaticamente: ${quantidadeRecebida} sutiã(s) × 2 alças × valor padrão.`
+                : (pagamentoReenvio
+                  ? 'Gerado na chegada confirmada de um reenvio. Processo e facção foram reconferidos antes do pagamento.'
+                  : 'Gerado na chegada com reconfirmação obrigatória de processo e facção.'))
+              : (pagamentoAlca
+                ? 'Pagamento de Alça ficou em aberto porque o valor padrão global ainda não foi cadastrado.'
+                : 'Pagamento ficou em aberto porque não existe valor cadastrado para REF + PROCESSO confirmado na chegada.')),
           atualizadoPor: user.uid,
           atualizadoEm: firestore.serverTimestamp(),
           criadoPor: user.uid,
@@ -11449,8 +11556,10 @@
       mostrarAvisoFormulario(resultado.valorTotalManualFinanceiro
         ? `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada. O financeiro deverá informar o valor total desta OP.`
         : (resultado.preco
-          ? `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada e pagamento gerado: ${formatarMoedaConfirmacaoChegada(resultado.total)}.`
-          : `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada. O pagamento ficou pendente porque ainda não existe valor para a referência e o processo.`)
+          ? `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada e pagamento gerado: ${formatarMoedaConfirmacaoChegada(resultado.total)}.${pagamentoAlca ? ` Foram consideradas ${(resultado.quantidadeRecebida * 2).toLocaleString("pt-BR")} alças.` : ''}`
+          : (pagamentoAlca
+            ? `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada. Cadastre o valor padrão da alça; o sistema usará duas alças por sutiã.`
+            : `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada. O pagamento ficou pendente porque ainda não existe valor para a referência e o processo.`))
       );
     } catch (error) {
       console.error('Erro ao registrar chegada com reconfirmação.', error);
@@ -11971,6 +12080,474 @@
 
 
 
+
+  // =========================================================
+  // PAGAMENTOS DE ALÇA: VALOR PADRÃO GLOBAL × 2
+  // - O financeiro cadastra uma única vez o valor de UMA alça.
+  // - Cada unidade da OP representa um sutiã com duas alças.
+  // - Pagamento = quantidade recebida × 2 × valor da alça − desconto.
+  // - O valor não depende da referência.
+  // - Ao alterar o padrão, pagamentos de Alça ainda não pagos são recalculados.
+  // =========================================================
+  const ID_PRECO_PADRAO_ALCA = 'valor-padrao-alca';
+  const MULTIPLICADOR_ALCAS_POR_SUTIA = 2;
+  let cachePrecoPadraoAlca = { expiraEm: 0, preco: null };
+
+  function processoPagamentoAlca(valor) {
+    return normalizarComparacao(valor) === 'ALCA';
+  }
+
+  function precoPadraoAlcaValido(preco) {
+    return Boolean(
+      preco &&
+      preco.ativo !== false &&
+      processoPagamentoAlca(preco.processo || preco.servicoNome) &&
+      Number(preco.valor || 0) > 0 &&
+      (
+        preco.id === ID_PRECO_PADRAO_ALCA ||
+        preco.tipoValor === 'padrao_global_alca' ||
+        preco.valorPadraoGlobalAlca === true
+      )
+    );
+  }
+
+  async function buscarPrecoPadraoAlca(firestore, db, forcar = false) {
+    const agora = Date.now();
+    if (!forcar && cachePrecoPadraoAlca.expiraEm > agora) {
+      return cachePrecoPadraoAlca.preco;
+    }
+
+    let preco = null;
+    try {
+      const ref = firestore.doc(db, 'precosReferencia', ID_PRECO_PADRAO_ALCA);
+      const snap = await firestore.getDoc(ref);
+      if (snap.exists()) {
+        const candidato = { id: snap.id, ...snap.data() };
+        if (precoPadraoAlcaValido(candidato)) preco = candidato;
+      }
+    } catch (error) {
+      console.warn('Não foi possível consultar o valor padrão da alça.', error);
+    }
+
+    cachePrecoPadraoAlca = {
+      expiraEm: agora + 20 * 1000,
+      preco
+    };
+    return preco;
+  }
+
+  function dadosCalculoPagamentoAlca(quantidadeSutias, valorPorAlca, desconto = 0) {
+    const quantidade = Math.max(0, Number(quantidadeSutias || 0));
+    const valorAlca = Math.max(0, Number(valorPorAlca || 0));
+    const descontoSeguro = Math.max(0, Number(desconto || 0));
+    const quantidadeAlcas = quantidade * MULTIPLICADOR_ALCAS_POR_SUTIA;
+    const valorPorSutia = valorAlca * MULTIPLICADOR_ALCAS_POR_SUTIA;
+    const subtotal = quantidade * valorPorSutia;
+    const total = Math.max(subtotal - descontoSeguro, 0);
+    return {
+      quantidade,
+      quantidadeAlcas,
+      valorUnitarioAlca: valorAlca,
+      valorUnitario: valorPorSutia,
+      subtotal,
+      total
+    };
+  }
+
+  function injetarEstilosValorPadraoAlca() {
+    if (document.getElementById('styleValorPadraoAlca')) return;
+    const style = document.createElement('style');
+    style.id = 'styleValorPadraoAlca';
+    style.textContent = `
+      #cardValorPadraoAlca {
+        margin: 14px 0;
+        padding: 16px;
+        border: 1px solid #bfdbfe;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #eff6ff, #f8fafc);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
+      }
+      #cardValorPadraoAlca .valor-alca-cabecalho {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 13px;
+      }
+      #cardValorPadraoAlca h3 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 18px;
+      }
+      #cardValorPadraoAlca p {
+        margin: 5px 0 0;
+        color: #475569;
+        line-height: 1.45;
+      }
+      #cardValorPadraoAlca .valor-alca-formula {
+        flex: 0 0 auto;
+        padding: 8px 11px;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-size: 12px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+      #cardValorPadraoAlca .valor-alca-form {
+        display: grid;
+        grid-template-columns: minmax(220px, 340px) auto;
+        gap: 12px;
+        align-items: end;
+      }
+      #cardValorPadraoAlca label span {
+        display: block;
+        margin-bottom: 6px;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 900;
+      }
+      #cardValorPadraoAlca input {
+        width: 100%;
+        min-height: 46px;
+        padding: 10px 12px;
+        border: 1px solid #94a3b8;
+        border-radius: 11px;
+        background: #fff;
+        color: #0f172a;
+        font-size: 18px;
+        font-weight: 900;
+      }
+      #cardValorPadraoAlca .valor-alca-status {
+        margin-top: 10px;
+        color: #475569;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      #cardValorPadraoAlca .valor-alca-exemplo {
+        margin-top: 10px;
+        padding: 9px 11px;
+        border-left: 4px solid #2563eb;
+        border-radius: 8px;
+        background: rgba(255,255,255,.75);
+        color: #334155;
+        font-size: 12px;
+      }
+      @media (max-width: 720px) {
+        #cardValorPadraoAlca .valor-alca-cabecalho {
+          display: block;
+        }
+        #cardValorPadraoAlca .valor-alca-form {
+          grid-template-columns: 1fr;
+        }
+        #cardValorPadraoAlca .valor-alca-formula {
+          display: inline-block;
+          margin-top: 10px;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function criarCartaoValorPadraoAlca() {
+    const card = document.createElement('section');
+    card.id = 'cardValorPadraoAlca';
+    card.innerHTML = `
+      <div class="valor-alca-cabecalho">
+        <div>
+          <h3>Valor padrão da Alça</h3>
+          <p>Cadastre o valor de <strong>uma alça</strong>. O sistema aplicará automaticamente duas alças para cada sutiã recebido.</p>
+        </div>
+        <div class="valor-alca-formula">Sutiãs × 2 × valor da alça</div>
+      </div>
+      <form id="formValorPadraoAlca" class="valor-alca-form">
+        <label>
+          <span>Valor de uma alça</span>
+          <input id="inputValorPadraoAlca" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: 0,25" required />
+        </label>
+        <button type="submit" class="btn btn-primary" id="btnSalvarValorPadraoAlca">Salvar valor padrão</button>
+      </form>
+      <div class="valor-alca-exemplo">
+        Exemplo: 100 sutiãs correspondem a 200 alças. Com uma alça a R$ 0,25, o subtotal será R$ 50,00 antes dos descontos.
+      </div>
+      <div id="statusValorPadraoAlca" class="valor-alca-status">Carregando valor atual...</div>
+    `;
+    return card;
+  }
+
+  async function carregarValorPadraoAlcaNaTela(forcar = false) {
+    const input = document.getElementById('inputValorPadraoAlca');
+    const status = document.getElementById('statusValorPadraoAlca');
+    if (!input || !status) return;
+
+    try {
+      const contexto = await obterContextoTravasDuplicidade();
+      const [preco, acesso] = await Promise.all([
+        buscarPrecoPadraoAlca(contexto.firestore, contexto.db, forcar),
+        perfilPodeInformarValorTotalManual(contexto)
+      ]);
+
+      input.disabled = !acesso.ok;
+      const botao = document.getElementById('btnSalvarValorPadraoAlca');
+      if (botao) botao.disabled = !acesso.ok;
+
+      if (preco) {
+        input.value = Number(preco.valor || 0).toLocaleString('pt-BR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 4
+        });
+        status.textContent = `Valor atual: ${formatarMoedaPagamentoFinal(preco.valor)} por alça. Valor por sutiã: ${formatarMoedaPagamentoFinal(Number(preco.valor || 0) * 2)}.`;
+      } else {
+        input.value = '';
+        status.textContent = acesso.ok
+          ? 'Nenhum valor padrão cadastrado. Pagamentos de Alça ficarão em aberto até o primeiro cadastro.'
+          : 'Valor padrão ainda não cadastrado. Seu usuário não possui permissão financeira para alterá-lo.';
+      }
+    } catch (error) {
+      console.error('Erro ao carregar o valor padrão da alça.', error);
+      status.textContent = 'Não foi possível carregar o valor padrão da alça.';
+    }
+  }
+
+  async function recalcularPagamentosAlcaAbertos(contexto, preco) {
+    const snapshot = await contexto.firestore.getDocs(
+      contexto.firestore.collection(contexto.db, 'entregasPagamento')
+    );
+    const abertos = snapshot.docs
+      .map(item => ({ id: item.id, ...item.data() }))
+      .filter(item =>
+        processoPagamentoAlca(item.processo || item.servicoNome || item.processoMovimentacao) &&
+        !item.excluido &&
+        !['PAGO', 'CANCELADO', 'EXCLUIDO'].includes(normalizarComparacao(item.statusPagamento))
+      );
+
+    let atualizados = 0;
+    for (let inicio = 0; inicio < abertos.length; inicio += 400) {
+      const lote = contexto.firestore.writeBatch(contexto.db);
+      abertos.slice(inicio, inicio + 400).forEach(item => {
+        const calculo = dadosCalculoPagamentoAlca(
+          item.quantidade,
+          preco.valor,
+          item.descontoDefeito
+        );
+        lote.set(
+          contexto.firestore.doc(contexto.db, 'entregasPagamento', item.id),
+          {
+            precoReferenciaId: ID_PRECO_PADRAO_ALCA,
+            servicoId: ID_PRECO_PADRAO_ALCA,
+            quantidadeAlcas: calculo.quantidadeAlcas,
+            multiplicadorAlcas: MULTIPLICADOR_ALCAS_POR_SUTIA,
+            valorUnitarioAlca: calculo.valorUnitarioAlca,
+            valorUnitario: calculo.valorUnitario,
+            subtotal: calculo.subtotal,
+            total: calculo.total,
+            statusPagamento: 'pendente',
+            valorPendente: false,
+            valorManualFinanceiroPendente: false,
+            formaValorPagamento: 'valor_padrao_alca_x2',
+            motivoValorPendente: '',
+            avisoPagamento: '',
+            observacoes: `Alça recalculada pelo valor padrão: ${calculo.quantidade} sutiã(s) × 2 alças.`,
+            atualizadoPor: contexto.auth.currentUser.uid,
+            atualizadoEm: contexto.firestore.serverTimestamp(),
+            versaoValorAlca: APP_VERSION
+          },
+          { merge: true }
+        );
+        atualizados += 1;
+      });
+      await lote.commit();
+    }
+    return atualizados;
+  }
+
+  async function salvarValorPadraoAlca(event) {
+    event.preventDefault();
+    const input = document.getElementById('inputValorPadraoAlca');
+    const valor = numeroMoedaBRValorManual(input?.value);
+    if (!(valor > 0)) {
+      mostrarAvisoFormulario('Informe um valor maior que zero para cada alça.');
+      input?.focus();
+      return;
+    }
+
+    const botao = document.getElementById('btnSalvarValorPadraoAlca');
+    if (botao?.disabled) return;
+    if (botao) {
+      botao.disabled = true;
+      botao.dataset.textoOriginal = botao.textContent;
+      botao.textContent = 'Salvando e recalculando...';
+    }
+
+    try {
+      const contexto = await obterContextoTravasDuplicidade();
+      const acesso = await perfilPodeInformarValorTotalManual(contexto);
+      if (!acesso.ok) {
+        throw Object.assign(new Error('Sem permissão financeira.'), { code: 'permission-denied' });
+      }
+
+      const ref = contexto.firestore.doc(contexto.db, 'precosReferencia', ID_PRECO_PADRAO_ALCA);
+      const existente = await contexto.firestore.getDoc(ref);
+      const agora = contexto.firestore.serverTimestamp();
+      const dados = {
+        referencia: 'TODAS',
+        processo: 'ALÇA',
+        setor: 'alca',
+        setorLabel: 'Alça',
+        valor,
+        ativo: true,
+        tipoValor: 'padrao_global_alca',
+        valorPadraoGlobalAlca: true,
+        multiplicadorQuantidade: MULTIPLICADOR_ALCAS_POR_SUTIA,
+        atualizadoPor: acesso.usuario.uid,
+        atualizadoEm: agora,
+        versaoValorAlca: APP_VERSION
+      };
+      if (!existente.exists()) {
+        dados.criadoPor = acesso.usuario.uid;
+        dados.criadoEm = agora;
+      }
+
+      await contexto.firestore.setDoc(ref, dados, { merge: true });
+      cachePrecoPadraoAlca = {
+        expiraEm: Date.now() + 20 * 1000,
+        preco: { id: ID_PRECO_PADRAO_ALCA, ...dados }
+      };
+
+      const atualizados = await recalcularPagamentosAlcaAbertos(
+        contexto,
+        { id: ID_PRECO_PADRAO_ALCA, ...dados }
+      );
+
+      try {
+        await contexto.firestore.addDoc(
+          contexto.firestore.collection(contexto.db, 'logsAlteracoes'),
+          {
+            acao: 'valor_padrao_alca_atualizado',
+            tipoAlvo: 'precoReferencia',
+            alvoId: ID_PRECO_PADRAO_ALCA,
+            detalhes: `Valor por alça ${formatarMoedaPagamentoFinal(valor)} | multiplicador 2 | ${atualizados} pagamento(s) em aberto recalculado(s)`,
+            usuarioUid: acesso.usuario.uid,
+            usuarioNome: acesso.perfil?.nome || '',
+            usuarioEmail: acesso.perfil?.email || acesso.usuario.email || '',
+            usuarioTipo: acesso.perfil?.tipo || 'usuario',
+            criadoEm: contexto.firestore.serverTimestamp()
+          }
+        );
+      } catch (erroLog) {
+        console.warn('Valor da alça salvo, mas o log adicional não foi criado.', erroLog);
+      }
+
+      cachePagamentoFinal.expiraEm = 0;
+      await carregarValorPadraoAlcaNaTela(true);
+      mostrarAvisoFormulario(
+        `Valor de ${formatarMoedaPagamentoFinal(valor)} por alça salvo. ${atualizados} pagamento(s) de Alça em aberto foram recalculados.`
+      );
+      setTimeout(() => {
+        atualizarConferenciaPagamentoFinal(true);
+        if (typeof window.atualizarDadosServidorAgora === 'function') {
+          window.atualizarDadosServidorAgora();
+        }
+      }, 350);
+    } catch (error) {
+      console.error('Erro ao salvar valor padrão da alça.', error);
+      if (String(error?.code || '').includes('permission-denied')) {
+        mostrarAvisoFormulario('Seu usuário não possui permissão para definir o valor da alça. Publique também as novas regras do Firestore.');
+      } else {
+        mostrarAvisoFormulario(error?.message || 'Não foi possível salvar o valor padrão da alça.');
+      }
+    } finally {
+      if (botao) {
+        botao.disabled = false;
+        botao.textContent = botao.dataset.textoOriginal || 'Salvar valor padrão';
+      }
+    }
+  }
+
+  function injetarCartaoValorPadraoAlca() {
+    const painel = document.getElementById('painelGerenciarValores');
+    if (!painel) return;
+    injetarEstilosValorPadraoAlca();
+
+    let card = document.getElementById('cardValorPadraoAlca');
+    if (!card) {
+      card = criarCartaoValorPadraoAlca();
+      const intro = painel.querySelector('.gerenciar-valores-intro');
+      if (intro) intro.insertAdjacentElement('afterend', card);
+      else {
+        const toolbar = painel.querySelector('.gerenciamento-exclusivo-toolbar');
+        if (toolbar) toolbar.insertAdjacentElement('afterend', card);
+        else painel.prepend(card);
+      }
+    }
+
+    const form = document.getElementById('formValorPadraoAlca');
+    if (form && form.dataset.eventoValorAlca !== APP_VERSION) {
+      form.dataset.eventoValorAlca = APP_VERSION;
+      form.addEventListener('submit', salvarValorPadraoAlca);
+    }
+
+    const ultimoCarregamento = Number(card.dataset.valorAlcaCarregadoEm || 0);
+    if (!ultimoCarregamento || Date.now() - ultimoCarregamento > 15000) {
+      card.dataset.valorAlcaCarregadoEm = String(Date.now());
+      carregarValorPadraoAlcaNaTela();
+    }
+  }
+
+  function abrirGerenciarValorPadraoAlca() {
+    const painel = document.getElementById('painelGerenciarValores');
+    const botaoAbrir = document.getElementById('btnToggleGerenciarValores');
+    if (painel?.classList.contains('hidden') && botaoAbrir) {
+      botaoAbrir.click();
+    }
+    [0, 100, 300].forEach(atraso => {
+      setTimeout(() => {
+        injetarCartaoValorPadraoAlca();
+        const card = document.getElementById('cardValorPadraoAlca');
+        card?.scrollIntoView({ behavior: atraso ? 'smooth' : 'auto', block: 'center' });
+        if (atraso === 300) document.getElementById('inputValorPadraoAlca')?.focus();
+      }, atraso);
+    });
+  }
+
+  function bloquearValorAlcaPorReferencia() {
+    const form = document.getElementById('formPrecoReferencia');
+    if (!form || form.dataset.bloqueioValorAlca === APP_VERSION) return;
+    form.dataset.bloqueioValorAlca = APP_VERSION;
+    form.addEventListener('submit', event => {
+      const processo = document.getElementById('precoReferenciaProcesso')?.value || '';
+      if (!processoPagamentoAlca(processo)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      abrirGerenciarValorPadraoAlca();
+      mostrarAvisoFormulario('Alça não usa valor por referência. Cadastre somente o valor padrão de uma alça no painel destacado.');
+    }, true);
+  }
+
+  function iniciarValorPadraoAlcaPagamentos() {
+    injetarCartaoValorPadraoAlca();
+    bloquearValorAlcaPorReferencia();
+
+    const botaoAbrir = document.getElementById('btnToggleGerenciarValores');
+    if (botaoAbrir && botaoAbrir.dataset.valorPadraoAlcaEvento !== APP_VERSION) {
+      botaoAbrir.dataset.valorPadraoAlcaEvento = APP_VERSION;
+      botaoAbrir.addEventListener('click', () => {
+        [0, 100, 300].forEach(atraso => setTimeout(() => {
+          injetarCartaoValorPadraoAlca();
+          bloquearValorAlcaPorReferencia();
+        }, atraso));
+      });
+    }
+
+    [150, 700, 1600].forEach(atraso => setTimeout(() => {
+      injetarCartaoValorPadraoAlca();
+      bloquearValorAlcaPorReferencia();
+    }, atraso));
+  }
+
+
+
+
   // =========================================================
   // HOTFIX: COLUNA LINHA SOMENTE NO MANEJO CALCINHA
   // - A coluna Linha é exclusiva da Calcinha (Cotton Line / Corpo Nu).
@@ -12312,6 +12889,7 @@
     iniciarProcessosFaccoesGerenciados();
     iniciarConcluirInteligenteManejo();
     iniciarGerenciarValoresOrganizadoSeguro();
+    iniciarValorPadraoAlcaPagamentos();
     // Instalada primeiro para barrar a ação antes das rotinas antigas de salvamento.
     iniciarComponentesSutiaFaccaoFinanceiro();
     iniciarTravasDuplicidadeFaccaoPagamento();

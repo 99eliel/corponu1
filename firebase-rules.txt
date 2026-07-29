@@ -78,6 +78,112 @@ service cloud.firestore {
         ]);
     }
 
+
+    function dadosPrecoPadraoAlcaValidos() {
+      return request.resource.data.referencia == "TODAS"
+        && request.resource.data.processo == "ALÇA"
+        && request.resource.data.setor == "alca"
+        && request.resource.data.setorLabel == "Alça"
+        && request.resource.data.valor is number
+        && request.resource.data.valor > 0
+        && request.resource.data.ativo == true
+        && request.resource.data.tipoValor == "padrao_global_alca"
+        && request.resource.data.valorPadraoGlobalAlca == true
+        && request.resource.data.multiplicadorQuantidade == 2
+        && request.resource.data.atualizadoPor == request.auth.uid;
+    }
+
+    function novoPrecoPadraoAlcaPermitido(precoId) {
+      return precoId == "valor-padrao-alca"
+        && financeiroPodeDefinirValor()
+        && dadosPrecoPadraoAlcaValidos()
+        && request.resource.data.criadoPor == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          "referencia",
+          "processo",
+          "setor",
+          "setorLabel",
+          "valor",
+          "ativo",
+          "tipoValor",
+          "valorPadraoGlobalAlca",
+          "multiplicadorQuantidade",
+          "atualizadoPor",
+          "atualizadoEm",
+          "versaoValorAlca",
+          "criadoPor",
+          "criadoEm"
+        ]);
+    }
+
+    function alteracaoPrecoPadraoAlcaPermitida(precoId) {
+      return precoId == "valor-padrao-alca"
+        && financeiroPodeDefinirValor()
+        && dadosPrecoPadraoAlcaValidos()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "referencia",
+          "processo",
+          "setor",
+          "setorLabel",
+          "valor",
+          "ativo",
+          "tipoValor",
+          "valorPadraoGlobalAlca",
+          "multiplicadorQuantidade",
+          "atualizadoPor",
+          "atualizadoEm",
+          "versaoValorAlca"
+        ]);
+    }
+
+    function pagamentoEhAlca() {
+      return (
+        resource.data.processo == "ALÇA"
+        || resource.data.processo == "ALCA"
+        || resource.data.servicoNome == "ALÇA"
+        || resource.data.servicoNome == "ALCA"
+        || resource.data.processoMovimentacao == "ALÇA"
+        || resource.data.processoMovimentacao == "ALCA"
+      );
+    }
+
+    function alteracaoPagamentoAlcaPermitida() {
+      return financeiroPodeDefinirValor()
+        && pagamentoEhAlca()
+        && resource.data.statusPagamento != "pago"
+        && request.resource.data.statusPagamento == "pendente"
+        && request.resource.data.atualizadoPor == request.auth.uid
+        && request.resource.data.precoReferenciaId == "valor-padrao-alca"
+        && request.resource.data.servicoId == "valor-padrao-alca"
+        && request.resource.data.multiplicadorAlcas == 2
+        && request.resource.data.valorUnitarioAlca is number
+        && request.resource.data.valorUnitarioAlca > 0
+        && request.resource.data.valorUnitario is number
+        && request.resource.data.valorUnitario > 0
+        && request.resource.data.quantidadeAlcas is number
+        && request.resource.data.quantidadeAlcas == request.resource.data.quantidade * 2
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "precoReferenciaId",
+          "servicoId",
+          "quantidadeAlcas",
+          "multiplicadorAlcas",
+          "valorUnitarioAlca",
+          "valorUnitario",
+          "subtotal",
+          "total",
+          "statusPagamento",
+          "valorPendente",
+          "valorManualFinanceiroPendente",
+          "formaValorPagamento",
+          "motivoValorPendente",
+          "avisoPagamento",
+          "observacoes",
+          "atualizadoPor",
+          "atualizadoEm",
+          "versaoValorAlca"
+        ]);
+    }
+
     function pagamentoDoUsuario() {
       return usuarioComum()
         && resource.data.criadoPor == request.auth.uid;
@@ -169,7 +275,12 @@ service cloud.firestore {
 
     match /precosReferencia/{precoId} {
       allow read: if usuarioComum();
-      allow create, update, delete: if admin();
+
+      // O valor padrão da Alça pode ser definido pelo administrador ou pelo
+      // financeiro autorizado. Os demais preços continuam administrativos.
+      allow create: if admin() || novoPrecoPadraoAlcaPermitido(precoId);
+      allow update: if admin() || alteracaoPrecoPadraoAlcaPermitida(precoId);
+      allow delete: if admin();
     }
 
     match /entregasPagamento/{entregaId} {
@@ -186,6 +297,7 @@ service cloud.firestore {
       // Usuário operacional continua podendo corrigir apenas o próprio pagamento.
       allow update: if admin()
         || alteracaoValorTotalManualPermitida()
+        || alteracaoPagamentoAlcaPermitida()
         || (
           pagamentoDoUsuario()
           && resource.data.statusPagamento != "pago"

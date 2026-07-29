@@ -1,31 +1,49 @@
-ATUALIZAÇÃO — LEGIBILIDADE SEM ROLAGEM LATERAL
+ATUALIZAÇÃO — PAGAMENTO DE ALÇA COM VALOR PADRÃO × 2
+Versão: 2026-07-29-alca-valor-padrao-x2-1
 
-Versão: 2026-07-29-legibilidade-sem-rolagem-1
-
-SUBSTITUIR NO GITHUB:
+ARQUIVOS PARA SUBSTITUIR NO GITHUB
 - update.js
 - sw.js
 - version.json
 
-NÃO ALTERAR:
-- app.js
-- index.html
-- style.css
-- corponu-dual-mode.js
-- regras do Firebase
+REGRA PARA PUBLICAR NO FIREBASE
+1. Abra Firebase Console.
+2. Entre em Firestore Database.
+3. Abra a aba Rules.
+4. Apague o conteúdo atual.
+5. Cole todo o conteúdo de firestore-rules.txt.
+6. Clique em Publicar.
 
-O QUE MUDOU:
-- Fonte principal trocada para Segoe UI/Segoe UI Variable, mais nítida no Windows.
-- Maior peso e contraste nos textos.
-- Letras do Manejo ligeiramente maiores e mais legíveis.
-- Espaçamentos horizontais reduzidos para compensar o aumento da letra.
-- Colunas redistribuídas proporcionalmente.
-- A tabela permanece inteira em monitores de 1720 e 1900 px, sem rolagem horizontal.
-- Telas menores que 1300 px mantêm rolagem por segurança, evitando cortar informações.
-- Nenhuma regra, cálculo, pagamento ou dado do Firebase foi alterado.
+O arquivo firebase-rules.txt é uma cópia idêntica do firestore-rules.txt.
+As regras do Storage não mudaram; storage-rules.txt foi incluído apenas para manter o pacote completo.
 
-TESTE RECOMENDADO:
-1. Fazer o commit dos três arquivos.
-2. Abrir o sistema em aba anônima.
-3. Conferir Manejo > Calcinha em um monitor de 1720 px e em um de 1900 px.
-4. Verificar que todas as colunas aparecem e que não há barra horizontal.
+COMO FUNCIONA
+- Em Gerenciar valores aparece o painel “Valor padrão da Alça”.
+- O financeiro informa o valor de UMA alça.
+- O valor é único para todas as referências.
+- Cada unidade recebida da OP representa um sutiã com duas alças.
+- Cálculo: quantidade recebida × 2 × valor de uma alça.
+- Depois o sistema desconta o valor de defeito/desconto registrado.
+- Sutiã Montagem e Sutiã Completo continuam com valor total manual por OP.
+- Os demais processos continuam usando valor por referência e processo.
+
+EXEMPLO
+Quantidade recebida: 100 sutiãs
+Valor de uma alça: R$ 0,25
+Quantidade financeira: 200 alças
+Subtotal: R$ 50,00
+Desconto: R$ 5,00
+Total: R$ 45,00
+
+PAGAMENTOS ANTIGOS EM ABERTO
+Ao salvar ou alterar o valor padrão, todos os pagamentos de Alça ainda não pagos são recalculados.
+Pagamentos já marcados como pagos não são alterados.
+
+TESTE RECOMENDADO
+1. Publique as regras do Firestore.
+2. Substitua os três arquivos do GitHub.
+3. Abra o sistema em aba anônima.
+4. Vá a Pagamentos > Gerenciar valores.
+5. Cadastre um valor de teste para a Alça.
+6. Registre a chegada de uma OP no processo ALÇA.
+7. Confira quantidade de sutiãs, quantidade de alças, valor por alça, subtotal e total.
