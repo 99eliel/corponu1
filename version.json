@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-29-emergencia-loop-corrigido-1",
-  "updatedAt": "2026-07-29T07:50:00-03:00",
-  "notes": "Correcao emergencial: remove o observador da tela de valores que causava loop de carregamento."
+  "version": "2026-07-29-pagamentos-interface-segura-1",
+  "updatedAt": "2026-07-29T08:10:00-03:00",
+  "notes": "Organização visual segura da tela de Pagamentos em blocos claros, sem alterar cálculos, Firestore, relatórios ou inicialização e sem adicionar MutationObserver."
 }

@@ -1,22 +1,46 @@
-ATUALIZACAO: Tela Gerenciar valores simplificada
+ATUALIZAÇÃO SEGURA — TELA DE PAGAMENTOS
 
-Substituir no GitHub:
+VERSÃO
+2026-07-29-pagamentos-interface-segura-1
+
+SUBSTITUIR NO GITHUB
 - update.js
 - sw.js
 - version.json
 
-Nao alterar:
+NÃO ALTERAR
 - app.js
 - index.html
 - style.css
-- regras do Firebase
+- firebase-rules.txt
+- firestore-rules.txt
+- storage-rules.txt
 
-O que muda:
-- Oculta importacoes e ferramentas avancadas na tela Gerenciar valores.
-- Mantem fluxo simples: escolher processo, cadastrar valor por referencia e consultar a lista.
-- Remove botao duplicado de voltar e insere um resumo visual de como usar.
+O QUE FOI ALTERADO
+- A tela Pagamentos foi separada visualmente em filtros, resumo, conferência, resumo por facção e pagamentos gerados.
+- Os botões foram organizados em uma faixa própria.
+- Os textos dos botões ficaram mais claros.
+- As tabelas ganharam cabeçalho fixo, melhor leitura e separação visual.
+- O relatório com PIX, cálculos e geração de pagamentos foram preservados.
 
-Depois do commit:
-1. Abrir o sistema.
-2. Clicar em Atualizar.
-3. Se necessario, pressionar Ctrl + F5 uma vez.
+PROTEÇÃO CONTRA NOVO LOOP
+- Não foi criado nenhum MutationObserver.
+- Não foi alterada a autenticação.
+- Não foi alterada a inicialização do Firebase.
+- Não foi criado nenhum novo recarregamento automático.
+- A organização é aplicada apenas uma vez e repetida somente quando o usuário abre a aba Pagamentos.
+
+COMO PUBLICAR
+1. Fazer backup dos três arquivos atuais.
+2. Substituir update.js, sw.js e version.json juntos.
+3. Fazer um único commit.
+4. Testar primeiro em uma aba anônima.
+5. Depois clicar em Atualizar no sistema normal.
+
+TESTE RÁPIDO
+- Entrar no sistema.
+- Abrir Pagamentos.
+- Testar os filtros.
+- Conferir os totais.
+- Gerar relatório com PIX.
+- Não marcar pagamentos reais como pagos durante o teste.

@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-emergencia-loop-corrigido-1";
+  const APP_VERSION = "2026-07-29-pagamentos-interface-segura-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -6891,11 +6891,382 @@
     });
   }
 
+
+
+  // =========================================================
+  // INTERFACE SEGURA DA TELA DE PAGAMENTOS
+  // Apenas organiza elementos estáticos uma vez.
+  // Não usa MutationObserver, não altera cálculos e não consulta o Firebase.
+  // =========================================================
+  function injetarEstilosTelaPagamentosSegura() {
+    if (document.getElementById("styleTelaPagamentosSegura")) return;
+
+    const style = document.createElement("style");
+    style.id = "styleTelaPagamentosSegura";
+    style.textContent = `
+      #pagamentos.pagamentos-ui-segura {
+        --pag-cor-fundo: #f3f6fb;
+        --pag-cor-card: #ffffff;
+        --pag-cor-borda: #dbe3ee;
+        --pag-cor-texto: #0f172a;
+        --pag-cor-muted: #64748b;
+        --pag-cor-roxo: #7c3aed;
+        --pag-cor-verde: #15803d;
+      }
+
+      #pagamentos.pagamentos-ui-segura > .pagamentos-relatorio-panel {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 16px !important;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamentos-relatorio-panel > .panel-header:first-child {
+        order: 1;
+        align-items: center;
+        margin: 0 !important;
+        padding: 20px;
+        border: 1px solid var(--pag-cor-borda);
+        border-radius: 18px;
+        background: linear-gradient(135deg, #ffffff 0%, #f7f3ff 100%);
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamentos-relatorio-panel > .panel-header:first-child h3 {
+        font-size: 22px;
+        color: var(--pag-cor-texto);
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamentos-relatorio-panel > .panel-header:first-child p {
+        max-width: 760px;
+        line-height: 1.45;
+      }
+
+      #pagamentos.pagamentos-ui-segura #btnToggleGerenciarValores {
+        min-height: 42px;
+        white-space: nowrap;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-filtros-entregas {
+        order: 2;
+        display: grid !important;
+        grid-template-columns: repeat(6, minmax(130px, 1fr));
+        gap: 12px !important;
+        align-items: end;
+        margin: 0 !important;
+        padding: 18px !important;
+        border: 1px solid var(--pag-cor-borda) !important;
+        border-radius: 18px !important;
+        background: var(--pag-cor-card) !important;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-filtros-entregas::before {
+        content: "1. Selecione o período e os filtros";
+        grid-column: 1 / -1;
+        color: var(--pag-cor-texto);
+        font-size: 16px;
+        font-weight: 900;
+        line-height: 1.2;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-filtros-entregas label {
+        min-width: 0;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-filtros-entregas input,
+      #pagamentos.pagamentos-ui-segura .pagamento-filtros-entregas select {
+        min-height: 42px;
+        padding: 10px 11px;
+        border-color: #cbd5e1;
+        border-radius: 11px;
+        font-size: 13px;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-acoes-principais {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 10px;
+        padding-top: 4px;
+        border-top: 1px solid #eef2f7;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-acoes-principais .btn {
+        min-height: 42px;
+      }
+
+      #pagamentos.pagamentos-ui-segura #btnLimparFiltrosPagamento {
+        margin-right: auto;
+        color: #475569;
+        background: #f8fafc;
+      }
+
+      #pagamentos.pagamentos-ui-segura #btnMarcarPagamentosFiltrados {
+        background: #15803d;
+        border-color: #15803d;
+      }
+
+      #pagamentos.pagamentos-ui-segura #btnImprimirPagamento {
+        background: #0f172a;
+        border-color: #0f172a;
+        color: #ffffff;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-cards {
+        order: 3;
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(160px, 1fr));
+        gap: 12px !important;
+        margin: 0 !important;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-card {
+        min-height: 104px;
+        padding: 17px !important;
+        border: 1px solid var(--pag-cor-borda) !important;
+        border-radius: 16px !important;
+        background: var(--pag-cor-card) !important;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-card span {
+        color: var(--pag-cor-muted);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-card strong {
+        margin-top: 8px;
+        color: var(--pag-cor-texto);
+        font-size: 25px;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-card.destaque {
+        border-color: rgba(124, 58, 237, .35) !important;
+        background: linear-gradient(135deg, #ffffff 0%, #f3e8ff 100%) !important;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-card.destaque strong {
+        color: #6d28d9;
+      }
+
+      #pagamentos.pagamentos-ui-segura #painelConferenciaPagamentoFinal {
+        order: 4;
+        margin: 0 !important;
+        padding: 17px !important;
+        border-radius: 18px !important;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+      }
+
+      #pagamentos.pagamentos-ui-segura #painelConferenciaPagamentoFinal .pagamento-final-header h4::before {
+        content: "2. ";
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-resumo-faccoes-wrap {
+        order: 5;
+        position: relative;
+        margin: 0 !important;
+        padding: 56px 14px 14px;
+        border: 1px solid var(--pag-cor-borda);
+        border-radius: 18px;
+        background: var(--pag-cor-card);
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-resumo-faccoes-wrap::before {
+        content: "3. Resumo por facção e processo";
+        position: absolute;
+        top: 18px;
+        left: 18px;
+        color: var(--pag-cor-texto);
+        font-size: 16px;
+        font-weight: 900;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-resumo-faccoes-wrap::after {
+        content: "Confira os totais agrupados antes de fechar ou imprimir.";
+        position: absolute;
+        top: 39px;
+        left: 18px;
+        color: var(--pag-cor-muted);
+        font-size: 11px;
+      }
+
+      #pagamentos.pagamentos-ui-segura .entregas-header {
+        order: 6;
+        margin: 2px 0 -6px !important;
+        padding: 17px 18px !important;
+        border: 1px solid var(--pag-cor-borda);
+        border-radius: 18px 18px 0 0;
+        background: #ffffff;
+      }
+
+      #pagamentos.pagamentos-ui-segura .entregas-header h3::before {
+        content: "4. ";
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-lancamentos-wrap {
+        order: 7;
+        margin: -16px 0 0 !important;
+        padding: 12px;
+        border: 1px solid var(--pag-cor-borda);
+        border-top: 0;
+        border-radius: 0 0 18px 18px;
+        background: #ffffff;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-resumo-faccoes-wrap table,
+      #pagamentos.pagamentos-ui-segura .pagamento-lancamentos-wrap table {
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-resumo-faccoes-wrap thead th,
+      #pagamentos.pagamentos-ui-segura .pagamento-lancamentos-wrap thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #eef2ff;
+        color: #334155;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .025em;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-resumo-faccoes-wrap tbody tr:nth-child(even),
+      #pagamentos.pagamentos-ui-segura .pagamento-lancamentos-wrap tbody tr:nth-child(even) {
+        background: #fafbfe;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-resumo-faccoes-wrap tbody tr:hover,
+      #pagamentos.pagamentos-ui-segura .pagamento-lancamentos-wrap tbody tr:hover {
+        background: #f5f3ff;
+      }
+
+      #pagamentos.pagamentos-ui-segura .pagamento-lancamentos-wrap {
+        max-height: 58vh;
+        overflow: auto;
+      }
+
+      @media (max-width: 1280px) {
+        #pagamentos.pagamentos-ui-segura .pagamento-filtros-entregas {
+          grid-template-columns: repeat(3, minmax(150px, 1fr));
+        }
+        #pagamentos.pagamentos-ui-segura .pagamento-cards {
+          grid-template-columns: repeat(2, minmax(160px, 1fr));
+        }
+      }
+
+      @media (max-width: 780px) {
+        #pagamentos.pagamentos-ui-segura .pagamentos-relatorio-panel > .panel-header:first-child {
+          align-items: stretch;
+          flex-direction: column;
+        }
+        #pagamentos.pagamentos-ui-segura #btnToggleGerenciarValores {
+          width: 100%;
+        }
+        #pagamentos.pagamentos-ui-segura .pagamento-filtros-entregas {
+          grid-template-columns: 1fr;
+          padding: 14px !important;
+        }
+        #pagamentos.pagamentos-ui-segura .pagamento-acoes-principais {
+          display: grid;
+          grid-template-columns: 1fr;
+        }
+        #pagamentos.pagamentos-ui-segura #btnLimparFiltrosPagamento {
+          margin-right: 0;
+        }
+        #pagamentos.pagamentos-ui-segura .pagamento-acoes-principais .btn {
+          width: 100%;
+        }
+        #pagamentos.pagamentos-ui-segura .pagamento-cards {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      @media (max-width: 480px) {
+        #pagamentos.pagamentos-ui-segura .pagamento-cards {
+          grid-template-columns: 1fr;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function organizarTelaPagamentosSegura() {
+    const pagina = document.getElementById("pagamentos");
+    const painel = pagina?.querySelector(".pagamentos-relatorio-panel");
+    const filtros = painel?.querySelector(".pagamento-filtros-entregas");
+    if (!pagina || !painel || !filtros) return;
+
+    injetarEstilosTelaPagamentosSegura();
+    pagina.classList.add("pagamentos-ui-segura");
+
+    if (!filtros.querySelector(".pagamento-acoes-principais")) {
+      const botoes = [
+        document.getElementById("btnLimparFiltrosPagamento"),
+        document.getElementById("btnMarcarPagamentosFiltrados"),
+        document.getElementById("btnImprimirPagamento")
+      ].filter(Boolean);
+
+      if (botoes.length) {
+        const acoes = document.createElement("div");
+        acoes.className = "pagamento-acoes-principais";
+        botoes.forEach(botao => acoes.appendChild(botao));
+        filtros.appendChild(acoes);
+      }
+    }
+
+    painel.querySelectorAll(":scope > .table-wrap").forEach(wrap => {
+      if (wrap.querySelector(".pagamento-table")) {
+        wrap.classList.add("pagamento-resumo-faccoes-wrap");
+      }
+      if (wrap.querySelector(".entregas-pagamento-table")) {
+        wrap.classList.add("pagamento-lancamentos-wrap");
+      }
+    });
+
+    const btnLimpar = document.getElementById("btnLimparFiltrosPagamento");
+    const btnPagar = document.getElementById("btnMarcarPagamentosFiltrados");
+    const btnImprimir = document.getElementById("btnImprimirPagamento");
+    const btnValores = document.getElementById("btnToggleGerenciarValores");
+
+    if (btnLimpar) btnLimpar.textContent = "Limpar filtros";
+    if (btnPagar) btnPagar.textContent = "Confirmar pagamentos filtrados";
+    if (btnImprimir) btnImprimir.textContent = "Gerar relatório com PIX";
+    if (btnValores) btnValores.textContent = "Valores por processo";
+  }
+
+  function iniciarTelaPagamentosSegura() {
+    organizarTelaPagamentosSegura();
+
+    if (document.__eventoTelaPagamentosSeguraInstalado) return;
+    document.__eventoTelaPagamentosSeguraInstalado = true;
+
+    document.addEventListener("click", event => {
+      const navPagamentos = event.target?.closest?.('.nav-btn[data-page="pagamentos"]');
+      if (!navPagamentos) return;
+      setTimeout(organizarTelaPagamentosSegura, 80);
+    });
+  }
+
   function iniciarRecursosDaVersao() {
     iniciarTelasExclusivasGerenciamento();
     // Instalada primeiro para barrar a ação antes das rotinas antigas de salvamento.
     iniciarTravasDuplicidadeFaccaoPagamento();
     iniciarRevisaoFinalPagamentos();
+    iniciarTelaPagamentosSegura();
     iniciarHotfixChegadaManual();
     iniciarHotfixNecessidade();
     iniciarGestaoSugestoesFases();
