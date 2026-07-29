@@ -1,0 +1,17 @@
+CORRECAO EMERGENCIAL - LOOP DE CARREGAMENTO
+
+Substitua no GitHub, juntos:
+- update.js
+- sw.js
+- version.json
+
+Esta versao volta para a ultima base estavel e remove somente a simplificacao visual que causou o loop.
+Todas as correcoes anteriores permanecem.
+
+Depois do commit:
+1. Aguarde o GitHub Pages/Firebase publicar.
+2. Abra o sistema em uma aba anonima primeiro.
+3. Se abrir normalmente, volte ao navegador comum e pressione Ctrl + F5.
+4. Se ainda recarregar, feche todas as abas do sistema e abra novamente com ?v=emergencia no final do endereco.
+
+Nao altere app.js, index.html, style.css ou regras do Firebase.

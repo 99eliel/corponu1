@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-29-gerenciar-valores-simples-1",
-  "updatedAt": "2026-07-29T12:00:00-03:00",
-  "notes": "Tela Gerenciar valores simplificada, sem importacoes e ferramentas avancadas visiveis."
+  "version": "2026-07-29-emergencia-loop-corrigido-1",
+  "updatedAt": "2026-07-29T07:50:00-03:00",
+  "notes": "Correcao emergencial: remove o observador da tela de valores que causava loop de carregamento."
 }
