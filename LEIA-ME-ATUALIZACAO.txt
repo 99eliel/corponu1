@@ -1,11 +1,11 @@
-ATUALIZAÇÃO — GERENCIAR VALORES ORGANIZADO E SEGURO
+ATUALIZAÇÃO: opções do filtro Fase gerenciadas pelo administrador
 
-Substituir no GitHub:
+SUBSTITUIR NO GITHUB
 - update.js
 - sw.js
 - version.json
 
-Não alterar:
+NÃO ALTERAR
 - app.js
 - index.html
 - style.css
@@ -13,30 +13,25 @@ Não alterar:
 - firestore-rules.txt
 - storage-rules.txt
 
-O que foi mantido:
-- A nova organização da aba Pagamentos.
-- Relatório completo com PIX.
-- Conferência financeira e travas de pagamento.
-- Sugestões separadas de Sutiã e Calcinha.
-- Todas as demais correções cumulativas.
+COMO FUNCIONA
+1. Na aba Usuários, o administrador gerencia duas listas:
+   - Opções do filtro Fase — Sutiã
+   - Opções do filtro Fase — Calcinha
+2. A lista do Sutiã aparece somente em Manejo > Sutiã.
+3. A lista da Calcinha aparece somente em Manejo > Calcinha.
+4. Remover uma opção faz ela desaparecer do filtro múltiplo mostrado na tabela.
+5. Adicionar uma opção faz ela aparecer no filtro.
+6. Campo vazio permanece fixo para localizar registros sem fase.
+7. OPs antigas não são alteradas e nenhuma fase salva é apagada.
 
-O que mudou dentro de Gerenciar valores:
-1. Escolher o processo.
-2. Cadastrar ou editar valor por referência.
-3. Consultar os valores cadastrados.
+SEGURANÇA
+- Não adiciona MutationObserver novo.
+- Não altera login, pagamentos, cálculos ou dados existentes.
+- Mantém a organização da aba Pagamentos e de Gerenciar valores.
 
-- A área de importação foi retirada da tela.
-- A rotina automática da importação de valores não é mais iniciada.
-- Criar e renomear processos ficaram dentro de Opções avançadas.
-- O botão duplicado e o cabeçalho antigo ficam ocultos na tela exclusiva.
-- Nenhum cálculo ou dado do Firebase é alterado.
-- Nenhum novo MutationObserver foi criado.
-
-Publicação segura:
-1. Salve uma cópia dos três arquivos atuais.
-2. Substitua update.js, sw.js e version.json juntos.
-3. Faça um único commit.
-4. Teste primeiro em aba anônima do Chrome.
-5. Abra Pagamentos e confirme que a organização anterior continua.
-6. Abra Gerenciar valores e confira a tela simplificada.
-7. Se necessário, pressione Ctrl + F5 uma vez.
+DEPOIS DO COMMIT
+1. Testar em aba anônima.
+2. Entrar como administrador e abrir Usuários.
+3. Remover ou adicionar uma opção da Calcinha.
+4. Abrir Manejo > Calcinha e clicar na seta do filtro Fase.
+5. Confirmar que a lista corresponde exatamente ao cadastro administrativo.

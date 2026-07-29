@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-29-gerenciar-valores-organizado-seguro-1",
-  "updatedAt": "2026-07-29T08:35:00-03:00",
-  "notes": "Mantém a interface organizada de Pagamentos e simplifica Gerenciar valores sem MutationObserver novo; importações retiradas da tela."
+  "version": "2026-07-29-filtro-fases-gerenciado-admin-1",
+  "updatedAt": "2026-07-29T08:20:00-03:00",
+  "notes": "Opcoes do filtro Fase passam a ser controladas pelo administrador, separadas entre Sutia e Calcinha."
 }

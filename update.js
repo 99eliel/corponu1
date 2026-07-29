@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-gerenciar-valores-organizado-seguro-1";
+  const APP_VERSION = "2026-07-29-filtro-fases-gerenciado-admin-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -1421,7 +1421,7 @@
     const status = document.getElementById("statusSugestoesFasesAdmin");
     if (!lista) return;
 
-    if (contador) contador.textContent = `${fasesGerenciadas.length} sugestão(ões)`;
+    if (contador) contador.textContent = `${fasesGerenciadas.length} opção(ões)`;
 
     if (status) {
       status.textContent = configuracaoFasesExiste
@@ -1481,20 +1481,20 @@
     painel.innerHTML = `
       <div class="panel-header" style="align-items:flex-start; gap:16px;">
         <div>
-          <h3>Gerenciar sugestões de fases</h3>
-          <p>Somente administradores adicionam ou removem as opções mostradas no campo Fase do Manejo.</p>
+          <h3>Opções do filtro Fase — Sutiã</h3>
+          <p>Somente o administrador define o que aparece no filtro múltiplo da coluna Fase e nas sugestões de edição do Sutiã.</p>
         </div>
         <span id="contadorSugestoesFasesAdmin" class="badge ok">0 sugestão(ões)</span>
       </div>
       <div class="notice small" style="margin-bottom:12px;">
-        Os usuários continuam podendo digitar uma fase livremente. Ela só aparecerá como sugestão para os demais quando o administrador cadastrá-la aqui.
+        A lista abaixo controla o menu do filtro Fase. Os usuários ainda podem digitar uma fase livremente, mas ela só entra no filtro oficial quando o administrador cadastrá-la aqui.
       </div>
       <form id="formSugestaoFaseAdmin" style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:12px;">
         <label style="flex:1; min-width:240px;">
-          Nova sugestão
+          Nova opção de fase
           <input id="novaSugestaoFaseAdmin" type="text" placeholder="Ex: ACABAMENTO, REVISÃO, COSTURA" autocomplete="off" maxlength="80" />
         </label>
-        <button class="btn btn-primary" type="submit">Adicionar sugestão</button>
+        <button class="btn btn-primary" type="submit">Adicionar opção</button>
       </form>
       <div id="statusSugestoesFasesAdmin" style="font-size:12px; color:#64748b; margin-bottom:10px;">
         Carregando lista oficial...
@@ -4025,7 +4025,34 @@
     return celula?.textContent || "";
   }
 
+  function listaOficialFasesParaFiltroExcel() {
+    const tipo = setorAtualFiltroExcelManejo() === "calcinha" ? "calcinha" : "sutia";
+    const lista = tipo === "calcinha" ? fasesCalcinhaGerenciadas : fasesGerenciadas;
+    return ordenarFasesGerenciadas(Array.isArray(lista) ? lista : []);
+  }
+
+  function limparSelecoesFaseForaDaListaOficial(opcoesOficiais) {
+    const set = getSetSelecaoFiltroExcel("filtroManejoFase");
+    if (!set.size) return;
+    const permitidas = new Set(
+      ["Campo vazio", ...opcoesOficiais].map(normalizarFiltroExcelManejo)
+    );
+    [...set].forEach(item => {
+      if (!permitidas.has(normalizarFiltroExcelManejo(item))) set.delete(item);
+    });
+    const config = configFiltroExcelPorId("filtroManejoFase");
+    if (config) atualizarIndicadorFiltroExcel(config);
+  }
+
   function coletarOpcoesFiltroExcel(config) {
+    // A coluna Fase usa somente a lista oficial administrada na aba Usuários.
+    // Valores históricos das OPs continuam salvos, mas não entram automaticamente no menu.
+    if (config.campo === "fase") {
+      const oficiais = listaOficialFasesParaFiltroExcel();
+      limparSelecoesFaseForaDaListaOficial(oficiais);
+      return ["Campo vazio", ...oficiais];
+    }
+
     const campo = document.getElementById(config.id);
     const valores = [];
 
@@ -4051,7 +4078,6 @@
       linhaCalcinha: ["Cotton Line", "Corpo Nu", "A definir"],
       silk: ["Preenchido", "Campo vazio", "Sem silk"],
       dataTecido: ["Preenchido", "Campo vazio", "Sem tecido"],
-      fase: ["Campo vazio"],
       quantidade: ["Campo vazio"],
       cor: ["Campo vazio"],
       necessidade: ["URGENTE", "Campo vazio", "Sem necessidade"]
@@ -4385,7 +4411,7 @@
       <div class="filtro-excel-cabecalho">
         <div>
           <strong>${escaparHtmlFiltroExcelManejo(config.label)}</strong>
-          <small>Marque uma ou mais opções</small>
+          <small>${config.campo === "fase" ? "Opções definidas pelo administrador" : "Marque uma ou mais opções"}</small>
         </div>
         <button type="button" class="filtro-excel-fechar" aria-label="Fechar">×</button>
       </div>
@@ -7347,9 +7373,9 @@
     const titulo = painel.querySelector(".panel-header h3");
     const descricao = painel.querySelector(".panel-header p");
     const aviso = painel.querySelector(".notice.small");
-    if (titulo) titulo.textContent = "Sugestões de fases — Sutiã";
-    if (descricao) descricao.textContent = "Gerencie somente as opções mostradas no campo Fase do manejo de sutiãs.";
-    if (aviso) aviso.innerHTML = "Os usuários podem digitar livremente. A opção só entra na lista oficial do <strong>Sutiã</strong> quando o administrador adicioná-la aqui.";
+    if (titulo) titulo.textContent = "Opções do filtro Fase — Sutiã";
+    if (descricao) descricao.textContent = "Gerencie as opções mostradas no filtro múltiplo da coluna Fase e nas sugestões de edição do Sutiã.";
+    if (aviso) aviso.innerHTML = "Esta lista controla diretamente o filtro mostrado na tabela. Os usuários podem digitar livremente, mas a opção só entra no filtro oficial do <strong>Sutiã</strong> quando o administrador adicioná-la aqui.";
     painel.dataset.tipoSugestoesFase = "sutia";
     return true;
   }
@@ -7360,7 +7386,7 @@
     const status = document.getElementById("statusSugestoesFasesCalcinhaAdmin");
     if (!lista) return;
 
-    if (contador) contador.textContent = `${fasesCalcinhaGerenciadas.length} sugestão(ões)`;
+    if (contador) contador.textContent = `${fasesCalcinhaGerenciadas.length} opção(ões)`;
     if (status) {
       status.textContent = configuracaoFasesCalcinhaExiste
         ? "Lista oficial da Calcinha sincronizada com todos os usuários."
@@ -7420,20 +7446,20 @@
     painel.innerHTML = `
       <div class="panel-header" style="align-items:flex-start;gap:16px;">
         <div>
-          <h3>Sugestões de fases — Calcinha</h3>
-          <p>Gerencie somente as opções mostradas no campo Fase do manejo de calcinhas.</p>
+          <h3>Opções do filtro Fase — Calcinha</h3>
+          <p>Gerencie as opções mostradas no filtro múltiplo da coluna Fase e nas sugestões de edição da Calcinha.</p>
         </div>
         <span id="contadorSugestoesFasesCalcinhaAdmin" class="badge ok">0 sugestão(ões)</span>
       </div>
       <div class="notice small" style="margin-bottom:12px;border-color:#c4b5fd;background:#faf5ff;">
-        Os usuários podem digitar livremente. A opção só entra na lista oficial da <strong>Calcinha</strong> quando o administrador adicioná-la aqui.
+        Esta lista controla diretamente o filtro mostrado na tabela. Os usuários podem digitar livremente, mas a opção só entra no filtro oficial da <strong>Calcinha</strong> quando o administrador adicioná-la aqui.
       </div>
       <form id="formSugestaoFaseCalcinhaAdmin" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;">
         <label style="flex:1;min-width:240px;">
-          Nova sugestão para calcinha
+          Nova opção de fase da calcinha
           <input id="novaSugestaoFaseCalcinhaAdmin" type="text" placeholder="Ex: MONTAGEM, REVISÃO, ACABAMENTO" autocomplete="off" maxlength="80" />
         </label>
-        <button class="btn btn-primary" type="submit">Adicionar sugestão</button>
+        <button class="btn btn-primary" type="submit">Adicionar opção</button>
       </form>
       <div id="statusSugestoesFasesCalcinhaAdmin" style="font-size:12px;color:#64748b;margin-bottom:10px;">Carregando lista oficial...</div>
       <div id="listaSugestoesFasesCalcinhaAdmin" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;"></div>
