@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-processos-dentro-gerenciar-faccoes-1";
+  const APP_VERSION = "2026-07-29-chegada-reconfirma-processo-faccao-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -10335,6 +10335,645 @@
   }
 
 
+
+
+  // =========================================================
+  // SEGURANÇA: RECONFIRMAR PROCESSO E FACÇÃO NA CHEGADA NORMAL
+  // - Ao clicar em Chegada na aba Facções, o usuário escolhe novamente
+  //   o processo realizado e quem realizou antes de gerar o pagamento.
+  // - Se o envio original estiver errado, a movimentação é corrigida no
+  //   mesmo registro e o pagamento usa os dados confirmados na chegada.
+  // - A gravação da chegada, pagamento e log ocorre em uma transação.
+  // =========================================================
+  let confirmacaoChegadaFaccaoAtual = null;
+  let confirmacaoChegadaFaccaoCarregando = false;
+  let confirmacaoChegadaFaccaoSalvando = false;
+
+  function escapeHtmlConfirmacaoChegada(valor) {
+    return String(valor ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function idSeguroConfirmacaoChegada(valor) {
+    return String(valor || '')
+      .trim()
+      .replaceAll('/', '-')
+      .replaceAll('\\', '-')
+      .replaceAll('#', '-')
+      .replaceAll('?', '-');
+  }
+
+  function numeroConfirmacaoChegada(valor) {
+    const convertido = Number(String(valor ?? '').replace(',', '.'));
+    return Number.isFinite(convertido) ? convertido : 0;
+  }
+
+  function formatarMoedaConfirmacaoChegada(valor) {
+    return numeroConfirmacaoChegada(valor).toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
+  }
+
+  function labelSetorConfirmacaoChegada(setor) {
+    const mapa = {
+      bojo: 'Bojo',
+      alca: 'Alça',
+      renda: 'Renda',
+      sutia: 'Sutiã',
+      calcinha: 'Calcinha'
+    };
+    return mapa[String(setor || '').toLowerCase()] || String(setor || '-') || '-';
+  }
+
+  function setorConfirmacaoChegada(mov) {
+    const setor = String(mov?.setor || '').toLowerCase();
+    if (setor === 'calcinha') return 'calcinha';
+    if (setor === 'sutia' || setor === 'bojo' || setor === 'alca') return 'sutia';
+    const processo = normalizarComparacao(mov?.processo || '');
+    return processo.includes('CALCINHA') ? 'calcinha' : 'sutia';
+  }
+
+  function injetarEstilosConfirmacaoChegadaFaccao() {
+    if (document.getElementById('styleConfirmacaoChegadaFaccao')) return;
+    const style = document.createElement('style');
+    style.id = 'styleConfirmacaoChegadaFaccao';
+    style.textContent = `
+      .confirmacao-chegada-faccao-seguranca {
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+        border: 1px solid #f59e0b;
+        border-radius: 14px;
+        background: #fffbeb;
+      }
+      .confirmacao-chegada-faccao-seguranca.hidden { display: none !important; }
+      .confirmacao-chegada-faccao-titulo {
+        color: #92400e;
+        font-size: 14px;
+        font-weight: 900;
+      }
+      .confirmacao-chegada-faccao-texto {
+        color: #78350f;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .confirmacao-chegada-faccao-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .confirmacao-chegada-faccao-seguranca label {
+        display: grid;
+        gap: 6px;
+        color: #1f2937;
+        font-weight: 800;
+      }
+      .confirmacao-chegada-faccao-seguranca select {
+        width: 100%;
+        min-height: 44px;
+      }
+      .confirmacao-chegada-faccao-alteracao {
+        display: none;
+        padding: 9px 11px;
+        border-radius: 10px;
+        background: #ffffff;
+        color: #334155;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+      .confirmacao-chegada-faccao-alteracao.visivel { display: block; }
+      @media (max-width: 680px) {
+        .confirmacao-chegada-faccao-grid { grid-template-columns: 1fr; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function garantirCamposConfirmacaoChegadaFaccao() {
+    const form = document.getElementById('formChegadaMovimentacao');
+    if (!form) return null;
+
+    let bloco = document.getElementById('grupoConfirmacaoChegadaFaccao');
+    if (!bloco) {
+      bloco = document.createElement('div');
+      bloco.id = 'grupoConfirmacaoChegadaFaccao';
+      bloco.className = 'confirmacao-chegada-faccao-seguranca hidden';
+      bloco.innerHTML = `
+        <div>
+          <div class="confirmacao-chegada-faccao-titulo">Conferência obrigatória antes de gerar o pagamento</div>
+          <div class="confirmacao-chegada-faccao-texto" id="textoEnvioOriginalChegadaFaccao">
+            Confira novamente o processo realizado e quem executou o serviço.
+          </div>
+        </div>
+        <div class="confirmacao-chegada-faccao-grid">
+          <label>
+            O que foi feito / processo
+            <select id="chegadaConfirmarProcesso" required>
+              <option value="">Selecione para confirmar</option>
+            </select>
+          </label>
+          <label>
+            Quem fez / facção
+            <select id="chegadaConfirmarFaccao" required disabled>
+              <option value="">Escolha o processo primeiro</option>
+            </select>
+          </label>
+        </div>
+        <div class="confirmacao-chegada-faccao-alteracao" id="resumoAlteracaoChegadaFaccao"></div>
+      `;
+
+      const dataLabel = document.getElementById('chegadaData')?.closest('label');
+      if (dataLabel) form.insertBefore(bloco, dataLabel);
+      else form.prepend(bloco);
+
+      document.getElementById('chegadaConfirmarProcesso')?.addEventListener('change', () => {
+        preencherFaccoesConfirmacaoChegadaFaccao();
+        atualizarResumoConfirmacaoChegadaFaccao();
+      });
+      document.getElementById('chegadaConfirmarFaccao')?.addEventListener('change', atualizarResumoConfirmacaoChegadaFaccao);
+    }
+
+    return bloco;
+  }
+
+  function processosConfirmacaoChegadaFaccao(mov) {
+    const setor = setorConfirmacaoChegada(mov);
+    let processos = typeof getNomesProcessosFaccoesAtivos === 'function'
+      ? getNomesProcessosFaccoesAtivos(setor)
+      : [];
+
+    if (!processos.length) {
+      processos = Object.keys(FACCOES_POR_PROCESSO).filter(nome => {
+        const chave = normalizarComparacao(nome);
+        return setor === 'calcinha' ? chave.includes('CALCINHA') : !chave.includes('CALCINHA');
+      });
+    }
+
+    const atual = String(mov?.processo || '').trim();
+    if (atual && !processos.some(item => normalizarComparacao(item) === normalizarComparacao(atual))) {
+      processos.push(atual);
+    }
+
+    return [...new Map(processos
+      .filter(Boolean)
+      .map(item => [normalizarComparacao(item), String(item).trim().toUpperCase()]))
+      .values()]
+      .sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+  }
+
+  function faccoesConfirmacaoChegadaFaccao(processo, mov) {
+    let faccoes = typeof getFaccoesGerenciadasPorProcesso === 'function'
+      ? getFaccoesGerenciadasPorProcesso(processo)
+      : (FACCOES_POR_PROCESSO[processo] || []);
+
+    const processoAtual = normalizarComparacao(mov?.processo || '');
+    const processoEscolhido = normalizarComparacao(processo || '');
+    const faccaoAtual = String(mov?.destino || '').trim();
+
+    if (
+      faccaoAtual &&
+      processoAtual === processoEscolhido &&
+      !faccoes.some(item => normalizarComparacao(item) === normalizarComparacao(faccaoAtual))
+    ) {
+      faccoes = [...faccoes, faccaoAtual];
+    }
+
+    return [...new Map((faccoes || [])
+      .filter(Boolean)
+      .map(item => [normalizarComparacao(item), String(item).trim().toUpperCase()]))
+      .values()]
+      .sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+  }
+
+  function preencherProcessosConfirmacaoChegadaFaccao(mov) {
+    const select = document.getElementById('chegadaConfirmarProcesso');
+    if (!select) return;
+    const processos = processosConfirmacaoChegadaFaccao(mov);
+    select.innerHTML = `
+      <option value="">Selecione para confirmar</option>
+      ${processos.map(item => {
+        const atual = normalizarComparacao(item) === normalizarComparacao(mov?.processo || '');
+        return `<option value="${escapeHtmlConfirmacaoChegada(item)}">${escapeHtmlConfirmacaoChegada(item)}${atual ? ' — informado no envio' : ''}</option>`;
+      }).join('')}
+    `;
+    select.value = '';
+  }
+
+  function preencherFaccoesConfirmacaoChegadaFaccao() {
+    const processoSelect = document.getElementById('chegadaConfirmarProcesso');
+    const faccaoSelect = document.getElementById('chegadaConfirmarFaccao');
+    if (!processoSelect || !faccaoSelect) return;
+
+    const processo = String(processoSelect.value || '').trim();
+    const mov = confirmacaoChegadaFaccaoAtual?.movimentacao || null;
+    faccaoSelect.value = '';
+
+    if (!processo || !mov) {
+      faccaoSelect.disabled = true;
+      faccaoSelect.innerHTML = '<option value="">Escolha o processo primeiro</option>';
+      return;
+    }
+
+    const faccoes = faccoesConfirmacaoChegadaFaccao(processo, mov);
+    faccaoSelect.disabled = !faccoes.length;
+    faccaoSelect.innerHTML = faccoes.length
+      ? `<option value="">Selecione para confirmar</option>${faccoes.map(item => {
+          const atual = normalizarComparacao(item) === normalizarComparacao(mov?.destino || '');
+          return `<option value="${escapeHtmlConfirmacaoChegada(item)}">${escapeHtmlConfirmacaoChegada(item)}${atual ? ' — informado no envio' : ''}</option>`;
+        }).join('')}`
+      : '<option value="">Nenhuma facção vinculada a este processo</option>';
+  }
+
+  function atualizarResumoConfirmacaoChegadaFaccao() {
+    const resumo = document.getElementById('resumoAlteracaoChegadaFaccao');
+    if (!resumo) return;
+    const mov = confirmacaoChegadaFaccaoAtual?.movimentacao;
+    const processo = document.getElementById('chegadaConfirmarProcesso')?.value || '';
+    const faccao = document.getElementById('chegadaConfirmarFaccao')?.value || '';
+
+    if (!mov || !processo || !faccao) {
+      resumo.classList.remove('visivel');
+      resumo.textContent = '';
+      return;
+    }
+
+    const mudouProcesso = normalizarComparacao(processo) !== normalizarComparacao(mov.processo || '');
+    const mudouFaccao = normalizarComparacao(faccao) !== normalizarComparacao(mov.destino || '');
+    resumo.classList.add('visivel');
+    resumo.textContent = mudouProcesso || mudouFaccao
+      ? `Correção na chegada: o envio estava como ${mov.processo || '-'} / ${mov.destino || '-'} e será registrado como ${processo} / ${faccao}.`
+      : `Confirmado: ${processo} realizado por ${faccao}.`;
+  }
+
+  async function prepararConfirmacaoChegadaFaccao() {
+    if (confirmacaoChegadaFaccaoCarregando) return;
+    const id = String(document.getElementById('chegadaMovimentacaoId')?.value || '').trim();
+    const bloco = garantirCamposConfirmacaoChegadaFaccao();
+    if (!id || !bloco) return;
+
+    confirmacaoChegadaFaccaoCarregando = true;
+    try {
+      const { firestore, db } = await obterContextoTravasDuplicidade();
+      const snapshot = await firestore.getDoc(firestore.doc(db, 'movimentacoesProducao', id));
+      if (!snapshot.exists()) {
+        bloco.classList.add('hidden');
+        confirmacaoChegadaFaccaoAtual = null;
+        return;
+      }
+
+      const mov = { id: snapshot.id, ...snapshot.data() };
+      if (normalizarComparacao(mov.tipoDestino) !== 'FACCAO') {
+        bloco.classList.add('hidden');
+        confirmacaoChegadaFaccaoAtual = null;
+        return;
+      }
+
+      confirmacaoChegadaFaccaoAtual = { id, movimentacao: mov };
+      bloco.classList.remove('hidden');
+      bloco.dataset.movimentacaoId = id;
+      const texto = document.getElementById('textoEnvioOriginalChegadaFaccao');
+      if (texto) {
+        texto.textContent = `No envio foi informado: ${mov.processo || '-'} por ${mov.destino || '-'}. Selecione novamente os dois dados para confirmar ou corrigir antes do pagamento.`;
+      }
+      preencherProcessosConfirmacaoChegadaFaccao(mov);
+      preencherFaccoesConfirmacaoChegadaFaccao();
+      atualizarResumoConfirmacaoChegadaFaccao();
+      document.getElementById('modalChegadaResumo').textContent = 'Confirme novamente o processo e a facção. Depois informe data, falta e desconto.';
+      setTimeout(() => document.getElementById('chegadaConfirmarProcesso')?.focus(), 60);
+    } catch (error) {
+      console.error('Erro ao preparar confirmação da chegada.', error);
+      mostrarAvisoFormulario('Não foi possível carregar os dados da movimentação para conferência. Atualize e tente novamente.');
+    } finally {
+      confirmacaoChegadaFaccaoCarregando = false;
+    }
+  }
+
+  function limparConfirmacaoChegadaFaccao() {
+    confirmacaoChegadaFaccaoAtual = null;
+    const bloco = document.getElementById('grupoConfirmacaoChegadaFaccao');
+    if (bloco) {
+      bloco.classList.add('hidden');
+      bloco.removeAttribute('data-movimentacao-id');
+    }
+    const processo = document.getElementById('chegadaConfirmarProcesso');
+    const faccao = document.getElementById('chegadaConfirmarFaccao');
+    if (processo) processo.innerHTML = '<option value="">Selecione para confirmar</option>';
+    if (faccao) {
+      faccao.innerHTML = '<option value="">Escolha o processo primeiro</option>';
+      faccao.disabled = true;
+    }
+  }
+
+  async function buscarPrecoConfirmacaoChegada(firestore, db, referencia, processo) {
+    const snapshot = await firestore.getDocs(firestore.collection(db, 'precosReferencia'));
+    const refChave = normalizarComparacao(referencia);
+    const processoChave = normalizarComparacao(processo);
+    return snapshot.docs
+      .map(item => ({ id: item.id, ...item.data() }))
+      .find(item =>
+        item.ativo !== false &&
+        normalizarComparacao(item.referencia || '') === refChave &&
+        normalizarComparacao(item.processo || item.servicoNome || '') === processoChave
+      ) || null;
+  }
+
+  async function confirmarChegadaFaccaoComRevalidacao(event) {
+    const bloco = document.getElementById('grupoConfirmacaoChegadaFaccao');
+    const form = document.getElementById('formChegadaMovimentacao');
+    if (!form || !bloco || bloco.classList.contains('hidden')) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    if (confirmacaoChegadaFaccaoSalvando) {
+      mostrarAvisoFormulario('Aguarde: esta chegada já está sendo registrada.');
+      return;
+    }
+
+    const id = String(document.getElementById('chegadaMovimentacaoId')?.value || '').trim();
+    const processo = String(document.getElementById('chegadaConfirmarProcesso')?.value || '').trim().toUpperCase();
+    const faccao = String(document.getElementById('chegadaConfirmarFaccao')?.value || '').trim().toUpperCase();
+    const dataChegada = String(document.getElementById('chegadaData')?.value || '').trim();
+    const falta = Math.max(0, numeroConfirmacaoChegada(document.getElementById('chegadaFalta')?.value || 0));
+    const desconto = Math.max(0, numeroConfirmacaoChegada(document.getElementById('chegadaDefeito')?.value || 0));
+
+    if (!id) {
+      mostrarAvisoFormulario('Movimentação não encontrada. Feche a tela e abra novamente.');
+      return;
+    }
+    if (!processo) {
+      mostrarAvisoFormulario('Confirme qual processo foi realizado.');
+      document.getElementById('chegadaConfirmarProcesso')?.focus();
+      return;
+    }
+    if (!faccao) {
+      mostrarAvisoFormulario('Confirme qual facção realizou o processo.');
+      document.getElementById('chegadaConfirmarFaccao')?.focus();
+      return;
+    }
+    if (!dataChegada) {
+      mostrarAvisoFormulario('Informe a data de chegada.');
+      document.getElementById('chegadaData')?.focus();
+      return;
+    }
+
+    const movTela = confirmacaoChegadaFaccaoAtual?.movimentacao || {};
+    const permitidas = faccoesConfirmacaoChegadaFaccao(processo, movTela);
+    if (!permitidas.some(item => normalizarComparacao(item) === normalizarComparacao(faccao))) {
+      mostrarAvisoFormulario('A facção escolhida não está vinculada ao processo selecionado. Ajuste em Gerenciar facções.');
+      return;
+    }
+
+    const quantidadeEnviadaTela = numeroConfirmacaoChegada(movTela.quantidadeEnviada || 0);
+    if (quantidadeEnviadaTela > 0 && falta > quantidadeEnviadaTela) {
+      mostrarAvisoFormulario('A falta não pode ser maior que a quantidade enviada.');
+      return;
+    }
+
+    const mudouProcesso = normalizarComparacao(processo) !== normalizarComparacao(movTela.processo || '');
+    const mudouFaccao = normalizarComparacao(faccao) !== normalizarComparacao(movTela.destino || '');
+    if ((mudouProcesso || mudouFaccao) && !window.confirm(
+      `O envio estava como:\n${movTela.processo || '-'} / ${movTela.destino || '-'}\n\nA chegada será corrigida para:\n${processo} / ${faccao}\n\nConfirmar a correção e gerar o pagamento com os novos dados?`
+    )) return;
+
+    const botao = form.querySelector('button[type="submit"]');
+    const textoBotao = botao?.textContent || 'Confirmar chegada';
+    confirmacaoChegadaFaccaoSalvando = true;
+    if (botao) {
+      botao.disabled = true;
+      botao.textContent = 'Registrando...';
+    }
+
+    try {
+      const { firestore, auth, db } = await obterContextoTravasDuplicidade();
+      const user = auth.currentUser;
+      if (!user) throw new Error('Usuário não autenticado.');
+
+      const pagamentoExistenteSnapshot = await firestore.getDocs(
+        firestore.query(
+          firestore.collection(db, 'entregasPagamento'),
+          firestore.where('movimentacaoId', '==', id)
+        )
+      );
+      const pagamentoExistente = pagamentoExistenteSnapshot.docs.find(item => {
+        const dados = item.data() || {};
+        return !dados.excluido && !['CANCELADO', 'EXCLUIDO'].includes(normalizarComparacao(dados.statusPagamento));
+      });
+      if (pagamentoExistente) {
+        const erro = new Error('Já existe pagamento para esta movimentação.');
+        erro.codigoConfirmacaoChegada = 'PAGAMENTO_EXISTENTE';
+        throw erro;
+      }
+
+      const preco = await buscarPrecoConfirmacaoChegada(firestore, db, movTela.referencia || '', processo);
+      const pagamentoId = preco
+        ? idSeguroConfirmacaoChegada(`mov-${id}-${preco.id}`)
+        : idSeguroConfirmacaoChegada(`mov-${id}-sem-valor`);
+      const movRef = firestore.doc(db, 'movimentacoesProducao', id);
+      const pagamentoRef = firestore.doc(db, 'entregasPagamento', pagamentoId);
+      const pagamentoSemValorRef = firestore.doc(db, 'entregasPagamento', idSeguroConfirmacaoChegada(`mov-${id}-sem-valor`));
+      const logRef = firestore.doc(firestore.collection(db, 'logsAlteracoes'));
+
+      const resultado = await firestore.runTransaction(db, async transacao => {
+        const movSnapshot = await transacao.get(movRef);
+        if (!movSnapshot.exists()) {
+          const erro = new Error('Movimentação não encontrada.');
+          erro.codigoConfirmacaoChegada = 'MOVIMENTACAO_INEXISTENTE';
+          throw erro;
+        }
+
+        const movServidor = { id: movSnapshot.id, ...movSnapshot.data() };
+        const status = normalizarComparacao(movServidor.status || '');
+        if (
+          movServidor.dataChegada ||
+          movServidor.bipado === true ||
+          ['RETORNOU', 'FINALIZADO', 'ENCAMINHADO'].includes(status)
+        ) {
+          const erro = new Error('A chegada desta movimentação já foi registrada.');
+          erro.codigoConfirmacaoChegada = 'CHEGADA_EXISTENTE';
+          throw erro;
+        }
+
+        const pagamentoSnapshot = await transacao.get(pagamentoRef);
+        if (pagamentoSnapshot.exists()) {
+          const erro = new Error('Já existe pagamento para esta movimentação.');
+          erro.codigoConfirmacaoChegada = 'PAGAMENTO_EXISTENTE';
+          throw erro;
+        }
+        if (preco && pagamentoSemValorRef.path !== pagamentoRef.path) {
+          const pendenteSnapshot = await transacao.get(pagamentoSemValorRef);
+          if (pendenteSnapshot.exists()) {
+            const erro = new Error('Já existe pagamento pendente de valor para esta movimentação.');
+            erro.codigoConfirmacaoChegada = 'PAGAMENTO_EXISTENTE';
+            throw erro;
+          }
+        }
+
+        const quantidadeEnviada = Math.max(0, numeroConfirmacaoChegada(movServidor.quantidadeEnviada || 0));
+        if (falta > quantidadeEnviada) {
+          const erro = new Error('A falta é maior que a quantidade enviada.');
+          erro.codigoConfirmacaoChegada = 'FALTA_INVALIDA';
+          throw erro;
+        }
+        const quantidadeRecebida = Math.max(quantidadeEnviada - falta, 0);
+        const processoOriginal = movServidor.processoEnvioOriginal || movServidor.processo || '';
+        const destinoOriginal = movServidor.destinoEnvioOriginal || movServidor.destino || '';
+        const corrigiu =
+          normalizarComparacao(processo) !== normalizarComparacao(movServidor.processo || '') ||
+          normalizarComparacao(faccao) !== normalizarComparacao(movServidor.destino || '');
+        const cadastroFaccao = typeof faccaoAtivaPorNomeProcessos === 'function'
+          ? faccaoAtivaPorNomeProcessos(faccao)
+          : null;
+
+        const atualizacaoMovimento = {
+          processoEnvioOriginal: processoOriginal,
+          destinoEnvioOriginal: destinoOriginal,
+          processo,
+          destino: faccao,
+          destinoId: cadastroFaccao?.id || (
+            normalizarComparacao(faccao) === normalizarComparacao(movServidor.destino || '')
+              ? (movServidor.destinoId || '')
+              : ''
+          ),
+          dataChegada,
+          falta,
+          descontoDefeito: desconto,
+          defeito: desconto,
+          quantidadeRecebida,
+          status: 'retornou',
+          confirmacaoProcessoFaccaoNaChegada: true,
+          processoConfirmadoNaChegada: processo,
+          faccaoConfirmadaNaChegada: faccao,
+          dadosEnvioCorrigidosNaChegada: corrigiu,
+          chegadaRegistradaPor: user.uid,
+          chegadaRegistradaEm: firestore.serverTimestamp(),
+          atualizadoPor: user.uid,
+          atualizadoEm: firestore.serverTimestamp(),
+          versaoConfirmacaoChegada: APP_VERSION
+        };
+        if (corrigiu) {
+          atualizacaoMovimento.dadosEnvioCorrigidosPor = user.uid;
+          atualizacaoMovimento.dadosEnvioCorrigidosEm = firestore.serverTimestamp();
+        }
+        transacao.set(movRef, atualizacaoMovimento, { merge: true });
+
+        const pagamentoReenvio = Boolean(
+          movServidor.movimentacaoOrigemId ||
+          movServidor.reenvio ||
+          movServidor.origem === 'movimentacao'
+        );
+        const setorPagamento = preco?.setor || movServidor.setor || setorConfirmacaoChegada(movServidor);
+        const valorUnitario = preco ? Math.max(0, numeroConfirmacaoChegada(preco.valor || 0)) : 0;
+        const subtotal = quantidadeRecebida * valorUnitario;
+        const total = Math.max(subtotal - desconto, 0);
+
+        const dadosPagamento = {
+          origem: 'movimentacao',
+          movimentacaoId: id,
+          movimentacaoOrigemId: movServidor.movimentacaoOrigemId || '',
+          pagamentoReenvio,
+          opId: movServidor.opId || '',
+          numeroOP: movServidor.numeroOP || '',
+          referencia: movServidor.referencia || '',
+          cor: movServidor.cor || '',
+          produtoNome: movServidor.produtoNome || '',
+          faccao,
+          precoReferenciaId: preco?.id || '',
+          processo: preco?.processo || processo,
+          processoMovimentacao: processo,
+          servicoId: preco?.id || '',
+          servicoNome: preco?.processo || processo,
+          setor: setorPagamento,
+          setorLabel: labelSetorConfirmacaoChegada(setorPagamento),
+          dataEntrega: dataChegada,
+          quantidade: quantidadeRecebida,
+          falta,
+          descontoDefeito: desconto,
+          subtotal,
+          valorUnitario,
+          total,
+          statusPagamento: preco ? 'pendente' : 'sem_valor',
+          valorPendente: !preco,
+          avisoPagamento: preco ? '' : `Adicionar valor para Ref. ${movServidor.referencia || '-'} + ${processo}.`,
+          observacoes: preco
+            ? (pagamentoReenvio
+              ? 'Gerado na chegada confirmada de um reenvio. Processo e facção foram reconferidos antes do pagamento.'
+              : 'Gerado na chegada com reconfirmação obrigatória de processo e facção.')
+            : 'Pagamento ficou em aberto porque não existe valor cadastrado para REF + PROCESSO confirmado na chegada.',
+          atualizadoPor: user.uid,
+          atualizadoEm: firestore.serverTimestamp(),
+          criadoPor: user.uid,
+          criadoEm: firestore.serverTimestamp(),
+          versaoGeracao: APP_VERSION
+        };
+        transacao.set(pagamentoRef, dadosPagamento, { merge: true });
+
+        transacao.set(logRef, {
+          acao: corrigiu
+            ? 'chegada_confirmada_com_correcao_processo_faccao'
+            : 'chegada_confirmada_processo_faccao',
+          entidade: 'movimentacaoProducao',
+          entidadeId: id,
+          detalhes: `OP ${movServidor.numeroOP || '-'} | envio ${movServidor.processo || '-'} / ${movServidor.destino || '-'} | chegada confirmada ${processo} / ${faccao} | recebeu ${quantidadeRecebida} | falta ${falta} | desconto ${formatarMoedaConfirmacaoChegada(desconto)}`,
+          usuarioId: user.uid,
+          usuarioEmail: user.email || '',
+          criadoEm: firestore.serverTimestamp(),
+          versao: APP_VERSION
+        });
+
+        return { preco, total, quantidadeRecebida, corrigiu };
+      });
+
+      document.getElementById('btnFecharModalChegada')?.click();
+      limparConfirmacaoChegadaFaccao();
+      mostrarAvisoFormulario(resultado.preco
+        ? `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada e pagamento gerado: ${formatarMoedaConfirmacaoChegada(resultado.total)}.`
+        : `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada. O pagamento ficou pendente porque ainda não existe valor para a referência e o processo.`
+      );
+    } catch (error) {
+      console.error('Erro ao registrar chegada com reconfirmação.', error);
+      const codigo = error?.codigoConfirmacaoChegada || '';
+      if (codigo === 'CHEGADA_EXISTENTE' || codigo === 'PAGAMENTO_EXISTENTE') {
+        mostrarAvisoFormulario('A chegada ou o pagamento desta movimentação já existe. Use Movimentações registradas para corrigir.');
+      } else if (codigo === 'FALTA_INVALIDA') {
+        mostrarAvisoFormulario('A falta não pode ser maior que a quantidade enviada.');
+      } else if (String(error?.code || '').includes('permission-denied')) {
+        mostrarAvisoFormulario('Sem permissão para corrigir processo/facção e gerar o pagamento. Confira as regras do Firebase.');
+      } else {
+        mostrarAvisoFormulario('Não foi possível registrar a chegada. Nenhuma alteração foi salva; confira a internet e tente novamente.');
+      }
+    } finally {
+      confirmacaoChegadaFaccaoSalvando = false;
+      if (botao) {
+        botao.disabled = false;
+        botao.textContent = textoBotao;
+      }
+    }
+  }
+
+  function iniciarConfirmacaoObrigatoriaChegadaFaccao() {
+    injetarEstilosConfirmacaoChegadaFaccao();
+    const form = document.getElementById('formChegadaMovimentacao');
+    if (!form || form.dataset.confirmacaoProcessoFaccaoChegada === APP_VERSION) return;
+    form.dataset.confirmacaoProcessoFaccaoChegada = APP_VERSION;
+    garantirCamposConfirmacaoChegadaFaccao();
+
+    document.addEventListener('click', event => {
+      const botao = event.target?.closest?.('button[onclick*="registrarChegadaMovimentacao"]');
+      if (!botao) return;
+      setTimeout(prepararConfirmacaoChegadaFaccao, 30);
+    });
+
+    form.addEventListener('reset', () => setTimeout(limparConfirmacaoChegadaFaccao, 0));
+    form.addEventListener('submit', confirmarChegadaFaccaoComRevalidacao, true);
+  }
+
+
   function iniciarRecursosDaVersao() {
     iniciarTelasExclusivasGerenciamento();
     iniciarProcessosFaccoesGerenciados();
@@ -10342,6 +10981,7 @@
     iniciarGerenciarValoresOrganizadoSeguro();
     // Instalada primeiro para barrar a ação antes das rotinas antigas de salvamento.
     iniciarTravasDuplicidadeFaccaoPagamento();
+    iniciarConfirmacaoObrigatoriaChegadaFaccao();
     iniciarRevisaoFinalPagamentos();
     iniciarTelaPagamentosSegura();
     iniciarHotfixChegadaManual();

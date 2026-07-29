@@ -1,6 +1,6 @@
-ATUALIZAÇÃO: Gerenciar processos dentro de Gerenciar facções
+ATUALIZAÇÃO: Reconfirmar processo e facção ao registrar chegada
 
-SUBSTITUIR NO GITHUB
+ARQUIVOS PARA SUBSTITUIR NO GITHUB
 - update.js
 - sw.js
 - version.json
@@ -13,18 +13,32 @@ NÃO ALTERAR
 - firestore-rules.txt
 - storage-rules.txt
 
-NOVO FUNCIONAMENTO
-1. Na aba Facções, o painel Processos das facções continua disponível somente para consulta.
-2. O botão Gerenciar processos deixa de aparecer na tela operacional.
-3. Ao clicar em Gerenciar facções, o painel de processos é levado para dentro da tela administrativa.
-4. Dentro de Gerenciar facções, o administrador pode abrir Gerenciar processos, criar/renomear processos e definir quem realiza cada serviço.
-5. Ao voltar para Facções, o painel retorna à posição original e o modo administrativo é fechado.
+NOVO FLUXO
+1. Na aba Facções, clicar em Chegada.
+2. O sistema mostra o processo e a facção informados no envio.
+3. O usuário precisa selecionar novamente o processo realizado.
+4. Depois precisa selecionar novamente quem fez o serviço.
+5. Informa data, falta e desconto.
+6. A chegada e o pagamento são gravados juntos.
 
-SEGURANÇA
-- Nenhum vínculo existente será apagado.
-- Nenhuma movimentação ou pagamento será alterado.
-- Não foram adicionados MutationObservers.
-- Não é necessário publicar regras do Firebase.
+SE O ENVIO ESTIVER ERRADO
+- O usuário pode escolher o processo e/ou facção corretos.
+- O sistema pede uma confirmação adicional.
+- A movimentação é corrigida e guarda os dados originais para auditoria.
+- O pagamento é gerado usando os dados confirmados na chegada.
 
-VERSÃO
-2026-07-29-processos-dentro-gerenciar-faccoes-1
+PROTEÇÕES
+- Não permite confirmar sem processo e facção.
+- A facção precisa estar vinculada ao processo.
+- Bloqueia chegada ou pagamento duplicado.
+- Usa transação do Firestore: movimentação, pagamento e log são salvos juntos.
+- Em caso de falha, nenhuma parte fica salva pela metade.
+- Não utiliza MutationObserver.
+
+DEPOIS DO COMMIT
+1. Testar primeiro em aba anônima.
+2. Abrir Facções e escolher uma remessa em andamento.
+3. Clicar em Chegada.
+4. Confirmar processo e facção.
+5. Usar uma falta/desconto de teste apenas em registro apropriado.
+6. Conferir o pagamento criado.
