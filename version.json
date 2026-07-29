@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-29-processos-faccoes-gerenciados-1",
-  "updatedAt": "2026-07-29T08:40:00-03:00",
-  "notes": "Processos das faccoes com visualizacao por processo e gerenciamento administrativo dos vinculos."
+  "version": "2026-07-29-chegada-manual-simplificada-op-1",
+  "updatedAt": "2026-07-29T08:51:00-03:00",
+  "notes": "Chegada manual simplificada pela OP, com falta e desconto aplicados ao pagamento."
 }

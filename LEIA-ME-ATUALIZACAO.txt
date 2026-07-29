@@ -1,11 +1,11 @@
-ATUALIZAÇÃO — PROCESSOS DAS FACÇÕES
+ATUALIZAÇÃO: Chegada manual simplificada pela OP
 
-Substituir no GitHub:
+ARQUIVOS PARA SUBSTITUIR NO GITHUB
 - update.js
 - sw.js
 - version.json
 
-Não alterar:
+NÃO ALTERAR NESTA ATUALIZAÇÃO
 - app.js
 - index.html
 - style.css
@@ -13,35 +13,30 @@ Não alterar:
 - firestore-rules.txt
 - storage-rules.txt
 
-Não é necessário publicar novas regras do Firebase.
+NOVO FLUXO
+1. Digitar a OP.
+2. O sistema carrega automaticamente referência, cor, quantidade e tipo de peça.
+3. Selecionar o processo.
+4. Selecionar a facção vinculada ao processo.
+5. Informar quantidade faltando.
+6. Informar desconto em reais.
+7. Salvar.
 
-NOVO FUNCIONAMENTO
+CÁLCULO
+Quantidade recebida = quantidade da OP - falta.
+Subtotal = quantidade recebida x valor unitário.
+Total = subtotal - desconto.
 
-1. Na aba Facções aparece o painel "Processos das facções".
-2. Cada processo é exibido em um cartão com a quantidade de facções vinculadas.
-3. Ao clicar no cartão, o sistema mostra quem realiza o processo.
-4. Usuários comuns podem consultar a lista.
-5. O administrador pode:
-   - adicionar processo;
-   - definir se é Sutiã, Calcinha ou ambos;
-   - renomear processo;
-   - marcar/desmarcar quais facções fazem o processo;
-   - excluir o processo da lista sem alterar históricos antigos.
-6. A configuração também controla a lista de facções no envio do Manejo e na Chegada Manual.
-7. Na primeira abertura administrativa, os processos e vínculos antigos são recuperados automaticamente.
-
-SEGURANÇA
-
-- Não utiliza MutationObserver.
-- Não altera movimentações, pagamentos ou históricos antigos.
-- Somente administradores podem gravar configurações e vínculos.
-- Usuários comuns apenas visualizam.
+PROTEÇÕES
+- Movimentação e pagamento são gravados juntos no mesmo batch.
+- Se já existir envio para a mesma etapa, o sistema orienta usar a chegada normal.
+- Se já existir chegada ou pagamento, o sistema bloqueia a duplicidade.
+- Se não houver valor por referência + processo, o pagamento fica pendente de valor.
+- Não foi adicionado MutationObserver.
 
 DEPOIS DO COMMIT
-
 1. Testar primeiro em aba anônima.
-2. Entrar como administrador.
-3. Abrir Facções.
-4. Conferir os cartões e clicar em cada processo.
-5. Abrir Gerenciar processos e ajustar um vínculo de teste.
-6. Abrir Manejo e confirmar que o processo mostra somente as facções vinculadas.
+2. Abrir Facções > Chegada manual.
+3. Usar uma OP de teste que ainda não tenha a mesma movimentação.
+4. Conferir Movimentações registradas e Pagamentos.
+5. No navegador normal, clicar em Atualizar ou usar Ctrl+F5 uma vez.
