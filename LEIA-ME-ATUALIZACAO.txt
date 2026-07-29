@@ -1,11 +1,11 @@
-ATUALIZAÇÃO: Chegada manual simplificada pela OP
+ATUALIZAÇÃO: Gerenciar processos dentro de Gerenciar facções
 
-ARQUIVOS PARA SUBSTITUIR NO GITHUB
+SUBSTITUIR NO GITHUB
 - update.js
 - sw.js
 - version.json
 
-NÃO ALTERAR NESTA ATUALIZAÇÃO
+NÃO ALTERAR
 - app.js
 - index.html
 - style.css
@@ -13,30 +13,18 @@ NÃO ALTERAR NESTA ATUALIZAÇÃO
 - firestore-rules.txt
 - storage-rules.txt
 
-NOVO FLUXO
-1. Digitar a OP.
-2. O sistema carrega automaticamente referência, cor, quantidade e tipo de peça.
-3. Selecionar o processo.
-4. Selecionar a facção vinculada ao processo.
-5. Informar quantidade faltando.
-6. Informar desconto em reais.
-7. Salvar.
+NOVO FUNCIONAMENTO
+1. Na aba Facções, o painel Processos das facções continua disponível somente para consulta.
+2. O botão Gerenciar processos deixa de aparecer na tela operacional.
+3. Ao clicar em Gerenciar facções, o painel de processos é levado para dentro da tela administrativa.
+4. Dentro de Gerenciar facções, o administrador pode abrir Gerenciar processos, criar/renomear processos e definir quem realiza cada serviço.
+5. Ao voltar para Facções, o painel retorna à posição original e o modo administrativo é fechado.
 
-CÁLCULO
-Quantidade recebida = quantidade da OP - falta.
-Subtotal = quantidade recebida x valor unitário.
-Total = subtotal - desconto.
+SEGURANÇA
+- Nenhum vínculo existente será apagado.
+- Nenhuma movimentação ou pagamento será alterado.
+- Não foram adicionados MutationObservers.
+- Não é necessário publicar regras do Firebase.
 
-PROTEÇÕES
-- Movimentação e pagamento são gravados juntos no mesmo batch.
-- Se já existir envio para a mesma etapa, o sistema orienta usar a chegada normal.
-- Se já existir chegada ou pagamento, o sistema bloqueia a duplicidade.
-- Se não houver valor por referência + processo, o pagamento fica pendente de valor.
-- Não foi adicionado MutationObserver.
-
-DEPOIS DO COMMIT
-1. Testar primeiro em aba anônima.
-2. Abrir Facções > Chegada manual.
-3. Usar uma OP de teste que ainda não tenha a mesma movimentação.
-4. Conferir Movimentações registradas e Pagamentos.
-5. No navegador normal, clicar em Atualizar ou usar Ctrl+F5 uma vez.
+VERSÃO
+2026-07-29-processos-dentro-gerenciar-faccoes-1

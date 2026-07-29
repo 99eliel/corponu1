@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-chegada-manual-simplificada-op-1";
+  const APP_VERSION = "2026-07-29-processos-dentro-gerenciar-faccoes-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -6745,6 +6745,10 @@
 
     telaExclusivaGerenciamentoAtiva = chave;
 
+    if (chave === "faccoes") {
+      posicionarProcessosDentroGerenciarFaccoes(true);
+    }
+
     const botaoPrincipal = document.getElementById(config.botaoId);
     if (botaoPrincipal) {
       botaoPrincipal.textContent = config.textoBotaoPrincipal;
@@ -6773,6 +6777,10 @@
   function fecharTelaExclusivaGerenciamento(chave = telaExclusivaGerenciamentoAtiva, opcoes = {}) {
     const config = TELAS_EXCLUSIVAS_GERENCIAMENTO[chave];
     if (!config) return false;
+
+    if (chave === "faccoes") {
+      posicionarProcessosDentroGerenciarFaccoes(false);
+    }
 
     const painel = document.getElementById(config.painelId);
     if (painel) {
@@ -8759,8 +8767,50 @@
         background: #faf5ff;
       }
       .processos-faccoes-admin-acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+      .processos-faccoes-aviso-admin {
+        align-self: center;
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.35;
+        text-align: right;
+      }
+      .area-processos-dentro-gerenciar-faccoes {
+        margin: 16px 0 20px;
+        padding: 16px;
+        border: 1px solid #d8e0ec;
+        border-radius: 16px;
+        background: #f8fafc;
+      }
+      .area-processos-dentro-gerenciar-faccoes-cabecalho {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 12px;
+      }
+      .area-processos-dentro-gerenciar-faccoes-cabecalho h3 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 18px;
+      }
+      .area-processos-dentro-gerenciar-faccoes-cabecalho p {
+        margin: 4px 0 0;
+        color: #64748b;
+        font-size: 12px;
+      }
+      .area-processos-dentro-gerenciar-faccoes #painelProcessosFaccoes {
+        margin: 0;
+        box-shadow: none;
+        background: #fff;
+      }
+      .area-processos-dentro-gerenciar-faccoes #painelProcessosFaccoes .processos-faccoes-aviso-admin {
+        display: none !important;
+      }
       @media (max-width: 780px) {
         .processos-faccoes-cabecalho { flex-direction: column; }
+        .processos-faccoes-aviso-admin { text-align: left; align-self: flex-start; }
+        .area-processos-dentro-gerenciar-faccoes-cabecalho { align-items: stretch; flex-direction: column; }
+        .area-processos-dentro-gerenciar-faccoes-cabecalho .btn { width: 100%; }
         .processos-faccoes-admin-grid { grid-template-columns: 1fr; }
       }
     `;
@@ -8783,7 +8833,7 @@
           <h3>Processos das facções</h3>
           <p>Clique em um processo para ver quais facções realizam esse serviço.</p>
         </div>
-        <button id="btnGerenciarProcessosFaccoes" class="btn btn-primary hidden" type="button">Gerenciar processos</button>
+        <span class="processos-faccoes-aviso-admin">O gerenciamento fica em <strong>Gerenciar facções</strong>.</span>
       </div>
       <div id="gradeProcessosFaccoes" class="processos-faccoes-grade"></div>
       <div id="detalheProcessoFaccao" class="processos-faccoes-detalhe hidden"></div>
@@ -8818,6 +8868,9 @@
     const painel = criarPainelProcessosFaccoes();
     if (!painel) return;
 
+    if (document.getElementById("painelGerenciarFaccoes")?.classList.contains("painel-tela-exclusiva-ativo")) {
+      garantirAreaProcessosDentroGerenciarFaccoes();
+    }
     const botaoGerenciar = document.getElementById("btnGerenciarProcessosFaccoes");
     botaoGerenciar?.classList.toggle("hidden", !usuarioEhAdminProcessosFaccoes);
 
@@ -8932,6 +8985,65 @@
 
   function getPainelProcessosFaccoes() {
     return document.getElementById("painelProcessosFaccoes");
+  }
+
+  function garantirAreaProcessosDentroGerenciarFaccoes() {
+    const painelGerenciarFaccoes = document.getElementById("painelGerenciarFaccoes");
+    if (!painelGerenciarFaccoes) return null;
+
+    let area = document.getElementById("areaProcessosDentroGerenciarFaccoes");
+    if (!area) {
+      area = document.createElement("section");
+      area.id = "areaProcessosDentroGerenciarFaccoes";
+      area.className = "area-processos-dentro-gerenciar-faccoes";
+      area.innerHTML = `
+        <div class="area-processos-dentro-gerenciar-faccoes-cabecalho">
+          <div>
+            <h3>Processos e responsáveis</h3>
+            <p>Crie processos e defina quais facções realizam cada serviço.</p>
+          </div>
+          <button id="btnGerenciarProcessosFaccoes" class="btn btn-primary hidden" type="button">Gerenciar processos</button>
+        </div>
+        <div id="mountProcessosDentroGerenciarFaccoes"></div>
+      `;
+
+      const toolbar = painelGerenciarFaccoes.querySelector(":scope > .gerenciamento-exclusivo-toolbar");
+      if (toolbar) toolbar.insertAdjacentElement("afterend", area);
+      else painelGerenciarFaccoes.prepend(area);
+    }
+
+    const botao = area.querySelector("#btnGerenciarProcessosFaccoes");
+    botao?.classList.toggle("hidden", !usuarioEhAdminProcessosFaccoes);
+    return area;
+  }
+
+  function posicionarProcessosDentroGerenciarFaccoes(dentro) {
+    const painelProcessos = criarPainelProcessosFaccoes();
+    if (!painelProcessos) return;
+
+    if (dentro) {
+      const area = garantirAreaProcessosDentroGerenciarFaccoes();
+      const mount = area?.querySelector("#mountProcessosDentroGerenciarFaccoes");
+      if (mount && painelProcessos.parentElement !== mount) mount.appendChild(painelProcessos);
+      return;
+    }
+
+    const cardsResumo = document.querySelector("#faccoes .faccoes-cards");
+    if (cardsResumo && painelProcessos.previousElementSibling !== cardsResumo) {
+      cardsResumo.insertAdjacentElement("afterend", painelProcessos);
+    }
+
+    painelProcessos.dataset.gerenciandoProcessosFaccoes = "0";
+    const botao = document.getElementById("btnGerenciarProcessosFaccoes");
+    if (botao) botao.textContent = "Gerenciar processos";
+    renderDetalheProcessoFaccao();
+  }
+
+  function sincronizarLocalProcessosFaccoes() {
+    const gerenciamentoAberto = document
+      .getElementById("painelGerenciarFaccoes")
+      ?.classList.contains("painel-tela-exclusiva-ativo");
+    posicionarProcessosDentroGerenciarFaccoes(Boolean(gerenciamentoAberto));
   }
 
   async function salvarConfiguracaoProcessosFaccoes(processos, detalhesLog = "") {
@@ -9176,6 +9288,16 @@
         return;
       }
 
+      const abrirGerenciarFaccoes = event.target?.closest?.("#btnToggleGerenciarFaccoes");
+      if (abrirGerenciarFaccoes) {
+        setTimeout(() => posicionarProcessosDentroGerenciarFaccoes(true), 0);
+      }
+
+      const voltarGerenciarFaccoes = event.target?.closest?.('[data-fechar-tela-gerenciamento="faccoes"]');
+      if (voltarGerenciarFaccoes) {
+        posicionarProcessosDentroGerenciarFaccoes(false);
+      }
+
       if (event.target?.closest?.("#btnGerenciarProcessosFaccoes")) {
         const painel = getPainelProcessosFaccoes();
         if (!painel || !usuarioEhAdminProcessosFaccoes) return;
@@ -9315,6 +9437,7 @@
       criarPainelProcessosFaccoes();
       iniciarSnapshotsProcessosFaccoes();
       renderGradeProcessosFaccoes();
+      sincronizarLocalProcessosFaccoes();
     } catch (error) {
       usuarioEhAdminProcessosFaccoes = false;
       console.error("Não foi possível validar o acesso aos processos das facções.", error);
@@ -9356,6 +9479,7 @@
     instalarEventosProcessosFaccoes();
     conectarFirebaseProcessosFaccoes();
     renderGradeProcessosFaccoes();
+    sincronizarLocalProcessosFaccoes();
   }
 
 
