@@ -1,18 +1,6 @@
-ATUALIZAÇÃO: Restaurar opções antigas do filtro Fase
+ATUALIZAÇÃO — BOTÃO CONCLUIR INTELIGENTE NO MANEJO
 
-PROBLEMA CORRIGIDO
-A versão anterior criou as listas administrativas, mas como os documentos de configuração estavam vazios, o filtro Fase ficou apenas com Campo vazio.
-
-O QUE ESTA VERSÃO FAZ
-- Busca todas as OPs da coleção ordensProducao.
-- Recupera as fases antigas de Sutiã e Calcinha.
-- Recupera também sugestões antigas guardadas no navegador.
-- Junta as opções recuperadas com as que já estiverem cadastradas.
-- Nunca apaga ou substitui opções atuais.
-- Cria o botão Recuperar opções antigas nos dois painéis da aba Usuários.
-- Mantém Campo vazio fixo no filtro.
-
-ARQUIVOS PARA SUBSTITUIR NO GITHUB
+SUBSTITUIR NO GITHUB
 - update.js
 - sw.js
 - version.json
@@ -21,16 +9,25 @@ NÃO ALTERAR
 - app.js
 - index.html
 - style.css
-- regras do Firebase
+- firebase-rules.txt
+- firestore-rules.txt
+- storage-rules.txt
 
-COMO TESTAR
-1. Faça o commit dos três arquivos juntos.
-2. Abra primeiro em uma aba anônima.
-3. Entre como administrador.
-4. Aguarde alguns segundos: a restauração é executada automaticamente uma única vez.
-5. Abra Usuários e confira os painéis de Sutiã e Calcinha.
-6. Caso falte alguma opção, clique em Recuperar opções antigas.
-7. Abra Manejo e confira o filtro Fase.
+NOVO FUNCIONAMENTO
+1. Linhas do Manejo que já estão salvas não mostram o botão verde Concluir.
+2. Ao alterar qualquer campo editável da linha, o botão reaparece imediatamente.
+3. Durante o salvamento, o botão fica bloqueado para impedir clique duplo.
+4. Quando o sistema confirma que o Manejo foi salvo, o botão desaparece novamente.
+5. Se houver validação, erro de conexão ou erro de permissão, o botão continua visível para corrigir e tentar novamente.
 
-IMPORTANTE
-A restauração só adiciona opções que estão faltando. Depois que a lista estiver completa, o administrador pode remover o que não deve mais aparecer. As fases salvas nas OPs não são alteradas.
+SEGURANÇA
+- Não altera cálculos, OPs, pagamentos ou regras do Firebase.
+- Não usa MutationObserver.
+- Mantém todas as correções cumulativas da versão anterior.
+
+PUBLICAÇÃO
+1. Substitua os três arquivos em um único commit.
+2. Teste primeiro em aba anônima.
+3. Abra o Manejo, altere uma linha e confirme que o botão aparece.
+4. Clique em Concluir e confirme que ele desaparece após o aviso de sucesso.
+5. Altere novamente a mesma linha e confirme que o botão reaparece.

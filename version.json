@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-29-restaurar-filtros-antigos-fases-2",
-  "updatedAt": "2026-07-29T08:35:00-03:00",
-  "notes": "Restaura e mescla todas as opcoes antigas do filtro Fase para gerenciamento separado de Sutia e Calcinha."
+  "version": "2026-07-29-manejo-concluir-inteligente-1",
+  "updatedAt": "2026-07-29T08:33:00-03:00",
+  "notes": "Botao Concluir do Manejo some apos salvar e reaparece somente quando a linha for alterada."
 }

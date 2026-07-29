@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-restaurar-filtros-antigos-fases-2";
+  const APP_VERSION = "2026-07-29-manejo-concluir-inteligente-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -8225,8 +8225,182 @@
   }
 
 
+
+
+  // =========================================================
+  // HOTFIX: BOTÃO CONCLUIR INTELIGENTE NO MANEJO
+  // - Linhas já salvas ficam sem o botão verde para evitar clique duplicado.
+  // - Ao alterar qualquer campo editável da linha, o botão reaparece.
+  // - Após salvamento confirmado, o botão some novamente.
+  // - Não usa MutationObserver e não altera o Firestore ou a lógica original.
+  // =========================================================
+  let salvarManejoLinhaOriginalConcluirInteligente = null;
+
+  function injetarEstilosConcluirInteligenteManejo() {
+    if (document.getElementById('styleConcluirInteligenteManejo')) return;
+
+    const style = document.createElement('style');
+    style.id = 'styleConcluirInteligenteManejo';
+    style.textContent = `
+      #listaManejoInline tr.manejo-row-saved:not(.manejo-row-dirty) .btn-save-manejo {
+        display: none !important;
+      }
+
+      #listaManejoInline tr.manejo-row-dirty .btn-save-manejo,
+      #listaManejoInline tr.manejo-row-pending .btn-save-manejo {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #listaManejoInline .btn-save-manejo[data-salvando-manejo="1"] {
+        display: inline-flex !important;
+        opacity: .7;
+        cursor: wait !important;
+        pointer-events: none !important;
+      }
+
+      #listaManejoInline tr.manejo-row-dirty {
+        box-shadow: inset 4px 0 0 #16a34a;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function encontrarLinhaManejoPorOrdemIdConcluirInteligente(ordemId) {
+    const botoes = document.querySelectorAll('#listaManejoInline .btn-save-manejo');
+    const trechoAspasSimples = `salvarManejoLinha('${String(ordemId)}')`;
+    const trechoAspasDuplas = `salvarManejoLinha(\"${String(ordemId)}\")`;
+
+    for (const botao of botoes) {
+      const onclick = String(botao.getAttribute('onclick') || '');
+      if (onclick.includes(trechoAspasSimples) || onclick.includes(trechoAspasDuplas)) {
+        return botao.closest('tr[data-manejo-row="1"]');
+      }
+    }
+    return null;
+  }
+
+  function marcarLinhaManejoAlteradaConcluirInteligente(linha) {
+    if (!linha) return;
+    linha.classList.add('manejo-row-dirty');
+
+    const botao = linha.querySelector('.btn-save-manejo');
+    if (botao) {
+      botao.hidden = false;
+      botao.disabled = false;
+      botao.removeAttribute('data-salvando-manejo');
+      botao.textContent = '✓';
+      botao.title = 'Concluir alterações desta linha';
+      botao.setAttribute('aria-label', 'Concluir alterações desta linha');
+    }
+  }
+
+  function campoEditavelDaLinhaManejoConcluirInteligente(alvo) {
+    if (!alvo?.matches?.('input, select, textarea')) return false;
+    if (!alvo.closest?.('#listaManejoInline tr[data-manejo-row="1"]')) return false;
+    if (alvo.disabled || alvo.readOnly || alvo.classList.contains('manejo-readonly')) return false;
+    return true;
+  }
+
+  function instalarEventosConcluirInteligenteManejo() {
+    if (document.__eventosConcluirInteligenteManejo) return;
+    document.__eventosConcluirInteligenteManejo = true;
+
+    const tratarAlteracao = event => {
+      const alvo = event.target;
+      if (!campoEditavelDaLinhaManejoConcluirInteligente(alvo)) return;
+      marcarLinhaManejoAlteradaConcluirInteligente(
+        alvo.closest('tr[data-manejo-row="1"]')
+      );
+    };
+
+    document.addEventListener('input', tratarAlteracao, true);
+    document.addEventListener('change', tratarAlteracao, true);
+  }
+
+  function textoToastConcluirInteligente() {
+    return String(document.getElementById('toast')?.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function salvamentoManejoFoiConfirmadoConcluirInteligente(texto) {
+    const valor = String(texto || '').toLowerCase();
+    return valor.includes('manejo') && valor.includes('salvo');
+  }
+
+  function instalarWrapperSalvarManejoConcluirInteligente() {
+    if (window.__salvarManejoConcluirInteligenteInstalado) return true;
+    if (typeof window.salvarManejoLinha !== 'function') return false;
+
+    salvarManejoLinhaOriginalConcluirInteligente = window.salvarManejoLinha;
+
+    window.salvarManejoLinha = async function salvarManejoLinhaConcluirInteligente(ordemId) {
+      let linha = encontrarLinhaManejoPorOrdemIdConcluirInteligente(ordemId);
+      let botao = linha?.querySelector('.btn-save-manejo') || null;
+
+      if (botao?.dataset.salvandoManejo === '1') return;
+
+      if (botao) {
+        botao.dataset.salvandoManejo = '1';
+        botao.disabled = true;
+        botao.textContent = '…';
+        botao.title = 'Salvando alterações';
+      }
+
+      let retorno;
+      try {
+        retorno = await salvarManejoLinhaOriginalConcluirInteligente.apply(this, arguments);
+      } finally {
+        // A função original trata os erros internamente e informa o resultado pelo toast.
+        await new Promise(resolve => setTimeout(resolve, 120));
+        const mensagem = textoToastConcluirInteligente();
+        const sucesso = salvamentoManejoFoiConfirmadoConcluirInteligente(mensagem);
+
+        // A linha pode ter sido renderizada novamente pelo snapshot do Firestore.
+        linha = encontrarLinhaManejoPorOrdemIdConcluirInteligente(ordemId) || linha;
+        botao = linha?.querySelector('.btn-save-manejo') || botao;
+
+        if (sucesso && linha) {
+          linha.classList.remove('manejo-row-dirty', 'manejo-row-pending');
+          linha.classList.add('manejo-row-saved');
+          if (botao) {
+            botao.removeAttribute('data-salvando-manejo');
+            botao.disabled = false;
+            botao.textContent = '✓';
+            botao.title = 'Concluir alterações desta linha';
+            botao.setAttribute('aria-label', 'Concluir alterações desta linha');
+          }
+        } else if (linha) {
+          // Validação, permissão ou erro: mantém o botão disponível para correção.
+          marcarLinhaManejoAlteradaConcluirInteligente(linha);
+        } else if (botao) {
+          botao.removeAttribute('data-salvando-manejo');
+          botao.disabled = false;
+          botao.textContent = '✓';
+        }
+      }
+      return retorno;
+    };
+
+    window.__salvarManejoConcluirInteligenteInstalado = true;
+    return true;
+  }
+
+  function iniciarConcluirInteligenteManejo() {
+    injetarEstilosConcluirInteligenteManejo();
+    instalarEventosConcluirInteligenteManejo();
+
+    // Tentativas finitas apenas para aguardar a exportação da função pelo app.js.
+    [0, 120, 450, 1200].forEach(atraso => {
+      setTimeout(instalarWrapperSalvarManejoConcluirInteligente, atraso);
+    });
+  }
+
   function iniciarRecursosDaVersao() {
     iniciarTelasExclusivasGerenciamento();
+    iniciarConcluirInteligenteManejo();
     iniciarGerenciarValoresOrganizadoSeguro();
     // Instalada primeiro para barrar a ação antes das rotinas antigas de salvamento.
     iniciarTravasDuplicidadeFaccaoPagamento();
