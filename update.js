@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-alca-valor-padrao-x2-1";
+  const APP_VERSION = "2026-07-29-restantes-faccoes-complementares-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -10494,6 +10494,7 @@
       }
 
       const agoraServidor = firestore.serverTimestamp();
+      const restanteMovimentacaoId = falta > 0 ? idRestanteFaccao(movimentacaoId, 1) : '';
       const movimentacao = {
         id: movimentacaoId,
         origem: "chegada_manual_faccao",
@@ -10511,6 +10512,12 @@
         processo,
         quantidadeEnviada,
         quantidadeRecebida,
+        temRestantePendente: falta > 0,
+        quantidadeRestantePendente: falta,
+        restanteStatus: falta > 0 ? 'pendente' : 'concluido',
+        restanteMovimentacaoId,
+        restanteAtualizadoPor: user.uid,
+        restanteAtualizadoEm: agoraServidor,
         dataEnvio,
         dataEnvioNaoInformada: !dataEnvio,
         dataChegada,
@@ -10611,6 +10618,21 @@
       const logRef = firestore.doc(firestore.collection(db, "logsAlteracoes"));
       const batch = firestore.writeBatch(db);
       batch.set(movimentoRef, movimentacao, { merge: false });
+      if (falta > 0) {
+        batch.set(
+          firestore.doc(db, 'movimentacoesProducao', restanteMovimentacaoId),
+          criarDocumentoRestanteFaccao({
+            movimentoOrigem: movimentacao,
+            restanteId: restanteMovimentacaoId,
+            quantidade: falta,
+            sequencia: 1,
+            user,
+            firestore,
+            dataGeracao: dataChegada
+          }),
+          { merge: true }
+        );
+      }
       batch.set(pagamentoRef, pagamento, { merge: false });
       batch.set(logRef, {
         acao: "chegada_manual_faccao_simplificada",
@@ -11387,6 +11409,7 @@
           throw erro;
         }
         const quantidadeRecebida = Math.max(quantidadeEnviada - falta, 0);
+        const restanteMovimentacaoId = falta > 0 ? idRestanteFaccao(id, 1) : '';
         const processoOriginal = movServidor.processoEnvioOriginal || movServidor.processo || '';
         const destinoOriginal = movServidor.destinoEnvioOriginal || movServidor.destino || '';
         const corrigiu =
@@ -11411,6 +11434,12 @@
           descontoDefeito: desconto,
           defeito: desconto,
           quantidadeRecebida,
+          temRestantePendente: falta > 0,
+          quantidadeRestantePendente: falta,
+          restanteStatus: falta > 0 ? 'pendente' : 'concluido',
+          restanteMovimentacaoId,
+          restanteAtualizadoPor: user.uid,
+          restanteAtualizadoEm: firestore.serverTimestamp(),
           ...(exigeComponentesSutia ? {
             lateralPronta,
             lateralProntaStatus: lateralResposta,
@@ -11438,6 +11467,22 @@
           atualizacaoMovimento.dadosEnvioCorrigidosEm = firestore.serverTimestamp();
         }
         transacao.set(movRef, atualizacaoMovimento, { merge: true });
+        if (falta > 0) {
+          const restanteRef = firestore.doc(db, 'movimentacoesProducao', restanteMovimentacaoId);
+          transacao.set(
+            restanteRef,
+            criarDocumentoRestanteFaccao({
+              movimentoOrigem: { id, ...movServidor, ...atualizacaoMovimento },
+              restanteId: restanteMovimentacaoId,
+              quantidade: falta,
+              sequencia: 1,
+              user,
+              firestore,
+              dataGeracao: dataChegada
+            }),
+            { merge: true }
+          );
+        }
 
         const pagamentoReenvio = Boolean(
           movServidor.movimentacaoOrigemId ||
@@ -11548,18 +11593,21 @@
           versao: APP_VERSION
         });
 
-        return { preco, total, quantidadeRecebida, corrigiu, valorTotalManualFinanceiro };
+        return { preco, total, quantidadeRecebida, falta, restanteMovimentacaoId, corrigiu, valorTotalManualFinanceiro };
       });
 
       document.getElementById('btnFecharModalChegada')?.click();
       limparConfirmacaoChegadaFaccao();
-      mostrarAvisoFormulario(resultado.valorTotalManualFinanceiro
+      const avisoRestante = resultado.falta > 0
+        ? ` ${resultado.falta.toLocaleString('pt-BR')} peça(s) ficaram em Restantes pendentes.`
+        : '';
+      mostrarAvisoFormulario((resultado.valorTotalManualFinanceiro
         ? `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada. O financeiro deverá informar o valor total desta OP.`
         : (resultado.preco
           ? `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada e pagamento gerado: ${formatarMoedaConfirmacaoChegada(resultado.total)}.${pagamentoAlca ? ` Foram consideradas ${(resultado.quantidadeRecebida * 2).toLocaleString("pt-BR")} alças.` : ''}`
           : (pagamentoAlca
             ? `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada. Cadastre o valor padrão da alça; o sistema usará duas alças por sutiã.`
-            : `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada. O pagamento ficou pendente porque ainda não existe valor para a referência e o processo.`))
+            : `${resultado.corrigiu ? 'Dados corrigidos. ' : ''}Chegada registrada. O pagamento ficou pendente porque ainda não existe valor para a referência e o processo.`))) + avisoRestante
       );
     } catch (error) {
       console.error('Erro ao registrar chegada com reconfirmação.', error);
@@ -12882,7 +12930,688 @@
     document.head.appendChild(style);
   }
 
+
+
+  // =========================================================
+  // RESTANTES DE FACÇÕES — CHEGADAS COMPLEMENTARES
+  // - Uma chegada parcial cria automaticamente um restante pendente.
+  // - O restante permanece vinculado à OP, processo e facção originais.
+  // - Cada nova entrega gera uma chegada e um pagamento complementares.
+  // - Se ainda faltar quantidade, uma nova pendência é criada em sequência.
+  // =========================================================
+
+  const ID_PAINEL_RESTANTES_FACCAO = 'painelRestantesFaccoes';
+  const ID_MODAL_RESTANTES_FACCAO = 'modalReceberRestanteFaccao';
+  const ID_ESTILO_RESTANTES_FACCAO = 'estiloRestantesFaccoes';
+  let contextoRestantesFaccao = null;
+  let unsubscribeRestantesFaccao = null;
+  let restantesFaccoesCarregados = [];
+  let restanteFaccaoEmRecebimento = null;
+  let carregandoRestantesFaccoes = false;
+  let salvandoRestanteFaccao = false;
+
+  function idRestanteFaccao(movimentacaoRaizId, sequencia = 1) {
+    const raiz = idSeguroConfirmacaoChegada(String(movimentacaoRaizId || 'movimento'));
+    return `${raiz}-restante-${Math.max(1, Number(sequencia) || 1)}`.slice(0, 190);
+  }
+
+  function numeroRestanteFaccao(valor, padrao = 0) {
+    const numero = Number(valor);
+    return Number.isFinite(numero) ? numero : padrao;
+  }
+
+  function textoRestanteFaccao(valor) {
+    return String(valor ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function dataBRRestanteFaccao(valor) {
+    const texto = String(valor || '').slice(0, 10);
+    const partes = texto.split('-');
+    return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : (texto || '-');
+  }
+
+  function hojeISORestanteFaccao() {
+    const agora = new Date();
+    const local = new Date(agora.getTime() - agora.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+  }
+
+  function criarDocumentoRestanteFaccao({ movimentoOrigem, restanteId, quantidade, sequencia, user, firestore, dataGeracao }) {
+    const origem = movimentoOrigem || {};
+    const raizId = origem.movimentacaoRaizId || origem.movimentacaoOrigemId || origem.id || '';
+    const quantidadePendente = Math.max(0, Math.floor(numeroRestanteFaccao(quantidade)));
+    return {
+      id: restanteId,
+      origem: 'restante_faccao',
+      origemRestanteFaccao: true,
+      tipoDestino: 'faccao',
+      tipoDestinoLabel: 'Facção',
+      movimentacaoOrigemId: origem.movimentacaoOrigemId || origem.id || '',
+      movimentacaoRaizId: raizId,
+      restanteSequencia: Math.max(1, Number(sequencia) || 1),
+      restantePendente: true,
+      restanteStatus: 'pendente',
+      opId: origem.opId || '',
+      numeroOP: origem.numeroOP || '',
+      referencia: origem.referencia || '',
+      cor: origem.cor || '',
+      produtoNome: origem.produtoNome || '',
+      setor: origem.setor || setorConfirmacaoChegada(origem),
+      setorLabel: origem.setorLabel || labelSetorConfirmacaoChegada(origem.setor || setorConfirmacaoChegada(origem)),
+      destino: origem.destino || '',
+      destinoId: origem.destinoId || '',
+      processo: origem.processo || '',
+      processoMovimentacao: origem.processo || '',
+      quantidadeEnviada: quantidadePendente,
+      quantidadeRecebida: 0,
+      quantidadeRestantePendente: quantidadePendente,
+      falta: quantidadePendente,
+      dataEnvio: origem.dataEnvio || '',
+      dataGeracaoRestante: dataGeracao || origem.dataChegada || hojeISORestanteFaccao(),
+      dataChegada: '',
+      descontoDefeito: 0,
+      defeito: 0,
+      status: 'restante_pendente',
+      lateralPronta: origem.lateralPronta ?? origem.lateralProntaChegada ?? null,
+      lateralProntaStatus: origem.lateralProntaStatus ?? origem.lateralProntaChegadaStatus ?? respostaComponenteSutiaSelect(origem.lateralPronta ?? origem.lateralProntaChegada ?? null),
+      bojoPronto: origem.bojoPronto ?? origem.bojoProntoChegada ?? null,
+      lateralProntaEnvio: origem.lateralProntaEnvio ?? null,
+      lateralProntaEnvioStatus: origem.lateralProntaEnvioStatus ?? respostaComponenteSutiaSelect(origem.lateralProntaEnvio),
+      bojoProntoEnvio: origem.bojoProntoEnvio ?? null,
+      lateralProntaChegada: origem.lateralProntaChegada ?? origem.lateralPronta ?? null,
+      lateralProntaChegadaStatus: origem.lateralProntaChegadaStatus ?? origem.lateralProntaStatus ?? respostaComponenteSutiaSelect(origem.lateralProntaChegada ?? origem.lateralPronta ?? null),
+      bojoProntoChegada: origem.bojoProntoChegada ?? origem.bojoPronto ?? null,
+      observacoes: `Restante automático de ${quantidadePendente} peça(s) da OP ${origem.numeroOP || '-'}.`,
+      criadoPor: user?.uid || origem.criadoPor || '',
+      criadoEm: firestore.serverTimestamp(),
+      atualizadoPor: user?.uid || origem.atualizadoPor || '',
+      atualizadoEm: firestore.serverTimestamp(),
+      versaoRestanteFaccao: APP_VERSION
+    };
+  }
+
+  function injetarEstilosRestantesFaccao() {
+    if (document.getElementById(ID_ESTILO_RESTANTES_FACCAO)) return;
+    const style = document.createElement('style');
+    style.id = ID_ESTILO_RESTANTES_FACCAO;
+    style.textContent = `
+      #${ID_PAINEL_RESTANTES_FACCAO} {
+        margin: 14px 0 18px;
+        border: 1px solid #f0b429;
+        border-radius: 16px;
+        background: #fffaf0;
+        overflow: hidden;
+      }
+      #${ID_PAINEL_RESTANTES_FACCAO}.hidden { display: none !important; }
+      #${ID_PAINEL_RESTANTES_FACCAO} .restantes-header {
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 12px; padding: 14px 16px; border-bottom: 1px solid #fde7a8;
+      }
+      #${ID_PAINEL_RESTANTES_FACCAO} .restantes-header h3 { margin: 0 0 3px; }
+      #${ID_PAINEL_RESTANTES_FACCAO} .restantes-header p { margin: 0; color: #6b7280; }
+      #${ID_PAINEL_RESTANTES_FACCAO} .restantes-resumo {
+        padding: 10px 16px; background: #fff4d6; font-weight: 800; color: #7c4a03;
+      }
+      #${ID_PAINEL_RESTANTES_FACCAO} .table-wrap { margin: 0; background: #fff; }
+      #${ID_PAINEL_RESTANTES_FACCAO} .btn-receber-restante {
+        background: #16a34a; color: #fff; border-color: #16a34a; white-space: nowrap;
+      }
+      #btnRestantesPendentesFaccoes .contador-restantes {
+        display: inline-flex; min-width: 22px; height: 22px; padding: 0 6px;
+        align-items: center; justify-content: center; margin-left: 6px;
+        border-radius: 999px; background: #fff; color: #b45309; font-weight: 900;
+      }
+      #${ID_MODAL_RESTANTES_FACCAO} .restante-info {
+        padding: 12px 14px; border-radius: 12px; background: #fff7ed;
+        border: 1px solid #fed7aa; margin-bottom: 12px;
+      }
+      #${ID_MODAL_RESTANTES_FACCAO} .restante-info-grid {
+        display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+      }
+      #${ID_MODAL_RESTANTES_FACCAO} .restante-info-item {
+        background: #fff; border: 1px solid #fde7c2; border-radius: 10px; padding: 9px 10px;
+      }
+      #${ID_MODAL_RESTANTES_FACCAO} .restante-info-item small { display:block; color:#6b7280; }
+      #${ID_MODAL_RESTANTES_FACCAO} .restante-info-item strong { display:block; margin-top:3px; }
+      #${ID_MODAL_RESTANTES_FACCAO} .saldo-restante-preview {
+        margin: 8px 0 0; padding: 10px 12px; border-radius: 10px;
+        background: #eff6ff; color: #1e3a8a; font-weight: 800;
+      }
+      @media (max-width: 760px) {
+        #${ID_PAINEL_RESTANTES_FACCAO} .restantes-header { align-items:flex-start; flex-direction:column; }
+        #${ID_MODAL_RESTANTES_FACCAO} .restante-info-grid { grid-template-columns: 1fr; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function criarBotaoRestantesFaccao() {
+    if (document.getElementById('btnRestantesPendentesFaccoes')) return;
+    const referencia = document.getElementById('btnMovimentacoesRegistradasUsuario') || document.getElementById('btnAbrirChegadaManualFaccao');
+    const actions = referencia?.parentElement;
+    if (!actions || !referencia) {
+      setTimeout(criarBotaoRestantesFaccao, 400);
+      return;
+    }
+    const botao = document.createElement('button');
+    botao.id = 'btnRestantesPendentesFaccoes';
+    botao.type = 'button';
+    botao.className = 'btn';
+    botao.innerHTML = 'Restantes pendentes <span class="contador-restantes hidden" id="contadorRestantesFaccoes">0</span>';
+    botao.addEventListener('click', async () => {
+      criarPainelRestantesFaccao();
+      const painel = document.getElementById(ID_PAINEL_RESTANTES_FACCAO);
+      const abrir = painel?.classList.contains('hidden');
+      painel?.classList.toggle('hidden', !abrir);
+      if (abrir) await carregarRestantesFaccao({ migrar: true });
+    });
+    referencia.insertAdjacentElement('afterend', botao);
+  }
+
+  function criarPainelRestantesFaccao() {
+    if (document.getElementById(ID_PAINEL_RESTANTES_FACCAO)) return;
+    const ancora = document.getElementById(ID_PAINEL_MOV_USUARIO) || document.querySelector('#faccoes .faccoes-cards');
+    if (!ancora) {
+      setTimeout(criarPainelRestantesFaccao, 400);
+      return;
+    }
+    const painel = document.createElement('section');
+    painel.id = ID_PAINEL_RESTANTES_FACCAO;
+    painel.className = 'hidden';
+    painel.innerHTML = `
+      <div class="restantes-header">
+        <div>
+          <h3>Restantes pendentes das facções</h3>
+          <p>Peças que ficaram faltando em entregas anteriores e ainda precisam retornar.</p>
+        </div>
+        <div class="actions">
+          <button id="btnAtualizarRestantesFaccoes" class="btn" type="button">Atualizar</button>
+          <button id="btnFecharRestantesFaccoes" class="btn" type="button">Fechar</button>
+        </div>
+      </div>
+      <div id="resumoRestantesFaccoes" class="restantes-resumo">Carregando pendências...</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>OP</th><th>REF</th><th>Processo</th><th>Facção</th><th>Pendente</th><th>Desde</th><th>Ação</th>
+          </tr></thead>
+          <tbody id="listaRestantesFaccoes"><tr><td colspan="7" class="empty">Nenhum restante carregado.</td></tr></tbody>
+        </table>
+      </div>
+    `;
+    ancora.insertAdjacentElement('afterend', painel);
+    painel.querySelector('#btnAtualizarRestantesFaccoes')?.addEventListener('click', () => carregarRestantesFaccao({ migrar: true }));
+    painel.querySelector('#btnFecharRestantesFaccoes')?.addEventListener('click', () => painel.classList.add('hidden'));
+    painel.querySelector('#listaRestantesFaccoes')?.addEventListener('click', event => {
+      const botao = event.target?.closest?.('[data-receber-restante-faccao]');
+      if (botao) abrirModalReceberRestanteFaccao(botao.dataset.receberRestanteFaccao);
+    });
+  }
+
+  function criarModalRestantesFaccao() {
+    if (document.getElementById(ID_MODAL_RESTANTES_FACCAO)) return;
+    const modal = document.createElement('div');
+    modal.id = ID_MODAL_RESTANTES_FACCAO;
+    modal.className = 'modal-backdrop hidden';
+    modal.innerHTML = `
+      <div class="modal-card chegada-modal-card" style="max-width:760px;">
+        <div class="modal-header">
+          <div><h3>Receber restante da facção</h3><p>Registre somente as peças que chegaram agora.</p></div>
+          <button id="btnFecharModalRestanteFaccao" class="modal-close" type="button">×</button>
+        </div>
+        <form id="formReceberRestanteFaccao" class="form movimentacao-form">
+          <input id="restanteFaccaoId" type="hidden" />
+          <div id="infoRestanteFaccao" class="restante-info"></div>
+          <div class="form-grid three">
+            <label>Data da chegada<input id="restanteFaccaoData" type="date" required /></label>
+            <label>Quantidade recebida agora<input id="restanteFaccaoQuantidade" type="number" min="1" step="1" required /></label>
+            <label>Desconto desta entrega (R$)<input id="restanteFaccaoDesconto" type="number" min="0" step="0.01" value="0" /></label>
+          </div>
+          <label>Observação<textarea id="restanteFaccaoObservacao" rows="2" placeholder="Opcional"></textarea></label>
+          <div id="previewSaldoRestanteFaccao" class="saldo-restante-preview"></div>
+          <div class="actions">
+            <button id="btnSalvarRestanteFaccao" class="btn btn-primary" type="submit">Salvar chegada complementar</button>
+            <button id="btnCancelarRestanteFaccao" class="btn" type="button">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.querySelector('#btnFecharModalRestanteFaccao')?.addEventListener('click', fecharModalRestanteFaccao);
+    modal.querySelector('#btnCancelarRestanteFaccao')?.addEventListener('click', fecharModalRestanteFaccao);
+    modal.querySelector('#formReceberRestanteFaccao')?.addEventListener('submit', salvarChegadaComplementarRestanteFaccao);
+    modal.querySelector('#restanteFaccaoQuantidade')?.addEventListener('input', atualizarPreviewRestanteFaccao);
+    modal.addEventListener('click', event => { if (event.target === modal) fecharModalRestanteFaccao(); });
+  }
+
+  function restanteDocumentoPendente(mov) {
+    return Boolean(
+      mov &&
+      mov.origemRestanteFaccao === true &&
+      mov.excluido !== true &&
+      !mov.dataChegada &&
+      numeroRestanteFaccao(mov.quantidadeEnviada || mov.quantidadeRestantePendente || mov.falta) > 0 &&
+      ['restante_pendente', 'pendente'].includes(String(mov.status || mov.restanteStatus || 'restante_pendente'))
+    );
+  }
+
+  function movimentoPodeGerarRestanteLegado(mov, idsExistentes, filhosPorOrigem) {
+    if (!mov || mov.excluido === true || mov.origemRestanteFaccao === true) return false;
+    if (mov.tipoDestino !== 'faccao' || !mov.dataChegada) return false;
+    const falta = Math.floor(numeroRestanteFaccao(mov.falta));
+    if (falta <= 0) return false;
+    const idEsperado = idRestanteFaccao(mov.id, 1);
+    return !idsExistentes.has(idEsperado) && !(filhosPorOrigem.get(String(mov.id || '')) || []).length;
+  }
+
+  async function migrarRestantesLegados(movimentos) {
+    if (!contextoRestantesFaccao?.user) return false;
+    const { firestore, db, user } = contextoRestantesFaccao;
+    const idsExistentes = new Set(movimentos.map(item => String(item.id || '')));
+    const filhosPorOrigem = new Map();
+    movimentos.filter(item => item.origemRestanteFaccao === true).forEach(item => {
+      const chave = String(item.movimentacaoOrigemId || '');
+      if (!filhosPorOrigem.has(chave)) filhosPorOrigem.set(chave, []);
+      filhosPorOrigem.get(chave).push(item);
+    });
+    const candidatos = movimentos.filter(item => movimentoPodeGerarRestanteLegado(item, idsExistentes, filhosPorOrigem));
+    if (!candidatos.length) return false;
+    let batch = firestore.writeBatch(db);
+    let contador = 0;
+    for (const mov of candidatos) {
+      const restanteId = idRestanteFaccao(mov.id, 1);
+      const falta = Math.max(0, Math.floor(numeroRestanteFaccao(mov.falta)));
+      batch.set(
+        firestore.doc(db, 'movimentacoesProducao', restanteId),
+        criarDocumentoRestanteFaccao({ movimentoOrigem: mov, restanteId, quantidade: falta, sequencia: 1, user, firestore, dataGeracao: mov.dataChegada }),
+        { merge: true }
+      );
+      batch.set(firestore.doc(db, 'movimentacoesProducao', mov.id), {
+        temRestantePendente: true,
+        quantidadeRestantePendente: falta,
+        restanteStatus: 'pendente',
+        restanteMovimentacaoId: restanteId,
+        restanteAtualizadoPor: user.uid,
+        restanteAtualizadoEm: firestore.serverTimestamp(),
+        versaoRestanteFaccao: APP_VERSION
+      }, { merge: true });
+      contador += 2;
+      if (contador >= 390) {
+        await batch.commit();
+        batch = firestore.writeBatch(db);
+        contador = 0;
+      }
+    }
+    if (contador) await batch.commit();
+    return true;
+  }
+
+  async function carregarRestantesFaccao({ migrar = false } = {}) {
+    if (!contextoRestantesFaccao?.user || carregandoRestantesFaccoes) return;
+    carregandoRestantesFaccoes = true;
+    const tbody = document.getElementById('listaRestantesFaccoes');
+    const resumo = document.getElementById('resumoRestantesFaccoes');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="empty">Carregando restantes...</td></tr>';
+    try {
+      const { firestore, db } = contextoRestantesFaccao;
+      const snapshot = await firestore.getDocs(
+        firestore.query(
+          firestore.collection(db, 'movimentacoesProducao'),
+          firestore.where('tipoDestino', '==', 'faccao')
+        )
+      );
+      let movimentos = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+      if (migrar && await migrarRestantesLegados(movimentos)) {
+        const novoSnapshot = await firestore.getDocs(
+          firestore.query(
+            firestore.collection(db, 'movimentacoesProducao'),
+            firestore.where('tipoDestino', '==', 'faccao')
+          )
+        );
+        movimentos = novoSnapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+      }
+      restantesFaccoesCarregados = movimentos
+        .filter(restanteDocumentoPendente)
+        .sort((a, b) => String(a.dataGeracaoRestante || '').localeCompare(String(b.dataGeracaoRestante || '')));
+      renderRestantesFaccao();
+    } catch (error) {
+      console.error('Erro ao carregar restantes de facções.', error);
+      if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="empty">Não foi possível carregar os restantes.</td></tr>';
+      if (resumo) resumo.textContent = 'Confira a conexão e as regras do Firebase.';
+    } finally {
+      carregandoRestantesFaccoes = false;
+    }
+  }
+
+  function renderRestantesFaccao() {
+    const tbody = document.getElementById('listaRestantesFaccoes');
+    const resumo = document.getElementById('resumoRestantesFaccoes');
+    const contador = document.getElementById('contadorRestantesFaccoes');
+    const totalPecas = restantesFaccoesCarregados.reduce((soma, item) => soma + numeroRestanteFaccao(item.quantidadeEnviada || item.falta), 0);
+    if (contador) { contador.textContent = String(restantesFaccoesCarregados.length); contador.classList.remove('hidden'); }
+    if (resumo) resumo.textContent = `${restantesFaccoesCarregados.length} pendência(s) — ${totalPecas.toLocaleString('pt-BR')} peça(s) ainda nas facções.`;
+    if (!tbody) return;
+    if (!restantesFaccoesCarregados.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhum restante pendente. Todas as entregas estão completas.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = restantesFaccoesCarregados.map(item => `
+      <tr>
+        <td><strong>${textoRestanteFaccao(item.numeroOP || '-')}</strong></td>
+        <td>${textoRestanteFaccao(item.referencia || '-')}</td>
+        <td>${textoRestanteFaccao(item.processo || '-')}</td>
+        <td>${textoRestanteFaccao(item.destino || '-')}</td>
+        <td><span class="badge warning">${numeroRestanteFaccao(item.quantidadeEnviada || item.falta).toLocaleString('pt-BR')}</span></td>
+        <td>${dataBRRestanteFaccao(item.dataGeracaoRestante || item.dataEnvio)}</td>
+        <td><button class="btn btn-sm btn-receber-restante" type="button" data-receber-restante-faccao="${textoRestanteFaccao(item.id)}">Receber restante</button></td>
+      </tr>
+    `).join('');
+  }
+
+  function abrirModalReceberRestanteFaccao(id) {
+    criarModalRestantesFaccao();
+    const item = restantesFaccoesCarregados.find(mov => String(mov.id) === String(id));
+    if (!item) return;
+    restanteFaccaoEmRecebimento = item;
+    const pendente = Math.max(0, Math.floor(numeroRestanteFaccao(item.quantidadeEnviada || item.falta)));
+    document.getElementById('restanteFaccaoId').value = item.id;
+    document.getElementById('restanteFaccaoData').value = hojeISORestanteFaccao();
+    document.getElementById('restanteFaccaoQuantidade').value = String(pendente);
+    document.getElementById('restanteFaccaoQuantidade').max = String(pendente);
+    document.getElementById('restanteFaccaoDesconto').value = '0';
+    document.getElementById('restanteFaccaoObservacao').value = '';
+    const componentes = processoExigeComponentesSutia(item.processo)
+      ? `<div class="restante-info-item"><small>Lateral</small><strong>${textoRestanteFaccao(respostaComponenteSutiaTexto(item.lateralProntaStatus ?? item.lateralPronta))}</strong></div>
+         <div class="restante-info-item"><small>Bojo</small><strong>${textoRestanteFaccao(respostaComponenteSutiaTexto(item.bojoPronto))}</strong></div>`
+      : '';
+    document.getElementById('infoRestanteFaccao').innerHTML = `
+      <div class="restante-info-grid">
+        <div class="restante-info-item"><small>OP / REF</small><strong>${textoRestanteFaccao(item.numeroOP || '-')} / ${textoRestanteFaccao(item.referencia || '-')}</strong></div>
+        <div class="restante-info-item"><small>Processo</small><strong>${textoRestanteFaccao(item.processo || '-')}</strong></div>
+        <div class="restante-info-item"><small>Facção</small><strong>${textoRestanteFaccao(item.destino || '-')}</strong></div>
+        <div class="restante-info-item"><small>Quantidade pendente</small><strong>${pendente.toLocaleString('pt-BR')}</strong></div>
+        ${componentes}
+      </div>
+    `;
+    atualizarPreviewRestanteFaccao();
+    document.getElementById(ID_MODAL_RESTANTES_FACCAO)?.classList.remove('hidden');
+  }
+
+  function fecharModalRestanteFaccao() {
+    restanteFaccaoEmRecebimento = null;
+    document.getElementById(ID_MODAL_RESTANTES_FACCAO)?.classList.add('hidden');
+  }
+
+  function atualizarPreviewRestanteFaccao() {
+    const item = restanteFaccaoEmRecebimento;
+    const preview = document.getElementById('previewSaldoRestanteFaccao');
+    if (!item || !preview) return;
+    const pendente = Math.max(0, Math.floor(numeroRestanteFaccao(item.quantidadeEnviada || item.falta)));
+    const recebido = Math.max(0, Math.floor(numeroRestanteFaccao(document.getElementById('restanteFaccaoQuantidade')?.value)));
+    const saldo = Math.max(pendente - recebido, 0);
+    preview.textContent = saldo > 0
+      ? `Após esta chegada, ainda ficarão ${saldo.toLocaleString('pt-BR')} peça(s) pendentes.`
+      : 'Esta chegada concluirá todo o restante pendente.';
+  }
+
+  async function salvarChegadaComplementarRestanteFaccao(event) {
+    event.preventDefault();
+    if (salvandoRestanteFaccao || !contextoRestantesFaccao?.user || !restanteFaccaoEmRecebimento) return;
+    const itemTela = restanteFaccaoEmRecebimento;
+    const quantidadeRecebida = Math.max(0, Math.floor(numeroRestanteFaccao(document.getElementById('restanteFaccaoQuantidade')?.value)));
+    const dataChegada = String(document.getElementById('restanteFaccaoData')?.value || '').trim();
+    const desconto = Math.max(0, numeroRestanteFaccao(document.getElementById('restanteFaccaoDesconto')?.value));
+    const observacao = String(document.getElementById('restanteFaccaoObservacao')?.value || '').trim();
+    const pendenteTela = Math.max(0, Math.floor(numeroRestanteFaccao(itemTela.quantidadeEnviada || itemTela.falta)));
+    if (!dataChegada) {
+      mostrarAvisoFormulario('Informe a data da chegada complementar.');
+      return;
+    }
+    if (quantidadeRecebida <= 0 || quantidadeRecebida > pendenteTela) {
+      mostrarAvisoFormulario(`Informe uma quantidade entre 1 e ${pendenteTela.toLocaleString('pt-BR')}.`);
+      return;
+    }
+    salvandoRestanteFaccao = true;
+    const botao = document.getElementById('btnSalvarRestanteFaccao');
+    const textoBotao = botao?.textContent || 'Salvar chegada complementar';
+    if (botao) { botao.disabled = true; botao.textContent = 'Salvando...'; }
+    try {
+      const { firestore, db, user } = contextoRestantesFaccao;
+      const processo = processoCanonico(itemTela.processo) || normalizarComparacao(itemTela.processo);
+      const valorTotalManualFinanceiro = processoValorTotalManualFinanceiro(processo);
+      const pagamentoAlca = processoPagamentoAlca(processo);
+      const preco = valorTotalManualFinanceiro ? null : await buscarPrecoConfirmacaoChegada(firestore, db, itemTela.referencia || '', processo);
+      const saldoTela = Math.max(pendenteTela - quantidadeRecebida, 0);
+      const pagamentoId = idSeguroConfirmacaoChegada(
+        valorTotalManualFinanceiro
+          ? `mov-${itemTela.id}-valor-total-manual`
+          : (preco ? `mov-${itemTela.id}-${preco.id}` : `mov-${itemTela.id}-sem-valor`)
+      );
+      const movRef = firestore.doc(db, 'movimentacoesProducao', itemTela.id);
+      const pagamentoRef = firestore.doc(db, 'entregasPagamento', pagamentoId);
+      const logRef = firestore.doc(firestore.collection(db, 'logsAlteracoes'));
+      const resultado = await firestore.runTransaction(db, async transacao => {
+        const movSnapshot = await transacao.get(movRef);
+        if (!movSnapshot.exists()) throw Object.assign(new Error('Restante não existe.'), { codigoRestante: 'INEXISTENTE' });
+        const mov = { id: movSnapshot.id, ...movSnapshot.data() };
+        if (!restanteDocumentoPendente(mov)) throw Object.assign(new Error('Restante já concluído.'), { codigoRestante: 'CONCLUIDO' });
+        const pendente = Math.max(0, Math.floor(numeroRestanteFaccao(mov.quantidadeEnviada || mov.falta)));
+        if (quantidadeRecebida > pendente) throw Object.assign(new Error('Quantidade superior ao saldo.'), { codigoRestante: 'QUANTIDADE' });
+        const pagamentoSnapshot = await transacao.get(pagamentoRef);
+        if (pagamentoSnapshot.exists() && pagamentoSnapshot.data()?.excluido !== true) {
+          throw Object.assign(new Error('Pagamento complementar já existe.'), { codigoRestante: 'DUPLICADO' });
+        }
+        const saldo = Math.max(pendente - quantidadeRecebida, 0);
+        const proximaSequencia = Math.max(1, Number(mov.restanteSequencia) || 1) + 1;
+        const raizId = mov.movimentacaoRaizId || mov.movimentacaoOrigemId || mov.id;
+        const proximoRestanteId = saldo > 0 ? idRestanteFaccao(raizId, proximaSequencia) : '';
+        transacao.set(movRef, {
+          dataChegada,
+          quantidadeRecebida,
+          falta: saldo,
+          quantidadeRestantePendente: saldo,
+          descontoDefeito: desconto,
+          defeito: desconto,
+          observacaoChegada: observacao,
+          restantePendente: false,
+          restanteStatus: saldo > 0 ? 'entrega_parcial' : 'concluido',
+          status: saldo > 0 ? 'retornou_parcial' : 'retornou',
+          chegadaComplementar: true,
+          chegadaRegistradaPor: user.uid,
+          chegadaRegistradaEm: firestore.serverTimestamp(),
+          atualizadoPor: user.uid,
+          atualizadoEm: firestore.serverTimestamp(),
+          proximoRestanteMovimentacaoId: proximoRestanteId,
+          versaoRestanteFaccao: APP_VERSION
+        }, { merge: true });
+        if (saldo > 0) {
+          const proximoRef = firestore.doc(db, 'movimentacoesProducao', proximoRestanteId);
+          transacao.set(proximoRef, criarDocumentoRestanteFaccao({
+            movimentoOrigem: { ...mov, id: mov.id, movimentacaoRaizId: raizId },
+            restanteId: proximoRestanteId,
+            quantidade: saldo,
+            sequencia: proximaSequencia,
+            user,
+            firestore,
+            dataGeracao: dataChegada
+          }), { merge: true });
+        }
+        const origemId = mov.movimentacaoOrigemId || raizId;
+        if (origemId) {
+          transacao.set(firestore.doc(db, 'movimentacoesProducao', origemId), {
+            temRestantePendente: saldo > 0,
+            quantidadeRestantePendente: saldo,
+            restanteStatus: saldo > 0 ? 'pendente' : 'concluido',
+            restanteMovimentacaoAtualId: proximoRestanteId,
+            restanteAtualizadoPor: user.uid,
+            restanteAtualizadoEm: firestore.serverTimestamp(),
+            versaoRestanteFaccao: APP_VERSION
+          }, { merge: true });
+        }
+        const valorUnitarioAlca = pagamentoAlca && preco ? Math.max(0, numeroRestanteFaccao(preco.valor)) : 0;
+        const valorUnitario = (!valorTotalManualFinanceiro && preco)
+          ? (pagamentoAlca ? valorUnitarioAlca * 2 : Math.max(0, numeroRestanteFaccao(preco.valor)))
+          : 0;
+        const subtotal = valorTotalManualFinanceiro ? 0 : quantidadeRecebida * valorUnitario;
+        const total = valorTotalManualFinanceiro ? 0 : Math.max(subtotal - desconto, 0);
+        const setorPagamento = valorTotalManualFinanceiro
+          ? (mov.setor || setorConfirmacaoChegada(mov))
+          : (preco?.setor || mov.setor || setorConfirmacaoChegada(mov));
+        transacao.set(pagamentoRef, {
+          origem: 'movimentacao',
+          movimentacaoId: mov.id,
+          movimentacaoOrigemId: mov.movimentacaoOrigemId || '',
+          movimentacaoRaizId: raizId,
+          pagamentoComplementar: true,
+          restanteFaccao: true,
+          restanteSequencia: mov.restanteSequencia || 1,
+          opId: mov.opId || '',
+          numeroOP: mov.numeroOP || '',
+          referencia: mov.referencia || '',
+          cor: mov.cor || '',
+          produtoNome: mov.produtoNome || '',
+          faccao: mov.destino || '',
+          precoReferenciaId: valorTotalManualFinanceiro ? '' : (preco?.id || ''),
+          processo,
+          processoMovimentacao: processo,
+          servicoId: valorTotalManualFinanceiro ? '' : (preco?.id || ''),
+          servicoNome: processo,
+          setor: setorPagamento,
+          setorLabel: labelSetorConfirmacaoChegada(setorPagamento),
+          dataEntrega: dataChegada,
+          quantidade: quantidadeRecebida,
+          quantidadeAlcas: pagamentoAlca ? quantidadeRecebida * 2 : 0,
+          multiplicadorAlcas: pagamentoAlca ? 2 : 0,
+          valorUnitarioAlca,
+          falta: saldo,
+          descontoDefeito: desconto,
+          lateralPronta: mov.lateralPronta ?? mov.lateralProntaChegada ?? null,
+          lateralProntaStatus: mov.lateralProntaStatus ?? mov.lateralProntaChegadaStatus ?? respostaComponenteSutiaSelect(mov.lateralPronta ?? mov.lateralProntaChegada ?? null),
+          bojoPronto: mov.bojoPronto ?? mov.bojoProntoChegada ?? null,
+          lateralProntaEnvio: mov.lateralProntaEnvio ?? null,
+          lateralProntaEnvioStatus: mov.lateralProntaEnvioStatus ?? respostaComponenteSutiaSelect(mov.lateralProntaEnvio),
+          bojoProntoEnvio: mov.bojoProntoEnvio ?? null,
+          lateralProntaChegada: mov.lateralProntaChegada ?? mov.lateralPronta ?? null,
+          lateralProntaChegadaStatus: mov.lateralProntaChegadaStatus ?? mov.lateralProntaStatus ?? respostaComponenteSutiaSelect(mov.lateralProntaChegada ?? mov.lateralPronta ?? null),
+          bojoProntoChegada: mov.bojoProntoChegada ?? mov.bojoPronto ?? null,
+          subtotal,
+          valorUnitario,
+          total,
+          statusPagamento: valorTotalManualFinanceiro ? 'sem_valor' : (preco ? 'pendente' : 'sem_valor'),
+          valorPendente: valorTotalManualFinanceiro || !preco,
+          valorManualFinanceiroPendente: valorTotalManualFinanceiro,
+          valorTotalDefinidoManualmente: false,
+          formaValorPagamento: valorTotalManualFinanceiro ? 'total_manual_op' : (pagamentoAlca ? 'valor_padrao_alca_x2' : 'valor_unitario_base'),
+          motivoValorPendente: valorTotalManualFinanceiro ? 'processo_exige_total_manual' : (!preco ? (pagamentoAlca ? 'valor_padrao_alca_nao_cadastrado' : 'preco_base_nao_cadastrado') : ''),
+          avisoPagamento: valorTotalManualFinanceiro
+            ? 'Financeiro deve informar o valor total desta chegada complementar.'
+            : (!preco ? (pagamentoAlca ? 'Cadastrar o valor padrão da Alça.' : `Adicionar valor para Ref. ${mov.referencia || '-'} + ${processo}.`) : ''),
+          observacoes: valorTotalManualFinanceiro
+            ? 'Pagamento complementar de restante: valor total deve ser informado pelo financeiro.'
+            : (pagamentoAlca
+              ? `Pagamento complementar: ${quantidadeRecebida} sutiã(s) × 2 alças × valor padrão.`
+              : 'Pagamento gerado por chegada complementar de peças restantes.'),
+          criadoPor: user.uid,
+          criadoEm: firestore.serverTimestamp(),
+          atualizadoPor: user.uid,
+          atualizadoEm: firestore.serverTimestamp(),
+          versaoGeracao: APP_VERSION
+        }, { merge: false });
+        transacao.set(logRef, {
+          acao: 'chegada_complementar_restante_faccao',
+          entidade: 'movimentacaoProducao',
+          entidadeId: mov.id,
+          detalhes: `OP ${mov.numeroOP || '-'} | ${mov.destino || '-'} | ${processo} | pendente ${pendente} | recebido agora ${quantidadeRecebida} | novo saldo ${saldo} | desconto ${formatarMoedaConfirmacaoChegada(desconto)}`,
+          usuarioId: user.uid,
+          usuarioEmail: user.email || '',
+          criadoEm: firestore.serverTimestamp(),
+          versao: APP_VERSION
+        });
+        return { saldo, total, preco, valorTotalManualFinanceiro, pagamentoAlca };
+      });
+      fecharModalRestanteFaccao();
+      cachePagamentoFinal.expiraEm = 0;
+      const partePagamento = resultado.valorTotalManualFinanceiro
+        ? ' O financeiro deverá informar o valor total desta entrega complementar.'
+        : (resultado.preco
+          ? ` Pagamento complementar gerado: ${formatarMoedaConfirmacaoChegada(resultado.total)}.`
+          : ' O pagamento complementar ficou aguardando valor.');
+      mostrarAvisoFormulario(
+        resultado.saldo > 0
+          ? `Chegada complementar salva. Ainda restam ${resultado.saldo.toLocaleString('pt-BR')} peça(s).${partePagamento}`
+          : `Chegada complementar salva e restante concluído.${partePagamento}`
+      );
+      await carregarRestantesFaccao({ migrar: false });
+      setTimeout(() => document.getElementById('btnAtualizarServidor')?.click(), 400);
+    } catch (error) {
+      console.error('Erro ao salvar chegada complementar.', error);
+      const codigo = error?.codigoRestante || '';
+      if (['CONCLUIDO', 'DUPLICADO'].includes(codigo)) {
+        mostrarAvisoFormulario('Esse restante já foi recebido ou já possui pagamento. Atualize a lista.');
+      } else if (codigo === 'QUANTIDADE') {
+        mostrarAvisoFormulario('A quantidade informada é maior que o saldo restante atual.');
+      } else if (String(error?.code || '').includes('permission-denied')) {
+        mostrarAvisoFormulario('Sem permissão para registrar a chegada complementar. Publique as regras atuais do Firestore.');
+      } else {
+        mostrarAvisoFormulario('Não foi possível salvar a chegada complementar. Nenhuma alteração foi gravada.');
+      }
+    } finally {
+      salvandoRestanteFaccao = false;
+      if (botao) { botao.disabled = false; botao.textContent = textoBotao; }
+    }
+  }
+
+  async function configurarUsuarioRestantesFaccao(user) {
+    if (!contextoRestantesFaccao) return;
+    contextoRestantesFaccao.user = user || null;
+    if (!user) {
+      restantesFaccoesCarregados = [];
+      renderRestantesFaccao();
+      return;
+    }
+    criarBotaoRestantesFaccao();
+    criarPainelRestantesFaccao();
+    criarModalRestantesFaccao();
+  }
+
+  async function conectarFirebaseRestantesFaccao(tentativa = 0) {
+    if (contextoRestantesFaccao?.auth) return;
+    try {
+      const [firebaseApp, firestore, firebaseAuth] = await Promise.all([
+        import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js'),
+        import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'),
+        import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js')
+      ]);
+      if (!firebaseApp.getApps().length) throw new Error('Firebase ainda não inicializado.');
+      const appAtual = firebaseApp.getApp();
+      const auth = firebaseAuth.getAuth(appAtual);
+      contextoRestantesFaccao = { firestore, firebaseAuth, auth, db: firestore.getFirestore(appAtual), user: null };
+      if (unsubscribeRestantesFaccao) unsubscribeRestantesFaccao();
+      unsubscribeRestantesFaccao = firebaseAuth.onAuthStateChanged(auth, configurarUsuarioRestantesFaccao);
+    } catch (error) {
+      if (tentativa < 20) {
+        setTimeout(() => conectarFirebaseRestantesFaccao(tentativa + 1), 300);
+        return;
+      }
+      console.error('Não foi possível iniciar o controle de restantes das facções.', error);
+    }
+  }
+
+  function iniciarRestantesFaccoesComplementares() {
+    injetarEstilosRestantesFaccao();
+    criarBotaoRestantesFaccao();
+    criarPainelRestantesFaccao();
+    criarModalRestantesFaccao();
+    conectarFirebaseRestantesFaccao();
+  }
+
   function iniciarRecursosDaVersao() {
+    iniciarRestantesFaccoesComplementares();
     iniciarLegibilidadeSemExpandirLayout();
     iniciarTelasExclusivasGerenciamento();
     iniciarLinhaExclusivaCalcinha();

@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-29-alca-valor-padrao-x2-1",
-  "updatedAt": "2026-07-29T20:20:00-03:00",
-  "notes": "Adiciona o pagamento de Alca com valor padrao global por unidade. Cada sutia utiliza duas alcas, portanto o sistema calcula quantidade recebida x 2 x valor da alca, desconta faltas/defeitos e recalcula pagamentos de Alca ainda nao pagos quando o valor padrao e alterado."
+  "version": "2026-07-29-restantes-faccoes-complementares-1",
+  "updatedAt": "2026-07-29T20:49:00-03:00",
+  "notes": "Cria controle automatico de restantes das faccoes. Entregas parciais geram pendencias vinculadas a OP, processo e faccao. A aba Faccoes recebe painel Restantes pendentes e chegada complementar, com pagamento apenas da quantidade recebida em cada retorno e nova pendencia quando ainda houver saldo."
 }
