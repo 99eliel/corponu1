@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-29-lateral-tres-opcoes-1",
-  "updatedAt": "2026-07-29T14:41:00-03:00",
-  "notes": "Lateral pronta agora possui tres opcoes: Sim, Nao e Nao informado. Bojo pronto continua com Sim e Nao. Aplicado no envio, chegada normal, chegada manual e financeiro."
+  "version": "2026-07-29-legibilidade-sem-rolagem-1",
+  "updatedAt": "2026-07-29T20:05:00-03:00",
+  "notes": "Melhora a leitura com Segoe UI, maior peso e contraste, letras maiores no Manejo e redistribuicao das colunas para manter a tabela inteira em monitores de 1720 e 1900 px sem rolagem horizontal."
 }

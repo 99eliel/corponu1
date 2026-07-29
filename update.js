@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-lateral-tres-opcoes-1";
+  const APP_VERSION = "2026-07-29-legibilidade-sem-rolagem-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -12057,7 +12057,256 @@
     });
   }
 
+
+  function iniciarLegibilidadeSemExpandirLayout() {
+    if (document.getElementById('estilosLegibilidadeSemExpandirLayout')) return;
+
+    const style = document.createElement('style');
+    style.id = 'estilosLegibilidadeSemExpandirLayout';
+    style.textContent = `
+      :root {
+        --fonte-interface-corponu: "Segoe UI Variable Text", "Segoe UI", Roboto, Arial, sans-serif;
+      }
+
+      html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+
+      body,
+      button,
+      input,
+      select,
+      textarea,
+      .popup-filtro-excel-manejo,
+      #toastAtualizacaoSistema {
+        font-family: var(--fonte-interface-corponu) !important;
+      }
+
+      body {
+        color: #111827;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font-weight: 600;
+      }
+
+      input::placeholder,
+      textarea::placeholder {
+        color: #667085;
+        opacity: 1;
+        font-weight: 550;
+      }
+
+      th {
+        color: #172033 !important;
+        font-weight: 800 !important;
+      }
+
+      td {
+        color: #111827;
+      }
+
+      .nav-btn,
+      .btn,
+      .report-btn,
+      label,
+      .badge,
+      .status-dot,
+      .log-action {
+        font-weight: 750;
+      }
+
+      /* A tabela do Manejo ganha letras mais nítidas sem aumentar a largura. */
+      #manejo .manejo-inline-table {
+        width: 100% !important;
+        min-width: 0 !important;
+        table-layout: fixed !important;
+      }
+
+      #manejo .manejo-inline-table th,
+      #manejo .manejo-inline-table td {
+        padding-left: 5px !important;
+        padding-right: 5px !important;
+        line-height: 1.3;
+      }
+
+      #manejo .manejo-inline-table thead > tr:first-child > th {
+        font-size: clamp(13px, .72vw, 14px) !important;
+        letter-spacing: .005em;
+      }
+
+      #manejo .manejo-inline-table tbody td,
+      #manejo .manejo-inline-table tbody td strong,
+      #manejo .manejo-inline-table tbody td span {
+        font-size: clamp(13.5px, .76vw, 14.5px);
+      }
+
+      #manejo .manejo-inline-table input,
+      #manejo .manejo-inline-table select,
+      #manejo .manejo-inline-table textarea {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        padding: 8px 9px !important;
+        border-color: #c7d5e8;
+        border-radius: 10px;
+        font-size: clamp(13.5px, .76vw, 14.5px) !important;
+        line-height: 1.25;
+        font-weight: 650 !important;
+        color: #0f172a;
+      }
+
+      #manejo .manejo-inline-table select {
+        padding-right: 25px !important;
+      }
+
+      #manejo .manejo-inline-table input:focus,
+      #manejo .manejo-inline-table select:focus,
+      #manejo .manejo-inline-table textarea:focus {
+        border-color: #2563eb !important;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, .12) !important;
+      }
+
+      #manejo .manejo-inline-table .manejo-readonly,
+      #manejo .manejo-inline-table input[readonly] {
+        background: #f3f7fc !important;
+        color: #0f172a !important;
+        font-weight: 700 !important;
+      }
+
+      #manejo .manejo-inline-table .manejo-filter-row th {
+        padding-top: 7px !important;
+        padding-bottom: 7px !important;
+      }
+
+      #manejo .manejo-inline-table .manejo-filter-row input,
+      #manejo .manejo-inline-table .manejo-filter-row select {
+        padding-top: 7px !important;
+        padding-bottom: 7px !important;
+        font-size: clamp(13px, .72vw, 14px) !important;
+      }
+
+      #manejo .manejo-inline-table .manejo-filter-row th.filtro-excel-host > input,
+      #manejo .manejo-inline-table .manejo-filter-row th.filtro-excel-host > select {
+        padding-right: 39px !important;
+      }
+
+      #manejo .manejo-inline-table .btn-filtro-excel-manejo {
+        right: 4px;
+        width: 31px;
+        height: 28px;
+      }
+
+      #manejo .manejo-inline-table .badge,
+      #manejo .manejo-inline-table .status-dot {
+        max-width: 100%;
+        padding: 5px 8px;
+        font-size: clamp(12px, .68vw, 13px) !important;
+        white-space: nowrap;
+      }
+
+      #manejo .manejo-inline-table td:nth-child(1),
+      #manejo .manejo-inline-table th:nth-child(1) { width: 12%; }
+      #manejo .manejo-inline-table td:nth-child(2),
+      #manejo .manejo-inline-table th:nth-child(2) { width: 13%; }
+      #manejo .manejo-inline-table td:nth-child(3),
+      #manejo .manejo-inline-table th:nth-child(3) { width: 8%; }
+      #manejo .manejo-inline-table td:nth-child(4),
+      #manejo .manejo-inline-table th:nth-child(4) { width: 13%; }
+      #manejo .manejo-inline-table td:nth-child(5),
+      #manejo .manejo-inline-table th:nth-child(5) { width: 12%; }
+      #manejo .manejo-inline-table td:nth-child(6),
+      #manejo .manejo-inline-table th:nth-child(6) { width: 13%; }
+      #manejo .manejo-inline-table td:nth-child(7),
+      #manejo .manejo-inline-table th:nth-child(7) { width: 14%; }
+      #manejo .manejo-inline-table td:nth-child(8),
+      #manejo .manejo-inline-table th:nth-child(8) { width: 9%; }
+      #manejo .manejo-inline-table td:nth-child(9),
+      #manejo .manejo-inline-table th:nth-child(9) { width: 6%; }
+
+      #manejo .manejo-inline-table td:nth-child(1),
+      #manejo .manejo-inline-table td:nth-child(2),
+      #manejo .manejo-inline-table td:nth-child(5) {
+        font-variant-numeric: tabular-nums;
+      }
+
+      #manejo .manejo-actions {
+        justify-content: center;
+        gap: 4px;
+      }
+
+      #manejo .manejo-actions .btn,
+      #manejo .manejo-inline-table td:last-child button {
+        min-width: 36px;
+        min-height: 36px;
+        padding: 7px !important;
+      }
+
+      #avisoFiltrosExcelManejo {
+        font-size: 13px !important;
+        line-height: 1.4;
+      }
+
+      .popup-filtro-excel-manejo,
+      .popup-filtro-excel-manejo input,
+      .popup-filtro-excel-manejo button,
+      .popup-filtro-excel-manejo label {
+        font-size: 14px;
+      }
+
+      /* Nos monitores de 1720 e 1900 px, a tabela permanece integralmente visível. */
+      @media (min-width: 1300px) {
+        #manejo .table-wrap {
+          overflow-x: clip !important;
+        }
+      }
+
+      @media (min-width: 1300px) and (max-width: 1799px) {
+        #manejo .manejo-inline-table th,
+        #manejo .manejo-inline-table td {
+          padding-left: 4px !important;
+          padding-right: 4px !important;
+        }
+
+        #manejo .manejo-inline-table input,
+        #manejo .manejo-inline-table select,
+        #manejo .manejo-inline-table textarea {
+          padding-left: 7px !important;
+          padding-right: 7px !important;
+        }
+
+        #manejo .manejo-inline-table select {
+          padding-right: 23px !important;
+        }
+
+        #manejo .manejo-inline-table .manejo-filter-row th.filtro-excel-host > input,
+        #manejo .manejo-inline-table .manejo-filter-row th.filtro-excel-host > select {
+          padding-right: 37px !important;
+        }
+      }
+
+      @media (max-width: 1299px) {
+        #manejo .table-wrap {
+          overflow-x: auto;
+        }
+
+        #manejo .manejo-inline-table {
+          min-width: 1120px !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function iniciarRecursosDaVersao() {
+    iniciarLegibilidadeSemExpandirLayout();
     iniciarTelasExclusivasGerenciamento();
     iniciarLinhaExclusivaCalcinha();
     iniciarProcessosFaccoesGerenciados();
