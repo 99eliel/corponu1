@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-sutia-sem-coluna-linha-1";
+  const APP_VERSION = "2026-07-29-calcinha-fase-nao-desaparece-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -3936,6 +3936,38 @@
   let rafAplicacaoFiltrosExcelManejo = 0;
   let eventosFiltrosExcelManejoInstalados = false;
   let aplicandoFiltrosExcelManejo = false;
+  // Mantém visível uma OP que está sendo editada, mesmo que a nova fase
+  // deixe de combinar temporariamente com um filtro acumulativo antigo.
+  const ordensManejoPreservadasDuranteEdicao = new Set();
+
+  function obterOrdemIdLinhaFiltroExcelManejo(linha) {
+    if (!linha) return "";
+    const botao = linha.querySelector('.btn-save-manejo[onclick*="salvarManejoLinha"]');
+    const onclick = String(botao?.getAttribute('onclick') || '');
+    const match = onclick.match(/salvarManejoLinha\(\s*['"]([^'"]+)['"]\s*\)/);
+    return String(match?.[1] || linha.dataset.ordemId || '').trim();
+  }
+
+  function preservarLinhaManejoDuranteEdicao(linha) {
+    if (!linha) return;
+    const ordemId = obterOrdemIdLinhaFiltroExcelManejo(linha);
+    if (ordemId) ordensManejoPreservadasDuranteEdicao.add(ordemId);
+    linha.dataset.preservarVisivelFiltro = "1";
+  }
+
+  function limparPreservacaoLinhasManejo() {
+    ordensManejoPreservadasDuranteEdicao.clear();
+    document.querySelectorAll('#listaManejoInline tr[data-manejo-row="1"]')
+      .forEach(linha => delete linha.dataset.preservarVisivelFiltro);
+  }
+
+  function linhaManejoEstaPreservada(linha) {
+    if (!linha) return false;
+    const ordemId = obterOrdemIdLinhaFiltroExcelManejo(linha);
+    return linha.dataset.preservarVisivelFiltro === "1"
+      || linha.classList.contains('manejo-row-dirty')
+      || Boolean(ordemId && ordensManejoPreservadasDuranteEdicao.has(ordemId));
+  }
 
   function normalizarFiltroExcelManejo(valor) {
     return String(valor ?? "")
@@ -4348,9 +4380,11 @@
       const visiveis = [];
 
       linhas.forEach(linha => {
-        const mostrar = !ativo || linhaCombinaSelecoesExcel(linha);
+        const preservarDuranteEdicao = linhaManejoEstaPreservada(linha);
+        const mostrar = preservarDuranteEdicao || !ativo || linhaCombinaSelecoesExcel(linha);
         linha.hidden = !mostrar;
         linha.classList.toggle("linha-oculta-filtro-excel", !mostrar);
+        linha.classList.toggle("linha-preservada-durante-edicao", preservarDuranteEdicao && ativo);
         if (mostrar) visiveis.push(linha);
       });
 
@@ -4478,6 +4512,8 @@
       atualizarEstadoSelecionarTudoPopup();
     });
     popup.querySelector(".btn-filtro-excel-aplicar")?.addEventListener("click", () => {
+      // O usuário alterou o filtro de propósito: as linhas voltam a obedecer ao filtro.
+      limparPreservacaoLinhasManejo();
       const marcadas = [...popup.querySelectorAll('.filtro-excel-opcao input[type="checkbox"]:checked')]
         .map(input => String(input.value || "").trim())
         .filter(Boolean);
@@ -4660,6 +4696,11 @@
         color: #ffffff;
       }
       .filtro-excel-rodape .btn-filtro-excel-limpar { color: #b91c1c; }
+      #listaManejoInline tr.linha-preservada-durante-edicao {
+        outline: 2px solid rgba(37, 99, 235, .22);
+        outline-offset: -2px;
+      }
+
       #avisoFiltrosExcelManejo {
         margin: 8px 0 10px;
         padding: 9px 12px;
@@ -4712,6 +4753,7 @@
 
     campo.addEventListener("input", () => {
       if (campo.dataset.excelInterno === "1") return;
+      limparPreservacaoLinhasManejo();
       const set = getSetSelecaoFiltroExcel(config.id);
       if (set.size) {
         set.clear();
@@ -4721,6 +4763,7 @@
     });
     campo.addEventListener("change", () => {
       if (campo.dataset.excelInterno === "1") return;
+      limparPreservacaoLinhasManejo();
       const set = getSetSelecaoFiltroExcel(config.id);
       if (set.size) {
         set.clear();
@@ -4744,6 +4787,7 @@
   }
 
   function limparSelecoesFiltrosExcelManejo() {
+    limparPreservacaoLinhasManejo();
     selecoesFiltrosExcelManejo.forEach(set => set.clear());
     fecharPopupFiltroExcelManejo();
     atualizarTodosIndicadoresFiltroExcel();
@@ -4870,9 +4914,28 @@
     }, true);
 
     document.addEventListener("input", event => {
-      if (event.target?.closest?.("#listaManejoInline")) {
+      const linha = event.target?.closest?.('#listaManejoInline tr[data-manejo-row="1"]');
+      if (linha) {
+        const alvo = event.target;
+        const editavel = alvo?.matches?.('input, select, textarea')
+          && !alvo.disabled
+          && !alvo.readOnly
+          && !alvo.classList.contains('manejo-readonly');
+        if (editavel) preservarLinhaManejoDuranteEdicao(linha);
         setTimeout(agendarAplicacaoFiltrosExcelManejo, 20);
       }
+    }, true);
+
+    document.addEventListener("change", event => {
+      const linha = event.target?.closest?.('#listaManejoInline tr[data-manejo-row="1"]');
+      if (!linha) return;
+      const alvo = event.target;
+      const editavel = alvo?.matches?.('input, select, textarea')
+        && !alvo.disabled
+        && !alvo.readOnly
+        && !alvo.classList.contains('manejo-readonly');
+      if (editavel) preservarLinhaManejoDuranteEdicao(linha);
+      setTimeout(agendarAplicacaoFiltrosExcelManejo, 20);
     }, true);
 
     window.addEventListener("resize", () => {

@@ -1,30 +1,28 @@
-ATUALIZAÇÃO: Coluna Linha somente na Calcinha
+ATUALIZAÇÃO: OP da Calcinha não desaparece ao mudar a fase
 
-SUBSTITUIR NO GITHUB:
+Substituir no GitHub:
 - update.js
 - sw.js
 - version.json
 
-NÃO ALTERAR:
+Não alterar:
 - app.js
 - index.html
 - style.css
 - corponu-dual-mode.js
 - regras do Firebase
 
-O QUE MUDA:
-- No Manejo Sutiã, a coluna LINHA, o filtro LINHA e os valores SUTIÃ deixam de aparecer.
-- Na impressão do Manejo Sutiã, a coluna LINHA também foi removida.
-- No Manejo Calcinha, a coluna continua aparecendo normalmente para Cotton Line / Corpo Nu.
-- Ao trocar da Calcinha para Sutiã, qualquer filtro acumulativo de Linha é limpo para não esconder OPs por engano.
+O que foi corrigido:
+- Ao alterar Fase, Linha, Necessidade ou outro campo editável, a OP permanece visível.
+- Filtros acumulativos antigos não escondem a linha durante a edição.
+- A linha continua visível mesmo se a tabela for redesenhada pelo Firestore.
+- Quando o usuário alterar ou aplicar um filtro de propósito, a tabela volta a obedecer normalmente ao filtro.
+- Não altera os dados, o salvamento ou as regras do Firebase.
 
-SEGURANÇA:
-- Não altera OPs nem dados do Firebase.
-- Não adiciona MutationObserver.
-- Não modifica pagamentos, facções ou cálculos.
-
-DEPOIS DO COMMIT:
-1. Teste primeiro em aba anônima.
-2. Abra Manejo > Sutiã e confirme que LINHA não aparece.
-3. Abra Manejo > Calcinha e confirme que LINHA aparece.
-4. Teste a impressão de ambos os modos.
+Teste recomendado:
+1. Abra Manejo > Calcinha.
+2. Aplique um filtro de Fase.
+3. Em uma OP visível, altere a fase para PRODUÇÃO.
+4. Confirme que a OP continua na tela.
+5. Clique em Concluir.
+6. Altere o filtro de propósito e confirme que a tabela responde normalmente.

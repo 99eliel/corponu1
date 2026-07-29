@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-29-sutia-sem-coluna-linha-1",
-  "updatedAt": "2026-07-29T09:25:00-03:00",
-  "notes": "A coluna Linha aparece somente no Manejo Calcinha e foi removida da tela e impressão do Sutiã."
+  "version": "2026-07-29-calcinha-fase-nao-desaparece-1",
+  "updatedAt": "2026-07-29T11:35:00-03:00",
+  "notes": "Corrige OP da Calcinha que desaparecia ao alterar a fase com filtros acumulativos ativos; a linha editada permanece visível até o usuário alterar os filtros."
 }
