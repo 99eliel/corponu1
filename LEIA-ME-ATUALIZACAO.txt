@@ -1,11 +1,11 @@
-ATUALIZAÇÃO — BOTÃO CONCLUIR INTELIGENTE NO MANEJO
+ATUALIZAÇÃO — PROCESSOS DAS FACÇÕES
 
-SUBSTITUIR NO GITHUB
+Substituir no GitHub:
 - update.js
 - sw.js
 - version.json
 
-NÃO ALTERAR
+Não alterar:
 - app.js
 - index.html
 - style.css
@@ -13,21 +13,35 @@ NÃO ALTERAR
 - firestore-rules.txt
 - storage-rules.txt
 
+Não é necessário publicar novas regras do Firebase.
+
 NOVO FUNCIONAMENTO
-1. Linhas do Manejo que já estão salvas não mostram o botão verde Concluir.
-2. Ao alterar qualquer campo editável da linha, o botão reaparece imediatamente.
-3. Durante o salvamento, o botão fica bloqueado para impedir clique duplo.
-4. Quando o sistema confirma que o Manejo foi salvo, o botão desaparece novamente.
-5. Se houver validação, erro de conexão ou erro de permissão, o botão continua visível para corrigir e tentar novamente.
+
+1. Na aba Facções aparece o painel "Processos das facções".
+2. Cada processo é exibido em um cartão com a quantidade de facções vinculadas.
+3. Ao clicar no cartão, o sistema mostra quem realiza o processo.
+4. Usuários comuns podem consultar a lista.
+5. O administrador pode:
+   - adicionar processo;
+   - definir se é Sutiã, Calcinha ou ambos;
+   - renomear processo;
+   - marcar/desmarcar quais facções fazem o processo;
+   - excluir o processo da lista sem alterar históricos antigos.
+6. A configuração também controla a lista de facções no envio do Manejo e na Chegada Manual.
+7. Na primeira abertura administrativa, os processos e vínculos antigos são recuperados automaticamente.
 
 SEGURANÇA
-- Não altera cálculos, OPs, pagamentos ou regras do Firebase.
-- Não usa MutationObserver.
-- Mantém todas as correções cumulativas da versão anterior.
 
-PUBLICAÇÃO
-1. Substitua os três arquivos em um único commit.
-2. Teste primeiro em aba anônima.
-3. Abra o Manejo, altere uma linha e confirme que o botão aparece.
-4. Clique em Concluir e confirme que ele desaparece após o aviso de sucesso.
-5. Altere novamente a mesma linha e confirme que o botão reaparece.
+- Não utiliza MutationObserver.
+- Não altera movimentações, pagamentos ou históricos antigos.
+- Somente administradores podem gravar configurações e vínculos.
+- Usuários comuns apenas visualizam.
+
+DEPOIS DO COMMIT
+
+1. Testar primeiro em aba anônima.
+2. Entrar como administrador.
+3. Abrir Facções.
+4. Conferir os cartões e clicar em cada processo.
+5. Abrir Gerenciar processos e ajustar um vínculo de teste.
+6. Abrir Manejo e confirmar que o processo mostra somente as facções vinculadas.

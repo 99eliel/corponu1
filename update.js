@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-manejo-concluir-inteligente-1";
+  const APP_VERSION = "2026-07-29-processos-faccoes-gerenciados-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -200,7 +200,10 @@
 
   function processoCanonico(valor) {
     const normalizado = normalizarComparacao(valor);
-    return Object.keys(FACCOES_POR_PROCESSO).find(
+    const nomes = typeof getNomesProcessosFaccoesAtivos === "function"
+      ? getNomesProcessosFaccoesAtivos()
+      : Object.keys(FACCOES_POR_PROCESSO);
+    return nomes.find(
       processo => normalizarComparacao(processo) === normalizado
     ) || "";
   }
@@ -235,7 +238,7 @@
     select.required = true;
     select.innerHTML = `
       <option value="">Selecione o processo realizado</option>
-      ${Object.keys(FACCOES_POR_PROCESSO)
+      ${(typeof getNomesProcessosFaccoesAtivos === "function" ? getNomesProcessosFaccoesAtivos() : Object.keys(FACCOES_POR_PROCESSO))
         .map(processo => `<option value="${processo}">${processo}</option>`)
         .join("")}
     `;
@@ -257,7 +260,9 @@
 
   function preencherFaccoesDoProcesso(processoSelect, faccaoSelect, grupoFaccao, ajudaFaccao) {
     const processo = processoCanonico(processoSelect?.value);
-    const faccoes = FACCOES_POR_PROCESSO[processo] || [];
+    const faccoes = typeof getFaccoesGerenciadasPorProcesso === "function"
+      ? getFaccoesGerenciadasPorProcesso(processo)
+      : (FACCOES_POR_PROCESSO[processo] || []);
 
     faccaoSelect.innerHTML = "";
     faccaoSelect.value = "";
@@ -357,7 +362,9 @@
     form.addEventListener("submit", event => {
       const processo = processoCanonico(processoSelect.value);
       const faccao = String(faccaoSelect.value || "").trim();
-      const permitidas = FACCOES_POR_PROCESSO[processo] || [];
+      const permitidas = typeof getFaccoesGerenciadasPorProcesso === "function"
+        ? getFaccoesGerenciadasPorProcesso(processo)
+        : (FACCOES_POR_PROCESSO[processo] || []);
       const faccaoPermitida = permitidas.some(
         nome => normalizarComparacao(nome) === normalizarComparacao(faccao)
       );
@@ -8398,8 +8405,962 @@
     });
   }
 
+
+  // =========================================================
+  // PROCESSOS DAS FACÇÕES — VISUALIZAÇÃO E GERENCIAMENTO
+  // - Mostra cartões de processos na aba Facções.
+  // - Ao clicar, mostra quais facções executam o processo.
+  // - Somente o administrador cria, renomeia, exclui e altera vínculos.
+  // - A configuração oficial também controla os destinos do Manejo e
+  //   da Chegada Manual, evitando listas diferentes em cada tela.
+  // - Sem MutationObserver: apenas listeners do Firebase e eventos diretos.
+  // =========================================================
+
+  const PROCESSOS_FACCOES_CONFIG_COLECAO = "configuracoes";
+  const PROCESSOS_FACCOES_CONFIG_DOCUMENTO = "processosFaccoes";
+  const PROCESSOS_FACCOES_ORDEM_PADRAO = [
+    "ENCAPAR BOJO",
+    "ALÇA",
+    "CALCINHA MONTAGEM",
+    "CALCINHA COMPLETA",
+    "SUTIÃ MONTAGEM",
+    "SUTIÃ COMPLETO"
+  ];
+
+  let contextoProcessosFaccoes = null;
+  let unsubscribeAuthProcessosFaccoes = null;
+  let unsubscribeConfigProcessosFaccoes = null;
+  let unsubscribeListaFaccoesProcessos = null;
+  let usuarioEhAdminProcessosFaccoes = false;
+  let configuracaoProcessosFaccoesExiste = false;
+  let inicializacaoProcessosFaccoesTentada = false;
+  let processosFaccoesConfigurados = [];
+  let faccoesCadastroProcessos = [];
+  let processoFaccaoSelecionado = "";
+  let painelProcessosFaccoesIniciado = false;
+  let eventosProcessosFaccoesInstalados = false;
+
+  function escapeHtmlProcessosFaccoes(valor) {
+    return String(valor ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function normalizarNomeProcessoGerenciado(valor) {
+    const texto = String(valor || "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toUpperCase();
+    const semAcento = normalizarComparacao(texto);
+    const aliases = {
+      "BOJO": "ENCAPAR BOJO",
+      "ENCAPAR": "ENCAPAR BOJO",
+      "ENCAPAR BOJOS": "ENCAPAR BOJO",
+      "ALCA": "ALÇA",
+      "ALCAS": "ALÇA",
+      "ALÇAS": "ALÇA",
+      "MONTAGEM CALCINHA": "CALCINHA MONTAGEM",
+      "CALCINHA PRONTA": "CALCINHA COMPLETA",
+      "SUTIA MONTAGEM": "SUTIÃ MONTAGEM",
+      "SUTIA COMPLETO": "SUTIÃ COMPLETO"
+    };
+    return aliases[texto] || aliases[semAcento] || texto;
+  }
+
+  function normalizarNomeFaccaoGerenciada(valor) {
+    return String(valor || "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toUpperCase();
+  }
+
+  function chaveNormalizadaProcessosFaccoes(valor) {
+    return normalizarComparacao(valor).replace(/[^A-Z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+
+  function ordenarNomesProcessosFaccoes(lista) {
+    const mapa = new Map();
+    (lista || []).forEach(valor => {
+      const nome = normalizarNomeProcessoGerenciado(valor);
+      const chave = chaveNormalizadaProcessosFaccoes(nome);
+      if (nome && chave && !mapa.has(chave)) mapa.set(chave, nome);
+    });
+    return [...mapa.values()].sort((a, b) => {
+      const ia = PROCESSOS_FACCOES_ORDEM_PADRAO.indexOf(a);
+      const ib = PROCESSOS_FACCOES_ORDEM_PADRAO.indexOf(b);
+      if (ia !== -1 || ib !== -1) {
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      }
+      return a.localeCompare(b, "pt-BR", { numeric: true });
+    });
+  }
+
+  function ordenarNomesFaccoesProcessos(lista) {
+    const mapa = new Map();
+    (lista || []).forEach(valor => {
+      const nome = normalizarNomeFaccaoGerenciada(valor);
+      const chave = chaveNormalizadaProcessosFaccoes(nome);
+      if (nome && chave && !mapa.has(chave)) mapa.set(chave, nome);
+    });
+    return [...mapa.values()].sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+  }
+
+  function inferirSetorProcessoFaccao(nome) {
+    const normalizado = normalizarComparacao(nome);
+    if (normalizado.includes("CALCINHA")) return "calcinha";
+    if (
+      normalizado.includes("SUTIA") ||
+      normalizado.includes("BOJO") ||
+      normalizado.includes("ALCA")
+    ) return "sutia";
+    return "ambos";
+  }
+
+  function normalizarSetorProcessoFaccao(valor, nome = "") {
+    const setor = String(valor || "").trim().toLowerCase();
+    if (["sutia", "calcinha", "ambos"].includes(setor)) return setor;
+    return inferirSetorProcessoFaccao(nome);
+  }
+
+  function normalizarRegistroProcessoFaccao(item) {
+    const nome = normalizarNomeProcessoGerenciado(item?.nome || item?.processo || "");
+    return {
+      nome,
+      setor: normalizarSetorProcessoFaccao(item?.setor, nome),
+      faccoes: ordenarNomesFaccoesProcessos(item?.faccoes || item?.nomesFaccoes || []),
+      ativo: item?.ativo !== false
+    };
+  }
+
+  function processosPadraoComoConfiguracao() {
+    return Object.entries(FACCOES_POR_PROCESSO).map(([nome, faccoes]) => ({
+      nome: normalizarNomeProcessoGerenciado(nome),
+      setor: inferirSetorProcessoFaccao(nome),
+      faccoes: ordenarNomesFaccoesProcessos(faccoes),
+      ativo: true
+    }));
+  }
+
+  function mesclarProcessosFaccoes(base, adicionais) {
+    const mapa = new Map();
+    [...(base || []), ...(adicionais || [])].forEach(item => {
+      const normalizado = normalizarRegistroProcessoFaccao(item);
+      if (!normalizado.nome) return;
+      const chave = chaveNormalizadaProcessosFaccoes(normalizado.nome);
+      const atual = mapa.get(chave);
+      if (!atual) {
+        mapa.set(chave, normalizado);
+        return;
+      }
+      mapa.set(chave, {
+        ...atual,
+        ...normalizado,
+        setor: normalizado.setor || atual.setor,
+        faccoes: ordenarNomesFaccoesProcessos([...(atual.faccoes || []), ...(normalizado.faccoes || [])]),
+        ativo: atual.ativo !== false || normalizado.ativo !== false
+      });
+    });
+
+    const nomesOrdenados = ordenarNomesProcessosFaccoes([...mapa.values()].map(item => item.nome));
+    return nomesOrdenados.map(nome => mapa.get(chaveNormalizadaProcessosFaccoes(nome))).filter(Boolean);
+  }
+
+  function construirConfiguracaoInferidaProcessosFaccoes() {
+    let processos = processosPadraoComoConfiguracao();
+    const extras = [];
+
+    faccoesCadastroProcessos.forEach(faccao => {
+      if (!faccao?.nome || faccao?.ativo === false || faccao?.cadastroPendente) return;
+      (Array.isArray(faccao.processosPermitidos) ? faccao.processosPermitidos : []).forEach(processo => {
+        const nome = normalizarNomeProcessoGerenciado(processo);
+        if (!nome) return;
+        extras.push({
+          nome,
+          setor: inferirSetorProcessoFaccao(nome),
+          faccoes: [faccao.nome],
+          ativo: true
+        });
+      });
+    });
+
+    processos = mesclarProcessosFaccoes(processos, extras);
+    return processos;
+  }
+
+  function getProcessosFaccoesAtivos() {
+    const origem = configuracaoProcessosFaccoesExiste
+      ? processosFaccoesConfigurados
+      : construirConfiguracaoInferidaProcessosFaccoes();
+    return origem.filter(item => item?.ativo !== false && item?.nome);
+  }
+
+  function getNomesProcessosFaccoesAtivos(setor = "") {
+    const setorNormalizado = String(setor || "").toLowerCase();
+    return ordenarNomesProcessosFaccoes(
+      getProcessosFaccoesAtivos()
+        .filter(item => !setorNormalizado || item.setor === "ambos" || item.setor === setorNormalizado)
+        .map(item => item.nome)
+    );
+  }
+
+  function getRegistroProcessoFaccao(nome) {
+    const chave = chaveNormalizadaProcessosFaccoes(nome);
+    return getProcessosFaccoesAtivos().find(item => chaveNormalizadaProcessosFaccoes(item.nome) === chave) || null;
+  }
+
+  function getFaccoesGerenciadasPorProcesso(nome) {
+    const registro = getRegistroProcessoFaccao(nome);
+    if (!registro) return [];
+    return ordenarNomesFaccoesProcessos(registro.faccoes || []);
+  }
+
+  function faccaoAtivaPorNomeProcessos(nome) {
+    const chave = chaveNormalizadaProcessosFaccoes(nome);
+    return faccoesCadastroProcessos.find(item =>
+      item?.ativo !== false &&
+      !item?.cadastroPendente &&
+      chaveNormalizadaProcessosFaccoes(item?.nome) === chave
+    ) || null;
+  }
+
+  function injetarEstilosProcessosFaccoes() {
+    if (document.getElementById("styleProcessosFaccoesGerenciados")) return;
+    const style = document.createElement("style");
+    style.id = "styleProcessosFaccoesGerenciados";
+    style.textContent = `
+      .processos-faccoes-painel {
+        margin: 18px 0 22px;
+        padding: 18px;
+        border: 1px solid #dbe3ee;
+        border-radius: 18px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        box-shadow: 0 10px 28px rgba(15, 23, 42, .06);
+      }
+      .processos-faccoes-cabecalho {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+      .processos-faccoes-cabecalho h3 { margin: 0; color: #0f172a; }
+      .processos-faccoes-cabecalho p { margin: 5px 0 0; color: #64748b; }
+      .processos-faccoes-grade {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 10px;
+      }
+      .processo-faccao-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        min-height: 72px;
+        padding: 13px 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 14px;
+        background: #fff;
+        color: #0f172a;
+        text-align: left;
+        cursor: pointer;
+        transition: .18s ease;
+      }
+      .processo-faccao-card:hover { border-color: #7c3aed; transform: translateY(-1px); }
+      .processo-faccao-card.ativo { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124, 58, 237, .12); }
+      .processo-faccao-card strong { display: block; font-size: 14px; }
+      .processo-faccao-card small { display: block; margin-top: 3px; color: #64748b; }
+      .processo-faccao-card .contador {
+        min-width: 34px;
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: #ede9fe;
+        color: #6d28d9;
+        font-weight: 900;
+      }
+      .processos-faccoes-detalhe {
+        margin-top: 14px;
+        padding: 16px;
+        border: 1px solid #dbe3ee;
+        border-radius: 14px;
+        background: #fff;
+      }
+      .processos-faccoes-detalhe.hidden { display: none !important; }
+      .processos-faccoes-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+      .processos-faccoes-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px;
+        border-radius: 999px;
+        background: #ecfdf5;
+        border: 1px solid #bbf7d0;
+        color: #166534;
+        font-weight: 800;
+        font-size: 12px;
+      }
+      .processos-faccoes-chip.pendente { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
+      .processos-faccoes-admin {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #e2e8f0;
+      }
+      .processos-faccoes-admin.hidden { display: none !important; }
+      .processos-faccoes-admin-grid {
+        display: grid;
+        grid-template-columns: minmax(200px, 1fr) 170px auto;
+        gap: 10px;
+        align-items: end;
+      }
+      .processos-faccoes-admin label { display: grid; gap: 5px; color: #334155; font-size: 12px; font-weight: 800; }
+      .processos-faccoes-admin input, .processos-faccoes-admin select {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 9px 11px;
+        background: #fff;
+      }
+      .processos-faccoes-checks {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 8px;
+        margin: 12px 0;
+        max-height: 300px;
+        overflow: auto;
+        padding: 4px;
+      }
+      .processos-faccoes-check {
+        display: flex !important;
+        grid-template-columns: none !important;
+        align-items: center;
+        gap: 9px !important;
+        min-height: 42px;
+        padding: 9px 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+        cursor: pointer;
+      }
+      .processos-faccoes-check input { width: 17px !important; min-height: 17px !important; margin: 0; }
+      .processos-faccoes-novo {
+        margin-bottom: 14px;
+        padding: 14px;
+        border: 1px dashed #a78bfa;
+        border-radius: 13px;
+        background: #faf5ff;
+      }
+      .processos-faccoes-admin-acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+      @media (max-width: 780px) {
+        .processos-faccoes-cabecalho { flex-direction: column; }
+        .processos-faccoes-admin-grid { grid-template-columns: 1fr; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function criarPainelProcessosFaccoes() {
+    let painel = document.getElementById("painelProcessosFaccoes");
+    if (painel) return painel;
+
+    const cardsResumo = document.querySelector("#faccoes .faccoes-cards");
+    if (!cardsResumo) return null;
+
+    painel = document.createElement("section");
+    painel.id = "painelProcessosFaccoes";
+    painel.className = "processos-faccoes-painel";
+    painel.innerHTML = `
+      <div class="processos-faccoes-cabecalho">
+        <div>
+          <h3>Processos das facções</h3>
+          <p>Clique em um processo para ver quais facções realizam esse serviço.</p>
+        </div>
+        <button id="btnGerenciarProcessosFaccoes" class="btn btn-primary hidden" type="button">Gerenciar processos</button>
+      </div>
+      <div id="gradeProcessosFaccoes" class="processos-faccoes-grade"></div>
+      <div id="detalheProcessoFaccao" class="processos-faccoes-detalhe hidden"></div>
+    `;
+    cardsResumo.insertAdjacentElement("afterend", painel);
+    return painel;
+  }
+
+  function criarHtmlNovoProcessoFaccao() {
+    if (!usuarioEhAdminProcessosFaccoes) return "";
+    return `
+      <div id="boxNovoProcessoFaccao" class="processos-faccoes-novo hidden">
+        <strong>Adicionar novo processo</strong>
+        <div class="processos-faccoes-admin-grid" style="margin-top:10px;">
+          <label>Nome do processo
+            <input id="novoProcessoFaccaoNome" type="text" placeholder="Ex: REVISÃO FINAL" />
+          </label>
+          <label>Usado em
+            <select id="novoProcessoFaccaoSetor">
+              <option value="sutia">Sutiã</option>
+              <option value="calcinha">Calcinha</option>
+              <option value="ambos">Sutiã e Calcinha</option>
+            </select>
+          </label>
+          <button id="btnAdicionarNovoProcessoFaccao" class="btn btn-success" type="button">Adicionar processo</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderGradeProcessosFaccoes() {
+    const painel = criarPainelProcessosFaccoes();
+    if (!painel) return;
+
+    const botaoGerenciar = document.getElementById("btnGerenciarProcessosFaccoes");
+    botaoGerenciar?.classList.toggle("hidden", !usuarioEhAdminProcessosFaccoes);
+
+    const grade = document.getElementById("gradeProcessosFaccoes");
+    if (!grade) return;
+    const processos = getProcessosFaccoesAtivos();
+
+    if (!processos.length) {
+      grade.innerHTML = `<div class="empty">Nenhum processo cadastrado.</div>`;
+      document.getElementById("detalheProcessoFaccao")?.classList.add("hidden");
+      return;
+    }
+
+    if (!processoFaccaoSelecionado || !getRegistroProcessoFaccao(processoFaccaoSelecionado)) {
+      processoFaccaoSelecionado = processos[0].nome;
+    }
+
+    grade.innerHTML = processos.map(item => {
+      const selecionado = chaveNormalizadaProcessosFaccoes(item.nome) === chaveNormalizadaProcessosFaccoes(processoFaccaoSelecionado);
+      const quantidade = (item.faccoes || []).length;
+      const setorLabel = item.setor === "calcinha" ? "Calcinha" : item.setor === "ambos" ? "Sutiã e Calcinha" : "Sutiã";
+      return `
+        <button type="button" class="processo-faccao-card ${selecionado ? "ativo" : ""}" data-selecionar-processo-faccao="${escapeHtmlProcessosFaccoes(item.nome)}">
+          <span>
+            <strong>${escapeHtmlProcessosFaccoes(item.nome)}</strong>
+            <small>${escapeHtmlProcessosFaccoes(setorLabel)}</small>
+          </span>
+          <span class="contador">${quantidade}</span>
+        </button>
+      `;
+    }).join("");
+
+    renderDetalheProcessoFaccao();
+  }
+
+  function renderDetalheProcessoFaccao() {
+    const detalhe = document.getElementById("detalheProcessoFaccao");
+    if (!detalhe) return;
+    const registro = getRegistroProcessoFaccao(processoFaccaoSelecionado);
+    if (!registro) {
+      detalhe.classList.add("hidden");
+      detalhe.innerHTML = "";
+      return;
+    }
+
+    const faccoes = ordenarNomesFaccoesProcessos(registro.faccoes || []);
+    const chips = faccoes.length
+      ? faccoes.map(nome => {
+          const cadastrada = faccaoAtivaPorNomeProcessos(nome);
+          return `<span class="processos-faccoes-chip ${cadastrada ? "" : "pendente"}">${escapeHtmlProcessosFaccoes(nome)}${cadastrada ? "" : " • sem cadastro ativo"}</span>`;
+        }).join("")
+      : `<span class="muted">Nenhuma facção vinculada a este processo.</span>`;
+
+    const faccoesAtivas = faccoesCadastroProcessos
+      .filter(item => item?.nome && item?.ativo !== false && !item?.cadastroPendente && !item?.duplicadaDe)
+      .sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR", { numeric: true }));
+    const selecionadas = new Set(faccoes.map(chaveNormalizadaProcessosFaccoes));
+
+    detalhe.classList.remove("hidden");
+    detalhe.innerHTML = `
+      ${criarHtmlNovoProcessoFaccao()}
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div>
+          <h4 style="margin:0;color:#0f172a;">${escapeHtmlProcessosFaccoes(registro.nome)}</h4>
+          <p style="margin:5px 0 0;color:#64748b;">Quem realiza este processo</p>
+        </div>
+        <span class="badge info">${faccoes.length} facção(ões)</span>
+      </div>
+      <div class="processos-faccoes-chips">${chips}</div>
+      ${usuarioEhAdminProcessosFaccoes ? `
+        <div id="adminProcessoFaccaoSelecionado" class="processos-faccoes-admin hidden">
+          <div class="processos-faccoes-admin-grid">
+            <label>Nome do processo
+              <input id="editarProcessoFaccaoNome" type="text" value="${escapeHtmlProcessosFaccoes(registro.nome)}" />
+            </label>
+            <label>Usado em
+              <select id="editarProcessoFaccaoSetor">
+                <option value="sutia" ${registro.setor === "sutia" ? "selected" : ""}>Sutiã</option>
+                <option value="calcinha" ${registro.setor === "calcinha" ? "selected" : ""}>Calcinha</option>
+                <option value="ambos" ${registro.setor === "ambos" ? "selected" : ""}>Sutiã e Calcinha</option>
+              </select>
+            </label>
+            <button id="btnSalvarProcessoFaccao" class="btn btn-success" type="button">Salvar alterações</button>
+          </div>
+          <p style="margin:14px 0 6px;color:#475569;font-weight:800;">Marque quem realiza este processo:</p>
+          <div class="processos-faccoes-checks">
+            ${faccoesAtivas.length ? faccoesAtivas.map(faccao => {
+              const nome = normalizarNomeFaccaoGerenciada(faccao.nome);
+              const marcado = selecionadas.has(chaveNormalizadaProcessosFaccoes(nome));
+              return `
+                <label class="processos-faccoes-check">
+                  <input type="checkbox" data-faccao-processo-check="${escapeHtmlProcessosFaccoes(nome)}" ${marcado ? "checked" : ""} />
+                  <span>${escapeHtmlProcessosFaccoes(nome)}</span>
+                </label>
+              `;
+            }).join("") : `<span class="muted">Cadastre uma facção ativa antes de criar vínculos.</span>`}
+          </div>
+          <div class="processos-faccoes-admin-acoes">
+            <button id="btnSalvarVinculosProcessoFaccao" class="btn btn-primary" type="button">Salvar quem faz</button>
+            <button id="btnExcluirProcessoFaccao" class="btn btn-danger" type="button">Excluir processo da lista</button>
+          </div>
+          <small style="display:block;margin-top:9px;color:#64748b;">Excluir ou renomear não altera movimentações e pagamentos antigos.</small>
+        </div>
+      ` : ""}
+    `;
+
+    const painelAtual = getPainelProcessosFaccoes();
+    const gerenciando = painelAtual?.dataset?.gerenciandoProcessosFaccoes === "1";
+    detalhe.querySelector("#adminProcessoFaccaoSelecionado")?.classList.toggle("hidden", !gerenciando);
+    detalhe.querySelector("#boxNovoProcessoFaccao")?.classList.toggle("hidden", !gerenciando);
+  }
+
+  function getPainelProcessosFaccoes() {
+    return document.getElementById("painelProcessosFaccoes");
+  }
+
+  async function salvarConfiguracaoProcessosFaccoes(processos, detalhesLog = "") {
+    if (!usuarioEhAdminProcessosFaccoes || !contextoProcessosFaccoes?.user) {
+      mostrarAvisoFormulario("Somente o administrador pode gerenciar processos das facções.");
+      return false;
+    }
+    const { firestore, db, user } = contextoProcessosFaccoes;
+    const normalizados = mesclarProcessosFaccoes([], processos).map(normalizarRegistroProcessoFaccao);
+    await firestore.setDoc(
+      firestore.doc(db, PROCESSOS_FACCOES_CONFIG_COLECAO, PROCESSOS_FACCOES_CONFIG_DOCUMENTO),
+      {
+        processos: normalizados,
+        atualizadoEm: firestore.serverTimestamp(),
+        atualizadoPor: user.uid,
+        versaoGerenciamento: APP_VERSION
+      },
+      { merge: true }
+    );
+    try {
+      await firestore.addDoc(firestore.collection(db, "logsAlteracoes"), {
+        acao: "processos_faccoes_atualizados",
+        entidade: "configuracoes",
+        entidadeId: PROCESSOS_FACCOES_CONFIG_DOCUMENTO,
+        detalhes: detalhesLog || `${normalizados.length} processo(s) configurado(s)`,
+        usuarioUid: user.uid,
+        usuarioEmail: user.email || "",
+        criadoEm: firestore.serverTimestamp(),
+        versao: APP_VERSION
+      });
+    } catch (error) {
+      console.warn("Configuração salva, mas o log não foi registrado.", error);
+    }
+    return true;
+  }
+
+  async function sincronizarProcessoNosCadastrosFaccoes(nomeAntigo, nomeNovo, faccoesSelecionadas, excluir = false) {
+    if (!contextoProcessosFaccoes?.user || !usuarioEhAdminProcessosFaccoes) return;
+    const { firestore, db, user } = contextoProcessosFaccoes;
+    const chaveAntiga = chaveNormalizadaProcessosFaccoes(nomeAntigo);
+    const chaveNova = chaveNormalizadaProcessosFaccoes(nomeNovo);
+    const selecionadas = new Set((faccoesSelecionadas || []).map(chaveNormalizadaProcessosFaccoes));
+    const alteracoes = [];
+
+    faccoesCadastroProcessos.forEach(faccao => {
+      if (!faccao?.id || !faccao?.nome) return;
+      const atuais = ordenarNomesProcessosFaccoes(faccao.processosPermitidos || []);
+      const filtradas = atuais.filter(item => chaveNormalizadaProcessosFaccoes(item) !== chaveAntiga && chaveNormalizadaProcessosFaccoes(item) !== chaveNova);
+      if (!excluir && selecionadas.has(chaveNormalizadaProcessosFaccoes(faccao.nome))) {
+        filtradas.push(nomeNovo);
+      }
+      const finais = ordenarNomesProcessosFaccoes(filtradas);
+      const antes = atuais.map(chaveNormalizadaProcessosFaccoes).join("|");
+      const depois = finais.map(chaveNormalizadaProcessosFaccoes).join("|");
+      if (antes === depois) return;
+      alteracoes.push({ id: faccao.id, processosPermitidos: finais });
+    });
+
+    for (let inicio = 0; inicio < alteracoes.length; inicio += 400) {
+      const lote = firestore.writeBatch(db);
+      alteracoes.slice(inicio, inicio + 400).forEach(item => {
+        lote.set(firestore.doc(db, "faccoes", item.id), {
+          processosPermitidos: item.processosPermitidos,
+          processosGerenciados: true,
+          atualizadoPor: user.uid,
+          atualizadoEm: firestore.serverTimestamp()
+        }, { merge: true });
+      });
+      await lote.commit();
+    }
+  }
+
+  async function adicionarNovoProcessoFaccao() {
+    const nome = normalizarNomeProcessoGerenciado(document.getElementById("novoProcessoFaccaoNome")?.value || "");
+    const setor = normalizarSetorProcessoFaccao(document.getElementById("novoProcessoFaccaoSetor")?.value, nome);
+    if (!nome) {
+      mostrarAvisoFormulario("Digite o nome do novo processo.");
+      return;
+    }
+    if (getProcessosFaccoesAtivos().some(item => chaveNormalizadaProcessosFaccoes(item.nome) === chaveNormalizadaProcessosFaccoes(nome))) {
+      mostrarAvisoFormulario("Este processo já está cadastrado.");
+      return;
+    }
+    const novaLista = [...getProcessosFaccoesAtivos(), { nome, setor, faccoes: [], ativo: true }];
+    try {
+      await salvarConfiguracaoProcessosFaccoes(novaLista, `Processo criado: ${nome}`);
+      processoFaccaoSelecionado = nome;
+      showUpdateToast(`Processo "${nome}" adicionado.`);
+    } catch (error) {
+      console.error(error);
+      mostrarAvisoFormulario("Não foi possível adicionar o processo.");
+    }
+  }
+
+  function faccoesMarcadasNoGerenciamento() {
+    return [...document.querySelectorAll("[data-faccao-processo-check]:checked")]
+      .map(input => normalizarNomeFaccaoGerenciada(input.getAttribute("data-faccao-processo-check")))
+      .filter(Boolean);
+  }
+
+  async function salvarProcessoFaccaoSelecionado({ somenteVinculos = false } = {}) {
+    const atual = getRegistroProcessoFaccao(processoFaccaoSelecionado);
+    if (!atual) return;
+    const nomeNovo = somenteVinculos
+      ? atual.nome
+      : normalizarNomeProcessoGerenciado(document.getElementById("editarProcessoFaccaoNome")?.value || atual.nome);
+    const setorNovo = somenteVinculos
+      ? atual.setor
+      : normalizarSetorProcessoFaccao(document.getElementById("editarProcessoFaccaoSetor")?.value, nomeNovo);
+    const selecionadas = faccoesMarcadasNoGerenciamento();
+    if (!nomeNovo) {
+      mostrarAvisoFormulario("Informe o nome do processo.");
+      return;
+    }
+    const conflito = getProcessosFaccoesAtivos().some(item =>
+      chaveNormalizadaProcessosFaccoes(item.nome) === chaveNormalizadaProcessosFaccoes(nomeNovo) &&
+      chaveNormalizadaProcessosFaccoes(item.nome) !== chaveNormalizadaProcessosFaccoes(atual.nome)
+    );
+    if (conflito) {
+      mostrarAvisoFormulario("Já existe outro processo com esse nome.");
+      return;
+    }
+
+    const novaLista = getProcessosFaccoesAtivos().map(item => {
+      if (chaveNormalizadaProcessosFaccoes(item.nome) !== chaveNormalizadaProcessosFaccoes(atual.nome)) return item;
+      return { ...item, nome: nomeNovo, setor: setorNovo, faccoes: selecionadas, ativo: true };
+    });
+
+    try {
+      const botao = document.getElementById(somenteVinculos ? "btnSalvarVinculosProcessoFaccao" : "btnSalvarProcessoFaccao");
+      if (botao) { botao.disabled = true; botao.textContent = "Salvando..."; }
+      await salvarConfiguracaoProcessosFaccoes(novaLista, `${atual.nome} -> ${nomeNovo} | ${selecionadas.length} facção(ões)`);
+      await sincronizarProcessoNosCadastrosFaccoes(atual.nome, nomeNovo, selecionadas, false);
+      processoFaccaoSelecionado = nomeNovo;
+      showUpdateToast("Processo e facções atualizados com sucesso.");
+    } catch (error) {
+      console.error(error);
+      mostrarAvisoFormulario("Não foi possível salvar os vínculos do processo.");
+      renderDetalheProcessoFaccao();
+    }
+  }
+
+  async function excluirProcessoFaccaoSelecionado() {
+    const atual = getRegistroProcessoFaccao(processoFaccaoSelecionado);
+    if (!atual) return;
+    const confirmar = window.confirm(
+      `Excluir "${atual.nome}" da lista de processos?\n\nMovimentações e pagamentos antigos não serão alterados.`
+    );
+    if (!confirmar) return;
+
+    const novaLista = getProcessosFaccoesAtivos().filter(item =>
+      chaveNormalizadaProcessosFaccoes(item.nome) !== chaveNormalizadaProcessosFaccoes(atual.nome)
+    );
+    try {
+      await salvarConfiguracaoProcessosFaccoes(novaLista, `Processo removido: ${atual.nome}`);
+      await sincronizarProcessoNosCadastrosFaccoes(atual.nome, atual.nome, [], true);
+      processoFaccaoSelecionado = novaLista[0]?.nome || "";
+      showUpdateToast(`Processo "${atual.nome}" removido da lista.`);
+    } catch (error) {
+      console.error(error);
+      mostrarAvisoFormulario("Não foi possível excluir o processo.");
+    }
+  }
+
+  function atualizarSelectChegadaManualComProcessosGerenciados() {
+    const select = document.getElementById("chegadaManualProcesso");
+    if (!select || select.tagName !== "SELECT") return;
+    const valorAtual = processoCanonico(select.value);
+    const nomes = getNomesProcessosFaccoesAtivos();
+    select.innerHTML = `<option value="">Selecione o processo realizado</option>` + nomes.map(nome =>
+      `<option value="${escapeHtmlProcessosFaccoes(nome)}">${escapeHtmlProcessosFaccoes(nome)}</option>`
+    ).join("");
+    if (valorAtual && nomes.some(nome => chaveNormalizadaProcessosFaccoes(nome) === chaveNormalizadaProcessosFaccoes(valorAtual))) {
+      select.value = valorAtual;
+    }
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  function setorAtualMovimentacaoProcessosFaccoes() {
+    try {
+      if (typeof setorAtualFiltroExcelManejo === "function") {
+        return setorAtualFiltroExcelManejo() === "calcinha" ? "calcinha" : "sutia";
+      }
+    } catch (_) {}
+    return document.querySelector(".manejo-setor-btn.active")?.dataset?.setor === "calcinha" ? "calcinha" : "sutia";
+  }
+
+  function aplicarProcessosGerenciadosNoModalMovimentacao() {
+    const modal = document.getElementById("modalMovimentacao");
+    const tipo = document.getElementById("movimentacaoTipoDestino")?.value || "";
+    const select = document.getElementById("movimentacaoProcessoSelect");
+    if (!modal || modal.classList.contains("hidden") || tipo !== "faccao" || !select) return;
+
+    const setor = setorAtualMovimentacaoProcessosFaccoes();
+    const nomes = getNomesProcessosFaccoesAtivos(setor);
+    const valorAtual = processoCanonico(select.value || document.getElementById("movimentacaoProcesso")?.value || "");
+    select.innerHTML = `<option value="">Primeiro selecione o processo</option>` + nomes.map(nome =>
+      `<option value="${escapeHtmlProcessosFaccoes(nome)}">${escapeHtmlProcessosFaccoes(nome)}</option>`
+    ).join("");
+    if (valorAtual && nomes.some(nome => chaveNormalizadaProcessosFaccoes(nome) === chaveNormalizadaProcessosFaccoes(valorAtual))) {
+      select.value = valorAtual;
+    }
+    const input = document.getElementById("movimentacaoProcesso");
+    if (input) input.value = select.value || "";
+    aplicarFaccoesGerenciadasNoDestinoMovimentacao();
+  }
+
+  function aplicarFaccoesGerenciadasNoDestinoMovimentacao() {
+    const tipo = document.getElementById("movimentacaoTipoDestino")?.value || "";
+    const destino = document.getElementById("movimentacaoDestino");
+    if (tipo !== "faccao" || !destino) return;
+    const processo = processoCanonico(
+      document.getElementById("movimentacaoProcessoSelect")?.value ||
+      document.getElementById("movimentacaoProcesso")?.value || ""
+    );
+    const valorAtual = normalizarNomeFaccaoGerenciada(destino.value);
+    if (!processo) {
+      destino.disabled = true;
+      destino.innerHTML = `<option value="">Escolha o processo primeiro</option>`;
+      return;
+    }
+    const faccoes = getFaccoesGerenciadasPorProcesso(processo);
+    destino.disabled = !faccoes.length;
+    destino.innerHTML = faccoes.length
+      ? `<option value="">Agora selecione a facção</option>` + faccoes.map(nome =>
+          `<option value="${escapeHtmlProcessosFaccoes(nome)}">${escapeHtmlProcessosFaccoes(nome)}</option>`
+        ).join("")
+      : `<option value="">Nenhuma facção vinculada a este processo</option>`;
+    const correspondente = faccoes.find(nome => chaveNormalizadaProcessosFaccoes(nome) === chaveNormalizadaProcessosFaccoes(valorAtual));
+    if (correspondente) destino.value = correspondente;
+  }
+
+  function instalarEventosProcessosFaccoes() {
+    if (eventosProcessosFaccoesInstalados) return;
+    eventosProcessosFaccoesInstalados = true;
+
+    document.addEventListener("click", event => {
+      const selecionar = event.target?.closest?.("[data-selecionar-processo-faccao]");
+      if (selecionar) {
+        processoFaccaoSelecionado = selecionar.getAttribute("data-selecionar-processo-faccao") || "";
+        renderGradeProcessosFaccoes();
+        return;
+      }
+
+      if (event.target?.closest?.("#btnGerenciarProcessosFaccoes")) {
+        const painel = getPainelProcessosFaccoes();
+        if (!painel || !usuarioEhAdminProcessosFaccoes) return;
+        const ativo = painel.dataset.gerenciandoProcessosFaccoes !== "1";
+        painel.dataset.gerenciandoProcessosFaccoes = ativo ? "1" : "0";
+        const botao = document.getElementById("btnGerenciarProcessosFaccoes");
+        if (botao) botao.textContent = ativo ? "Fechar gerenciamento" : "Gerenciar processos";
+        renderDetalheProcessoFaccao();
+        return;
+      }
+
+      if (event.target?.closest?.("#btnAdicionarNovoProcessoFaccao")) {
+        adicionarNovoProcessoFaccao();
+        return;
+      }
+      if (event.target?.closest?.("#btnSalvarProcessoFaccao")) {
+        salvarProcessoFaccaoSelecionado({ somenteVinculos: false });
+        return;
+      }
+      if (event.target?.closest?.("#btnSalvarVinculosProcessoFaccao")) {
+        salvarProcessoFaccaoSelecionado({ somenteVinculos: true });
+        return;
+      }
+      if (event.target?.closest?.("#btnExcluirProcessoFaccao")) {
+        excluirProcessoFaccaoSelecionado();
+        return;
+      }
+
+      // Depois que o app.js abre o modal, substitui as listas pela configuração oficial.
+      setTimeout(aplicarProcessosGerenciadosNoModalMovimentacao, 0);
+      setTimeout(aplicarProcessosGerenciadosNoModalMovimentacao, 80);
+    });
+
+    document.getElementById("movimentacaoProcessoSelect")?.addEventListener("change", () => {
+      setTimeout(aplicarFaccoesGerenciadasNoDestinoMovimentacao, 0);
+    });
+    document.getElementById("movimentacaoProcesso")?.addEventListener("input", () => {
+      setTimeout(aplicarFaccoesGerenciadasNoDestinoMovimentacao, 0);
+    });
+
+    document.getElementById("formMovimentacaoProducao")?.addEventListener("submit", event => {
+      const tipo = document.getElementById("movimentacaoTipoDestino")?.value || "";
+      if (tipo !== "faccao") return;
+      const processo = processoCanonico(document.getElementById("movimentacaoProcessoSelect")?.value || "");
+      const faccao = normalizarNomeFaccaoGerenciada(document.getElementById("movimentacaoDestino")?.value || "");
+      const permitidas = getFaccoesGerenciadasPorProcesso(processo);
+      if (!processo || !faccao || !permitidas.some(nome => chaveNormalizadaProcessosFaccoes(nome) === chaveNormalizadaProcessosFaccoes(faccao))) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        mostrarAvisoFormulario("Selecione uma facção vinculada ao processo escolhido.");
+      }
+    }, true);
+  }
+
+  async function criarConfiguracaoInicialProcessosFaccoesSeNecessario() {
+    if (
+      inicializacaoProcessosFaccoesTentada ||
+      configuracaoProcessosFaccoesExiste ||
+      !usuarioEhAdminProcessosFaccoes ||
+      !contextoProcessosFaccoes?.user ||
+      !faccoesCadastroProcessos.length
+    ) return;
+
+    inicializacaoProcessosFaccoesTentada = true;
+    try {
+      const processos = construirConfiguracaoInferidaProcessosFaccoes();
+      const { firestore, db, user } = contextoProcessosFaccoes;
+      const referencia = firestore.doc(db, PROCESSOS_FACCOES_CONFIG_COLECAO, PROCESSOS_FACCOES_CONFIG_DOCUMENTO);
+      await firestore.runTransaction(db, async transacao => {
+        const snapshot = await transacao.get(referencia);
+        if (snapshot.exists()) return;
+        transacao.set(referencia, {
+          processos,
+          criadoEm: firestore.serverTimestamp(),
+          criadoPor: user.uid,
+          atualizadoEm: firestore.serverTimestamp(),
+          atualizadoPor: user.uid,
+          versaoGerenciamento: APP_VERSION
+        });
+      });
+      showUpdateToast(`${processos.length} processo(s) e seus vínculos foram preparados para gerenciamento.`);
+    } catch (error) {
+      inicializacaoProcessosFaccoesTentada = false;
+      console.error("Erro ao criar configuração inicial dos processos das facções.", error);
+    }
+  }
+
+  function iniciarSnapshotsProcessosFaccoes() {
+    if (!contextoProcessosFaccoes) return;
+    const { firestore, db } = contextoProcessosFaccoes;
+
+    if (unsubscribeConfigProcessosFaccoes) unsubscribeConfigProcessosFaccoes();
+    unsubscribeConfigProcessosFaccoes = firestore.onSnapshot(
+      firestore.doc(db, PROCESSOS_FACCOES_CONFIG_COLECAO, PROCESSOS_FACCOES_CONFIG_DOCUMENTO),
+      snapshot => {
+        configuracaoProcessosFaccoesExiste = snapshot.exists();
+        processosFaccoesConfigurados = configuracaoProcessosFaccoesExiste
+          ? mesclarProcessosFaccoes([], snapshot.data()?.processos || [])
+          : [];
+        renderGradeProcessosFaccoes();
+        atualizarSelectChegadaManualComProcessosGerenciados();
+        aplicarProcessosGerenciadosNoModalMovimentacao();
+        criarConfiguracaoInicialProcessosFaccoesSeNecessario();
+      },
+      error => console.error("Erro ao carregar configuração dos processos das facções.", error)
+    );
+
+    if (unsubscribeListaFaccoesProcessos) unsubscribeListaFaccoesProcessos();
+    unsubscribeListaFaccoesProcessos = firestore.onSnapshot(
+      firestore.collection(db, "faccoes"),
+      snapshot => {
+        faccoesCadastroProcessos = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+        renderGradeProcessosFaccoes();
+        criarConfiguracaoInicialProcessosFaccoesSeNecessario();
+      },
+      error => console.error("Erro ao carregar facções para os processos.", error)
+    );
+  }
+
+  async function configurarUsuarioProcessosFaccoes(user) {
+    if (!user || !contextoProcessosFaccoes) {
+      usuarioEhAdminProcessosFaccoes = false;
+      document.getElementById("btnGerenciarProcessosFaccoes")?.classList.add("hidden");
+      if (unsubscribeConfigProcessosFaccoes) unsubscribeConfigProcessosFaccoes();
+      if (unsubscribeListaFaccoesProcessos) unsubscribeListaFaccoesProcessos();
+      unsubscribeConfigProcessosFaccoes = null;
+      unsubscribeListaFaccoesProcessos = null;
+      return;
+    }
+
+    const { firestore, db } = contextoProcessosFaccoes;
+    try {
+      const perfilSnapshot = await firestore.getDoc(firestore.doc(db, "usuarios", user.uid));
+      const perfil = perfilSnapshot.exists() ? perfilSnapshot.data() : {};
+      usuarioEhAdminProcessosFaccoes = perfil?.tipo === "admin" && perfil?.ativo !== false;
+      contextoProcessosFaccoes = { ...contextoProcessosFaccoes, user, perfil };
+      criarPainelProcessosFaccoes();
+      iniciarSnapshotsProcessosFaccoes();
+      renderGradeProcessosFaccoes();
+    } catch (error) {
+      usuarioEhAdminProcessosFaccoes = false;
+      console.error("Não foi possível validar o acesso aos processos das facções.", error);
+    }
+  }
+
+  async function conectarFirebaseProcessosFaccoes(tentativa = 0) {
+    if (contextoProcessosFaccoes?.auth) return;
+    try {
+      const [firebaseApp, firestore, firebaseAuth] = await Promise.all([
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js")
+      ]);
+      if (!firebaseApp.getApps().length) throw new Error("Firebase ainda não inicializado.");
+      const appAtual = firebaseApp.getApp();
+      const auth = firebaseAuth.getAuth(appAtual);
+      const db = firestore.getFirestore(appAtual);
+      contextoProcessosFaccoes = { firestore, firebaseAuth, auth, db, user: null, perfil: null };
+      if (unsubscribeAuthProcessosFaccoes) unsubscribeAuthProcessosFaccoes();
+      unsubscribeAuthProcessosFaccoes = firebaseAuth.onAuthStateChanged(auth, configurarUsuarioProcessosFaccoes);
+    } catch (error) {
+      if (tentativa < 20) {
+        setTimeout(() => conectarFirebaseProcessosFaccoes(tentativa + 1), 300);
+        return;
+      }
+      console.error("Não foi possível iniciar os processos das facções.", error);
+    }
+  }
+
+  function iniciarProcessosFaccoesGerenciados() {
+    if (painelProcessosFaccoesIniciado) {
+      renderGradeProcessosFaccoes();
+      return;
+    }
+    painelProcessosFaccoesIniciado = true;
+    injetarEstilosProcessosFaccoes();
+    criarPainelProcessosFaccoes();
+    instalarEventosProcessosFaccoes();
+    conectarFirebaseProcessosFaccoes();
+    renderGradeProcessosFaccoes();
+  }
+
+
   function iniciarRecursosDaVersao() {
     iniciarTelasExclusivasGerenciamento();
+    iniciarProcessosFaccoesGerenciados();
     iniciarConcluirInteligenteManejo();
     iniciarGerenciarValoresOrganizadoSeguro();
     // Instalada primeiro para barrar a ação antes das rotinas antigas de salvamento.

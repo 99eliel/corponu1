@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-29-manejo-concluir-inteligente-1",
-  "updatedAt": "2026-07-29T08:33:00-03:00",
-  "notes": "Botao Concluir do Manejo some apos salvar e reaparece somente quando a linha for alterada."
+  "version": "2026-07-29-processos-faccoes-gerenciados-1",
+  "updatedAt": "2026-07-29T08:40:00-03:00",
+  "notes": "Processos das faccoes com visualizacao por processo e gerenciamento administrativo dos vinculos."
 }
