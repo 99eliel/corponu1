@@ -1,50 +1,22 @@
-ATUALIZAÇÃO CORPONU
-VERSÃO: 2026-07-29-telas-exclusivas-gerenciamento-1
+ATUALIZACAO: Tela Gerenciar valores simplificada
 
-OBJETIVO
-- Abrir "Gerenciar valores" em uma tela exclusiva.
-- Abrir "Gerenciar facções" em uma tela exclusiva.
-- Evitar que o sistema apenas desça a página e misture gerenciamento com a tela operacional.
+Substituir no GitHub:
+- update.js
+- sw.js
+- version.json
 
-ARQUIVOS PARA SUBSTITUIR NA RAIZ DO GITHUB
-1. update.js
-2. sw.js
-3. version.json
-
-NÃO ALTERAR NESTA ATUALIZAÇÃO
+Nao alterar:
 - app.js
 - index.html
 - style.css
-- firebase-rules.txt
-- firestore-rules.txt
-- storage-rules.txt
+- regras do Firebase
 
-NÃO É NECESSÁRIO ALTERAR AS REGRAS DO FIREBASE.
+O que muda:
+- Oculta importacoes e ferramentas avancadas na tela Gerenciar valores.
+- Mantem fluxo simples: escolher processo, cadastrar valor por referencia e consultar a lista.
+- Remove botao duplicado de voltar e insere um resumo visual de como usar.
 
-COMO FUNCIONARÁ
-PAGAMENTOS:
-- Clique em "Gerenciar valores".
-- O gerenciamento ocupará uma tela exclusiva.
-- Clique em "Voltar para pagamentos" para retornar ao relatório e fechamento.
-
-FACÇÕES:
-- Clique em "Gerenciar facções".
-- O cadastro/lista ocupará uma tela exclusiva.
-- Clique em "Voltar para facções" para retornar às movimentações.
-
-A correção usa os painéis e formulários atuais do sistema.
-Nenhum cadastro, pagamento, facção ou valor existente é alterado.
-
-PUBLICAÇÃO
-1. Envie os três arquivos juntos ao GitHub.
-2. Faça um único commit.
-3. Abra o sistema e clique em "Atualizar".
-4. Caso o navegador mantenha a versão anterior, pressione Ctrl + F5 uma vez.
-
-TESTE RÁPIDO
-1. Abra Pagamentos > Gerenciar valores.
-2. Confirme que aparece uma tela inteira com "Voltar para pagamentos".
-3. Volte e confirme que a tela de pagamentos reaparece.
-4. Abra Facções > Gerenciar facções.
-5. Confirme que aparece uma tela inteira com "Voltar para facções".
-6. Cadastre ou edite somente um registro de teste, se necessário.
+Depois do commit:
+1. Abrir o sistema.
+2. Clicar em Atualizar.
+3. Se necessario, pressionar Ctrl + F5 uma vez.

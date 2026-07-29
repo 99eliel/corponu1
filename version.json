@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-29-telas-exclusivas-gerenciamento-1",
-  "updatedAt": "2026-07-29T07:20:00-03:00",
-  "notes": "Gerenciar valores e Gerenciar facções agora abrem em telas exclusivas de página inteira, com botão Voltar e sem misturar o cadastro com pagamentos ou movimentações. Mantém os formulários, eventos, permissões e correções anteriores."
+  "version": "2026-07-29-gerenciar-valores-simples-1",
+  "updatedAt": "2026-07-29T12:00:00-03:00",
+  "notes": "Tela Gerenciar valores simplificada, sem importacoes e ferramentas avancadas visiveis."
 }

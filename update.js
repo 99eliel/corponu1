@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-telas-exclusivas-gerenciamento-1";
+  const APP_VERSION = "2026-07-29-gerenciar-valores-simples-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -6891,8 +6891,234 @@
     });
   }
 
+
+
+  // =========================================================
+  // HOTFIX: GERENCIAR VALORES EM MODO SIMPLES
+  // - Oculta importações e ferramentas avançadas que poluem a tela.
+  // - Mantém apenas o fluxo principal: escolher processo, cadastrar valor e editar lista.
+  // =========================================================
+  let observerGerenciarValoresSimples = null;
+
+  function normalizarTextoGerenciarValores(valor) {
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
+  function injetarEstilosGerenciarValoresSimples() {
+    if (document.getElementById('styleGerenciarValoresSimples')) return;
+    const style = document.createElement('style');
+    style.id = 'styleGerenciarValoresSimples';
+    style.textContent = `
+      #painelGerenciarValores.modo-simples-valores .gv-simples-resumo {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 12px;
+        margin: 0 0 18px;
+        padding: 16px;
+        border: 1px solid #dbe3ee;
+        border-radius: 16px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+      }
+      #painelGerenciarValores.modo-simples-valores .gv-simples-resumo .item {
+        min-width: 0;
+      }
+      #painelGerenciarValores.modo-simples-valores .gv-simples-resumo .item strong {
+        display: block;
+        font-size: 13px;
+        color: #0f172a;
+        margin-bottom: 4px;
+      }
+      #painelGerenciarValores.modo-simples-valores .gv-simples-resumo .item span {
+        display: block;
+        font-size: 12px;
+        line-height: 1.45;
+        color: #475569;
+      }
+      #painelGerenciarValores.modo-simples-valores .secao-avancada-oculta,
+      #painelGerenciarValores.modo-simples-valores [data-ocultar-em-modo-simples="1"] {
+        display: none !important;
+      }
+      #painelGerenciarValores.modo-simples-valores .gerenciamento-exclusivo-toolbar + .btn-voltar-gerenciamento,
+      #painelGerenciarValores.modo-simples-valores .gv-botao-voltar-duplicado {
+        display: none !important;
+      }
+      #painelGerenciarValores.modo-simples-valores .gv-secao-destacada {
+        border-left: 4px solid #7c3aed !important;
+        padding-left: 10px !important;
+      }
+      #painelGerenciarValores.modo-simples-valores .gv-lista-processos-simplificada {
+        max-height: 52vh;
+        overflow: auto;
+      }
+      #painelGerenciarValores.modo-simples-valores .gv-dica-topo {
+        margin: -6px 0 16px;
+        color: #64748b;
+        font-size: 12px;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function textoContemAlgum(texto, lista) {
+    const normalizado = normalizarTextoGerenciarValores(texto);
+    return lista.some(item => normalizado.includes(normalizarTextoGerenciarValores(item)));
+  }
+
+  function marcarContainerParaOcultar(elemento, root) {
+    if (!elemento || !root) return false;
+    let atual = elemento;
+    while (atual && atual !== root) {
+      const altura = atual.getBoundingClientRect?.().height || 0;
+      if (altura >= 36 && atual.parentElement === root) {
+        atual.classList.add('secao-avancada-oculta');
+        return true;
+      }
+      if (altura >= 70 && atual.querySelector && atual.querySelector('button, input, textarea, select')) {
+        atual.classList.add('secao-avancada-oculta');
+        return true;
+      }
+      atual = atual.parentElement;
+    }
+    if (elemento.parentElement) {
+      elemento.parentElement.classList.add('secao-avancada-oculta');
+      return true;
+    }
+    return false;
+  }
+
+  function ocultarPorTextoNoPainel(root, textos) {
+    const candidatos = root.querySelectorAll('button, strong, h1, h2, h3, h4, h5, label, span, small, p, div');
+    candidatos.forEach(el => {
+      const txt = el.textContent || '';
+      if (!txt || txt.length > 220) return;
+      if (!textoContemAlgum(txt, textos)) return;
+      marcarContainerParaOcultar(el, root);
+    });
+  }
+
+  function destacarSecaoPorTexto(root, textos) {
+    const candidatos = root.querySelectorAll('strong, h1, h2, h3, h4, h5, label, span, p, div');
+    for (const el of candidatos) {
+      const txt = el.textContent || '';
+      if (!txt || txt.length > 160) continue;
+      if (!textoContemAlgum(txt, textos)) continue;
+      let atual = el;
+      while (atual && atual !== root) {
+        const altura = atual.getBoundingClientRect?.().height || 0;
+        if (altura >= 50 && atual.querySelector && atual.querySelector('button, input, select, table')) {
+          atual.classList.add('gv-secao-destacada');
+          return;
+        }
+        atual = atual.parentElement;
+      }
+    }
+  }
+
+  function inserirResumoModoSimplesGerenciarValores(root) {
+    if (!root || root.querySelector('.gv-simples-resumo')) return;
+    const toolbar = root.querySelector('.gerenciamento-exclusivo-toolbar');
+    const resumo = document.createElement('div');
+    resumo.className = 'gv-simples-resumo';
+    resumo.innerHTML = `
+      <div class="item">
+        <strong>1. Escolha o processo</strong>
+        <span>Use a lista da esquerda para abrir o processo que deseja consultar ou alterar.</span>
+      </div>
+      <div class="item">
+        <strong>2. Cadastre ou ajuste valores</strong>
+        <span>Informe a referência e o valor por peça. A edição continua disponível na tabela abaixo.</span>
+      </div>
+      <div class="item">
+        <strong>3. Consulte os valores cadastrados</strong>
+        <span>Use a busca da lista final para localizar uma referência rapidamente.</span>
+      </div>
+      <div class="item">
+        <strong>Tela simplificada</strong>
+        <span>Importações e ferramentas avançadas foram ocultadas para deixar o gerenciamento mais claro.</span>
+      </div>
+    `;
+    if (toolbar && toolbar.nextSibling) {
+      toolbar.parentNode.insertBefore(resumo, toolbar.nextSibling);
+    } else {
+      root.prepend(resumo);
+    }
+  }
+
+  function simplificarPainelGerenciarValores() {
+    const root = document.getElementById('painelGerenciarValores');
+    if (!root) return;
+
+    root.classList.add('modo-simples-valores');
+    inserirResumoModoSimplesGerenciarValores(root);
+
+    const painelImportacaoNovo = document.getElementById('painelImportacaoTabelaValoresCorpoNu');
+    if (painelImportacaoNovo) {
+      painelImportacaoNovo.classList.add('secao-avancada-oculta');
+    }
+
+    const botoesVoltar = [...root.querySelectorAll('button')]
+      .filter(btn => normalizarTextoGerenciarValores(btn.textContent) === 'voltar para pagamentos');
+    botoesVoltar.slice(1).forEach(btn => btn.classList.add('gv-botao-voltar-duplicado'));
+
+    ocultarPorTextoNoPainel(root, [
+      'importar nova tabela de valores',
+      'importar valores ausentes',
+      '4. importar valores da planilha',
+      'modelo rapido disponivel',
+      'modelo mais facil',
+      'carregar bojo encapado cn',
+      'importar valores colados',
+      'limpar importacao'
+    ]);
+
+    destacarSecaoPorTexto(root, ['1. escolha o processo', '2. renomear processo selecionado', '3. cadastrar valor por referencia', '5. valores cadastrados']);
+
+    const listaProcessos = [...root.querySelectorAll('*')].find(el => {
+      const txt = normalizarTextoGerenciarValores(el.textContent || '');
+      return txt === 'processos cadastrados';
+    });
+    if (listaProcessos) {
+      let atual = listaProcessos;
+      while (atual && atual !== root) {
+        const altura = atual.getBoundingClientRect?.().height || 0;
+        if (altura >= 120 && atual.querySelector && atual.querySelector('button, [role="button"], input')) {
+          atual.classList.add('gv-lista-processos-simplificada');
+          break;
+        }
+        atual = atual.parentElement;
+      }
+    }
+  }
+
+  function iniciarGerenciarValoresSimples() {
+    injetarEstilosGerenciarValoresSimples();
+    simplificarPainelGerenciarValores();
+
+    if (observerGerenciarValoresSimples) return;
+    const root = document.getElementById('painelGerenciarValores');
+    if (!root) return;
+
+    observerGerenciarValoresSimples = new MutationObserver(() => {
+      simplificarPainelGerenciarValores();
+    });
+
+    observerGerenciarValoresSimples.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style']
+    });
+  }
+
   function iniciarRecursosDaVersao() {
     iniciarTelasExclusivasGerenciamento();
+    iniciarGerenciarValoresSimples();
     // Instalada primeiro para barrar a ação antes das rotinas antigas de salvamento.
     iniciarTravasDuplicidadeFaccaoPagamento();
     iniciarRevisaoFinalPagamentos();
