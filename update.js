@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-filtro-fases-gerenciado-admin-1";
+  const APP_VERSION = "2026-07-29-restaurar-filtros-antigos-fases-2";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -4028,7 +4028,15 @@
   function listaOficialFasesParaFiltroExcel() {
     const tipo = setorAtualFiltroExcelManejo() === "calcinha" ? "calcinha" : "sutia";
     const lista = tipo === "calcinha" ? fasesCalcinhaGerenciadas : fasesGerenciadas;
-    return ordenarFasesGerenciadas(Array.isArray(lista) ? lista : []);
+    const oficiais = ordenarFasesGerenciadas(Array.isArray(lista) ? lista : []);
+    if (oficiais.length) return oficiais;
+
+    // Enquanto a restauração inicial ainda não terminou, não deixa o filtro vazio.
+    const cacheHistorico = window.__fasesHistoricasCorpoNu?.[tipo] || [];
+    const valoresDaTela = [...document.querySelectorAll("#listaManejoInline tr[data-manejo-row='1']")]
+      .map(linha => String(valorLinhaFiltroExcel(linha, { campo: "fase", coluna: 4 }) || "").trim())
+      .filter(valor => valor && normalizarFiltroExcelManejo(valor) !== normalizarFiltroExcelManejo("Sem fase"));
+    return ordenarFasesGerenciadas([...cacheHistorico, ...valoresDaTela]);
   }
 
   function limparSelecoesFaseForaDaListaOficial(opcoesOficiais) {
@@ -7671,6 +7679,265 @@
 
 
   // =========================================================
+  // RESTAURAÇÃO SEGURA DAS OPÇÕES ANTIGAS DO FILTRO FASE
+  // - Recupera fases já usadas nas OPs e sugestões antigas locais.
+  // - Separa Sutiã e Calcinha.
+  // - Faz apenas merge: nunca apaga nem substitui a lista atual.
+  // - Sem MutationObserver e sem alterar dados das OPs.
+  // =========================================================
+  const MARCADOR_RESTAURACAO_FASES_ANTIGAS = "restauracaoFiltrosAntigos20260729V2";
+  let restauracaoFasesAntigasEmAndamento = false;
+  let restauracaoFasesAntigasAutomaticaTentada = false;
+  let eventosRestauracaoFasesAntigasInstalados = false;
+
+  function adicionarFaseAoConjunto(conjunto, valor) {
+    const fase = normalizarFaseGerenciada(valor);
+    const chave = chaveFaseGerenciada(fase);
+    if (!fase || !chave) return;
+    if (["SEM FASE", "CAMPO VAZIO", "TODAS", "TODOS"].includes(chave)) return;
+    conjunto.add(fase);
+  }
+
+  function lerSugestoesLocaisAntigas() {
+    try {
+      const lista = JSON.parse(localStorage.getItem("fasesManejoExtras") || "[]");
+      return Array.isArray(lista) ? lista : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function lerOpcoesAtuaisDosDatalists() {
+    const ids = ["manejoFasesList", "manejoFasesListCalcinha"];
+    return ids.flatMap(id => {
+      const datalist = document.getElementById(id);
+      if (!datalist) return [];
+      return [...datalist.querySelectorAll("option")]
+        .map(option => option.value || option.textContent || "")
+        .filter(Boolean);
+    });
+  }
+
+  function coletarFasesDocumentoOrdem(dados, sutia, calcinha) {
+    if (!dados || typeof dados !== "object") return;
+
+    const setores = dados.manejosSetores || {};
+    adicionarFaseAoConjunto(sutia, setores?.sutia?.fase);
+    adicionarFaseAoConjunto(sutia, setores?.bojo?.fase);
+    adicionarFaseAoConjunto(calcinha, setores?.calcinha?.fase);
+
+    adicionarFaseAoConjunto(sutia, dados?.manejoSutia?.fase);
+    adicionarFaseAoConjunto(calcinha, dados?.manejoCalcinha?.fase);
+    adicionarFaseAoConjunto(sutia, dados?.sutia?.fase);
+    adicionarFaseAoConjunto(calcinha, dados?.calcinha?.fase);
+    adicionarFaseAoConjunto(sutia, dados?.faseSutia);
+    adicionarFaseAoConjunto(calcinha, dados?.faseCalcinha);
+
+    // O campo legado "manejo" pertence à estrutura antiga, anterior à separação.
+    // Ele é preservado no Sutiã, que era o manejo original do sistema.
+    adicionarFaseAoConjunto(sutia, dados?.manejo?.fase);
+
+    const tipo = normalizarComparacao(
+      dados?.tipoPeca || dados?.setor || dados?.manejoSetor || dados?.categoria || ""
+    );
+    if (tipo.includes("CALCINHA")) adicionarFaseAoConjunto(calcinha, dados?.fase);
+    else if (tipo.includes("SUTIA") || tipo.includes("SUTIÃ") || tipo.includes("BOJO")) {
+      adicionarFaseAoConjunto(sutia, dados?.fase);
+    }
+  }
+
+  function coletarFasesVisiveisDoManejo(sutia, calcinha) {
+    const tipo = tipoManejoAtualSugestoes() === "calcinha" ? "calcinha" : "sutia";
+    document.querySelectorAll("#listaManejoInline tr[data-manejo-row='1']").forEach(linha => {
+      const valor = linha.querySelector('input[id$="-fase"]')?.value || linha.dataset.fase || "";
+      adicionarFaseAoConjunto(tipo === "calcinha" ? calcinha : sutia, valor);
+    });
+  }
+
+  async function coletarTodasFasesAntigasDoSistema() {
+    const sutia = new Set();
+    const calcinha = new Set();
+
+    // Preserva sugestões antigas do navegador em ambas as listas.
+    // Como eram globais antes da separação, o administrador decide depois onde mantê-las.
+    [...lerSugestoesLocaisAntigas(), ...lerOpcoesAtuaisDosDatalists()].forEach(fase => {
+      adicionarFaseAoConjunto(sutia, fase);
+      adicionarFaseAoConjunto(calcinha, fase);
+    });
+    coletarFasesVisiveisDoManejo(sutia, calcinha);
+
+    const contexto = contextoFirebaseFasesCalcinha || contextoFirebaseFases;
+    if (!contexto?.firestore || !contexto?.db) {
+      throw new Error("Firebase ainda não está pronto para recuperar as fases antigas.");
+    }
+
+    const { firestore, db } = contexto;
+    const snapshot = await firestore.getDocs(firestore.collection(db, "ordensProducao"));
+    snapshot.forEach(documento => coletarFasesDocumentoOrdem(documento.data(), sutia, calcinha));
+
+    const resultado = {
+      sutia: ordenarFasesGerenciadas([...sutia]),
+      calcinha: ordenarFasesGerenciadas([...calcinha])
+    };
+    window.__fasesHistoricasCorpoNu = resultado;
+    return resultado;
+  }
+
+  async function mesclarFasesRecuperadasNoDocumento(documentoId, recuperadas, tipoPeca, forcar = false) {
+    const contexto = contextoFirebaseFasesCalcinha || contextoFirebaseFases;
+    const { firestore, db, user } = contexto;
+    const referencia = firestore.doc(db, "configuracoes", documentoId);
+
+    return firestore.runTransaction(db, async transacao => {
+      const snapshot = await transacao.get(referencia);
+      const dadosAtuais = snapshot.exists() ? snapshot.data() : {};
+      const listaAtual = ordenarFasesGerenciadas(dadosAtuais?.sugestoes || []);
+
+      if (!forcar && dadosAtuais?.[MARCADOR_RESTAURACAO_FASES_ANTIGAS] === true && listaAtual.length) {
+        return { lista: listaAtual, adicionadas: 0, ignorado: true };
+      }
+
+      const chavesAtuais = new Set(listaAtual.map(chaveFaseGerenciada));
+      const novas = ordenarFasesGerenciadas(recuperadas)
+        .filter(fase => !chavesAtuais.has(chaveFaseGerenciada(fase)));
+      const listaFinal = ordenarFasesGerenciadas([...listaAtual, ...novas]);
+
+      transacao.set(referencia, {
+        sugestoes: listaFinal,
+        [MARCADOR_RESTAURACAO_FASES_ANTIGAS]: true,
+        restauradoEm: firestore.serverTimestamp(),
+        restauradoPor: user?.uid || "",
+        atualizadoEm: firestore.serverTimestamp(),
+        atualizadoPor: user?.uid || "",
+        versaoGerenciamento: APP_VERSION,
+        tipoPeca
+      }, { merge: true });
+
+      return { lista: listaFinal, adicionadas: novas.length, ignorado: false };
+    });
+  }
+
+  function atualizarStatusRestauracaoFases(mensagem, tipo = "normal") {
+    ["statusSugestoesFasesAdmin", "statusSugestoesFasesCalcinhaAdmin"].forEach(id => {
+      const elemento = document.getElementById(id);
+      if (!elemento) return;
+      elemento.textContent = mensagem;
+      elemento.style.color = tipo === "erro" ? "#b91c1c" : tipo === "sucesso" ? "#166534" : "#475569";
+    });
+  }
+
+  async function restaurarOpcoesAntigasFases({ manual = false } = {}) {
+    if (restauracaoFasesAntigasEmAndamento) return;
+    if (!usuarioEhAdminFases && !usuarioEhAdminFasesCalcinha) return;
+    if (!contextoFirebaseFasesCalcinha?.user && !contextoFirebaseFases?.user) return;
+
+    restauracaoFasesAntigasEmAndamento = true;
+    atualizarStatusRestauracaoFases("Recuperando todas as opções antigas das OPs...", "normal");
+    document.querySelectorAll("[data-restaurar-fases-antigas]").forEach(btn => {
+      btn.disabled = true;
+      btn.dataset.textoAnterior = btn.textContent;
+      btn.textContent = "Recuperando...";
+    });
+
+    try {
+      const recuperadas = await coletarTodasFasesAntigasDoSistema();
+      if (!recuperadas.sutia.length && !recuperadas.calcinha.length) {
+        throw new Error("Nenhuma fase antiga foi encontrada nas OPs.");
+      }
+
+      const [resultadoSutia, resultadoCalcinha] = await Promise.all([
+        mesclarFasesRecuperadasNoDocumento("fasesManejo", recuperadas.sutia, "sutia", manual),
+        mesclarFasesRecuperadasNoDocumento(FASES_CALCINHA_CONFIG_DOCUMENTO, recuperadas.calcinha, "calcinha", manual)
+      ]);
+
+      const totalAdicionado = resultadoSutia.adicionadas + resultadoCalcinha.adicionadas;
+      atualizarStatusRestauracaoFases(
+        totalAdicionado
+          ? `${totalAdicionado} opção(ões) antiga(s) recuperada(s). Agora você pode organizá-las e remover apenas o que não deseja.`
+          : "As opções antigas já estavam recuperadas. Nenhum item foi apagado.",
+        "sucesso"
+      );
+      showUpdateToast(
+        totalAdicionado
+          ? `Filtros antigos restaurados: ${resultadoSutia.adicionadas} do Sutiã e ${resultadoCalcinha.adicionadas} da Calcinha.`
+          : "Todas as opções antigas já estão disponíveis para gerenciamento."
+      );
+    } catch (error) {
+      console.error("Erro ao restaurar opções antigas de fase.", error);
+      atualizarStatusRestauracaoFases(
+        "Não foi possível recuperar as opções antigas agora. Use o botão Recuperar opções antigas novamente.",
+        "erro"
+      );
+      if (manual) mostrarAvisoFormulario("Não foi possível recuperar as opções antigas. Confira a internet e tente novamente.");
+    } finally {
+      restauracaoFasesAntigasEmAndamento = false;
+      document.querySelectorAll("[data-restaurar-fases-antigas]").forEach(btn => {
+        btn.disabled = false;
+        btn.textContent = btn.dataset.textoAnterior || "Recuperar opções antigas";
+      });
+    }
+  }
+
+  function garantirBotoesRestauracaoFasesAntigas() {
+    const configuracoes = [
+      { painel: "painelSugestoesFasesAdmin", tipo: "sutia" },
+      { painel: ID_PAINEL_FASES_CALCINHA, tipo: "calcinha" }
+    ];
+
+    configuracoes.forEach(config => {
+      const painel = document.getElementById(config.painel);
+      if (!painel || painel.querySelector(`[data-restaurar-fases-antigas="${config.tipo}"]`)) return;
+      const cabecalho = painel.querySelector(".panel-header");
+      if (!cabecalho) return;
+
+      const botao = document.createElement("button");
+      botao.type = "button";
+      botao.className = "btn";
+      botao.dataset.restaurarFasesAntigas = config.tipo;
+      botao.textContent = "Recuperar opções antigas";
+      botao.title = "Busca nas OPs todas as fases usadas anteriormente e adiciona somente as que estão faltando.";
+      botao.style.marginLeft = "auto";
+      botao.style.whiteSpace = "nowrap";
+      cabecalho.appendChild(botao);
+    });
+  }
+
+  function instalarEventosRestauracaoFasesAntigas() {
+    if (eventosRestauracaoFasesAntigasInstalados) return;
+    eventosRestauracaoFasesAntigasInstalados = true;
+
+    document.addEventListener("click", event => {
+      const botao = event.target?.closest?.("[data-restaurar-fases-antigas]");
+      if (botao) {
+        event.preventDefault();
+        restaurarOpcoesAntigasFases({ manual: true });
+        return;
+      }
+
+      if (event.target?.closest?.('.nav-btn[data-page="usuarios"]')) {
+        [80, 300, 700].forEach(delay => setTimeout(garantirBotoesRestauracaoFasesAntigas, delay));
+      }
+    }, true);
+  }
+
+  function iniciarRestauracaoFasesAntigas() {
+    instalarEventosRestauracaoFasesAntigas();
+    [350, 900, 1800, 3000].forEach(delay => setTimeout(() => {
+      garantirBotoesRestauracaoFasesAntigas();
+      if (
+        !restauracaoFasesAntigasAutomaticaTentada &&
+        (usuarioEhAdminFases || usuarioEhAdminFasesCalcinha) &&
+        (contextoFirebaseFasesCalcinha?.user || contextoFirebaseFases?.user)
+      ) {
+        restauracaoFasesAntigasAutomaticaTentada = true;
+        restaurarOpcoesAntigasFases({ manual: false });
+      }
+    }, delay));
+  }
+
+
+
+  // =========================================================
   // GERENCIAR VALORES — INTERFACE ORGANIZADA E SEGURA
   // Aplicação pontual, sem MutationObserver e sem alterar a lógica financeira.
   // =========================================================
@@ -7969,6 +8236,7 @@
     iniciarHotfixNecessidade();
     iniciarGestaoSugestoesFases();
     iniciarGestaoSugestoesSeparadasSutiaCalcinha();
+    iniciarRestauracaoFasesAntigas();
     iniciarSetasListasManejo();
     iniciarMovimentacoesRegistradasUsuario();
     iniciarEdicaoLocalUsuarios();

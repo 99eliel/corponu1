@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-29-filtro-fases-gerenciado-admin-1",
-  "updatedAt": "2026-07-29T08:20:00-03:00",
-  "notes": "Opcoes do filtro Fase passam a ser controladas pelo administrador, separadas entre Sutia e Calcinha."
+  "version": "2026-07-29-restaurar-filtros-antigos-fases-2",
+  "updatedAt": "2026-07-29T08:35:00-03:00",
+  "notes": "Restaura e mescla todas as opcoes antigas do filtro Fase para gerenciamento separado de Sutia e Calcinha."
 }
