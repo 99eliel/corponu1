@@ -1,0 +1,37 @@
+REVISÃO DA LÓGICA DE PAGAMENTOS — CORPONU
+
+1. ORIGEM DO PAGAMENTO
+O pagamento é criado a partir da chegada de uma movimentação de facção. A movimentação e o pagamento ficam ligados pelo campo movimentacaoId.
+
+2. CÁLCULO
+Quantidade paga = quantidade enviada - falta
+Subtotal = quantidade paga x valor unitário
+Total = subtotal - desconto por defeito
+O total nunca fica negativo.
+
+3. QUANDO NÃO EXISTE VALOR
+O sistema cria um registro com status sem_valor, valorPendente verdadeiro e total zero. A nova trava impede que esse lançamento seja marcado como pago antes do cadastro do preço.
+
+4. DUPLICIDADE
+Pagamentos ligados à mesma movimentação, ao mesmo preço/processo, são tratados como possíveis duplicidades. Pagamentos manuais são comparados por OP, referência, facção, processo, data e quantidade.
+
+5. FECHAMENTO
+O fechamento em lote só é liberado para administrador ativo. Ele é bloqueado quando há item sem valor ou possível duplicidade. O lote é gravado de uma só vez no Firestore, limitado a 450 registros por fechamento.
+
+6. AUDITORIA
+O fechamento em lote e a alteração individual são registrados em logsAlteracoes com usuário, data, quantidade, total e filtros utilizados.
+
+7. RELATÓRIO
+O relatório é agrupado por facção e exibe os dados bancários/cadastrais disponíveis: PIX, titular, cidade e telefone. Também mostra todos os componentes do cálculo e os totais por facção e geral.
+
+8. DADOS AUSENTES
+Quando uma facção não possui PIX, o relatório exibe NÃO CADASTRADA e o painel de conferência avisa antes da impressão. O sistema não preenche automaticamente uma chave PIX.
+
+9. ESTADOS PRINCIPAIS
+- sem_valor: chegada registrada, mas falta preço.
+- pendente: possui valor e ainda não foi pago.
+- pago: pagamento confirmado, com pagoEm e pagoPor.
+- cancelado/excluído: não entra nos totais ativos.
+
+10. CORREÇÕES DE CHEGADA
+As correções feitas em Movimentações registradas devem atualizar ou remover o pagamento pendente correspondente. Pagamentos já pagos ficam protegidos para evitar alteração operacional indevida.

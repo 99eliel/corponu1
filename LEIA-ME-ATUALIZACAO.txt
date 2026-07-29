@@ -1,70 +1,65 @@
-ATUALIZAÇÃO CORPONU
-TRAVAS CONTRA ENVIO, CHEGADA E PAGAMENTO DUPLICADOS
-Versão: 2026-07-28-travas-duplicidade-faccao-pagamento-1
+CORPONU — REVISÃO FINAL DE PAGAMENTOS E RELATÓRIO COM PIX
+Versão: 2026-07-28-pagamentos-relatorio-pix-auditoria-1
 
-ARQUIVOS PARA SUBSTITUIR NO GITHUB
-- update.js
-- sw.js
-- version.json
+OBJETIVO
+Preparar a área de Pagamentos para apresentação e uso operacional, mantendo todas as correções anteriores do sistema.
+
+ARQUIVOS QUE DEVEM SER SUBSTITUÍDOS NO GITHUB
+1. update.js
+2. sw.js
+3. version.json
+
+ARQUIVOS DE REGRAS INCLUÍDOS APENAS COMO CÓPIA DE SEGURANÇA
 - firebase-rules.txt
+- firestore-rules.txt
+- storage-rules.txt
 
-O arquivo firestore-rules.txt contém uma cópia idêntica das regras, para facilitar copiar e colar.
+Nesta atualização, NÃO é necessário publicar novamente as regras do Firebase.
 
-PASSO OBRIGATÓRIO NO FIREBASE
-1. Abra o Firebase Console do projeto.
-2. Entre em Firestore Database > Rules.
-3. Apague as regras atuais.
-4. Cole TODO o conteúdo de firebase-rules.txt ou firestore-rules.txt.
-5. Clique em Publicar.
+O QUE A ATUALIZAÇÃO FAZ
+- Adiciona um painel de conferência antes do fechamento.
+- Mostra quantidade e valor total dos pagamentos filtrados.
+- Mostra todos os pagamentos que ainda estão sem valor.
+- Mostra facções do filtro atual que não possuem PIX cadastrado.
+- Identifica possíveis pagamentos duplicados.
+- Impede marcar pagamentos sem valor como pagos.
+- Impede fechar um lote que contenha possíveis duplicidades.
+- Registra no histórico o fechamento do lote e a alteração individual do pagamento.
+- Substitui a impressão antiga por um relatório completo, agrupado por facção.
+- Exibe no relatório: nome da facção, cidade, telefone, chave PIX, titular do PIX, OP, referência, processo, quantidade, falta, valor unitário, subtotal, desconto, total e status.
+- Mantém assinatura de conferência da empresa e do responsável da facção.
+- Separa cada facção em uma nova página na impressão.
 
-Sem publicar as regras, a tela mostrará que não conseguiu ativar a trava.
+COMO PUBLICAR
+1. Entre no repositório do GitHub.
+2. Substitua update.js, sw.js e version.json pelos arquivos desta pasta.
+3. Faça um único commit.
+4. Abra o sistema.
+5. Clique no botão Atualizar do canto superior direito.
+6. Caso a versão antiga continue aparecendo, pressione Ctrl + F5 uma vez.
 
-O QUE ESTA VERSÃO BLOQUEIA
+COMO CONFERIR O PIX
+1. Entre em Facções.
+2. Confira se a facção possui chave PIX cadastrada.
+3. Entre em Pagamentos.
+4. Aplique o período e a facção desejados.
+5. Clique em “Conferir agora”.
+6. O cartão “Facções sem PIX” deve ficar em zero antes de imprimir.
+7. Clique em “Relatório completo com PIX”.
 
-1. ENVIO DUPLICADO PARA FACÇÃO
-- O envio normal pelo Manejo consulta o Firestore antes de gravar.
-- Se a OP já possuir movimentação de facção para o mesmo setor, o novo envio é bloqueado.
-- Depois de a facção retornar, uma nova etapa deve ser feita pelo botão Reenviar facção.
-- No reenvio, também é bloqueado outro reenvio enquanto já existir uma etapa em andamento.
+COMO FECHAR PAGAMENTOS COM SEGURANÇA
+1. Selecione o período.
+2. Selecione a facção, quando desejar fechar separadamente.
+3. Use “Pendentes com valor”.
+4. Clique em “Conferir agora”.
+5. Confirme que “Sem valor” e “Possíveis duplicidades” estão zerados.
+6. Imprima ou salve o relatório em PDF.
+7. Clique em “Marcar filtrados como pagos”.
 
-2. CHEGADA NORMAL DUPLICADA
-- Antes de registrar a chegada, o sistema lê a movimentação diretamente no servidor.
-- Se já houver data de chegada, status Retornou/Finalizado/Encaminhado ou pagamento ligado à movimentação, a nova confirmação é bloqueada.
-- Correções devem ser feitas em Facções > Movimentações registradas.
-
-3. CHEGADA MANUAL DUPLICADA
-- É considerada igual quando coincidem OP, referência, facção, processo, data de chegada e quantidade.
-- Se já existir, o sistema não cria outra movimentação nem outro pagamento.
-
-4. PAGAMENTO MANUAL DUPLICADO
-- Um novo pagamento é bloqueado quando já existe pagamento com a mesma OP, preço/processo, facção, data e quantidade.
-- Editar um pagamento já existente continua permitido.
-
-5. DUAS ABAS OU DOIS USUÁRIOS AO MESMO TEMPO
-- A coleção travasOperacionais cria uma reserva temporária de 45 segundos.
-- Se duas pessoas confirmarem a mesma operação simultaneamente, apenas a primeira prossegue.
-- A trava é apagada depois da conclusão ou expira automaticamente se houver falha.
-
-O QUE CONTINUA PERMITIDO
-- Reenviar a OP para outra etapa depois que a chegada anterior foi registrada.
-- Editar ou excluir uma chegada pela função Movimentações registradas.
-- Editar um pagamento existente.
-- Enviar sutiã e calcinha separadamente, pois a verificação considera o setor/processo.
-- Repetir uma chegada manual legítima quando data ou quantidade forem diferentes.
-
-TESTE RECOMENDADO
-1. Escolha uma OP que nunca foi enviada e mande para uma facção.
-2. Volte ao Manejo e tente enviar a mesma OP novamente: deve bloquear.
-3. Registre a chegada da movimentação.
-4. Tente registrar a mesma chegada novamente: deve bloquear.
-5. Faça uma chegada manual e tente repetir exatamente os mesmos dados: deve bloquear.
-6. Em Pagamentos, tente cadastrar manualmente duas vezes a mesma entrega: a segunda deve bloquear.
-7. Abra o sistema em duas abas e confirme a mesma operação quase ao mesmo tempo: uma delas deve ser bloqueada.
-
-ATUALIZAÇÃO NO NAVEGADOR
-Depois do commit e da publicação das regras:
-1. Abra o sistema.
-2. Clique em Atualizar no canto superior direito.
-3. Caso necessário, pressione Ctrl + F5 uma vez.
-
-Não substitua app.js, index.html, style.css ou storage-rules.txt nesta atualização.
+OBSERVAÇÕES IMPORTANTES
+- O pagamento sem valor não pode ser marcado como pago.
+- Uma possível duplicidade bloqueia o fechamento até ser revisada.
+- A chave PIX vem do cadastro da facção; o relatório não inventa nem completa dados ausentes.
+- Alterar o valor atual de um processo não deve ser usado para recalcular manualmente pagamentos antigos já pagos.
+- Esta atualização não altera documentos antigos do Firebase automaticamente.
+- A revisão realizada foi estática sobre os arquivos do repositório. O teste final deve ser feito com a conta administradora e os dados reais antes da apresentação.

@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-28-travas-duplicidade-faccao-pagamento-1";
+  const APP_VERSION = "2026-07-28-pagamentos-relatorio-pix-auditoria-1";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -5589,9 +5589,900 @@
     }, 1200);
   }
 
+
+  // =========================================================
+  // REVISÃO FINAL: PAGAMENTOS + RELATÓRIO COM PIX
+  // - Acrescenta conferência financeira antes do fechamento.
+  // - Exibe pagamentos sem valor e possíveis duplicidades.
+  // - Impede marcar pagamento sem valor como pago.
+  // - Gera relatório detalhado por facção com PIX, titular,
+  //   cidade, telefone, OPs, descontos e totais.
+  // =========================================================
+  let cachePagamentoFinal = {
+    expiraEm: 0,
+    pagamentos: [],
+    faccoes: []
+  };
+  let carregandoConferenciaPagamentoFinal = false;
+  let observerTabelaPagamentoFinal = null;
+  let aplicandoTabelaPagamentoFinal = false;
+  let timerConferenciaPagamentoFinal = null;
+
+  function escapeHtmlPagamentoFinal(valor) {
+    return String(valor ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function normalizarNomePagamentoFinal(valor) {
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function formatarMoedaPagamentoFinal(valor) {
+    return Number(valor || 0).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    });
+  }
+
+  function formatarNumeroPagamentoFinal(valor, casas = 0) {
+    return Number(valor || 0).toLocaleString("pt-BR", {
+      minimumFractionDigits: casas,
+      maximumFractionDigits: casas
+    });
+  }
+
+  function dataPagamentoFinalBR(valor) {
+    const texto = String(valor || "").trim();
+    const match = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+    return texto || "-";
+  }
+
+  function statusPagamentoFinal(item) {
+    if (item?.valorPendente === true || String(item?.statusPagamento || "") === "sem_valor") {
+      return "sem_valor";
+    }
+    return String(item?.statusPagamento || "pendente").toLowerCase();
+  }
+
+  function pagamentoAtivoFinal(item) {
+    const status = statusPagamentoFinal(item);
+    return !item?.excluido && !["cancelado", "excluido"].includes(status);
+  }
+
+  function pontuarCadastroFaccaoPagamentoFinal(faccao) {
+    let pontos = 0;
+    if (faccao?.ativo !== false) pontos += 15;
+    if (!faccao?.cadastroPendente) pontos += 12;
+    if (faccao?.chavePix || faccao?.pix) pontos += 10;
+    if (faccao?.titularPix || faccao?.titular) pontos += 5;
+    if (faccao?.cidade) pontos += 3;
+    if (faccao?.celular || faccao?.telefone) pontos += 3;
+    return pontos;
+  }
+
+  function extrairTitularPixPagamentoFinal(faccao) {
+    const direto = String(
+      faccao?.titularPix ||
+      faccao?.titular ||
+      faccao?.nomeTitularPix ||
+      faccao?.dadosPagamento?.titular ||
+      ""
+    ).trim();
+    if (direto) return direto;
+
+    const observacoes = String(faccao?.observacoes || "");
+    const match = observacoes.match(/Titular\s*PIX\s*:\s*([^|;\n]+)/i);
+    return match?.[1]?.trim() || "";
+  }
+
+  function dadosCadastroFaccaoPagamentoFinal(nome, faccoes) {
+    const chave = normalizarNomePagamentoFinal(nome);
+    const candidatas = (faccoes || [])
+      .filter(item => {
+        const atual = normalizarNomePagamentoFinal(item?.nome);
+        if (!atual || !chave) return false;
+        if (atual === chave) return true;
+        if (atual.includes(chave) || chave.includes(atual)) {
+          return Math.abs(atual.length - chave.length) <= 18;
+        }
+        return false;
+      })
+      .sort((a, b) => pontuarCadastroFaccaoPagamentoFinal(b) - pontuarCadastroFaccaoPagamentoFinal(a));
+
+    const faccao = candidatas[0] || {};
+    return {
+      nome: faccao.nome || nome || "SEM FACÇÃO",
+      cidade: faccao.cidade || "",
+      chavePix: String(
+        faccao.chavePix ||
+        faccao.pix ||
+        faccao.dadosPagamento?.pix ||
+        ""
+      ).trim(),
+      titularPix: extrairTitularPixPagamentoFinal(faccao),
+      celular: String(faccao.celular || faccao.telefone || faccao.whatsapp || "").trim(),
+      observacoes: String(faccao.observacoes || "").trim(),
+      cadastroEncontrado: Boolean(candidatas.length)
+    };
+  }
+
+  async function carregarDadosPagamentoFinal(forcar = false) {
+    const agora = Date.now();
+    if (!forcar && cachePagamentoFinal.expiraEm > agora) return cachePagamentoFinal;
+
+    const contexto = await obterContextoTravasDuplicidade();
+    const { firestore, db, auth } = contexto;
+    const usuario = auth.currentUser;
+    if (!usuario) throw new Error("Usuário ainda não autenticado.");
+
+    const perfilSnap = await firestore.getDoc(
+      firestore.doc(db, "usuarios", usuario.uid)
+    );
+    const perfil = perfilSnap.exists() ? perfilSnap.data() : {};
+    const ehAdminAtivo = perfil?.tipo === "admin" && perfil?.ativo === true;
+
+    const pagamentosRef = firestore.collection(db, "entregasPagamento");
+    const consultaPagamentos = ehAdminAtivo
+      ? pagamentosRef
+      : firestore.query(pagamentosRef, firestore.where("criadoPor", "==", usuario.uid));
+
+    const [pagamentosSnap, faccoesSnap] = await Promise.all([
+      firestore.getDocs(consultaPagamentos),
+      firestore.getDocs(firestore.collection(db, "faccoes"))
+    ]);
+
+    cachePagamentoFinal = {
+      expiraEm: agora + 20 * 1000,
+      pagamentos: pagamentosSnap.docs.map(item => ({ id: item.id, ...item.data() })),
+      faccoes: faccoesSnap.docs.map(item => ({ id: item.id, ...item.data() })),
+      usuarioUid: usuario.uid,
+      ehAdmin: ehAdminAtivo
+    };
+    return cachePagamentoFinal;
+  }
+
+  function filtrosPagamentoFinal() {
+    return {
+      inicio: String(document.getElementById("pagamentoDataInicio")?.value || ""),
+      fim: String(document.getElementById("pagamentoDataFim")?.value || ""),
+      faccao: String(document.getElementById("pagamentoFiltroFaccao")?.value || ""),
+      referencia: String(document.getElementById("pagamentoFiltroReferencia")?.value || ""),
+      precoId: String(document.getElementById("pagamentoFiltroPreco")?.value || ""),
+      status: String(document.getElementById("pagamentoFiltroStatus")?.value || "pendente")
+    };
+  }
+
+  function filtrarPagamentosFinal(pagamentos, filtros = filtrosPagamentoFinal()) {
+    return (pagamentos || []).filter(item => {
+      if (!pagamentoAtivoFinal(item)) return false;
+      const data = String(item.dataEntrega || "");
+      if (filtros.inicio && data < filtros.inicio) return false;
+      if (filtros.fim && data > filtros.fim) return false;
+      if (filtros.faccao && String(item.faccao || "") !== filtros.faccao) return false;
+      if (
+        filtros.referencia &&
+        normalizarNomePagamentoFinal(item.referencia) !== normalizarNomePagamentoFinal(filtros.referencia)
+      ) return false;
+      if (
+        filtros.precoId &&
+        String(item.precoReferenciaId || item.servicoId || "") !== filtros.precoId
+      ) return false;
+
+      const status = statusPagamentoFinal(item);
+      if (filtros.status === "sem_valor" && status !== "sem_valor") return false;
+      if (filtros.status === "pendente" && status !== "pendente") return false;
+      if (filtros.status === "pago" && status !== "pago") return false;
+      return true;
+    });
+  }
+
+  function chaveDuplicidadePagamentoFinal(item) {
+    if (item?.movimentacaoId) {
+      return [
+        "MOV",
+        String(item.movimentacaoId),
+        String(item.precoReferenciaId || item.servicoId || ""),
+        normalizarNomePagamentoFinal(item.processo || item.servicoNome)
+      ].join("|");
+    }
+    return [
+      "MANUAL",
+      normalizarNomePagamentoFinal(item?.numeroOP),
+      normalizarNomePagamentoFinal(item?.referencia),
+      normalizarNomePagamentoFinal(item?.faccao),
+      normalizarNomePagamentoFinal(item?.processo || item?.servicoNome),
+      String(item?.dataEntrega || ""),
+      Number(item?.quantidade || 0)
+    ].join("|");
+  }
+
+  function detectarDuplicidadesPagamentoFinal(pagamentos) {
+    const mapa = new Map();
+    (pagamentos || []).filter(pagamentoAtivoFinal).forEach(item => {
+      const chave = chaveDuplicidadePagamentoFinal(item);
+      if (!mapa.has(chave)) mapa.set(chave, []);
+      mapa.get(chave).push(item);
+    });
+    return [...mapa.entries()]
+      .filter(([, itens]) => itens.length > 1)
+      .map(([chave, itens]) => ({ chave, itens }));
+  }
+
+  function garantirOpcaoSemValorPagamentoFinal() {
+    const select = document.getElementById("pagamentoFiltroStatus");
+    if (!select) return;
+    const pendente = [...select.options].find(option => option.value === "pendente");
+    if (pendente) pendente.textContent = "Pendentes com valor";
+    if (![...select.options].some(option => option.value === "sem_valor")) {
+      const option = document.createElement("option");
+      option.value = "sem_valor";
+      option.textContent = "Pendentes sem valor";
+      const todas = [...select.options].find(item => item.value === "");
+      select.insertBefore(option, todas || null);
+    }
+  }
+
+  function injetarEstilosPagamentoFinal() {
+    if (document.getElementById("stylePagamentoFinalPix")) return;
+    const style = document.createElement("style");
+    style.id = "stylePagamentoFinalPix";
+    style.textContent = `
+      #painelConferenciaPagamentoFinal {
+        margin: 12px 0 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #f8fafc, #eef2ff);
+        padding: 14px;
+      }
+      #painelConferenciaPagamentoFinal .pagamento-final-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+      #painelConferenciaPagamentoFinal h4 { margin: 0; font-size: 15px; }
+      #painelConferenciaPagamentoFinal p { margin: 3px 0 0; color: #475569; font-size: 12px; }
+      .pagamento-final-cards {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(120px, 1fr));
+        gap: 8px;
+      }
+      .pagamento-final-card {
+        background: #fff;
+        border: 1px solid #dbeafe;
+        border-radius: 10px;
+        padding: 9px;
+      }
+      .pagamento-final-card span { display: block; color: #64748b; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+      .pagamento-final-card strong { display: block; margin-top: 4px; font-size: 17px; color: #0f172a; }
+      .pagamento-final-card.alerta { border-color: #fdba74; background: #fff7ed; }
+      .pagamento-final-card.erro { border-color: #fca5a5; background: #fef2f2; }
+      #alertasConferenciaPagamentoFinal { margin-top: 9px; }
+      .pagamento-final-ok, .pagamento-final-aviso {
+        border-radius: 9px;
+        padding: 9px 10px;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .pagamento-final-ok { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+      .pagamento-final-aviso { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+      .badge-pagamento-sem-valor {
+        display: inline-flex !important;
+        background: #fff7ed !important;
+        color: #9a3412 !important;
+        border: 1px solid #fdba74 !important;
+      }
+      #btnImprimirPagamento { white-space: nowrap; }
+      @media (max-width: 900px) {
+        .pagamento-final-cards { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+        #painelConferenciaPagamentoFinal .pagamento-final-header { align-items: flex-start; flex-direction: column; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function inserirPainelConferenciaPagamentoFinal() {
+    if (document.getElementById("painelConferenciaPagamentoFinal")) return;
+    const filtros = document.querySelector("#pagamentos .pagamento-filtros");
+    if (!filtros) return;
+
+    const painel = document.createElement("div");
+    painel.id = "painelConferenciaPagamentoFinal";
+    painel.innerHTML = `
+      <div class="pagamento-final-header">
+        <div>
+          <h4>Conferência antes do pagamento</h4>
+          <p>Verifica valores pendentes, possíveis duplicidades e dados PIX das facções.</p>
+        </div>
+        <button class="btn btn-sm" id="btnAtualizarConferenciaPagamentoFinal" type="button">Conferir agora</button>
+      </div>
+      <div class="pagamento-final-cards">
+        <div class="pagamento-final-card"><span>Itens filtrados</span><strong id="confPagamentoItens">0</strong></div>
+        <div class="pagamento-final-card"><span>Total filtrado</span><strong id="confPagamentoTotal">R$ 0,00</strong></div>
+        <div class="pagamento-final-card alerta"><span>Sem valor na base</span><strong id="confPagamentoSemValor">0</strong></div>
+        <div class="pagamento-final-card alerta"><span>Facções sem PIX</span><strong id="confPagamentoSemPix">0</strong></div>
+        <div class="pagamento-final-card erro"><span>Possíveis duplicidades</span><strong id="confPagamentoDuplicados">0</strong></div>
+      </div>
+      <div id="alertasConferenciaPagamentoFinal"><div class="pagamento-final-ok">Aguardando conferência.</div></div>
+    `;
+    filtros.insertAdjacentElement("afterend", painel);
+  }
+
+  function setTextoPagamentoFinal(id, texto) {
+    const elemento = document.getElementById(id);
+    if (elemento) elemento.textContent = texto;
+  }
+
+  async function atualizarConferenciaPagamentoFinal(forcar = false) {
+    if (carregandoConferenciaPagamentoFinal) return;
+    carregandoConferenciaPagamentoFinal = true;
+    const alertasBox = document.getElementById("alertasConferenciaPagamentoFinal");
+    if (alertasBox) alertasBox.innerHTML = `<div class="pagamento-final-ok">Conferindo dados financeiros...</div>`;
+
+    try {
+      const dados = await carregarDadosPagamentoFinal(forcar);
+      const filtrados = filtrarPagamentosFinal(dados.pagamentos);
+      const semValorBase = dados.pagamentos.filter(item => pagamentoAtivoFinal(item) && statusPagamentoFinal(item) === "sem_valor");
+      const duplicidades = detectarDuplicidadesPagamentoFinal(dados.pagamentos);
+      const nomesFaccoesFiltradas = [...new Set(filtrados.map(item => String(item.faccao || "SEM FACÇÃO")))];
+      const semPix = nomesFaccoesFiltradas.filter(nome => {
+        const cadastro = dadosCadastroFaccaoPagamentoFinal(nome, dados.faccoes);
+        return !cadastro.chavePix;
+      });
+      const total = filtrados.reduce((soma, item) => soma + Number(item.total || 0), 0);
+
+      setTextoPagamentoFinal("confPagamentoItens", filtrados.length.toLocaleString("pt-BR"));
+      setTextoPagamentoFinal("confPagamentoTotal", formatarMoedaPagamentoFinal(total));
+      setTextoPagamentoFinal("confPagamentoSemValor", semValorBase.length.toLocaleString("pt-BR"));
+      setTextoPagamentoFinal("confPagamentoSemPix", semPix.length.toLocaleString("pt-BR"));
+      setTextoPagamentoFinal("confPagamentoDuplicados", duplicidades.length.toLocaleString("pt-BR"));
+
+      const avisos = [];
+      if (semValorBase.length) {
+        avisos.push(`${semValorBase.length} pagamento(s) estão sem valor cadastrado. Use o filtro “Pendentes sem valor” antes de fechar o período.`);
+      }
+      if (semPix.length) {
+        avisos.push(`Sem PIX cadastrado no filtro atual: ${semPix.slice(0, 8).join(", ")}${semPix.length > 8 ? "..." : ""}.`);
+      }
+      if (duplicidades.length) {
+        avisos.push(`${duplicidades.length} possível(is) duplicidade(s) foram identificadas. Revise antes de marcar como pago.`);
+      }
+
+      if (alertasBox) {
+        alertasBox.innerHTML = avisos.length
+          ? `<div class="pagamento-final-aviso"><strong>Atenção:</strong><br>${avisos.map(item => `• ${escapeHtmlPagamentoFinal(item)}`).join("<br>")}</div>`
+          : `<div class="pagamento-final-ok"><strong>Conferência concluída:</strong> os pagamentos filtrados possuem valor, não há duplicidade aparente e as facções exibidas possuem PIX cadastrado.</div>`;
+      }
+      aprimorarTabelaEntregasPagamentoFinal(dados.pagamentos);
+    } catch (error) {
+      console.error("Erro na conferência final de pagamentos.", error);
+      if (alertasBox) {
+        alertasBox.innerHTML = `<div class="pagamento-final-aviso">Não foi possível concluir a conferência. Verifique a conexão e as permissões.</div>`;
+      }
+    } finally {
+      carregandoConferenciaPagamentoFinal = false;
+    }
+  }
+
+  function agendarConferenciaPagamentoFinal(forcar = false) {
+    clearTimeout(timerConferenciaPagamentoFinal);
+    timerConferenciaPagamentoFinal = setTimeout(() => atualizarConferenciaPagamentoFinal(forcar), 160);
+  }
+
+  function idPagamentoPeloBotaoFinal(botao) {
+    const onclick = String(botao?.getAttribute("onclick") || "");
+    const match = onclick.match(/alternarStatusEntregaPagamento\(['"]([^'"]+)['"]\)/);
+    return match?.[1] || "";
+  }
+
+  function aprimorarTabelaEntregasPagamentoFinal(pagamentos = cachePagamentoFinal.pagamentos) {
+    if (aplicandoTabelaPagamentoFinal) return;
+    const tbody = document.getElementById("listaEntregasPagamento");
+    if (!tbody) return;
+    aplicandoTabelaPagamentoFinal = true;
+    try {
+      const mapa = new Map((pagamentos || []).map(item => [String(item.id), item]));
+      tbody.querySelectorAll("tr").forEach(linha => {
+        const botao = linha.querySelector('button[onclick*="alternarStatusEntregaPagamento"]');
+        const id = idPagamentoPeloBotaoFinal(botao);
+        if (!id) return;
+        const item = mapa.get(id);
+        if (!item) return;
+        const status = statusPagamentoFinal(item);
+        if (status !== "sem_valor") return;
+
+        const badge = linha.querySelector(".badge");
+        if (badge) {
+          badge.textContent = "Sem valor";
+          badge.classList.add("badge-pagamento-sem-valor");
+        }
+        if (botao) {
+          botao.textContent = "Cadastrar valor";
+          botao.title = "Cadastre o valor da referência e processo antes de pagar.";
+          botao.classList.remove("btn-success");
+          botao.classList.add("btn-warning");
+        }
+      });
+    } finally {
+      aplicandoTabelaPagamentoFinal = false;
+    }
+  }
+
+  function instalarObserverTabelaPagamentoFinal() {
+    const tbody = document.getElementById("listaEntregasPagamento");
+    if (!tbody) {
+      setTimeout(instalarObserverTabelaPagamentoFinal, 400);
+      return;
+    }
+    if (observerTabelaPagamentoFinal) observerTabelaPagamentoFinal.disconnect();
+    observerTabelaPagamentoFinal = new MutationObserver(() => {
+      queueMicrotask(() => aprimorarTabelaEntregasPagamentoFinal());
+    });
+    observerTabelaPagamentoFinal.observe(tbody, { childList: true, subtree: true });
+  }
+
+  function textoFiltrosRelatorioPagamentoFinal() {
+    const filtros = filtrosPagamentoFinal();
+    const partes = [];
+    if (filtros.inicio || filtros.fim) {
+      partes.push(`Período: ${filtros.inicio ? dataPagamentoFinalBR(filtros.inicio) : "início"} até ${filtros.fim ? dataPagamentoFinalBR(filtros.fim) : "hoje"}`);
+    }
+    if (filtros.faccao) partes.push(`Facção: ${filtros.faccao}`);
+    if (filtros.referencia) partes.push(`Referência: ${filtros.referencia}`);
+    const processoTexto = document.getElementById("pagamentoFiltroPreco")?.selectedOptions?.[0]?.textContent || "";
+    if (filtros.precoId && processoTexto) partes.push(`Processo: ${processoTexto}`);
+    const statusTexto = document.getElementById("pagamentoFiltroStatus")?.selectedOptions?.[0]?.textContent || "Todas";
+    partes.push(`Pagamento: ${statusTexto}`);
+    return partes.join(" | ");
+  }
+
+  function agruparPorFaccaoPagamentoFinal(pagamentos) {
+    const mapa = new Map();
+    [...(pagamentos || [])]
+      .sort((a, b) => {
+        const faccao = String(a.faccao || "").localeCompare(String(b.faccao || ""), "pt-BR", { numeric: true });
+        if (faccao) return faccao;
+        const data = String(a.dataEntrega || "").localeCompare(String(b.dataEntrega || ""));
+        if (data) return data;
+        return String(a.numeroOP || "").localeCompare(String(b.numeroOP || ""), "pt-BR", { numeric: true });
+      })
+      .forEach(item => {
+        const nome = String(item.faccao || "SEM FACÇÃO");
+        if (!mapa.has(nome)) mapa.set(nome, []);
+        mapa.get(nome).push(item);
+      });
+    return [...mapa.entries()].map(([faccao, itens]) => ({ faccao, itens }));
+  }
+
+  async function imprimirRelatorioPagamentoFinal() {
+    try {
+      const dados = await carregarDadosPagamentoFinal(true);
+      const pagamentos = filtrarPagamentosFinal(dados.pagamentos);
+      if (!pagamentos.length) {
+        mostrarAvisoFormulario("Não há pagamentos para os filtros selecionados.");
+        return;
+      }
+
+      const grupos = agruparPorFaccaoPagamentoFinal(pagamentos);
+      const totalPecas = pagamentos.reduce((soma, item) => soma + Number(item.quantidade || 0), 0);
+      const totalGeral = pagamentos.reduce((soma, item) => soma + Number(item.total || 0), 0);
+      const semValor = pagamentos.filter(item => statusPagamentoFinal(item) === "sem_valor");
+      const duplicidades = detectarDuplicidadesPagamentoFinal(pagamentos);
+      const impressoEm = new Date().toLocaleString("pt-BR");
+      const filtro = textoFiltrosRelatorioPagamentoFinal();
+
+      const secoes = grupos.map(({ faccao, itens }, indice) => {
+        const cadastro = dadosCadastroFaccaoPagamentoFinal(faccao, dados.faccoes);
+        const totalFaccao = itens.reduce((soma, item) => soma + Number(item.total || 0), 0);
+        const pecasFaccao = itens.reduce((soma, item) => soma + Number(item.quantidade || 0), 0);
+        const linhas = itens.map(item => {
+          const status = statusPagamentoFinal(item);
+          const subtotal = Number(item.subtotal ?? (Number(item.quantidade || 0) * Number(item.valorUnitario || 0)));
+          const desconto = Number(item.descontoDefeito || 0);
+          return `
+            <tr class="${status === "sem_valor" ? "sem-valor" : ""}">
+              <td>${escapeHtmlPagamentoFinal(dataPagamentoFinalBR(item.dataEntrega))}</td>
+              <td><strong>${escapeHtmlPagamentoFinal(item.numeroOP || "-")}</strong></td>
+              <td>${escapeHtmlPagamentoFinal(item.referencia || "-")}</td>
+              <td>${escapeHtmlPagamentoFinal(item.processo || item.servicoNome || "-")}${item.pagamentoReenvio ? `<br><small>Reenvio</small>` : ""}</td>
+              <td class="num">${formatarNumeroPagamentoFinal(item.quantidade)}</td>
+              <td class="num">${formatarNumeroPagamentoFinal(item.falta)}</td>
+              <td class="num">${formatarMoedaPagamentoFinal(item.valorUnitario)}</td>
+              <td class="num">${formatarMoedaPagamentoFinal(subtotal)}</td>
+              <td class="num">${formatarMoedaPagamentoFinal(desconto)}</td>
+              <td class="num"><strong>${formatarMoedaPagamentoFinal(item.total)}</strong></td>
+              <td>${status === "pago" ? "Pago" : status === "sem_valor" ? "SEM VALOR" : "Pendente"}</td>
+            </tr>
+          `;
+        }).join("");
+
+        return `
+          <section class="faccao-section ${indice ? "quebra" : ""}">
+            <div class="faccao-header">
+              <div>
+                <h2>${escapeHtmlPagamentoFinal(cadastro.nome || faccao)}</h2>
+                <div class="faccao-meta">
+                  <span><strong>Cidade:</strong> ${escapeHtmlPagamentoFinal(cadastro.cidade || "Não cadastrada")}</span>
+                  <span><strong>Telefone:</strong> ${escapeHtmlPagamentoFinal(cadastro.celular || "Não cadastrado")}</span>
+                </div>
+              </div>
+              <div class="pix-box ${cadastro.chavePix ? "" : "pix-ausente"}">
+                <span>CHAVE PIX</span>
+                <strong>${escapeHtmlPagamentoFinal(cadastro.chavePix || "NÃO CADASTRADA")}</strong>
+                <small>Titular: ${escapeHtmlPagamentoFinal(cadastro.titularPix || "Não informado")}</small>
+              </div>
+            </div>
+            <div class="faccao-resumo">
+              <div><span>Lançamentos</span><strong>${itens.length.toLocaleString("pt-BR")}</strong></div>
+              <div><span>Peças</span><strong>${pecasFaccao.toLocaleString("pt-BR")}</strong></div>
+              <div><span>Total da facção</span><strong>${formatarMoedaPagamentoFinal(totalFaccao)}</strong></div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th><th>OP</th><th>Ref.</th><th>Processo</th><th>Qtd.</th><th>Falta</th>
+                  <th>Valor unit.</th><th>Subtotal</th><th>Desconto</th><th>Total</th><th>Status</th>
+                </tr>
+              </thead>
+              <tbody>${linhas}</tbody>
+            </table>
+            <div class="assinaturas">
+              <div>Conferido pela empresa</div>
+              <div>Responsável da facção</div>
+            </div>
+          </section>
+        `;
+      }).join("");
+
+      const html = `
+        <!doctype html>
+        <html lang="pt-BR">
+          <head>
+            <meta charset="utf-8" />
+            <title>Relatório de Pagamento de Facções</title>
+            <style>
+              * { box-sizing: border-box; }
+              body { margin: 16px; font-family: Arial, sans-serif; color: #0f172a; font-size: 10.5px; }
+              .doc-header { display:flex; justify-content:space-between; gap:20px; border-bottom:3px solid #111827; padding-bottom:10px; }
+              .doc-header h1 { margin:0; font-size:22px; }
+              .muted { color:#64748b; }
+              .filtro { margin:10px 0; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; background:#f8fafc; }
+              .geral { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:10px 0 14px; }
+              .geral div, .faccao-resumo div { border:1px solid #cbd5e1; border-radius:8px; padding:8px; }
+              .geral span, .faccao-resumo span { display:block; color:#64748b; font-size:9px; text-transform:uppercase; font-weight:bold; }
+              .geral strong, .faccao-resumo strong { display:block; margin-top:3px; font-size:15px; }
+              .alerta { padding:8px 10px; margin:8px 0; border:1px solid #fdba74; background:#fff7ed; color:#9a3412; border-radius:8px; }
+              .faccao-section { margin-top:14px; }
+              .faccao-section.quebra { page-break-before:always; }
+              .faccao-header { display:flex; align-items:stretch; justify-content:space-between; gap:12px; margin-bottom:8px; }
+              .faccao-header h2 { margin:0; font-size:18px; }
+              .faccao-meta { display:flex; gap:18px; margin-top:5px; }
+              .pix-box { min-width:280px; border:2px solid #16a34a; background:#f0fdf4; border-radius:10px; padding:8px 10px; }
+              .pix-box.pix-ausente { border-color:#dc2626; background:#fef2f2; }
+              .pix-box span { display:block; font-size:9px; font-weight:bold; color:#475569; }
+              .pix-box strong { display:block; margin:3px 0; font-size:14px; word-break:break-all; }
+              .pix-box small { color:#475569; }
+              .faccao-resumo { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:8px; }
+              table { width:100%; border-collapse:collapse; }
+              th, td { border:1px solid #cbd5e1; padding:5px; vertical-align:top; }
+              th { background:#e2e8f0; text-align:left; font-size:9px; }
+              td.num { text-align:right; white-space:nowrap; }
+              tr.sem-valor td { background:#fff7ed; color:#9a3412; }
+              .assinaturas { display:grid; grid-template-columns:1fr 1fr; gap:60px; margin-top:32px; }
+              .assinaturas div { border-top:1px solid #334155; padding-top:5px; text-align:center; color:#475569; }
+              @page { size:landscape; margin:9mm; }
+              @media print { body { margin:0; } }
+            </style>
+          </head>
+          <body>
+            <div class="doc-header">
+              <div>
+                <h1>Relatório de Pagamento de Facções</h1>
+                <div class="muted">Sistema OP Confecção — CorpoNu</div>
+              </div>
+              <div class="muted">Impresso em:<br><strong>${escapeHtmlPagamentoFinal(impressoEm)}</strong></div>
+            </div>
+            <div class="filtro"><strong>${escapeHtmlPagamentoFinal(filtro)}</strong></div>
+            <div class="geral">
+              <div><span>Facções</span><strong>${grupos.length.toLocaleString("pt-BR")}</strong></div>
+              <div><span>Lançamentos</span><strong>${pagamentos.length.toLocaleString("pt-BR")}</strong></div>
+              <div><span>Peças</span><strong>${totalPecas.toLocaleString("pt-BR")}</strong></div>
+              <div><span>Total geral</span><strong>${formatarMoedaPagamentoFinal(totalGeral)}</strong></div>
+            </div>
+            ${semValor.length ? `<div class="alerta"><strong>Atenção:</strong> ${semValor.length} lançamento(s) estão sem valor e aparecem destacados no relatório. Não finalize o pagamento desses itens.</div>` : ""}
+            ${duplicidades.length ? `<div class="alerta"><strong>Atenção:</strong> ${duplicidades.length} possível(is) duplicidade(s) foram encontradas nos dados impressos. Confira antes do pagamento.</div>` : ""}
+            ${secoes}
+            <script>window.addEventListener("load", () => { window.focus(); window.print(); });<\/script>
+          </body>
+        </html>
+      `;
+
+      const janela = window.open("", "_blank");
+      if (!janela) {
+        mostrarAvisoFormulario("O navegador bloqueou a impressão. Permita pop-ups para este site.");
+        return;
+      }
+      janela.document.open();
+      janela.document.write(html);
+      janela.document.close();
+    } catch (error) {
+      console.error("Erro ao gerar relatório final de pagamento.", error);
+      mostrarAvisoFormulario("Não foi possível gerar o relatório. Verifique a conexão e tente novamente.");
+    }
+  }
+
+  async function perfilAdminPagamentoFinal(contexto) {
+    const usuario = contexto.auth.currentUser;
+    if (!usuario) return { ok: false, usuario: null, perfil: null };
+    const snap = await contexto.firestore.getDoc(
+      contexto.firestore.doc(contexto.db, "usuarios", usuario.uid)
+    );
+    const perfil = snap.exists() ? snap.data() : null;
+    return {
+      ok: Boolean(perfil && perfil.ativo === true && perfil.tipo === "admin"),
+      usuario,
+      perfil
+    };
+  }
+
+  async function fecharPagamentosFiltradosSeguro() {
+    try {
+      const contexto = await obterContextoTravasDuplicidade();
+      const acesso = await perfilAdminPagamentoFinal(contexto);
+      if (!acesso.ok) {
+        mostrarAvisoFormulario("Apenas administrador ativo pode fechar pagamentos.");
+        return;
+      }
+
+      const dados = await carregarDadosPagamentoFinal(true);
+      const filtrados = filtrarPagamentosFinal(dados.pagamentos)
+        .filter(item => statusPagamentoFinal(item) !== "pago");
+
+      if (!filtrados.length) {
+        mostrarAvisoFormulario("Nenhum pagamento pendente foi encontrado no filtro atual.");
+        return;
+      }
+
+      const semValor = filtrados.filter(item => statusPagamentoFinal(item) === "sem_valor");
+      if (semValor.length) {
+        mostrarAvisoFormulario(`Fechamento bloqueado: ${semValor.length} lançamento(s) estão sem valor cadastrado. Cadastre os valores antes de marcar como pago.`);
+        return;
+      }
+
+      const duplicidades = detectarDuplicidadesPagamentoFinal(filtrados);
+      if (duplicidades.length) {
+        mostrarAvisoFormulario(`Fechamento bloqueado: foram encontradas ${duplicidades.length} possível(is) duplicidade(s). Revise os registros antes de pagar.`);
+        return;
+      }
+
+      if (filtrados.length > 450) {
+        mostrarAvisoFormulario("O filtro possui mais de 450 lançamentos. Reduza o período ou selecione uma facção para garantir um fechamento único e seguro.");
+        return;
+      }
+
+      const total = filtrados.reduce((soma, item) => soma + Number(item.total || 0), 0);
+      const confirmar = window.confirm(
+        `Marcar ${filtrados.length} pagamento(s) como pagos?\n\nTotal: ${formatarMoedaPagamentoFinal(total)}\n\nEsta ação ficará registrada na auditoria.`
+      );
+      if (!confirmar) return;
+
+      const batch = contexto.firestore.writeBatch(contexto.db);
+      filtrados.forEach(item => {
+        batch.set(
+          contexto.firestore.doc(contexto.db, "entregasPagamento", item.id),
+          {
+            statusPagamento: "pago",
+            pagoEm: contexto.firestore.serverTimestamp(),
+            pagoPor: acesso.usuario.uid,
+            atualizadoPor: acesso.usuario.uid,
+            atualizadoEm: contexto.firestore.serverTimestamp()
+          },
+          { merge: true }
+        );
+      });
+      await batch.commit();
+
+      try {
+        await contexto.firestore.addDoc(
+          contexto.firestore.collection(contexto.db, "logsAlteracoes"),
+          {
+            acao: "pagamentos_filtrados_fechados_seguro",
+            tipoAlvo: "entregaPagamento",
+            alvoId: "lote",
+            detalhes: `${filtrados.length} pagamentos | ${formatarMoedaPagamentoFinal(total)} | ${textoFiltrosRelatorioPagamentoFinal()}`,
+            usuarioUid: acesso.usuario.uid,
+            usuarioNome: acesso.perfil.nome || "",
+            usuarioEmail: acesso.perfil.email || acesso.usuario.email || "",
+            usuarioTipo: acesso.perfil.tipo || "admin",
+            criadoEm: contexto.firestore.serverTimestamp()
+          }
+        );
+      } catch (errorLog) {
+        console.warn("Pagamento fechado, mas o log adicional não foi criado.", errorLog);
+      }
+
+      cachePagamentoFinal.expiraEm = 0;
+      mostrarAvisoFormulario(`${filtrados.length} pagamento(s) marcados como pagos. Total: ${formatarMoedaPagamentoFinal(total)}.`);
+      setTimeout(() => atualizarConferenciaPagamentoFinal(true), 700);
+    } catch (error) {
+      console.error("Erro no fechamento seguro dos pagamentos.", error);
+      mostrarAvisoFormulario("Não foi possível fechar os pagamentos. Nenhuma alteração adicional deve ser feita até conferir a conexão.");
+    }
+  }
+
+  async function alternarPagamentoIndividualSeguro(id) {
+    try {
+      const contexto = await obterContextoTravasDuplicidade();
+      const acesso = await perfilAdminPagamentoFinal(contexto);
+      if (!acesso.ok) {
+        mostrarAvisoFormulario("Apenas administrador ativo pode alterar pagamentos.");
+        return;
+      }
+
+      const referencia = contexto.firestore.doc(contexto.db, "entregasPagamento", id);
+      const snapshot = await contexto.firestore.getDoc(referencia);
+      if (!snapshot.exists()) {
+        mostrarAvisoFormulario("Pagamento não encontrado. Atualize a tela e tente novamente.");
+        return;
+      }
+      const item = { id: snapshot.id, ...snapshot.data() };
+      const statusAtual = statusPagamentoFinal(item);
+
+      if (statusAtual === "sem_valor") {
+        mostrarAvisoFormulario(`Pagamento da OP ${item.numeroOP || "-"} bloqueado: cadastre o valor de ${item.referencia || "-"} + ${item.processo || item.servicoNome || "processo"} antes de pagar.`);
+        return;
+      }
+
+      const dados = await carregarDadosPagamentoFinal(true);
+      if (statusAtual !== "pago") {
+        const chave = chaveDuplicidadePagamentoFinal(item);
+        const repetidos = dados.pagamentos.filter(outro =>
+          String(outro.id) !== String(item.id) &&
+          pagamentoAtivoFinal(outro) &&
+          chaveDuplicidadePagamentoFinal(outro) === chave
+        );
+        if (repetidos.length) {
+          mostrarAvisoFormulario(`Pagamento bloqueado: existe outro lançamento possivelmente duplicado para a OP ${item.numeroOP || "-"}. Revise antes de pagar.`);
+          return;
+        }
+      }
+
+      const novoStatus = statusAtual === "pago" ? "pendente" : "pago";
+      const acao = novoStatus === "pago" ? "marcar como pago" : "reabrir como pendente";
+      if (!window.confirm(`${acao.charAt(0).toUpperCase() + acao.slice(1)} o pagamento da OP ${item.numeroOP || "-"}?\n\nValor: ${formatarMoedaPagamentoFinal(item.total)}`)) {
+        return;
+      }
+
+      await contexto.firestore.setDoc(referencia, {
+        statusPagamento: novoStatus,
+        pagoEm: novoStatus === "pago" ? contexto.firestore.serverTimestamp() : null,
+        pagoPor: novoStatus === "pago" ? acesso.usuario.uid : "",
+        atualizadoPor: acesso.usuario.uid,
+        atualizadoEm: contexto.firestore.serverTimestamp()
+      }, { merge: true });
+
+      try {
+        await contexto.firestore.addDoc(
+          contexto.firestore.collection(contexto.db, "logsAlteracoes"),
+          {
+            acao: novoStatus === "pago" ? "entrega_pagamento_paga_segura" : "entrega_pagamento_reaberta_segura",
+            tipoAlvo: "entregaPagamento",
+            alvoId: id,
+            detalhes: `OP ${item.numeroOP || "-"} | ${item.faccao || "-"} | ${item.processo || item.servicoNome || "-"} | ${formatarMoedaPagamentoFinal(item.total)}`,
+            usuarioUid: acesso.usuario.uid,
+            usuarioNome: acesso.perfil.nome || "",
+            usuarioEmail: acesso.perfil.email || acesso.usuario.email || "",
+            usuarioTipo: acesso.perfil.tipo || "admin",
+            criadoEm: contexto.firestore.serverTimestamp()
+          }
+        );
+      } catch (erroLog) {
+        console.warn("Pagamento alterado, mas o log adicional não foi criado.", erroLog);
+      }
+
+      cachePagamentoFinal.expiraEm = 0;
+      mostrarAvisoFormulario(novoStatus === "pago" ? "Pagamento marcado como pago." : "Pagamento reaberto como pendente.");
+      setTimeout(() => atualizarConferenciaPagamentoFinal(true), 500);
+    } catch (error) {
+      console.error("Erro ao alterar pagamento individual com segurança.", error);
+      mostrarAvisoFormulario("Não foi possível alterar o pagamento. Atualize a tela e tente novamente.");
+    }
+  }
+
+  function instalarEventosPagamentoFinal() {
+    if (document.documentElement.dataset.pagamentoFinalEventos === APP_VERSION) return;
+    document.documentElement.dataset.pagamentoFinalEventos = APP_VERSION;
+
+    document.addEventListener("click", event => {
+      const imprimir = event.target?.closest?.("#btnImprimirPagamento");
+      if (imprimir) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        imprimirRelatorioPagamentoFinal();
+        return;
+      }
+
+      const fechar = event.target?.closest?.("#btnMarcarPagamentosFiltrados");
+      if (fechar) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        fecharPagamentosFiltradosSeguro();
+        return;
+      }
+
+      const atualizar = event.target?.closest?.("#btnAtualizarConferenciaPagamentoFinal");
+      if (atualizar) {
+        event.preventDefault();
+        cachePagamentoFinal.expiraEm = 0;
+        atualizarConferenciaPagamentoFinal(true);
+        return;
+      }
+
+      const pagarIndividual = event.target?.closest?.('#listaEntregasPagamento button[onclick*="alternarStatusEntregaPagamento"]');
+      if (pagarIndividual) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const id = idPagamentoPeloBotaoFinal(pagarIndividual);
+        if (id) alternarPagamentoIndividualSeguro(id);
+      }
+    }, true);
+
+    document.addEventListener("change", event => {
+      if (event.target?.closest?.("#pagamentos") && [
+        "pagamentoDataInicio",
+        "pagamentoDataFim",
+        "pagamentoFiltroFaccao",
+        "pagamentoFiltroReferencia",
+        "pagamentoFiltroPreco",
+        "pagamentoFiltroStatus"
+      ].includes(event.target.id)) {
+        agendarConferenciaPagamentoFinal(false);
+      }
+    }, true);
+
+    document.addEventListener("click", event => {
+      const nav = event.target?.closest?.('[data-page="pagamentos"], [data-target="pagamentos"], a[href="#pagamentos"]');
+      if (nav) setTimeout(() => agendarConferenciaPagamentoFinal(true), 500);
+    }, true);
+  }
+
+  function iniciarRevisaoFinalPagamentos() {
+    injetarEstilosPagamentoFinal();
+    garantirOpcaoSemValorPagamentoFinal();
+    inserirPainelConferenciaPagamentoFinal();
+    instalarEventosPagamentoFinal();
+    instalarObserverTabelaPagamentoFinal();
+
+    const botaoImprimir = document.getElementById("btnImprimirPagamento");
+    if (botaoImprimir) {
+      botaoImprimir.textContent = "Relatório completo com PIX";
+      botaoImprimir.title = "Imprime um relatório separado por facção com chave PIX, titular, contato, OPs, descontos e totais.";
+    }
+
+    setTimeout(() => {
+      garantirOpcaoSemValorPagamentoFinal();
+      inserirPainelConferenciaPagamentoFinal();
+      aprimorarTabelaEntregasPagamentoFinal();
+      agendarConferenciaPagamentoFinal(true);
+    }, 1200);
+  }
+
   function iniciarRecursosDaVersao() {
     // Instalada primeiro para barrar a ação antes das rotinas antigas de salvamento.
     iniciarTravasDuplicidadeFaccaoPagamento();
+    iniciarRevisaoFinalPagamentos();
     iniciarHotfixChegadaManual();
     iniciarHotfixNecessidade();
     iniciarGestaoSugestoesFases();

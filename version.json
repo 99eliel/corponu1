@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-28-travas-duplicidade-faccao-pagamento-1",
-  "updatedAt": "2026-07-28T07:45:00-03:00",
-  "notes": "Adiciona travas no Firestore contra envio duplicado de OP para facção, chegada normal/manual repetida e pagamento manual duplicado. Faz conferência no servidor e protege confirmações simultâneas em duas abas ou por dois usuários. Mantém todas as correções anteriores."
+  "version": "2026-07-28-pagamentos-relatorio-pix-auditoria-1",
+  "updatedAt": "2026-07-28T09:10:00-03:00",
+  "notes": "Revisão final da área de pagamentos para apresentação: acrescenta conferência financeira, identifica pagamentos sem valor, possíveis duplicidades e facções sem PIX, impede fechar itens sem valor e substitui a impressão por relatório detalhado por facção com PIX, titular, cidade, telefone, OPs, faltas, descontos e totais. Mantém todas as correções anteriores."
 }
