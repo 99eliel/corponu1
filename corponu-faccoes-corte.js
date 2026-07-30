@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "2026-07-30-faccoes-processos-cadastrados-27";
+  const VERSION = "2026-07-30-faccoes-sem-resumo-processos-28";
   if (window.__CORPONU_FACCOES_CORTE_LOADER__ === VERSION) return;
   window.__CORPONU_FACCOES_CORTE_LOADER__ = VERSION;
 
@@ -40,6 +40,12 @@
       "corponu-faccoes-processos-cadastrados.js",
       "faccoes-processos-cadastrados",
       "Não foi possível carregar os processos cadastrados no registro de saída."
+    );
+
+    carregarScript(
+      "corponu-faccoes-sem-resumo-processos.js",
+      "faccoes-sem-resumo-processos",
+      "Não foi possível remover o resumo de processos da tela de Facções."
     );
   }
 
