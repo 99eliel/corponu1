@@ -1,0 +1,25 @@
+TESTES TÉCNICOS REALIZADOS ANTES DA ENTREGA
+
+1. Sintaxe JavaScript validada com Node.js:
+   - corponu-pagamentos-seguro.js: OK
+   - sw.js: OK
+
+2. Conferência estática:
+   - módulo possui proteção contra instalação duplicada;
+   - botão simplificado possui ID exclusivo;
+   - confirmação intercepta o clique antes do listener atual do update.js;
+   - rotina segura original continua responsável pela gravação;
+   - relatório busca todos os registros filtrados no Firestore;
+   - relatório não grava nem altera dados;
+   - Service Worker inclui o novo arquivo no cache;
+   - Service Worker injeta o módulo apenas quando ele ainda não está no HTML;
+   - existe retorno para o sw.js anterior no pacote.
+
+TESTES QUE DEVEM SER FEITOS NO SITE PUBLICADO
+
+- Teste visual no desktop e celular.
+- Abertura do modal de confirmação.
+- Cancelamento do modal sem gravar.
+- Impressão do relatório simplificado.
+- Impressão do relatório completo.
+- Um fechamento real apenas com um filtro pequeno e conferido.
