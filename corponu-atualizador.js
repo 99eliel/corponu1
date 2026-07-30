@@ -1,23 +1,19 @@
 (() => {
   "use strict";
 
-  if (window.__CORPONU_ATUALIZADOR_WEB__) return;
-
-  const LOCAL_RELEASE = "2026-07-30-revisao-tela-segura-20";
+  const LOCAL_RELEASE = "2026-07-30-revisao-clique-direto-21";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
-  const MODULO_REVISAO = "corponu-revisao-lateral-bojo.js";
-  const MODULO_FIX_REVISAO = "corponu-revisao-lateral-bojo-fix.js";
-  let verificando = false;
+
+  if (window.__CORPONU_ATUALIZADOR_WEB__ === LOCAL_RELEASE) return;
 
   window.__CORPONU_ATUALIZADOR_WEB__ = LOCAL_RELEASE;
   window.CORPONU_RELEASE_VERSION = LOCAL_RELEASE;
-
-  // O PWA foi removido. Este sinal impede que o módulo financeiro antigo
-  // volte a registrar service worker ou deixe o aviso de instalação preso.
   window.__corponuAutoUpdateIniciado = true;
 
-  function removerAvisosAntigosDeAtualizacao() {
+  let verificando = false;
+
+  function removerAvisosAntigos() {
     [
       "corponuToastAtualizacaoAutomatica",
       "toastAtualizacaoSistema",
@@ -38,18 +34,16 @@
   }
 
   function observarAvisosAntigos() {
-    removerAvisosAntigosDeAtualizacao();
+    removerAvisosAntigos();
     if (window.__CORPONU_OBSERVADOR_AVISO_PWA__) return;
     window.__CORPONU_OBSERVADOR_AVISO_PWA__ = true;
 
-    const observer = new MutationObserver(removerAvisosAntigosDeAtualizacao);
+    const observer = new MutationObserver(removerAvisosAntigos);
     observer.observe(document.documentElement, { childList: true, subtree: true });
-
-    // Depois desse período os módulos da tela já terminaram a inicialização.
     setTimeout(() => observer.disconnect(), 30000);
   }
 
-  function carregarScriptUnico(nomeArquivo, marcador, aoFalhar) {
+  function carregarScript(nomeArquivo, marcador, mensagemErro) {
     const existente = [...document.scripts].find(script =>
       String(script.src || "").includes(nomeArquivo)
     );
@@ -59,26 +53,18 @@
     script.src = `./${nomeArquivo}?v=${encodeURIComponent(LOCAL_RELEASE)}&t=${Date.now()}`;
     script.async = false;
     script.dataset.corponuModulo = marcador;
-    script.onerror = () => console.error(aoFalhar);
+    script.onerror = () => console.error(mensagemErro);
     document.head.appendChild(script);
     return script;
   }
 
-  function carregarCorrecaoRevisao() {
-    if (window.__CORPONU_FIX_REVISAO_TELA__ === LOCAL_RELEASE) return;
-    carregarScriptUnico(
-      MODULO_FIX_REVISAO,
+  function carregarRevisao() {
+    // A proteção controla o clique diretamente e também garante que o módulo
+    // funcional seja reiniciado depois que a página interna existir.
+    carregarScript(
+      "corponu-revisao-lateral-bojo-fix.js",
       "revisao-lateral-bojo-fix",
       "Não foi possível carregar a proteção da área Revisão lateral e bojo."
-    );
-  }
-
-  function carregarModuloRevisao() {
-    if (window.CorpoNuRevisaoComponentes?.versao) return;
-    carregarScriptUnico(
-      MODULO_REVISAO,
-      "revisao-lateral-bojo",
-      "Não foi possível carregar a área Revisão lateral e bojo."
     );
   }
 
@@ -129,6 +115,7 @@
       });
       document.body.appendChild(aviso);
     }
+
     aviso.textContent = mensagem;
     clearTimeout(aviso._corponuTimer);
     aviso._corponuTimer = setTimeout(() => aviso.remove(), 4500);
@@ -157,6 +144,7 @@
   async function verificarRelease() {
     if (verificando) return;
     verificando = true;
+
     try {
       const resposta = await fetch(`corponu-release.json?ts=${Date.now()}`, { cache: "no-store" });
       if (!resposta.ok) return;
@@ -171,11 +159,11 @@
 
   async function iniciar() {
     observarAvisosAntigos();
-    carregarCorrecaoRevisao();
-    carregarModuloRevisao();
+    carregarRevisao();
     await removerPwaAntigo();
-    removerAvisosAntigosDeAtualizacao();
+    removerAvisosAntigos();
     await verificarRelease();
+
     setInterval(verificarRelease, INTERVALO_VERIFICACAO);
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) verificarRelease();
@@ -184,9 +172,7 @@
     window.addEventListener("online", verificarRelease);
   }
 
-  // A proteção é carregada primeiro; ela cria a página antes de liberar o clique.
-  carregarCorrecaoRevisao();
-  carregarModuloRevisao();
+  carregarRevisao();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", iniciar, { once: true });
