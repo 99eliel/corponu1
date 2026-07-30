@@ -3,7 +3,7 @@
 
   if (window.__CORPONU_ATUALIZADOR_NOVO__) return;
 
-  const LOCAL_RELEASE = "2026-07-30-rastreamento-bipar-manejo-13";
+  const LOCAL_RELEASE = "2026-07-30-necessidade-manejo-texto-livre-14";
   const LEGACY_VERSION = "2026-07-29-restantes-faccoes-complementares-1";
   const STORAGE_KEY = "corponu_release_instalada";
   const RELOAD_KEY = "corponu_release_recarregada";
@@ -22,7 +22,7 @@
       if (url.pathname.endsWith("/version.json")) {
         return Promise.resolve(new Response(JSON.stringify({
           version: LEGACY_VERSION,
-          updatedAt: "2026-07-30T01:32:00-03:00",
+          updatedAt: "2026-07-30T11:31:00-03:00",
           notes: "Compatibilidade com o atualizador legado do CorpoNu."
         }), {
           status: 200,
