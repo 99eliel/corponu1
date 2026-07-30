@@ -1,0 +1,21 @@
+VALIDAÇÃO REALIZADA EM 30/07/2026
+
+Versão: 2026-07-30-hotfix-filtro-pagamentos-estavel-9
+
+1. app.js validado com node --check.
+2. sw.js validado com node --check.
+3. corponu-atualizador.js validado com node --check.
+4. corponu-release.json aberto e validado como JSON.
+5. Confirmado que o listener pesado addEventListener("change", renderPagamentos) foi removido.
+6. Confirmado que os filtros usam agendarRenderPagamentosFiltrados com debounce de 80 ms.
+7. Confirmado que o filtro executa renderPagamentos({ somenteResultados: true }).
+8. Confirmado que a montagem de preços e listas só ocorre na renderização completa.
+9. Nenhuma regra do Firebase, coleção, pagamento ou gravação foi alterada.
+
+Arquivos que devem substituir os existentes:
+- app.js
+- sw.js
+- corponu-atualizador.js
+- corponu-release.json
+
+Os arquivos LEIA-ME e VALIDACAO não precisam ser enviados ao GitHub.

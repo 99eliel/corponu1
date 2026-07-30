@@ -1,0 +1,32 @@
+HOTFIX MANUAL — FILTRO DE PAGAMENTOS
+
+"
+    "Substitua no GitHub somente estes quatro arquivos:
+"
+    "1. app.js
+"
+    "2. sw.js
+"
+    "3. corponu-atualizador.js
+"
+    "4. corponu-release.json
+
+"
+    "Não envie este gerador para a main. Ele existe apenas na branch de preparação.
+
+"
+    "Após substituir os quatro arquivos, aguarde a atualização automática. "
+    "O sistema deve recarregar uma vez.
+
+"
+    "Validações executadas no pacote:
+"
+    "- sintaxe dos JavaScript com node --check;
+"
+    "- leitura do JSON;
+"
+    "- confirmação de que os trechos antigos existiam exatamente uma vez;
+"
+    "- confirmação de que o filtro não chama mais a renderização estrutural completa.
+"
+    

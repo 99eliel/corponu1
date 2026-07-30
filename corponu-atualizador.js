@@ -3,7 +3,7 @@
 
   if (window.__CORPONU_ATUALIZADOR_NOVO__) return;
 
-  const LOCAL_RELEASE = "2026-07-30-rastreamento-interno-sem-faccao-4";
+  const LOCAL_RELEASE = "2026-07-30-hotfix-filtro-pagamentos-estavel-9";
   const LEGACY_VERSION = "2026-07-29-restantes-faccoes-complementares-1";
   const STORAGE_KEY = "corponu_release_instalada";
   const RELOAD_KEY = "corponu_release_recarregada";

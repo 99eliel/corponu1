@@ -7480,7 +7480,7 @@ function configurarPagamentos() {
     "pagamentoFiltroStatus"
   ].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.addEventListener("change", renderPagamentos);
+    if (el) el.addEventListener("change", agendarRenderPagamentosFiltrados);
   });
 
   const entregaPreco = document.getElementById("entregaPreco");
@@ -8625,12 +8625,35 @@ function labelOrigemPagamento(item) {
   return item?.pagamentoReenvio ? "Reenvio" : "Normal";
 }
 
-function renderPagamentos() {
+let timerRenderFiltrosPagamento = 0;
+let renderFiltrosPagamentoEmAndamento = false;
+
+function agendarRenderPagamentosFiltrados() {
+  window.clearTimeout(timerRenderFiltrosPagamento);
+  timerRenderFiltrosPagamento = window.setTimeout(() => {
+    if (renderFiltrosPagamentoEmAndamento) return;
+    renderFiltrosPagamentoEmAndamento = true;
+    try {
+      resetarLimitesRenderTabelaPrefixo("pagamentos");
+      renderPagamentos({ somenteResultados: true });
+    } catch (error) {
+      console.error("Falha ao aplicar filtros leves de Pagamentos.", error);
+      renderPagamentos();
+    } finally {
+      renderFiltrosPagamentoEmAndamento = false;
+    }
+  }, 80);
+}
+
+function renderPagamentos(opcoes = {}) {
   const tbody = document.getElementById("listaPagamento");
   if (!tbody) return;
 
-  renderPrecosReferencia();
-  preencherFiltrosPagamento();
+  const somenteResultados = opcoes?.somenteResultados === true;
+  if (!somenteResultados) {
+    renderPrecosReferencia();
+    preencherFiltrosPagamento();
+  }
 
   const entregas = getEntregasPagamentoFiltradas();
   const grupos = agruparPagamento(entregas);
