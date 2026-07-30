@@ -1,53 +1,31 @@
-CORPONU — ATUALIZAÇÃO DA ABA PAGAMENTOS
-Versão complementar: 2026-07-29-pagamentos-processos-agrupados-2
+ATUALIZAÇÃO CORPONU — CENTRAL DE PENDÊNCIAS DE VALORES
+Versão: 2026-07-29-pendencias-valores-financeiro-3
 
 OBJETIVO
-Corrigir o filtro "Processo" da aba Pagamentos para que ele filtre pelo tipo de serviço,
-e não por uma combinação de referência + processo + preço.
+Corrigir o botão "Conferir agora", que apenas atualizava os números da conferência e não mostrava os lançamentos sem valor.
 
-EXEMPLO
-Ao selecionar "ENCAPAR BOJO", o sistema reúne todos os pagamentos de bojo do período,
-independentemente da referência e do valor unitário de cada peça.
-
-O QUE ESTA ATUALIZAÇÃO INCLUI
-1. Filtro de processos agrupado:
-   - ENCAPAR BOJO
-   - ALÇA
-   - CALCINHA MONTAGEM
-   - CALCINHA COMPLETA
-   - SUTIÃ MONTAGEM
-   - SUTIÃ COMPLETO
-   - Outros processos encontrados nos pagamentos também são exibidos.
-
-2. Os demais filtros continuam funcionando juntos:
-   - início e final;
-   - facção;
-   - referência;
-   - processo;
-   - status do pagamento.
-
-3. A tela recalcula para o processo selecionado:
-   - facções;
-   - entregas;
-   - peças entregues;
-   - total a pagar;
-   - conferência de valores, PIX e duplicidades;
-   - tabela-resumo;
-   - lançamentos detalhados.
-
-4. O fechamento em lote, o relatório completo e o relatório simplificado respeitam
-o processo agrupado selecionado.
-
-5. Permanecem as proteções da atualização anterior:
-   - botão de confirmar pagamentos no canto direito;
-   - confirmação reforçada antes do fechamento;
-   - digitação obrigatória da palavra PAGAR;
-   - relatório simplificado apenas com Nome, PIX e Valor;
-   - relatório detalhado completo com PIX.
+O QUE MUDA
+1. O botão passa a se chamar "Ver pendências de valor".
+2. Ao clicar, abre uma central com TODOS os pagamentos sem valor, independentemente dos filtros da tela.
+3. A central mostra OP, referência, facção, processo, quantidade e data de chegada.
+4. Sutiã Montagem e Sutiã Completo:
+   - o financeiro informa o valor total final de cada OP;
+   - o lançamento passa de "sem valor" para "pendente".
+5. Alça:
+   - o financeiro informa uma única vez o valor de uma alça;
+   - o sistema multiplica por duas alças por sutiã;
+   - todos os pagamentos de Alça ainda abertos são recalculados.
+6. Demais processos:
+   - o administrador informa o valor unitário por peça;
+   - o valor é cadastrado para Referência + Processo;
+   - todos os lançamentos iguais ainda sem valor são recalculados.
+7. Busca interna por OP, referência, facção ou processo.
+8. Contadores separados por tipo de pendência.
+9. Registro de auditoria das alterações.
 
 ARQUIVOS PARA PUBLICAR NA RAIZ DO GITHUB
-- corponu-pagamentos-seguro.js  (arquivo novo ou substituição da versão anterior)
-- sw.js                         (substituir o arquivo atual)
+- corponu-pagamentos-seguro.js  (substituir o anterior)
+- sw.js                         (substituir o anterior)
 
 NÃO ALTERAR
 - app.js
@@ -55,27 +33,21 @@ NÃO ALTERAR
 - index.html
 - regras do Firebase
 
-PASSO A PASSO
-1. Abra o repositório 99eliel/corponu1 no GitHub.
-2. Envie/substitua corponu-pagamentos-seguro.js na raiz.
-3. Substitua sw.js na raiz.
-4. Aguarde a publicação do GitHub Pages/Firebase Hosting utilizado pelo sistema.
-5. Abra o sistema e clique em "Atualizar".
-6. Caso o sistema recarregue uma vez, aguarde e abra Pagamentos novamente.
+COMO PUBLICAR
+1. Abra a raiz do repositório corponu1.
+2. Substitua os dois arquivos indicados acima.
+3. Aguarde a publicação.
+4. Abra o sistema e clique no botão "Atualizar" do topo.
+5. Entre em Pagamentos.
+6. Clique em "Ver pendências de valor".
 
 TESTE SEGURO RECOMENDADO
-1. Abra Pagamentos.
-2. Escolha um período mensal conhecido.
-3. Em Processo, selecione ENCAPAR BOJO.
-4. Confira se aparecem todas as referências de bojo daquele período.
-5. Compare o total com um relatório já conferido.
-6. Gere primeiro o relatório simplificado, sem confirmar pagamentos reais.
-7. Somente depois da conferência utilize o fechamento em lote.
+1. Abra a central e confira se aparecem os 4 lançamentos indicados na conferência.
+2. Escolha primeiro uma OP conhecida de Sutiã Montagem ou Sutiã Completo.
+3. Informe o valor final correto e salve.
+4. Confirme que a pendência desapareceu da central e passou a constar como pagamento pendente com valor.
+5. Não confirme o pagamento em lote antes de conferir o total recalculado.
 
-BANCO DE DADOS
-Esta atualização não cria coleções, não altera documentos existentes e não exige
-mudança nas regras do Firestore ou Storage.
-
-RETORNO DE EMERGÊNCIA
-Se houver comportamento inesperado, restaure o sw.js anterior e remova
-corponu-pagamentos-seguro.js. Nenhum dado é migrado por esta atualização.
+PERMISSÕES
+- Valor total de Sutiã e valor padrão de Alça usam as permissões financeiras já existentes.
+- Valor unitário de Referência + Processo continua administrativo, conforme as regras atuais do Firestore.

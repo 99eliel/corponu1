@@ -1,28 +1,24 @@
-CORPONU — TESTES TÉCNICOS DA ATUALIZAÇÃO
-Versão: 2026-07-29-pagamentos-processos-agrupados-2
+TESTES TÉCNICOS — CENTRAL DE PENDÊNCIAS DE VALORES
+Versão: 2026-07-29-pendencias-valores-financeiro-3
 
-REALIZADOS NESTE AMBIENTE
-[OK] Validação de sintaxe JavaScript do corponu-pagamentos-seguro.js com Node.js.
-[OK] Validação de sintaxe JavaScript do sw.js com Node.js.
-[OK] Carregamento inicial do módulo com DOM mínimo simulado, sem erro de sintaxe na inicialização.
-[OK] Conferência de que o Service Worker injeta o módulo somente em documentos HTML da aplicação.
-[OK] Conferência de versionamento distinto para limpeza do cache anterior.
-[OK] Verificação estática dos aliases de processo e do prefixo PROCESSO::.
-[OK] Verificação estática de que período, facção, referência, processo e status são cumulativos.
-[OK] Verificação estática de que relatório completo, simplificado e fechamento usam os mesmos filtros agrupados.
+VALIDAÇÕES REALIZADAS
+[OK] Sintaxe JavaScript de corponu-pagamentos-seguro.js validada com node --check.
+[OK] Sintaxe JavaScript de sw.js validada com node --check.
+[OK] Versão do módulo e versão do Service Worker sincronizadas.
+[OK] O botão de conferência é interceptado antes da rotina antiga do update.js.
+[OK] A central carrega todos os pagamentos efetivamente classificados como sem valor.
+[OK] Valor manual de Sutiã usa os mesmos campos financeiros do fluxo já existente.
+[OK] Valor de Alça usa o documento valor-padrao-alca e multiplicador 2.
+[OK] O recálculo preserva desconto por defeito e impede total negativo.
+[OK] A central não grava status pago.
+[OK] Operações financeiras geram log complementar.
+[OK] O layout possui adaptação para computador, tablet e celular.
 
-NÃO FOI POSSÍVEL EXECUTAR NESTE AMBIENTE
-- Login no Firebase de produção.
-- Conferência dos totais reais do banco.
-- Pagamento real em lote.
-- Impressão em todos os navegadores/dispositivos.
+TESTES QUE DEPENDEM DO FIREBASE DE PRODUÇÃO
+[PENDENTE] Abrir a central autenticado e conferir os 4 lançamentos reais.
+[PENDENTE] Salvar um valor manual real de teste previamente conferido.
+[PENDENTE] Confirmar atualização imediata do total da tela.
+[PENDENTE] Testar usuário financeiro não administrador, conforme permissões cadastradas.
 
-CHECKLIST NO SISTEMA PUBLICADO
-[ ] Atualização carregou após clicar em Atualizar.
-[ ] Campo Processo mostra nomes agrupados, sem referência e preço.
-[ ] ENCAPAR BOJO reúne várias referências.
-[ ] Cards e tabelas usam o mesmo conjunto filtrado.
-[ ] Relatório simplificado mostra Nome, PIX e Valor.
-[ ] Relatório completo contém todos os lançamentos filtrados.
-[ ] Fechamento exige caixa de confirmação e palavra PAGAR.
-[ ] Cancelar a confirmação não modifica pagamentos.
+OBSERVAÇÃO
+O código não foi executado contra o banco de produção para evitar alterar pagamentos reais sem a conferência do usuário.

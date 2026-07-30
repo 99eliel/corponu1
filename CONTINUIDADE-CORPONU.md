@@ -1,79 +1,81 @@
 # Continuidade do Sistema CorpoNu
 
-## Repositório oficial
+## Versão complementar atual
+
+`2026-07-29-pendencias-valores-financeiro-3`
+
+## Repositório
+
 `https://github.com/99eliel/corponu1`
 
-## Base analisada
-Versão principal encontrada no repositório antes desta atualização:
-`2026-07-29-restantes-faccoes-complementares-1`
+## Arquivo complementar carregado pelo Service Worker
 
-## Complemento atual
-`2026-07-29-pagamentos-processos-agrupados-2`
+`corponu-pagamentos-seguro.js`
 
-Arquivos do complemento:
-- `corponu-pagamentos-seguro.js`
-- `sw.js`
+O `sw.js` injeta este arquivo no `index.html` sem exigir alterações no arquivo principal.
 
-## Alteração mais recente
-Na aba Pagamentos, o campo Processo anteriormente usava o ID específico da tabela de preços. Por isso eram exibidas opções como:
+## Estado da aba Pagamentos
 
-`1 - CALCINHA MONTAGEM - R$ 0,3300`
+A aba possui:
 
-Agora o campo trabalha pelo nome canônico do serviço. Exemplo:
+- filtros acumulativos por período, facção, referência, processo e situação;
+- processo agrupado pelo nome do serviço;
+- relatório completo com PIX;
+- relatório simplificado com Nome, PIX e Valor;
+- confirmação reforçada antes de fechar pagamentos filtrados;
+- central de pendências de valores.
 
-`ENCAPAR BOJO`
+## Central de pendências de valores
 
-Ao selecionar ENCAPAR BOJO, o sistema inclui todas as entregas cujo processo seja bojo/encapar bojo, mesmo que tenham referências e valores unitários diferentes.
+O botão `Ver pendências de valor`, localizado no painel de conferência, busca todos os documentos ativos da coleção `entregasPagamento` cujo status efetivo seja `sem_valor`.
 
-## Processos oficiais reconhecidos
-- ENCAPAR BOJO
-- ALÇA
-- CALCINHA MONTAGEM
-- CALCINHA COMPLETA
-- SUTIÃ MONTAGEM
-- SUTIÃ COMPLETO
+### Tipos tratados
 
-Aliases importantes:
-- BOJO, ENCAPAR e ENCAPAR BOJOS → ENCAPAR BOJO
-- ALCA, ALCAS e ALÇAS → ALÇA
-- SUTIA MONTAGEM → SUTIÃ MONTAGEM
-- SUTIA COMPLETO → SUTIÃ COMPLETO
+1. **Sutiã Montagem e Sutiã Completo**
+   - valor total final informado individualmente por OP;
+   - grava `formaValorPagamento: total_manual_op`;
+   - muda o status para `pendente`;
+   - não marca como pago.
 
-## Fluxo da aba Pagamentos após o complemento
-1. O usuário escolhe período e filtros.
-2. O filtro Processo reúne todos os registros do serviço selecionado.
-3. A tela recalcula facções, entregas, peças e total.
-4. A conferência verifica valores ausentes, PIX ausentes e duplicidades.
-5. O relatório completo mostra os lançamentos detalhados.
-6. O relatório simplificado mostra somente Nome, PIX e Valor.
-7. O fechamento em lote exige confirmação reforçada e a palavra PAGAR.
+2. **Alça**
+   - documento global `precosReferencia/valor-padrao-alca`;
+   - valor informado corresponde a uma alça;
+   - quantidade de alças = quantidade de sutiãs × 2;
+   - recalcula todos os pagamentos de Alça ainda abertos.
 
-## Regras que devem ser preservadas
-- Não marcar pagamento como pago apenas por gerar relatório.
-- Não fechar registros com valor indefinido.
-- Não fechar possíveis duplicidades sem revisão.
-- O processo selecionado deve respeitar também os filtros de data, facção, referência e status.
-- SUTIÃ MONTAGEM e SUTIÃ COMPLETO podem depender de valor total manual da OP.
-- Pagamentos já pagos não devem voltar ao fechamento de pendentes.
-- Não alterar regras do Firebase sem analisar os perfis e operações atuais.
+3. **Demais processos**
+   - valor unitário cadastrado por Referência + Processo;
+   - recálculo de todos os pagamentos sem valor com a mesma combinação;
+   - mantido como operação administrativa pelas regras atuais.
 
-## PWA e atualização
-O `sw.js` injeta `corponu-pagamentos-seguro.js` na resposta do `index.html`, evitando a necessidade de modificar o HTML principal nesta correção.
+## Coleções utilizadas nesta atualização
 
-Ao criar uma nova versão:
-- alterar a versão no módulo;
-- alterar `APP_VERSION` e `PAYMENTS_PATCH_VERSION` no `sw.js`;
-- gerar um novo nome de cache;
-- atualizar este documento e o changelog.
+- `entregasPagamento`
+- `precosReferencia`
+- `usuarios`
+- `faccoes`
+- `logsAlteracoes`
 
-## Teste obrigatório antes de pagamento real
-- Selecionar um mês conhecido.
-- Selecionar ENCAPAR BOJO.
-- Conferir se aparecem várias referências e valores de bojo.
-- Conferir total por facção.
-- Gerar relatório simplificado.
-- Cancelar a primeira tentativa de fechamento para testar a proteção.
-- Só depois fechar registros reais.
+## Regras que não podem ser quebradas
 
-## Instrução para uma nova conversa
-Leia primeiro este arquivo e o código atual do repositório. Preserve o funcionamento existente, faça alterações pontuais, entregue os arquivos prontos para substituir, atualize o versionamento do PWA e registre a mudança no changelog.
+- Informar valor não significa pagar.
+- Somente a rotina específica de confirmação pode marcar como pago.
+- Sutiã Montagem e Sutiã Completo usam valor total manual, não tabela unitária.
+- Alça usa valor global de uma alça multiplicado por duas.
+- Desconto registrado continua reduzindo o total calculado.
+- Mudanças financeiras precisam registrar usuário e data.
+- O PWA deve continuar com cache busting e atualização automática.
+
+## Próximo ponto de retomada
+
+Testar a central com dados reais e verificar:
+
+- se os 4 lançamentos atualmente indicados aparecem;
+- se o tipo de cada um está correto;
+- se, após informar um valor, o lançamento desaparece das pendências;
+- se o total da aba Pagamentos é atualizado corretamente;
+- se usuários financeiros não administradores possuem as permissões esperadas para os tipos utilizados.
+
+## Mensagem para iniciar uma conversa nova
+
+> Continue o Sistema CorpoNu pelo repositório https://github.com/99eliel/corponu1. Leia primeiro o arquivo CONTINUIDADE-CORPONU.md. A versão complementar atual é 2026-07-29-pendencias-valores-financeiro-3. Preserve o fluxo de pagamentos, a central de pendências e o versionamento do PWA.

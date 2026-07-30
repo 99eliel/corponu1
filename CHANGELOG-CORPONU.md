@@ -1,25 +1,25 @@
 # Changelog — CorpoNu
 
-## 2026-07-29 — Pagamentos por processo agrupado 2
+## 2026-07-29-pendencias-valores-financeiro-3
 
-### Alterado
-- O filtro **Processo** da aba Pagamentos deixou de listar uma opção para cada combinação de referência, processo e preço.
-- O filtro agora lista o serviço de forma agrupada, como **ENCAPAR BOJO**, **ALÇA**, **CALCINHA MONTAGEM**, **CALCINHA COMPLETA**, **SUTIÃ MONTAGEM** e **SUTIÃ COMPLETO**.
-- Ao selecionar um processo, todas as referências e todos os valores correspondentes são reunidos no mesmo fechamento.
-- Os filtros de período, facção, referência e situação de pagamento continuam acumulativos.
-- Cards, conferência, tabela-resumo e lançamentos detalhados são recalculados pelo processo escolhido.
-- Relatório detalhado, relatório simplificado e fechamento em lote agora respeitam o processo agrupado.
+### Pagamentos
+- Corrigido o botão `Conferir agora`, que antes somente recarregava a conferência.
+- Renomeado para `Ver pendências de valor`.
+- Criada central financeira com todos os pagamentos sem valor.
+- Incluída busca por OP, referência, facção e processo.
+- Incluídos contadores de pendências por tipo.
+- Permitida definição do valor total final por OP em Sutiã Montagem e Sutiã Completo.
+- Permitida definição do valor padrão global de uma Alça, com multiplicação por duas e recálculo dos lançamentos abertos.
+- Incluída definição administrativa do valor unitário por Referência + Processo, com recálculo dos lançamentos equivalentes.
+- Após salvar um valor, o pagamento passa automaticamente para `pendente`, sem ser marcado como pago.
+- Incluídos registros adicionais em `logsAlteracoes`.
 
-### Segurança preservada
-- Confirmação reforçada antes do pagamento em lote.
-- Exibição da quantidade e do total que serão fechados.
-- Confirmação obrigatória por caixa de seleção e digitação de `PAGAR`.
-- Bloqueio de pagamentos sem valor, possíveis duplicidades e lotes acima do limite seguro.
-- Registro de auditoria do fechamento.
+### Segurança
+- Nenhum pagamento é quitado pela central de valores.
+- A confirmação de pagamentos filtrados continua separada e protegida pela confirmação reforçada.
+- Mantidas as regras atuais do Firebase e as permissões financeiras existentes.
 
-### PWA
-- Service Worker atualizado para `2026-07-29-pagamentos-processos-agrupados-2`.
-- Novo cache força o carregamento dos arquivos atualizados.
-
-### Banco de dados
-- Nenhuma coleção ou regra do Firebase foi alterada.
+## 2026-07-29-pagamentos-processos-agrupados-2
+- Filtro de pagamentos agrupado pelo nome do processo.
+- Relatório simplificado com Nome, PIX e Valor.
+- Confirmação reforçada para fechamento em lote.
