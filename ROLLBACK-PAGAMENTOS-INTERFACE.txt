@@ -1,2 +1,0 @@
-Reversão emergencial da interface simplificada de Pagamentos.
-A versão visual anterior foi restaurada sem alterar cálculos, Firestore, permissões ou o modo de manutenção rápida.
