@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-faccoes-corte-sem-gerenciamento-26",
-  "updatedAt": "2026-07-30T18:34:00-03:00",
-  "notes": "Remove da aba Corte o bloco duplicado de gerenciamento de processos e valores. A área Corte mantém somente operação, filtros e movimentações; o gerenciamento continua centralizado na aba Processos."
+  "version": "2026-07-30-faccoes-processos-cadastrados-27",
+  "updatedAt": "2026-07-30T18:48:00-03:00",
+  "notes": "O campo Processo a ser feito no registro de saída passa a ser um seletor alimentado pelos processos já cadastrados no sistema. Sutiã e Calcinha respeitam o tipo da aba; Corte exibe todos os processos cadastrados."
 }
