@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "2026-07-30-faccoes-sem-resumo-processos-28";
+  const VERSION = "2026-07-30-faccoes-sem-bloco-processos-29";
   if (window.__CORPONU_FACCOES_CORTE_LOADER__ === VERSION) return;
   window.__CORPONU_FACCOES_CORTE_LOADER__ = VERSION;
 
@@ -45,7 +45,7 @@
     carregarScript(
       "corponu-faccoes-sem-resumo-processos.js",
       "faccoes-sem-resumo-processos",
-      "Não foi possível remover o resumo de processos da tela de Facções."
+      "Não foi possível remover o bloco de processos da tela de Facções."
     );
   }
 
