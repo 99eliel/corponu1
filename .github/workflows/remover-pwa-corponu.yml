@@ -1,0 +1,74 @@
+name: Remover PWA do CorpoNu
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - remover-pwa-corponu.py
+      - .github/workflows/remover-pwa-corponu.yml
+
+permissions:
+  contents: write
+
+jobs:
+  remover-pwa:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Aplicar modo web sem PWA
+        run: python remover-pwa-corponu.py
+
+      - name: Validar JavaScript e JSON
+        run: |
+          node --check update.js
+          node --check sw.js
+          node --check corponu-atualizador.js
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          version = '2026-07-30-modo-web-sem-pwa-15'
+          index = Path('index.html').read_text(encoding='utf-8')
+          update = Path('update.js').read_text(encoding='utf-8')
+          sw = Path('sw.js').read_text(encoding='utf-8')
+          atualizador = Path('corponu-atualizador.js').read_text(encoding='utf-8')
+          release = json.loads(Path('corponu-release.json').read_text(encoding='utf-8'))
+
+          assert 'RESCUE_VERSION' not in index
+          assert 'data-corponu-sem-pwa' in index
+          assert 'corponu-pagamentos-seguro.js' in index
+          assert 'corponu-pagamentos-manual.js' in index
+          assert 'corponu-rastreamento-interno.js' in index
+          assert 'corponu-necessidade-livre.js' in index
+          assert 'registerServiceWorker();' not in update
+          assert 'navigator.serviceWorker.register' not in atualizador
+          assert 'self.registration.unregister()' in sw
+          assert 'fetch' not in sw
+          assert release['version'] == version
+          assert version in index
+          assert version in update
+          print('Validação concluída: CorpoNu em modo web sem PWA.')
+          PY
+
+      - name: Publicar alteração no main
+        run: |
+          if git diff --quiet; then
+            echo "Nenhuma alteração pendente."
+            exit 0
+          fi
+          git config user.name "CorpoNu Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html update.js sw.js corponu-atualizador.js corponu-release.json
+          git commit -m "Remover PWA e manter sistema em modo web"
+          git push origin HEAD:main
