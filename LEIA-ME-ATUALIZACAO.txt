@@ -1,47 +1,81 @@
-ATUALIZAÇÃO CORPONU — PAGAMENTOS SEGUROS E RELATÓRIO SIMPLIFICADO
-Versão complementar: 2026-07-29-pagamentos-seguros-relatorio-simplificado-1
+CORPONU — ATUALIZAÇÃO DA ABA PAGAMENTOS
+Versão complementar: 2026-07-29-pagamentos-processos-agrupados-2
 
-ARQUIVOS PARA PUBLICAR NA RAIZ DO REPOSITÓRIO
-1. corponu-pagamentos-seguro.js  (arquivo novo)
-2. sw.js                         (substituir o atual)
+OBJETIVO
+Corrigir o filtro "Processo" da aba Pagamentos para que ele filtre pelo tipo de serviço,
+e não por uma combinação de referência + processo + preço.
 
-Não precisa alterar o index.html nesta entrega.
-O novo sw.js injeta e carrega automaticamente o módulo de pagamentos na página,
-inclusive no PWA, sem alterar app.js, update.js, regras ou dados do Firebase.
+EXEMPLO
+Ao selecionar "ENCAPAR BOJO", o sistema reúne todos os pagamentos de bojo do período,
+independentemente da referência e do valor unitário de cada peça.
 
-COMO PUBLICAR
-1. Abra a raiz do repositório corponu1.
-2. Envie corponu-pagamentos-seguro.js.
-3. Substitua o sw.js pelo sw.js deste pacote.
-4. Faça o commit dos dois arquivos no mesmo envio.
-5. Aguarde a publicação do site.
-6. Abra o sistema e clique uma vez em "Atualizar", ou feche e abra novamente o PWA.
+O QUE ESTA ATUALIZAÇÃO INCLUI
+1. Filtro de processos agrupado:
+   - ENCAPAR BOJO
+   - ALÇA
+   - CALCINHA MONTAGEM
+   - CALCINHA COMPLETA
+   - SUTIÃ MONTAGEM
+   - SUTIÃ COMPLETO
+   - Outros processos encontrados nos pagamentos também são exibidos.
 
-RESULTADO ESPERADO NA ABA PAGAMENTOS
-- Ordem dos botões:
-  Limpar filtros | Relatório simplificado | Relatório completo com PIX | Confirmar pagamentos filtrados
-- O botão de confirmação fica no extremo direito.
-- Antes do fechamento em lote, aparece uma confirmação reforçada.
-- É obrigatório marcar a conferência e digitar PAGAR.
-- A validação já existente continua bloqueando itens sem valor, duplicidades e lotes acima do limite.
-- O relatório simplificado imprime somente Nome, PIX e Valor, além do total geral.
+2. Os demais filtros continuam funcionando juntos:
+   - início e final;
+   - facção;
+   - referência;
+   - processo;
+   - status do pagamento.
+
+3. A tela recalcula para o processo selecionado:
+   - facções;
+   - entregas;
+   - peças entregues;
+   - total a pagar;
+   - conferência de valores, PIX e duplicidades;
+   - tabela-resumo;
+   - lançamentos detalhados.
+
+4. O fechamento em lote, o relatório completo e o relatório simplificado respeitam
+o processo agrupado selecionado.
+
+5. Permanecem as proteções da atualização anterior:
+   - botão de confirmar pagamentos no canto direito;
+   - confirmação reforçada antes do fechamento;
+   - digitação obrigatória da palavra PAGAR;
+   - relatório simplificado apenas com Nome, PIX e Valor;
+   - relatório detalhado completo com PIX.
+
+ARQUIVOS PARA PUBLICAR NA RAIZ DO GITHUB
+- corponu-pagamentos-seguro.js  (arquivo novo ou substituição da versão anterior)
+- sw.js                         (substituir o arquivo atual)
+
+NÃO ALTERAR
+- app.js
+- update.js
+- index.html
+- regras do Firebase
+
+PASSO A PASSO
+1. Abra o repositório 99eliel/corponu1 no GitHub.
+2. Envie/substitua corponu-pagamentos-seguro.js na raiz.
+3. Substitua sw.js na raiz.
+4. Aguarde a publicação do GitHub Pages/Firebase Hosting utilizado pelo sistema.
+5. Abra o sistema e clique em "Atualizar".
+6. Caso o sistema recarregue uma vez, aguarde e abra Pagamentos novamente.
+
+TESTE SEGURO RECOMENDADO
+1. Abra Pagamentos.
+2. Escolha um período mensal conhecido.
+3. Em Processo, selecione ENCAPAR BOJO.
+4. Confira se aparecem todas as referências de bojo daquele período.
+5. Compare o total com um relatório já conferido.
+6. Gere primeiro o relatório simplificado, sem confirmar pagamentos reais.
+7. Somente depois da conferência utilize o fechamento em lote.
 
 BANCO DE DADOS
-- Nenhuma regra do Firestore precisa ser alterada.
-- Nenhuma coleção é criada.
-- O relatório é apenas leitura.
-- O fechamento continua usando a função segura já existente no update.js.
+Esta atualização não cria coleções, não altera documentos existentes e não exige
+mudança nas regras do Firestore ou Storage.
 
 RETORNO DE EMERGÊNCIA
-Se houver qualquer comportamento inesperado:
-1. Remova corponu-pagamentos-seguro.js do repositório.
-2. Renomeie BACKUP-sw-anterior.js para sw.js e publique.
-3. Abra novamente o sistema para o Service Worker anterior assumir.
-
-TESTE RÁPIDO APÓS PUBLICAR
-1. Entre como administrador e abra Pagamentos.
-2. Verifique se o botão Confirmar pagamentos filtrados está por último, à direita.
-3. Clique nele e confirme que o modal exige caixa marcada + palavra PAGAR.
-4. Cancele sem concluir nenhum pagamento.
-5. Clique em Relatório simplificado e confira as três colunas: Nome, PIX e Valor.
-6. Confira se Relatório completo com PIX continua funcionando normalmente.
+Se houver comportamento inesperado, restaure o sw.js anterior e remova
+corponu-pagamentos-seguro.js. Nenhum dado é migrado por esta atualização.

@@ -1,37 +1,25 @@
 # Changelog — CorpoNu
 
-## 2026-07-29 — Pagamentos seguros e relatório simplificado
+## 2026-07-29 — Pagamentos por processo agrupado 2
 
-Versão complementar: `2026-07-29-pagamentos-seguros-relatorio-simplificado-1`
+### Alterado
+- O filtro **Processo** da aba Pagamentos deixou de listar uma opção para cada combinação de referência, processo e preço.
+- O filtro agora lista o serviço de forma agrupada, como **ENCAPAR BOJO**, **ALÇA**, **CALCINHA MONTAGEM**, **CALCINHA COMPLETA**, **SUTIÃ MONTAGEM** e **SUTIÃ COMPLETO**.
+- Ao selecionar um processo, todas as referências e todos os valores correspondentes são reunidos no mesmo fechamento.
+- Os filtros de período, facção, referência e situação de pagamento continuam acumulativos.
+- Cards, conferência, tabela-resumo e lançamentos detalhados são recalculados pelo processo escolhido.
+- Relatório detalhado, relatório simplificado e fechamento em lote agora respeitam o processo agrupado.
 
-### Alterações
+### Segurança preservada
+- Confirmação reforçada antes do pagamento em lote.
+- Exibição da quantidade e do total que serão fechados.
+- Confirmação obrigatória por caixa de seleção e digitação de `PAGAR`.
+- Bloqueio de pagamentos sem valor, possíveis duplicidades e lotes acima do limite seguro.
+- Registro de auditoria do fechamento.
 
-- Reorganizados os botões da aba Pagamentos.
-- O botão **Confirmar pagamentos filtrados** passa a ocupar o extremo direito da linha de ações.
-- Criada confirmação reforçada para fechamento em lote:
-  - mostra quantidade de lançamentos;
-  - mostra o total filtrado;
-  - mostra os filtros atuais;
-  - exige confirmação por caixa de seleção;
-  - exige digitação da palavra `PAGAR`.
-- Preservada a validação financeira já existente antes da gravação no Firestore.
-- Criado o botão **Relatório simplificado**.
-- O relatório simplificado agrupa por facção/responsável e apresenta apenas:
-  - Nome;
-  - PIX;
-  - Valor.
-- Mantido o relatório detalhado existente, agora identificado como **Relatório completo com PIX**.
-- Adicionado carregamento automático do módulo pelo Service Worker, sem necessidade de alterar o `index.html` nesta entrega.
+### PWA
+- Service Worker atualizado para `2026-07-29-pagamentos-processos-agrupados-2`.
+- Novo cache força o carregamento dos arquivos atualizados.
 
-### Arquivos
-
-- Novo: `corponu-pagamentos-seguro.js`
-- Atualizado: `sw.js`
-- Documentação: `CONTINUIDADE-CORPONU.md`
-
-### Banco e segurança
-
-- Sem alteração nas coleções do Firestore.
-- Sem alteração nas regras do Firestore.
-- Sem alteração no cálculo ou na geração original dos pagamentos.
-- A gravação continua sendo executada pela rotina segura já presente no `update.js`.
+### Banco de dados
+- Nenhuma coleção ou regra do Firebase foi alterada.

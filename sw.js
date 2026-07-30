@@ -1,5 +1,5 @@
-const APP_VERSION = "2026-07-29-restantes-faccoes-complementares-1";
-const PAGAMENTOS_SAFE_VERSION = "2026-07-29-pagamentos-seguros-relatorio-simplificado-1";
+const APP_VERSION = "2026-07-29-pagamentos-processos-agrupados-2";
+const PAGAMENTOS_SAFE_VERSION = "2026-07-29-pagamentos-processos-agrupados-2";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 const PAGAMENTOS_SAFE_FILE = `./corponu-pagamentos-seguro.js?v=${PAGAMENTOS_SAFE_VERSION}`;
 const CORE_ASSETS = [
