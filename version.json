@@ -1,5 +1,5 @@
 {
   "version": "2026-07-29-restantes-faccoes-complementares-1",
-  "updatedAt": "2026-07-29T20:49:00-03:00",
-  "notes": "Cria controle automatico de restantes das faccoes. Entregas parciais geram pendencias vinculadas a OP, processo e faccao. A aba Faccoes recebe painel Restantes pendentes e chegada complementar, com pagamento apenas da quantidade recebida em cada retorno e nova pendencia quando ainda houver saldo."
+  "updatedAt": "2026-07-30T00:30:00-03:00",
+  "notes": "Versão de compatibilidade mantida igual ao APP_VERSION interno do update.js legado. As novas atualizações são controladas por corponu-release.json, sem apagar cache nem desregistrar o PWA."
 }

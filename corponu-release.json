@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-29-pendencias-organizadas-auto-update-4",
-  "updatedAt": "2026-07-29T23:25:00-03:00",
-  "notes": "Central financeira organizada, exclusão segura de lançamentos sem valor e atualização automática sem limpeza manual de cache."
+  "version": "2026-07-30-lancamento-manual-pagamentos-restantes-1",
+  "updatedAt": "2026-07-30T00:30:00-03:00",
+  "notes": "Adiciona lançamento manual na aba Pagamentos, valor total opcional, geração automática de saldo restante e painel de Restantes pendentes dentro de Pagamentos. Instala atualizador automático independente e recarregamento do PWA sem limpeza manual de cache."
 }

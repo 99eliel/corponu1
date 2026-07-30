@@ -1,56 +1,52 @@
 # Continuidade do Sistema CorpoNu
 
-## Versão de recuperação ativa
+## Versão desta entrega
 
-`2026-07-30-recuperacao-pagamentos-autoupdate-5`
+`2026-07-30-lancamento-manual-pagamentos-restantes-1`
 
-## Motivo da recuperação
+## Arquivos novos
 
-As melhorias financeiras foram entregues inicialmente em um arquivo adicional
-`corponu-pagamentos-seguro.js`, carregado por injeção do Service Worker. O branch
-`main` publicado voltou a apresentar o Service Worker e o manifesto de versão antigos,
-e os arquivos adicionais não estavam disponíveis na raiz. Com isso, o módulo deixou
-de carregar e as melhorias desapareceram.
+- `corponu-pagamentos-manual.js`: lançamento manual financeiro e restantes dentro de Pagamentos.
+- `corponu-atualizador.js`: atualizador automático novo, baseado em `corponu-release.json`.
+- `corponu-release.json`: fonte oficial das novas versões após esta migração.
 
-## Arquitetura temporária segura
+## Arquivos substituídos
 
-O `sw.js` de recuperação contém internamente o módulo financeiro completo. Quando o
-navegador solicita `update.js`, o Service Worker busca o arquivo original no servidor,
-anexa o módulo e entrega a resposta combinada. Portanto:
+- `sw.js`: injeta os módulos novos, atualiza pela rede, elimina caches antigos e recarrega os clientes.
+- `version.json`: mantido em `2026-07-29-restantes-faccoes-complementares-1` para ficar igual ao `APP_VERSION` interno do `update.js` legado.
 
-- nenhuma alteração é necessária no `index.html`;
-- `update.js` e `app.js` originais permanecem preservados;
-- a instalação não falha por ausência de arquivos novos;
-- a ativação navega automaticamente as janelas abertas para a versão nova;
-- o arquivo legível `corponu-pagamentos-seguro.js` é apenas fonte de manutenção.
+## Regra de versionamento daqui para frente
 
-## Regra crítica de versão
+Em cada nova entrega:
 
-Enquanto o `update.js` principal continuar declarando
-`2026-07-29-restantes-faccoes-complementares-1`, não alterar o `version.json` para uma
-versão diferente. O atualizador antigo interpreta a diferença apagando caches,
-desregistrando todos os Service Workers e solicitando Ctrl+F5 em uma segunda tentativa.
+1. Alterar a constante `LOCAL_RELEASE` em `corponu-atualizador.js`.
+2. Alterar `APP_VERSION` em `sw.js`.
+3. Alterar a versão em `corponu-release.json`.
+4. Atualizar os parâmetros `?v=` dos módulos novos dentro do `sw.js`.
+5. Não alterar `version.json`, enquanto o `update.js` legado ainda possuir a versão fixa `2026-07-29-restantes-faccoes-complementares-1`.
 
-As próximas atualizações devem trocar a constante `APP_VERSION` do `sw.js` e o módulo
-incorporado. Depois será feita uma refatoração controlada do atualizador principal para
-unificar `index.html`, `update.js`, `sw.js` e `version.json` sem risco aos computadores.
+## Estrutura criada pelo lançamento manual
 
-## Funcionalidades financeiras recuperadas
+A operação grava atomicamente:
 
-- filtro agrupado por processo;
-- fechamento filtrado com confirmação forte;
-- relatório completo com PIX;
-- relatório simplificado com Nome, PIX e Valor;
-- visualização de todos os lançamentos aguardando valor;
-- preenchimento de valor total, valor de Alça e valor unitário;
-- Central de Pendências organizada por processo;
-- pesquisa e filtros dentro da central;
-- exclusão segura do lançamento financeiro permitido;
-- recálculo da aba Pagamentos após salvar/excluir.
+- `movimentacoesProducao/{id}` para a chegada principal;
+- `entregasPagamento/{id}` para o pagamento das peças recebidas;
+- `movimentacoesProducao/{id-restante-1}` quando houver saldo pendente;
+- `logsAlteracoes/{id}` para auditoria.
+
+## Entrega parcial
+
+Exemplo: OP com 50 peças e chegada de 40.
+
+- Pagamento: quantidade 40.
+- Movimentação principal: `quantidadeRecebida = 40` e `falta = 10`.
+- Restante: novo documento com `quantidadeEnviada = 10`, `origemRestanteFaccao = true` e `status = restante_pendente`.
+
+## Valor financeiro
+
+- Campo preenchido: pagamento fica `pendente` com valor total manual.
+- Campo vazio: pagamento fica `sem_valor` e aparece na Central de Pendências.
 
 ## Instrução para uma nova conversa
 
-Leia este arquivo e confira o branch `main` do repositório
-`https://github.com/99eliel/corponu1`. Antes de gerar uma atualização, confirme a versão
-real do `sw.js` publicado. Preserve a recuperação de arquivo único até que o atualizador
-principal seja refatorado e testado em uma versão estável separada.
+Leia este arquivo e revise os cinco arquivos da versão antes de alterar Pagamentos, atualização automática ou controle de restantes.
