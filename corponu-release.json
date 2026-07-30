@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-pagamentos-visual-limpo-32",
-  "updatedAt": "2026-07-30T20:02:00-03:00",
-  "notes": "Reorganiza visualmente a aba Pagamentos sem mover elementos da estrutura original. Remove duplicações, preserva todas as funções e deixa as pendências de valor mais compactas."
+  "version": "2026-07-30-pagamento-manual-op-automatica-33",
+  "updatedAt": "2026-07-30T20:18:00-03:00",
+  "notes": "Melhora o lançamento manual de pagamentos: busca a OP automaticamente durante a digitação, impede salvar com OP ainda não confirmada e mostra lateral e bojo já registrados na ordem, incluindo a origem da lateral feita por confecção ou facção de Corte."
 }
