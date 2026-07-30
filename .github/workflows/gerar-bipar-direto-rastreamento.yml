@@ -11,6 +11,7 @@ permissions:
 jobs:
   gerar:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
@@ -41,8 +42,9 @@ jobs:
           import json
           from pathlib import Path
 
-          versao = '2026-07-30-rastreamento-bipar-direto-11'
+          versao = '2026-07-30-rastreamento-bipar-direto-12'
           app = Path('app.js').read_text(encoding='utf-8')
+          regras = Path('firestore-rules.txt').read_text(encoding='utf-8')
           sw = Path('sw.js').read_text(encoding='utf-8')
           atualizador = Path('corponu-atualizador.js').read_text(encoding='utf-8')
           release = json.loads(Path('corponu-release.json').read_text(encoding='utf-8'))
@@ -50,11 +52,20 @@ jobs:
           assert 'async function biparOrdemDireto(opId)' in app
           assert 'data-bipar-op-direto=' in app
           assert 'window.biparOrdemDireto = biparOrdemDireto;' in app
-          assert 'bipado-direto-${id}' in app
-          assert 'Esta OP está vinculada a uma facção. Finalize pela aba Facções.' in app
+          assert 'const movimentacoesAbertas = state.movimentacoesProducao' in app
+          assert 'const movimentacaoPrincipal = movimentacoesAbertas[0] || null;' in app
+          assert 'movimentacoesAbertas.slice(1).forEach' in app
+          assert 'encerradoPorBipadoDireto: true' in app
+          assert 'Esta OP está vinculada a uma facção. Finalize pela aba Facções.' not in app
+          assert 'const localEhFaccao' not in app
           assert 'localAtualMigracao: "FINALIZADO_BIPADO"' in app
-          assert 'status: "finalizado"' in app
           assert 'ocultarDoManejo: true' in app
+          assert 'const lote = writeBatch(db);' in app
+          assert 'lote.set(doc(db, "movimentacoesProducao"' in app
+          assert 'lote.set(doc(db, "ordensProducao"' in app
+          assert 'await lote.commit();' in app
+          assert 'match /ordensProducao/{ordemId}' in regras
+          assert 'match /movimentacoesProducao/{movimentoId}' in regras
           assert versao in sw
           assert versao in atualizador
           assert release['version'] == versao
@@ -63,7 +74,7 @@ jobs:
           assert 'MutationObserver' not in trecho
           assert 'setInterval' not in trecho
           assert 'location.reload' not in trecho
-
+          assert 'gerarPagamentoPorMovimentacao' not in trecho
           print('Validação rigorosa concluída.')
           PY
 
@@ -81,12 +92,12 @@ jobs:
           cp corponu-atualizador.js pacote-bipar-direto-rastreamento/
           cp corponu-release.json pacote-bipar-direto-rastreamento/
           cp LEIA-ME-BIPAR-DIRETO-RASTREAMENTO.txt pacote-bipar-direto-rastreamento/
-          zip -r corponu-bipar-direto-rastreamento-11.zip pacote-bipar-direto-rastreamento
+          zip -r corponu-bipar-direto-rastreamento-12.zip pacote-bipar-direto-rastreamento
 
       - name: Publicar pacote para download
         uses: actions/upload-artifact@v4
         with:
-          name: corponu-bipar-direto-rastreamento-11
-          path: corponu-bipar-direto-rastreamento-11.zip
+          name: corponu-bipar-direto-rastreamento-12
+          path: corponu-bipar-direto-rastreamento-12.zip
           if-no-files-found: error
           retention-days: 7
