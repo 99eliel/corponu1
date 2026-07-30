@@ -115,3 +115,5 @@ jobs:
           path: corponu-remover-filtro-status-pagamentos-10.zip
           if-no-files-found: error
           retention-days: 7
+
+# disparo manual de validação do pacote
