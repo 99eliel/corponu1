@@ -2,8 +2,8 @@ from pathlib import Path
 import json
 import re
 
-VERSION = "2026-07-30-rastreamento-bipar-direto-12"
-UPDATED_AT = "2026-07-30T09:20:00-03:00"
+VERSION = "2026-07-30-rastreamento-bipar-manejo-13"
+UPDATED_AT = "2026-07-30T10:58:00-03:00"
 
 app_path = Path("app.js")
 sw_path = Path("sw.js")
@@ -12,8 +12,80 @@ release_path = Path("corponu-release.json")
 
 app = app_path.read_text(encoding="utf-8")
 
-funcao_nova = r'''
+funcoes_novas = r'''
 const ordensEmBipadoDireto = new Set();
+const ordensEnviandoManejoDireto = new Set();
+const FASE_MANEJO_AGUARDANDO_MOVIMENTACAO = "AGUARDANDO MOVIMENTAÇÃO";
+
+async function enviarOrdemParaManejoDireto(opId) {
+  const id = String(opId || "").trim();
+  if (!id || ordensEnviandoManejoDireto.has(id)) return;
+
+  const ordem = state.ordens.find(item => String(item.id) === id);
+  if (!ordem) {
+    toast("OP não encontrada no Rastreamento.");
+    return;
+  }
+
+  ordensEnviandoManejoDireto.add(id);
+  try {
+    const setor = getTipoPecaManejoOP(ordem);
+    const infoSetor = getInfoManejoSetor(setor);
+    const manejoExistente = getManejoDaOrdem(ordem, setor) || {};
+
+    const manejo = {
+      ...manejoExistente,
+      setor,
+      setorLabel: infoSetor.label,
+      fase: FASE_MANEJO_AGUARDANDO_MOVIMENTACAO,
+      faccao: "",
+      chegada: "",
+      falta: 0,
+      celu: "",
+      status: "organizada",
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    };
+
+    if (!manejoExistente?.criadoEm) {
+      manejo.criadoPor = state.currentUser.uid;
+      manejo.criadoEm = serverTimestamp();
+    }
+
+    const patch = montarPatchManejoSetor(setor, manejo, "organizada", {
+      ocultarDoManejo: false,
+      localAtualMigracao: "MANEJO_AGUARDANDO_DESTINO",
+      statusMigracaoLigia: "MANEJO_ABERTO_AGUARDANDO_DESTINO",
+      relatorioMigracao: "Manejo / aguardando movimentação",
+      ajusteManualMigracao: true,
+      destinoAtualMigracao: "MANEJO",
+      processoAtualMigracao: FASE_MANEJO_AGUARDANDO_MOVIMENTACAO,
+      proximoDestinoMigracao: "",
+      dataEnvioAtualMigracao: "",
+      dataChegadaAtualMigracao: "",
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    });
+
+    await setDoc(doc(db, "ordensProducao", id), patch, { merge: true });
+
+    await registrarLog(
+      "op_enviada_manejo_pelo_rastreamento",
+      "ordemProducao",
+      id,
+      `OP ${ordem.numeroOP || ordem.numeroOPExterno || id} | enviada ao Manejo ${infoSetor.label} | fase ${FASE_MANEJO_AGUARDANDO_MOVIMENTACAO}`
+    );
+
+    toast(`OP ${ordem.numeroOP || ordem.numeroOPExterno || id} enviada para o Manejo com a fase ${FASE_MANEJO_AGUARDANDO_MOVIMENTACAO}.`);
+  } catch (error) {
+    console.error("Erro ao enviar OP para o Manejo pelo Rastreamento.", error);
+    toast(error?.code === "permission-denied"
+      ? "Seu usuário não possui permissão para enviar esta OP ao Manejo."
+      : "Erro ao enviar a OP para o Manejo.");
+  } finally {
+    ordensEnviandoManejoDireto.delete(id);
+  }
+}
 
 async function biparOrdemDireto(opId) {
   const id = String(opId || "").trim();
@@ -155,7 +227,7 @@ marcador_funcao = "function renderLinhaRastreamentoGlobalOP(op) {"
 if "async function biparOrdemDireto(opId)" not in app:
     if marcador_funcao not in app:
         raise SystemExit("Marcador renderLinhaRastreamentoGlobalOP não encontrado.")
-    app = app.replace(marcador_funcao, funcao_nova + marcador_funcao, 1)
+    app = app.replace(marcador_funcao, funcoes_novas + marcador_funcao, 1)
 
 bloco_antigo = '''function renderLinhaRastreamentoGlobalOP(op) {
   const local = getLocalizacaoAtualOrdem(op);
@@ -171,17 +243,18 @@ bloco_antigo = '''function renderLinhaRastreamentoGlobalOP(op) {
 bloco_novo = '''function renderLinhaRastreamentoGlobalOP(op) {
   const local = getLocalizacaoAtualOrdem(op);
   const quantidade = Number(op?.quantidade || 0);
-  const jaPossuiBipadoReal = state.movimentacoesProducao.some(mov =>
-    String(mov.opId || "") === String(op.id) && String(mov.status || "") === "finalizado"
-  );
+  const jaPossuiBipadoReal = /finalizado|bipado/i.test(`${local.local || ""} ${local.status || ""}`);
   const botaoBipar = !jaPossuiBipadoReal
     ? `<button class="btn btn-sm btn-bipado" data-bipar-op-direto="${escapeHtml(op.id)}" onclick="biparOrdemDireto('${op.id}')">Bipar</button>`
     : `<span class="badge ok">Bipado ✓</span>`;
+  const botaoManejo = `<button class="btn btn-sm" data-enviar-manejo-direto="${escapeHtml(op.id)}" onclick="enviarOrdemParaManejoDireto('${op.id}')">Enviar para manejo</button>`;
   const acoes = ehAdmin()
     ? `${botaoBipar}
+       ${botaoManejo}
        <button class="btn btn-sm btn-primary" onclick="abrirModalAjusteMigracao('${op.id}')">Editar local</button>
        <button class="btn btn-sm" onclick="filtrarManejosPorOP('${escapeHtml(op.numeroOP || op.id)}')">Abrir manejo</button>`
     : `${botaoBipar}
+       ${botaoManejo}
        <button class="btn btn-sm" onclick="filtrarManejosPorOP('${escapeHtml(op.numeroOP || op.id)}')">Abrir manejo</button>`;
 
   return `
@@ -193,10 +266,10 @@ if bloco_novo not in app:
     app = app.replace(bloco_antigo, bloco_novo, 1)
 
 export_antigo = "window.biparMovimentacao = biparMovimentacao;\nwindow.finalizarMovimentacao = finalizarMovimentacao;"
-export_novo = "window.biparMovimentacao = biparMovimentacao;\nwindow.biparOrdemDireto = biparOrdemDireto;\nwindow.finalizarMovimentacao = finalizarMovimentacao;"
+export_novo = "window.biparMovimentacao = biparMovimentacao;\nwindow.biparOrdemDireto = biparOrdemDireto;\nwindow.enviarOrdemParaManejoDireto = enviarOrdemParaManejoDireto;\nwindow.finalizarMovimentacao = finalizarMovimentacao;"
 if export_novo not in app:
     if export_antigo not in app:
-        raise SystemExit("Marcador de exportação do bipado não encontrado.")
+        raise SystemExit("Marcador de exportação do Rastreamento não encontrado.")
     app = app.replace(export_antigo, export_novo, 1)
 
 app_path.write_text(app, encoding="utf-8")
@@ -216,24 +289,28 @@ atualizador_path.write_text(atualizador, encoding="utf-8")
 release = {
     "version": VERSION,
     "updatedAt": UPDATED_AT,
-    "notes": "Permite bipar uma OP diretamente no Rastreamento mesmo com movimentações abertas. A movimentação mais recente vira o registro principal do bipado, as anteriores são encerradas como etapas encaminhadas e a OP entra em Finalizado / bipado sem exigir chegada."
+    "notes": "Adiciona no Rastreamento o botão Enviar para manejo, que recoloca a OP no manejo correto de Sutiã ou Calcinha com a fase AGUARDANDO MOVIMENTAÇÃO. Mantém também o bipado direto mesmo com movimentações abertas."
 }
 release_path.write_text(json.dumps(release, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-Path("LEIA-ME-BIPAR-DIRETO-RASTREAMENTO.txt").write_text(
-    "CORPONU - BIPAR DIRETO NO RASTREAMENTO\n\n"
+Path("LEIA-ME-RASTREAMENTO-BIPAR-E-MANEJO.txt").write_text(
+    "CORPONU - RASTREAMENTO: BIPAR E ENVIAR PARA MANEJO\n\n"
     "Envie juntos para a raiz do repositorio:\n"
     "- app.js\n"
     "- sw.js\n"
     "- corponu-atualizador.js\n"
     "- corponu-release.json\n\n"
-    "O botao Bipar aparece ao pesquisar uma OP no Rastreamento.\n"
-    "Ao clicar, a OP e finalizada automaticamente sem abrir Editar local e sem solicitar chegada.\n"
-    "O bipado funciona mesmo se existir movimentacao aberta, inclusive de faccao.\n"
-    "A movimentacao aberta mais recente vira o registro principal do bipado.\n"
-    "Outras movimentacoes abertas da mesma OP sao encerradas como etapas anteriores para evitar duplicidade no relatorio.\n"
-    "Esta acao nao registra chegada e nao gera pagamento automatico para faccao.\n"
-    "Todas as gravacoes operacionais sao feitas no mesmo lote; se uma falhar, nenhuma fica pela metade.\n",
+    "NOVO BOTAO ENVIAR PARA MANEJO\n"
+    "- Aparece ao pesquisar uma OP no Rastreamento.\n"
+    "- Identifica automaticamente se a OP pertence ao manejo Sutia ou Calcinha.\n"
+    "- Recoloca a OP no manejo com a fase AGUARDANDO MOVIMENTACAO.\n"
+    "- Limpa somente os campos de novo destino do manejo: faccao, chegada, falta e celu.\n"
+    "- Preserva silk, tecido, necessidade, dados da OP e historico de movimentacoes.\n"
+    "- Nao registra chegada, nao altera movimentacoes existentes e nao gera pagamento.\n\n"
+    "BIPAR DIRETO\n"
+    "- Continua funcionando mesmo com movimentacao aberta.\n"
+    "- Nao abre Editar local e nao solicita chegada.\n"
+    "- As gravacoes do bipado permanecem atomicas.\n",
     encoding="utf-8"
 )
 
