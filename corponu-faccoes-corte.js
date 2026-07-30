@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "2026-07-30-faccoes-corte-23";
+  const VERSION = "2026-07-30-faccoes-corte-integracao-segura-24";
   if (window.__CORPONU_FACCOES_CORTE_LOADER__ === VERSION) return;
   window.__CORPONU_FACCOES_CORTE_LOADER__ = VERSION;
 
