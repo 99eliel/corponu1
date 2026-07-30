@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-organizacao-autoupdate-pagamentos-2",
-  "updatedAt": "2026-07-30T00:55:00-03:00",
-  "notes": "Unifica o carregamento das melhorias financeiras, restaura a Central de Pendências e o lançamento manual, remove o resgate legado da página controlada pelo PWA e recupera a atualização automática sem apagar cache manualmente."
+  "version": "2026-07-30-hotfix-loop-carregamento-3",
+  "updatedAt": "2026-07-30T01:18:00-03:00",
+  "notes": "Corrige o loop de carregamento causado por múltiplos registradores do mesmo Service Worker. Mantém um único atualizador, preserva as melhorias financeiras e recarrega apenas uma vez quando uma versão nova é ativada."
 }
