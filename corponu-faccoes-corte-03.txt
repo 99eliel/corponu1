@@ -147,7 +147,7 @@
         cor: opSaida.cor || "",
         produtoNome: opSaida.produtoNome || opSaida.nomeProduto || "",
         tipoPecaCorte: tipoDaOP(opSaida),
-        tipoDestino: "faccao",
+        tipoDestino: "faccao_corte",
         tipoDestinoLabel: "Facção • Corte",
         destino: faccao,
         destinoId: faccoes.find(item => norm(item.nome) === norm(faccao))?.id || "",
