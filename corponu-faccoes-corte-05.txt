@@ -165,6 +165,52 @@
     }, 900);
   }
 
+  // Respeita classificações marcadas como falsas, sem reativá-las por dados antigos.
+  inferirClassificacaoFaccao = faccao => {
+    const processosPermitidos = Array.isArray(faccao?.processosPermitidos) ? faccao.processosPermitidos : [];
+    const grupos = Array.isArray(faccao?.gruposPermitidos) ? faccao.gruposPermitidos : [];
+    const texto = norm([...processosPermitidos, ...grupos, faccao?.grupo].join(" "));
+    const sutiaInferido = faccao?.atendeSutia === true || /SUTIA|BOJO|ALCA/.test(texto);
+    const calcinhaInferida = faccao?.atendeCalcinha === true || texto.includes("CALCINHA");
+    return {
+      sutia: typeof faccao?.trabalhaSutia === "boolean" ? faccao.trabalhaSutia : sutiaInferido,
+      calcinha: typeof faccao?.trabalhaCalcinha === "boolean" ? faccao.trabalhaCalcinha : calcinhaInferida
+    };
+  };
+
+  const abrirChegadaBaseCorte = abrirChegada;
+  abrirChegada = async function(movementId, editing = false) {
+    const movement = movimentos.find(item => String(item.id) === String(movementId));
+    const payment = movement ? pagamentoDoMovimento(movement.id) : null;
+    if (editing && payment && !ehAdmin() && String(payment.criadoPor || "") !== String(user?.uid || "")) {
+      return toast("Somente quem registrou esta chegada ou o administrador pode editá-la.", "error");
+    }
+    return abrirChegadaBaseCorte(movementId, editing);
+  };
+
+  const salvarChegadaBaseCorte = salvarChegada;
+  salvarChegada = async function(event) {
+    const payment = movimentoChegada ? pagamentoDoMovimento(movimentoChegada.id) : null;
+    if (payment && !ehAdmin() && String(payment.criadoPor || "") !== String(user?.uid || "")) {
+      event?.preventDefault?.();
+      return toast("Somente quem registrou esta chegada ou o administrador pode alterá-la.", "error");
+    }
+    return salvarChegadaBaseCorte(event);
+  };
+
+  async function recalcularTodasLateraisCorte() {
+    try {
+      const c = await aguardarContexto();
+      const snap = await c.fs.getDocs(c.fs.query(c.fs.collection(c.db, "ordensProducao"), c.fs.where("lateralProntaCorte", "==", true)));
+      for (const ordem of snap.docs) {
+        const data = ordem.data();
+        if (data.lateralProntaCorteAtiva !== false) await recalcularMontagemPorOP(ordem.id, true);
+      }
+    } catch (error) {
+      console.warn("Não foi possível recalcular todas as laterais de Corte.", error);
+    }
+  }
+
   function ligarEventos() {
     if (document.documentElement.dataset.eventosFaccoesCorte === VERSION) return;
     document.documentElement.dataset.eventosFaccoesCorte = VERSION;
@@ -267,6 +313,7 @@
         setTimeout(() => salvarClassificacaoFaccao(dadosClassificacao).catch(console.warn), 0);
       }
       if (form.id === "formRevisaoComponentes") atualizarOrigemAposRevisaoInterna();
+      if (form.id === "formConfigRev") [1500, 3200, 5600].forEach(delay => setTimeout(recalcularTodasLateraisCorte, delay));
       if (["formChegadaMovimentacao", "formChegadaManualFaccao", "formEntregaPagamento"].includes(form.id)) {
         if (form.id === "formChegadaMovimentacao") {
           const movementId = document.getElementById("chegadaMovimentacaoId")?.value || "";
