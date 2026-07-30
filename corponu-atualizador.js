@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-07-30-pagamento-manual-op-automatica-33";
+  const LOCAL_RELEASE = "2026-07-30-chegada-manual-visual-faccoes-34";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -27,9 +27,7 @@
         texto.includes("nova versao encontrada. instalando automaticamente") ||
         texto.includes("atualização instalada. reabrindo o sistema") ||
         texto.includes("atualizacao instalada. reabrindo o sistema")
-      ) {
-        elemento.remove();
-      }
+      ) elemento.remove();
     });
   }
 
@@ -37,18 +35,14 @@
     removerAvisosAntigos();
     if (window.__CORPONU_OBSERVADOR_AVISO_PWA__) return;
     window.__CORPONU_OBSERVADOR_AVISO_PWA__ = true;
-
     const observer = new MutationObserver(removerAvisosAntigos);
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    observer.observe(document.documentElement, { childList:true, subtree:true });
     setTimeout(() => observer.disconnect(), 30000);
   }
 
   function carregarScript(nomeArquivo, marcador, mensagemErro) {
-    const existente = [...document.scripts].find(script =>
-      String(script.src || "").includes(nomeArquivo)
-    );
+    const existente = [...document.scripts].find(script => String(script.src || "").includes(nomeArquivo));
     if (existente) return existente;
-
     const script = document.createElement("script");
     script.src = `./${nomeArquivo}?v=${encodeURIComponent(LOCAL_RELEASE)}&t=${Date.now()}`;
     script.async = false;
@@ -78,17 +72,22 @@
     carregarScript(
       "corponu-pagamentos-interface.js",
       "pagamentos-interface",
-      "Não foi possível carregar a nova organização visual da aba Pagamentos."
+      "Não foi possível carregar a organização visual da aba Pagamentos."
     );
     carregarScript(
       "corponu-pagamentos-interface-fix.js",
       "pagamentos-interface-fix",
-      "Não foi possível estabilizar a nova organização visual da aba Pagamentos."
+      "Não foi possível estabilizar a organização visual da aba Pagamentos."
     );
     carregarScript(
       "corponu-pagamentos-manual-op-auto.js",
       "pagamentos-manual-op-auto",
       "Não foi possível carregar a busca automática da OP no lançamento manual."
+    );
+    carregarScript(
+      "corponu-chegada-manual-visual.js",
+      "chegada-manual-visual",
+      "Não foi possível carregar a nova aparência da Chegada manual de facção."
     );
   }
 
@@ -122,24 +121,23 @@
       aviso = document.createElement("div");
       aviso.id = "toastAtualizadorCorpoNu";
       Object.assign(aviso.style, {
-        position: "fixed",
-        right: "18px",
-        bottom: "18px",
-        zIndex: "100000",
-        background: "#111827",
-        color: "#fff",
-        padding: "12px 14px",
-        borderRadius: "13px",
-        boxShadow: "0 12px 30px rgba(15,23,42,.28)",
-        fontFamily: "Arial, sans-serif",
-        fontSize: "13px",
-        fontWeight: "800",
-        maxWidth: "390px",
-        lineHeight: "1.4"
+        position:"fixed",
+        right:"18px",
+        bottom:"18px",
+        zIndex:"100000",
+        background:"#111827",
+        color:"#fff",
+        padding:"12px 14px",
+        borderRadius:"13px",
+        boxShadow:"0 12px 30px rgba(15,23,42,.28)",
+        fontFamily:"Arial, sans-serif",
+        fontSize:"13px",
+        fontWeight:"800",
+        maxWidth:"390px",
+        lineHeight:"1.4"
       });
       document.body.appendChild(aviso);
     }
-
     aviso.textContent = mensagem;
     clearTimeout(aviso._corponuTimer);
     aviso._corponuTimer = setTimeout(() => aviso.remove(), 4500);
@@ -148,17 +146,14 @@
   function recarregarUmaVez(versao) {
     const release = String(versao || "").trim();
     if (!release || release === LOCAL_RELEASE) return;
-
     const url = new URL(window.location.href);
     if (url.searchParams.get("release") === release) return;
-
     const chave = `${RELOAD_KEY}_${release}`;
     try {
       const ultima = Number(sessionStorage.getItem(chave) || 0);
       if (Date.now() - ultima < 30000) return;
       sessionStorage.setItem(chave, String(Date.now()));
     } catch (error) {}
-
     mostrarAviso("Nova versão encontrada. Atualizando a página...");
     url.searchParams.set("release", release);
     url.searchParams.set("t", String(Date.now()));
@@ -168,9 +163,8 @@
   async function verificarRelease() {
     if (verificando) return;
     verificando = true;
-
     try {
-      const resposta = await fetch(`corponu-release.json?ts=${Date.now()}`, { cache: "no-store" });
+      const resposta = await fetch(`corponu-release.json?ts=${Date.now()}`, { cache:"no-store" });
       if (!resposta.ok) return;
       const dados = await resposta.json();
       recarregarUmaVez(dados?.version);
@@ -189,11 +183,8 @@
     await removerPwaAntigo();
     removerAvisosAntigos();
     await verificarRelease();
-
     setInterval(verificarRelease, INTERVALO_VERIFICACAO);
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) verificarRelease();
-    });
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) verificarRelease(); });
     window.addEventListener("focus", verificarRelease);
     window.addEventListener("online", verificarRelease);
   }
@@ -203,7 +194,7 @@
   carregarPagamentos();
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", iniciar, { once: true });
+    document.addEventListener("DOMContentLoaded", iniciar, { once:true });
   } else {
     iniciar();
   }
