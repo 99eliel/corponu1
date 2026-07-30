@@ -1,4 +1,4 @@
-const APP_VERSION = "2026-07-30-organizacao-autoupdate-pagamentos-2";
+const APP_VERSION = "2026-07-30-hotfix-loop-carregamento-3";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 const INJECT_MARKER = "data-corponu-release-injetado";
 
@@ -52,9 +52,15 @@ function atualizarMetaVersao(html) {
 
 function montarScriptsAusentes(html) {
   const scripts = [];
+
   if (!html.includes("corponu-atualizador.js")) {
     scripts.push(`<script ${INJECT_MARKER}="${APP_VERSION}" src="./corponu-atualizador.js?v=${APP_VERSION}"></script>`);
   }
+
+  // O módulo financeiro antigo possui uma rotina própria de atualização.
+  // Este bloqueio garante que somente corponu-atualizador.js controle o PWA.
+  scripts.push(`<script ${INJECT_MARKER}="${APP_VERSION}">window.__corponuAutoUpdateIniciado = true;</script>`);
+
   if (!html.includes("corponu-pagamentos-seguro.js")) {
     scripts.push(`<script ${INJECT_MARKER}="${APP_VERSION}" src="./corponu-pagamentos-seguro.js?v=${APP_VERSION}"></script>`);
   }
