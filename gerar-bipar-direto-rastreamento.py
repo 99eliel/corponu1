@@ -86,8 +86,9 @@ async function biparOrdemDireto(opId) {
       criadoEm: serverTimestamp()
     };
 
-    await setDoc(doc(db, "movimentacoesProducao", movimentacaoId), movimentacao, { merge: true });
-    await setDoc(doc(db, "ordens", id), {
+    const lote = writeBatch(db);
+    lote.set(doc(db, "movimentacoesProducao", movimentacaoId), movimentacao, { merge: true });
+    lote.set(doc(db, "ordensProducao", id), {
       localAtualMigracao: "FINALIZADO_BIPADO",
       statusMigracaoLigia: "FINALIZADO_BIPADO",
       relatorioMigracao: "Finalizado / bipado",
@@ -99,6 +100,7 @@ async function biparOrdemDireto(opId) {
       atualizadoPor: state.currentUser.uid,
       atualizadoEm: serverTimestamp()
     }, { merge: true });
+    await lote.commit();
 
     await registrarLog(
       "op_bipada_direto_rastreamento",
@@ -203,6 +205,7 @@ Path("LEIA-ME-BIPAR-DIRETO-RASTREAMENTO.txt").write_text(
     "Ao clicar, a OP e finalizada automaticamente e entra no relatorio de bipadas.\n"
     "Nao abre Editar local e nao solicita chegada.\n"
     "OPs ainda vinculadas a faccao continuam bloqueadas e devem ser finalizadas na aba Faccoes.\n"
+    "Movimentacao e OP sao salvas juntas; se uma falhar, nenhuma fica pela metade.\n"
     "O ID do movimento e fixo por OP para impedir duplicidade em clique repetido.\n",
     encoding="utf-8"
 )
