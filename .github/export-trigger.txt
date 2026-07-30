@@ -1,1 +1,0 @@
-Exportação temporária criada em 2026-07-30 para preparar o pacote reorganizado sem alterar a branch main.
