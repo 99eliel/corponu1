@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-pagamentos-interface-organizada-30",
-  "updatedAt": "2026-07-30T19:35:00-03:00",
-  "notes": "Reorganiza visualmente a aba Pagamentos sem alterar regras: indicadores no topo, filtros agrupados, ações separadas, abas para lançamentos e resumo por facção, gerenciamento de valores preservado e pendências de valor exibidas de forma simples."
+  "version": "2026-07-30-pagamentos-interface-segura-31",
+  "updatedAt": "2026-07-30T19:52:00-03:00",
+  "notes": "Mantém a reorganização visual da aba Pagamentos em uma implementação segura, sem observador global. Preserva todos os cálculos, filtros, confirmações e registros existentes."
 }
