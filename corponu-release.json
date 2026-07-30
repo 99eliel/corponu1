@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-faccoes-sem-resumo-processos-28",
-  "updatedAt": "2026-07-30T19:22:00-03:00",
-  "notes": "Remove da tela de Facções o bloco visual Processos das facções, preservando as abas Sutiã, Calcinha e Corte, os filtros, as movimentações, as chegadas e o cadastro de facções."
+  "version": "2026-07-30-faccoes-sem-bloco-processos-29",
+  "updatedAt": "2026-07-30T19:36:00-03:00",
+  "notes": "Remove definitivamente da tela de Facções o bloco visual de processos e facções vinculadas, usando a posição estrutural entre os cartões de resumo e o cabeçalho das movimentações."
 }
