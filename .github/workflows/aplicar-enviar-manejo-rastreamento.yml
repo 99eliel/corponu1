@@ -1,0 +1,82 @@
+name: Publicar envio direto do Rastreamento para o Manejo
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/aplicar-enviar-manejo-rastreamento.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sincronizar versão e carregamento
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          antiga = "2026-07-30-busca-filtros-manejo-16"
+          nova = "2026-07-30-rastreamento-enviar-manejo-17"
+
+          index = Path("index.html")
+          html = index.read_text(encoding="utf-8")
+          html = html.replace(antiga, nova)
+
+          script_novo = f'  <script src="./corponu-rastreamento-enviar-manejo.js?v={nova}"></script>'
+          if "corponu-rastreamento-enviar-manejo.js" not in html:
+              marcador = f'  <script src="./corponu-rastreamento-interno.js?v={nova}"></script>'
+              if marcador in html:
+                  html = html.replace(marcador, marcador + "\n" + script_novo, 1)
+              else:
+                  html = html.replace("</body>", script_novo + "\n</body>", 1)
+          index.write_text(html, encoding="utf-8")
+
+          atualizador = Path("corponu-atualizador.js")
+          texto_atualizador = atualizador.read_text(encoding="utf-8").replace(antiga, nova)
+          atualizador.write_text(texto_atualizador, encoding="utf-8")
+
+          release = {
+              "version": nova,
+              "updatedAt": "2026-07-30T12:04:00-03:00",
+              "notes": "Adiciona na listagem geral do Rastreamento o botão Enviar para manejo. A ação preserva o histórico da movimentação, identifica Sutiã ou Calcinha e define a fase AGUARDANDO MOVIMENTAÇÃO."
+          }
+          Path("corponu-release.json").write_text(
+              json.dumps(release, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8"
+          )
+          PY
+
+      - name: Validar correção
+        shell: bash
+        run: |
+          node --check corponu-rastreamento-enviar-manejo.js
+          node --check corponu-atualizador.js
+          python -m json.tool corponu-release.json > /dev/null
+          grep -q "corponu-rastreamento-enviar-manejo.js" index.html
+          grep -q "2026-07-30-rastreamento-enviar-manejo-17" index.html
+          grep -q "AGUARDANDO MOVIMENTAÇÃO" corponu-rastreamento-enviar-manejo.js
+          git diff --check
+
+      - name: Publicar no main
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "Arquivos já sincronizados."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html corponu-atualizador.js corponu-release.json
+          git commit -m "release: enviar OP do rastreamento ao manejo"
+          git push origin main
