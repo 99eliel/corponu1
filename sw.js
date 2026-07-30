@@ -1,4 +1,4 @@
-const APP_VERSION = "2026-07-30-hotfix-loop-carregamento-3";
+const APP_VERSION = "2026-07-30-rastreamento-interno-sem-faccao-4";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 const INJECT_MARKER = "data-corponu-release-injetado";
 
@@ -11,6 +11,7 @@ const CORE_ASSETS = [
   `./corponu-atualizador.js?v=${APP_VERSION}`,
   `./corponu-pagamentos-seguro.js?v=${APP_VERSION}`,
   `./corponu-pagamentos-manual.js?v=${APP_VERSION}`,
+  `./corponu-rastreamento-interno.js?v=${APP_VERSION}`,
   "./corponu-release.json",
   "./version.json",
   `./calcinhas-historico-2026.json?v=${APP_VERSION}`,
@@ -66,6 +67,9 @@ function montarScriptsAusentes(html) {
   }
   if (!html.includes("corponu-pagamentos-manual.js")) {
     scripts.push(`<script ${INJECT_MARKER}="${APP_VERSION}" type="module" src="./corponu-pagamentos-manual.js?v=${APP_VERSION}"></script>`);
+  }
+  if (!html.includes("corponu-rastreamento-interno.js")) {
+    scripts.push(`<script ${INJECT_MARKER}="${APP_VERSION}" src="./corponu-rastreamento-interno.js?v=${APP_VERSION}"></script>`);
   }
   return scripts.join("\n");
 }
@@ -222,6 +226,7 @@ self.addEventListener("fetch", event => {
     url.pathname.endsWith("/corponu-atualizador.js") ||
     url.pathname.endsWith("/corponu-pagamentos-seguro.js") ||
     url.pathname.endsWith("/corponu-pagamentos-manual.js") ||
+    url.pathname.endsWith("/corponu-rastreamento-interno.js") ||
     url.pathname.endsWith("/corponu-release.json") ||
     url.pathname.endsWith("/version.json") ||
     url.pathname.endsWith("/calcinhas-historico-2026.json") ||
