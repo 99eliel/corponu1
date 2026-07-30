@@ -1,0 +1,75 @@
+name: Gerar hotfix manual do filtro de pagamentos
+
+on:
+  push:
+    branches:
+      - manual/fix-filtro-pagamentos-trava-20260730
+
+permissions:
+  contents: read
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Gerar arquivos corrigidos
+        run: python gerar-hotfix-filtro-pagamentos.py
+
+      - name: Validar JavaScript
+        run: |
+          node --check app.js
+          node --check sw.js
+          node --check corponu-atualizador.js
+
+      - name: Validar JSON e conteúdo da correção
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          release = json.loads(Path('corponu-release.json').read_text(encoding='utf-8'))
+          assert release['version'] == '2026-07-30-hotfix-filtro-pagamentos-estavel-9'
+
+          app = Path('app.js').read_text(encoding='utf-8')
+          assert 'agendarRenderPagamentosFiltrados' in app
+          assert 'renderPagamentos({ somenteResultados: true })' in app
+          assert 'addEventListener("change", renderPagamentos)' not in app
+          assert 'if (!somenteResultados)' in app
+
+          sw = Path('sw.js').read_text(encoding='utf-8')
+          atualizador = Path('corponu-atualizador.js').read_text(encoding='utf-8')
+          assert release['version'] in sw
+          assert release['version'] in atualizador
+          print('Validação rigorosa concluída.')
+          PY
+
+      - name: Montar pacote ZIP
+        run: |
+          mkdir pacote-hotfix-filtro-pagamentos
+          cp app.js pacote-hotfix-filtro-pagamentos/
+          cp sw.js pacote-hotfix-filtro-pagamentos/
+          cp corponu-atualizador.js pacote-hotfix-filtro-pagamentos/
+          cp corponu-release.json pacote-hotfix-filtro-pagamentos/
+          cp LEIA-ME-HOTFIX-FILTRO-PAGAMENTOS.txt pacote-hotfix-filtro-pagamentos/
+          zip -r corponu-hotfix-filtro-pagamentos-estavel-9.zip pacote-hotfix-filtro-pagamentos
+
+      - name: Publicar pacote para download
+        uses: actions/upload-artifact@v4
+        with:
+          name: corponu-hotfix-filtro-pagamentos-estavel-9
+          path: corponu-hotfix-filtro-pagamentos-estavel-9.zip
+          if-no-files-found: error
+          retention-days: 7
