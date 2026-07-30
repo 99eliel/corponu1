@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-hotfix-entrega-ajustes-rapidos-8",
-  "updatedAt": "2026-07-30T06:57:00-03:00",
-  "notes": "Força a entrega da reversão visual de Pagamentos e corrige o modo rápido para usar uma URL exclusiva do arquivo de ajustes em cada release. Não altera cálculos, Firestore ou funções financeiras."
+  "version": "2026-07-30-rastreamento-interno-sem-faccao-4",
+  "updatedAt": "2026-07-30T01:32:00-03:00",
+  "notes": "Separa o Rastreamento das operações de facção. Remove a opção Em facção do ajuste manual, retira Chegada do Rastreamento, direciona movimentações de facção para a aba Facções e permite bipar movimentações internas sem exigir data de chegada."
 }

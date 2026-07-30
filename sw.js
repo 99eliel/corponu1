@@ -1,4 +1,4 @@
-const APP_VERSION = "2026-07-30-hotfix-entrega-ajustes-rapidos-8";
+const APP_VERSION = "2026-07-30-rastreamento-interno-sem-faccao-4";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 const INJECT_MARKER = "data-corponu-release-injetado";
 
@@ -12,7 +12,6 @@ const CORE_ASSETS = [
   `./corponu-pagamentos-seguro.js?v=${APP_VERSION}`,
   `./corponu-pagamentos-manual.js?v=${APP_VERSION}`,
   `./corponu-rastreamento-interno.js?v=${APP_VERSION}`,
-  `./corponu-ajustes-rapidos.js?v=${APP_VERSION}`,
   "./corponu-release.json",
   "./version.json",
   `./calcinhas-historico-2026.json?v=${APP_VERSION}`,
@@ -52,7 +51,7 @@ function atualizarMetaVersao(html) {
   return html.replace("</head>", `  ${novaMeta}\n</head>`);
 }
 
-function montarScriptsAusentes(html, releaseVersion = APP_VERSION) {
+function montarScriptsAusentes(html) {
   const scripts = [];
 
   if (!html.includes("corponu-atualizador.js")) {
@@ -72,13 +71,10 @@ function montarScriptsAusentes(html, releaseVersion = APP_VERSION) {
   if (!html.includes("corponu-rastreamento-interno.js")) {
     scripts.push(`<script ${INJECT_MARKER}="${APP_VERSION}" src="./corponu-rastreamento-interno.js?v=${APP_VERSION}"></script>`);
   }
-  if (!html.includes("corponu-ajustes-rapidos.js")) {
-    scripts.push(`<script ${INJECT_MARKER}="${releaseVersion}" src="./corponu-ajustes-rapidos.js?v=${encodeURIComponent(releaseVersion)}"></script>`);
-  }
   return scripts.join("\n");
 }
 
-function prepararHtml(htmlOriginal, releaseVersion = APP_VERSION) {
+function prepararHtml(htmlOriginal) {
   let html = String(htmlOriginal || "");
   html = removerResgateLegado(html);
   html = atualizarMetaVersao(html);
@@ -86,7 +82,7 @@ function prepararHtml(htmlOriginal, releaseVersion = APP_VERSION) {
     html = versionarArquivoNoHtml(html, arquivo);
   });
 
-  const scripts = montarScriptsAusentes(html, releaseVersion);
+  const scripts = montarScriptsAusentes(html);
   if (!scripts) return html;
   if (html.includes("</body>")) return html.replace("</body>", `${scripts}\n</body>`);
   return `${html}\n${scripts}`;
@@ -97,8 +93,7 @@ async function respostaHtmlAtualizada(request) {
     const resposta = await fetch(request, { cache: "no-store" });
     if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
 
-    const releaseVersion = new URL(request.url).searchParams.get("release") || APP_VERSION;
-    const html = prepararHtml(await resposta.text(), releaseVersion);
+    const html = prepararHtml(await resposta.text());
     const headers = new Headers(resposta.headers);
     headers.set("Content-Type", "text/html; charset=utf-8");
     headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -232,7 +227,6 @@ self.addEventListener("fetch", event => {
     url.pathname.endsWith("/corponu-pagamentos-seguro.js") ||
     url.pathname.endsWith("/corponu-pagamentos-manual.js") ||
     url.pathname.endsWith("/corponu-rastreamento-interno.js") ||
-    url.pathname.endsWith("/corponu-ajustes-rapidos.js") ||
     url.pathname.endsWith("/corponu-release.json") ||
     url.pathname.endsWith("/version.json") ||
     url.pathname.endsWith("/calcinhas-historico-2026.json") ||
