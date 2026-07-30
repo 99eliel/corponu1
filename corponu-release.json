@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-rastreamento-enviar-manejo-17",
-  "updatedAt": "2026-07-30T12:04:00-03:00",
-  "notes": "Adiciona na listagem geral do Rastreamento o botão Enviar para manejo. A ação preserva o histórico da movimentação, identifica Sutiã ou Calcinha e define a fase AGUARDANDO MOVIMENTAÇÃO."
+  "version": "2026-07-30-revisao-lateral-bojo-18",
+  "updatedAt": "2026-07-30T12:27:00-03:00",
+  "notes": "Cria a área Revisão lateral e bojo. A OP pode registrar lateral e bojo feitos pela confecção, com descontos configuráveis e cumulativos nos processos SUTIÃ MONTAGEM e SUTIÃ COMPLETO. Somente pagamentos pendentes são recalculados."
 }
