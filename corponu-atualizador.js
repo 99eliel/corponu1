@@ -3,10 +3,11 @@
 
   if (window.__CORPONU_ATUALIZADOR_WEB__) return;
 
-  const LOCAL_RELEASE = "2026-07-30-revisao-visivel-sem-aviso-19";
+  const LOCAL_RELEASE = "2026-07-30-revisao-tela-segura-20";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
   const MODULO_REVISAO = "corponu-revisao-lateral-bojo.js";
+  const MODULO_FIX_REVISAO = "corponu-revisao-lateral-bojo-fix.js";
   let verificando = false;
 
   window.__CORPONU_ATUALIZADOR_WEB__ = LOCAL_RELEASE;
@@ -48,22 +49,37 @@
     setTimeout(() => observer.disconnect(), 30000);
   }
 
-  function carregarModuloRevisao() {
-    if (window.__CORPONU_REVISAO_COMPONENTES__) return;
-
+  function carregarScriptUnico(nomeArquivo, marcador, aoFalhar) {
     const existente = [...document.scripts].find(script =>
-      String(script.src || "").includes(MODULO_REVISAO)
+      String(script.src || "").includes(nomeArquivo)
     );
-    if (existente) return;
+    if (existente) return existente;
 
     const script = document.createElement("script");
-    script.src = `./${MODULO_REVISAO}?v=${encodeURIComponent(LOCAL_RELEASE)}&t=${Date.now()}`;
+    script.src = `./${nomeArquivo}?v=${encodeURIComponent(LOCAL_RELEASE)}&t=${Date.now()}`;
     script.async = false;
-    script.dataset.corponuModulo = "revisao-lateral-bojo";
-    script.onerror = () => {
-      console.error("Não foi possível carregar a área Revisão lateral e bojo.");
-    };
+    script.dataset.corponuModulo = marcador;
+    script.onerror = () => console.error(aoFalhar);
     document.head.appendChild(script);
+    return script;
+  }
+
+  function carregarCorrecaoRevisao() {
+    if (window.__CORPONU_FIX_REVISAO_TELA__ === LOCAL_RELEASE) return;
+    carregarScriptUnico(
+      MODULO_FIX_REVISAO,
+      "revisao-lateral-bojo-fix",
+      "Não foi possível carregar a proteção da área Revisão lateral e bojo."
+    );
+  }
+
+  function carregarModuloRevisao() {
+    if (window.CorpoNuRevisaoComponentes?.versao) return;
+    carregarScriptUnico(
+      MODULO_REVISAO,
+      "revisao-lateral-bojo",
+      "Não foi possível carregar a área Revisão lateral e bojo."
+    );
   }
 
   async function removerPwaAntigo() {
@@ -155,6 +171,7 @@
 
   async function iniciar() {
     observarAvisosAntigos();
+    carregarCorrecaoRevisao();
     carregarModuloRevisao();
     await removerPwaAntigo();
     removerAvisosAntigosDeAtualizacao();
@@ -167,7 +184,8 @@
     window.addEventListener("online", verificarRelease);
   }
 
-  // Carrega a função nova o mais cedo possível, mesmo antes do DOMContentLoaded.
+  // A proteção é carregada primeiro; ela cria a página antes de liberar o clique.
+  carregarCorrecaoRevisao();
   carregarModuloRevisao();
 
   if (document.readyState === "loading") {
