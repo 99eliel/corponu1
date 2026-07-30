@@ -65,6 +65,7 @@ jobs:
 
           versao = '2026-07-30-rastreamento-bipar-direto-11'
           app = Path('app.js').read_text(encoding='utf-8')
+          regras = Path('firestore-rules.txt').read_text(encoding='utf-8')
           sw = Path('sw.js').read_text(encoding='utf-8')
           atualizador = Path('corponu-atualizador.js').read_text(encoding='utf-8')
           release = json.loads(Path('corponu-release.json').read_text(encoding='utf-8'))
@@ -77,6 +78,12 @@ jobs:
           assert 'localAtualMigracao: "FINALIZADO_BIPADO"' in app
           assert 'status: "finalizado"' in app
           assert 'ocultarDoManejo: true' in app
+          assert 'const lote = writeBatch(db);' in app
+          assert 'lote.set(doc(db, "movimentacoesProducao"' in app
+          assert 'lote.set(doc(db, "ordensProducao"' in app
+          assert 'await lote.commit();' in app
+          assert 'match /ordensProducao/{ordemId}' in regras
+          assert 'match /movimentacoesProducao/{movimentoId}' in regras
           assert versao in sw
           assert versao in atualizador
           assert release['version'] == versao
