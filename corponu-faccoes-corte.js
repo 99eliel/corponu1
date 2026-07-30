@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "2026-07-30-faccoes-corte-sem-gerenciamento-26";
+  const VERSION = "2026-07-30-faccoes-processos-cadastrados-27";
   if (window.__CORPONU_FACCOES_CORTE_LOADER__ === VERSION) return;
   window.__CORPONU_FACCOES_CORTE_LOADER__ = VERSION;
 
@@ -12,30 +12,44 @@
     "corponu-faccoes-corte-05.txt"
   ];
 
-  function carregarSemGerenciamento() {
-    if ([...document.scripts].some(script => String(script.src || "").includes("corponu-faccoes-corte-sem-gerenciamento.js"))) return;
-    const script = document.createElement("script");
-    script.src = `./corponu-faccoes-corte-sem-gerenciamento.js?v=${encodeURIComponent(VERSION)}&t=${Date.now()}`;
-    script.async = false;
-    script.dataset.corponuFaccoesCorteSemGerenciamento = VERSION;
-    script.onerror = () => console.error("Não foi possível remover o gerenciamento duplicado da aba Corte.");
-    document.head.appendChild(script);
-  }
-
-  function carregarCorrecaoTresAbas() {
-    const existente = [...document.scripts].find(script => String(script.src || "").includes("corponu-faccoes-tres-abas-saida.js"));
+  function carregarScript(nomeArquivo, marcador, mensagemErro, aoCarregar) {
+    const existente = [...document.scripts].find(script => String(script.src || "").includes(nomeArquivo));
     if (existente) {
-      carregarSemGerenciamento();
-      return;
+      aoCarregar?.();
+      return existente;
     }
 
     const script = document.createElement("script");
-    script.src = `./corponu-faccoes-tres-abas-saida.js?v=${encodeURIComponent(VERSION)}&t=${Date.now()}`;
+    script.src = `./${nomeArquivo}?v=${encodeURIComponent(VERSION)}&t=${Date.now()}`;
     script.async = false;
-    script.dataset.corponuFaccoesTresAbas = VERSION;
-    script.onload = carregarSemGerenciamento;
-    script.onerror = () => console.error("Não foi possível carregar a correção das três abas de Facções.");
+    script.dataset.corponuModulo = marcador;
+    script.onload = () => aoCarregar?.();
+    script.onerror = () => console.error(mensagemErro);
     document.head.appendChild(script);
+    return script;
+  }
+
+  function carregarAjustesFinais() {
+    carregarScript(
+      "corponu-faccoes-corte-sem-gerenciamento.js",
+      "faccoes-corte-sem-gerenciamento",
+      "Não foi possível remover o gerenciamento duplicado da aba Corte."
+    );
+
+    carregarScript(
+      "corponu-faccoes-processos-cadastrados.js",
+      "faccoes-processos-cadastrados",
+      "Não foi possível carregar os processos cadastrados no registro de saída."
+    );
+  }
+
+  function carregarCorrecaoTresAbas() {
+    carregarScript(
+      "corponu-faccoes-tres-abas-saida.js",
+      "faccoes-tres-abas-saida",
+      "Não foi possível carregar a correção das três abas de Facções.",
+      carregarAjustesFinais
+    );
   }
 
   Promise.all(parts.map(name => fetch(`./${name}?v=${encodeURIComponent(VERSION)}&t=${Date.now()}`, { cache: "no-store" }).then(response => {
