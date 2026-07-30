@@ -1,25 +1,23 @@
-TESTES TÉCNICOS REALIZADOS
-Versão: 2026-07-29-pendencias-organizadas-auto-update-4
+TESTES REALIZADOS
+Versão: 2026-07-30-recuperacao-pagamentos-autoupdate-5
 
-[OK] Sintaxe JavaScript de corponu-pagamentos-seguro.js validada com node --check.
-[OK] Sintaxe JavaScript de sw.js validada com node --check.
-[OK] Mesma versão aplicada no módulo financeiro e no Service Worker.
-[OK] Manifesto corponu-release.json criado com JSON válido.
-[OK] Service Worker força a versão atual nos arquivos principais, inclusive quando o index.html ainda solicita uma identificação antiga.
-[OK] Navegação configurada como network-first e sem cache HTTP durante a busca da página.
-[OK] Arquivos principais configurados como network-first.
-[OK] Caches antigos op-confeccao-* são removidos ao ativar a nova versão.
-[OK] Verificação automática configurada ao abrir, a cada 5 minutos, ao voltar o foco e ao tornar a página visível.
-[OK] Proteção contra recarregamento repetitivo usando bloqueio temporário e chave de sessão.
-[OK] Central de pendências com pesquisa, filtro por processo, filtro por tipo e agrupamento por processo.
-[OK] Botão Excluir condicionado à permissão do usuário.
-[OK] Exclusão possui confirmação com os dados do lançamento.
-[OK] Pagamento quitado é bloqueado antes da exclusão.
-[OK] Registro de auditoria solicitado após a exclusão.
-[OK] Lista e totais são atualizados após salvar ou apagar uma pendência.
+1. Sintaxe do módulo financeiro validada com node --check.
+2. Sintaxe do novo sw.js validada com node --check.
+3. Conferida a presença das rotinas de:
+   - processos agrupados;
+   - relatório simplificado;
+   - confirmação reforçada;
+   - Central de Pendências;
+   - exclusão segura;
+   - verificação automática do Service Worker;
+   - recarga automática dos clientes após ativação.
+4. O Service Worker foi construído sem pré-cache obrigatório, evitando falha de
+   instalação caso algum arquivo complementar não exista na raiz.
+5. O módulo financeiro está incorporado em Base64 UTF-8 no próprio sw.js e também é
+   servido virtualmente quando houver pedido por corponu-pagamentos-seguro.js.
+6. version.json não foi alterado para evitar conflito com o atualizador antigo.
 
-TESTE QUE DEPENDE DO FIREBASE DE PRODUÇÃO
-- Confirmar uma exclusão de teste com usuário administrador.
-- Confirmar que o documento saiu de entregasPagamento.
-- Confirmar que a OP e a movimentação permanecem no sistema.
-- Publicar uma versão de teste posterior e confirmar atualização automática em outro computador sem limpar cache.
+LIMITAÇÃO DO TESTE
+Não foi realizado fechamento ou exclusão em dados reais do Firestore de produção.
+O primeiro teste funcional deve abrir a Central de Pendências e cancelar uma exclusão
+antes de apagar um lançamento real.

@@ -1,0 +1,59 @@
+RECUPERAÇÃO EMERGENCIAL — CORPONU
+Versão: 2026-07-30-recuperacao-pagamentos-autoupdate-5
+
+O QUE ACONTECEU
+O branch main publicado voltou a conter o sw.js e o version.json antigos. Além disso,
+os arquivos corponu-pagamentos-seguro.js e corponu-release.json não aparecem na raiz
+publicada. Por isso as melhorias de Pagamentos deixaram de ser carregadas.
+
+CORREÇÃO DESTA ENTREGA
+Esta recuperação usa apenas UM arquivo obrigatório: sw.js.
+O próprio sw.js contém internamente o módulo financeiro completo e o incorpora ao
+update.js entregue ao navegador. Assim, a correção não depende de um script novo no
+index.html nem da presença de outro arquivo para funcionar.
+
+ARQUIVO OBRIGATÓRIO PARA O GITHUB
+- sw.js  -> SUBSTITUIR o sw.js atual na RAIZ do repositório.
+
+NÃO SUBSTITUIR NESTA RECUPERAÇÃO
+- version.json
+- index.html
+- update.js
+- app.js
+- style.css
+- regras do Firebase
+
+O arquivo corponu-pagamentos-seguro.js acompanha o pacote somente como fonte legível
+e backup técnico. O sistema não depende dele, pois a mesma versão está incorporada
+no sw.js.
+
+COMO PUBLICAR
+1. Abra https://github.com/99eliel/corponu1
+2. Abra o arquivo sw.js da raiz.
+3. Clique em editar/substituir e envie o sw.js deste pacote.
+4. Confirme o commit no branch main.
+5. Aguarde a publicação da hospedagem.
+
+COMO A ATUALIZAÇÃO CHEGA AOS COMPUTADORES
+- Ao abrir o sistema, o navegador verifica o sw.js imediatamente.
+- Computadores que já estiverem com o sistema aberto verificam pelo mecanismo antigo
+  em até aproximadamente 15 minutos.
+- Quando encontra a nova versão, o Service Worker assume o controle e manda a própria
+  janela abrir novamente já atualizada.
+- Não é necessário limpar cache, usar Ctrl+F5 ou acessar cada computador.
+
+COMO CONFERIR QUE DEU CERTO
+Abra Pagamentos e confirme:
+- filtro Processo agrupado por serviço, como ENCAPAR BOJO;
+- botão Relatório simplificado;
+- confirmação reforçada de pagamentos filtrados;
+- botão Ver pendências de valor;
+- Central de Pendências organizada;
+- botão Excluir em lançamentos permitidos.
+
+IMPORTANTE
+Não altere o version.json agora. O update.js antigo ainda usa a identificação
+2026-07-29-restantes-faccoes-complementares-1. Mudar somente o version.json acionaria
+o mecanismo antigo de recuperação e poderia remover novamente o Service Worker.
+A partir desta recuperação, novas versões serão detectadas pela mudança do próprio
+sw.js, que é a forma mais segura para o estado atual do projeto.

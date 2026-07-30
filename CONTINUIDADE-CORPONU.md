@@ -1,81 +1,56 @@
-# Continuidade do desenvolvimento — CorpoNu
+# Continuidade do Sistema CorpoNu
 
-## Repositório oficial
+## Versão de recuperação ativa
 
-`https://github.com/99eliel/corponu1`
+`2026-07-30-recuperacao-pagamentos-autoupdate-5`
 
-## Versão desta entrega
+## Motivo da recuperação
 
-`2026-07-29-pendencias-organizadas-auto-update-4`
+As melhorias financeiras foram entregues inicialmente em um arquivo adicional
+`corponu-pagamentos-seguro.js`, carregado por injeção do Service Worker. O branch
+`main` publicado voltou a apresentar o Service Worker e o manifesto de versão antigos,
+e os arquivos adicionais não estavam disponíveis na raiz. Com isso, o módulo deixou
+de carregar e as melhorias desapareceram.
 
-## Arquivos adicionados ou substituídos
+## Arquitetura temporária segura
 
-- `corponu-pagamentos-seguro.js`
-- `sw.js`
-- `corponu-release.json`
+O `sw.js` de recuperação contém internamente o módulo financeiro completo. Quando o
+navegador solicita `update.js`, o Service Worker busca o arquivo original no servidor,
+anexa o módulo e entrega a resposta combinada. Portanto:
 
-## Situação da aba Pagamentos
+- nenhuma alteração é necessária no `index.html`;
+- `update.js` e `app.js` originais permanecem preservados;
+- a instalação não falha por ausência de arquivos novos;
+- a ativação navega automaticamente as janelas abertas para a versão nova;
+- o arquivo legível `corponu-pagamentos-seguro.js` é apenas fonte de manutenção.
 
-A aba possui:
+## Regra crítica de versão
 
-- filtros acumulativos por período, facção, referência, processo e situação;
-- processos agrupados por nome, em vez de um item para cada referência/preço;
+Enquanto o `update.js` principal continuar declarando
+`2026-07-29-restantes-faccoes-complementares-1`, não alterar o `version.json` para uma
+versão diferente. O atualizador antigo interpreta a diferença apagando caches,
+desregistrando todos os Service Workers e solicitando Ctrl+F5 em uma segunda tentativa.
+
+As próximas atualizações devem trocar a constante `APP_VERSION` do `sw.js` e o módulo
+incorporado. Depois será feita uma refatoração controlada do atualizador principal para
+unificar `index.html`, `update.js`, `sw.js` e `version.json` sem risco aos computadores.
+
+## Funcionalidades financeiras recuperadas
+
+- filtro agrupado por processo;
+- fechamento filtrado com confirmação forte;
 - relatório completo com PIX;
 - relatório simplificado com Nome, PIX e Valor;
-- confirmação reforçada antes do fechamento em lote;
-- central para resolver pagamentos sem valor;
-- valores manuais para Sutiã Montagem e Sutiã Completo;
-- valor global da Alça;
-- valores unitários para os demais processos;
-- pesquisa e filtros dentro da central de pendências;
-- agrupamento das pendências por processo;
-- exclusão segura de lançamento financeiro sem valor.
+- visualização de todos os lançamentos aguardando valor;
+- preenchimento de valor total, valor de Alça e valor unitário;
+- Central de Pendências organizada por processo;
+- pesquisa e filtros dentro da central;
+- exclusão segura do lançamento financeiro permitido;
+- recálculo da aba Pagamentos após salvar/excluir.
 
-## Regra de exclusão da central
+## Instrução para uma nova conversa
 
-A exclusão atua somente em `entregasPagamento/{id}`.
-
-Ela não deve apagar:
-
-- ordem de produção;
-- manejo;
-- movimentação/chegada da facção;
-- registros produtivos relacionados.
-
-O código bloqueia pagamento quitado e registra a ação na auditoria. O botão é exibido para administrador ou para o usuário que criou o lançamento ainda não pago, em conformidade com a autorização já usada pela aplicação.
-
-## Sistema de atualização automática
-
-O novo controle de versão usa `corponu-release.json`, separado do `version.json` legado.
-
-Motivo: `update.js` possui uma constante antiga vinculada ao `version.json`. Alterar somente o arquivo legado poderia gerar divergência permanente enquanto o navegador ainda carregasse o `update.js` anterior.
-
-Fluxo novo:
-
-1. `corponu-pagamentos-seguro.js` consulta `corponu-release.json` sem cache.
-2. Ao encontrar versão diferente, registra `sw.js?release=<versão>`.
-3. O Service Worker novo ativa imediatamente.
-4. Caches antigos `op-confeccao-*` são removidos.
-5. A aplicação recarrega uma única vez.
-6. O novo Service Worker força a mesma versão em `app.js`, `update.js`, `style.css` e módulos auxiliares.
-
-Para toda atualização futura, alterar a versão nos três pontos:
-
-- constante `VERSION` de `corponu-pagamentos-seguro.js`;
-- constante `APP_VERSION` de `sw.js`;
-- campo `version` de `corponu-release.json`.
-
-Nunca registrar o Service Worker com timestamp variável no endereço do script, pois isso pode provocar atualizações e recarregamentos repetitivos. Use somente a versão estável na query string.
-
-## Cuidados nas próximas alterações
-
-- Não duplicar eventos que já existam em `app.js` ou `update.js`.
-- Não apagar uma chegada produtiva quando a intenção for excluir apenas o pagamento.
-- Conferir permissões do Firestore antes de liberar exclusão para novos perfis.
-- Preservar os cálculos e descontos já existentes.
-- Incrementar a versão em toda entrega.
-- Atualizar este documento e o changelog.
-
-## Texto para iniciar uma nova conversa
-
-> Continue o desenvolvimento do Sistema CorpoNu pelo repositório https://github.com/99eliel/corponu1. Leia primeiro o arquivo CONTINUIDADE-CORPONU.md e confira a versão publicada em corponu-release.json. A última etapa organizou a Central de Pendências de Valor, adicionou exclusão segura do lançamento financeiro e restaurou a atualização automática do PWA.
+Leia este arquivo e confira o branch `main` do repositório
+`https://github.com/99eliel/corponu1`. Antes de gerar uma atualização, confirme a versão
+real do `sw.js` publicado. Preserve a recuperação de arquivo único até que o atualizador
+principal seja refatorado e testado em uma versão estável separada.

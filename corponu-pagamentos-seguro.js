@@ -1,6 +1,6 @@
 /*
  * CorpoNu — Pagamentos seguros + central financeira organizada
- * Versão: 2026-07-29-pendencias-organizadas-auto-update-4
+ * Versão: 2026-07-30-recuperacao-pagamentos-autoupdate-5
  *
  * Inclui filtro agrupado por processo, confirmação forte, relatórios PIX,
  * central financeira organizada, exclusão segura e atualização automática.
@@ -10,15 +10,13 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-07-29-pendencias-organizadas-auto-update-4";
+  const VERSION = "2026-07-30-recuperacao-pagamentos-autoupdate-5";
   const FIREBASE_VERSION = "10.12.5";
   const DATASET_KEY = "corponuPagamentosSeguro";
   const ID_BOTAO_RELATORIO = "btnRelatorioPagamentoSimplificado";
   const ID_MODAL = "modalConfirmacaoFortePagamentos";
   const ID_MODAL_PENDENCIAS = "modalPendenciasValoresFinanceiro";
   const ID_MODAL_EXCLUIR_PENDENCIA = "modalExcluirPendenciaFinanceiro";
-  const RELEASE_MANIFEST = "corponu-release.json";
-  const UPDATE_LOCK_KEY = "corponu_auto_update_lock";
   const ID_STYLE = "styleCorpoNuPagamentosSeguro";
   const ID_PRECO_PADRAO_ALCA = "valor-padrao-alca";
   const MULTIPLICADOR_ALCAS = 2;
@@ -34,6 +32,9 @@
 
   if (document.documentElement.dataset[DATASET_KEY] === VERSION) return;
   document.documentElement.dataset[DATASET_KEY] = VERSION;
+  const metaVersion = document.querySelector('meta[name="app-version"]');
+  if (metaVersion) metaVersion.setAttribute("content", VERSION);
+  window.CORPONU_RELEASE_VERSION = VERSION;
 
   let contextoFirebasePromise = null;
   let botaoPagamentoAguardandoConfirmacao = null;
@@ -51,6 +52,7 @@
   let filtroProcessoPendencia = "";
   let pendenciaExclusaoAtual = null;
   let verificandoAtualizacaoAutomatica = false;
+  let registroAtualizacaoAutomatica = null;
 
   function normalizarNome(valor) {
     return String(valor || "")
@@ -178,79 +180,58 @@
       toast._timer = window.setTimeout(() => {
         toast.style.opacity = "0";
         window.setTimeout(() => toast.remove(), 240);
-      }, 5500);
+      }, 5200);
     }
   }
 
-  async function limparCachesAntigosAtualizacao() {
-    if (!("caches" in window)) return;
-    try {
-      const chaves = await caches.keys();
-      await Promise.all(
-        chaves
-          .filter(chave => chave.startsWith("op-confeccao-"))
-          .map(chave => caches.delete(chave))
-      );
-    } catch (error) {
-      console.warn("Não foi possível limpar caches antigos automaticamente.", error);
-    }
-  }
-
-  async function registrarWorkerDaVersao(versao) {
+  async function obterRegistroAtualizacao() {
     if (!("serviceWorker" in navigator)) return null;
-    const registro = await navigator.serviceWorker.register(
-      `sw.js?release=${encodeURIComponent(versao)}`,
-      { scope: "./", updateViaCache: "none" }
-    );
-    if (registro.waiting) registro.waiting.postMessage({ type: "SKIP_WAITING" });
-    await registro.update().catch(() => {});
+    if (registroAtualizacaoAutomatica) return registroAtualizacaoAutomatica;
+
+    let registro = await navigator.serviceWorker.getRegistration("./").catch(() => null);
+    if (!registro) {
+      registro = await navigator.serviceWorker.register(
+        `sw.js?boot=${encodeURIComponent(VERSION)}`,
+        { scope: "./", updateViaCache: "none" }
+      );
+    }
+    registroAtualizacaoAutomatica = registro;
     return registro;
   }
 
-  async function aplicarAtualizacaoAutomatica(versaoRemota) {
-    const agora = Date.now();
-    let lock = {};
-    try { lock = JSON.parse(localStorage.getItem(UPDATE_LOCK_KEY) || "{}"); } catch (error) {}
-    if (lock?.versao === versaoRemota && agora - Number(lock?.criadoEm || 0) < 45000) return;
-
-    try {
-      localStorage.setItem(UPDATE_LOCK_KEY, JSON.stringify({ versao: versaoRemota, criadoEm: agora }));
-    } catch (error) {}
-
-    mostrarStatusAtualizacao("Nova versão encontrada. Atualizando o sistema automaticamente...");
-    try {
-      await registrarWorkerDaVersao(versaoRemota);
-      await limparCachesAntigosAtualizacao();
-    } catch (error) {
-      console.warn("O Service Worker será atualizado no recarregamento.", error);
-    }
-
-    window.setTimeout(() => {
-      const url = new URL(window.location.href);
-      url.searchParams.set("release", versaoRemota);
-      url.searchParams.set("ts", Date.now().toString());
-      window.location.replace(url.toString());
-    }, 1300);
+  function ativarWorkerEmEspera(registro) {
+    const worker = registro?.waiting;
+    if (worker) worker.postMessage({ type: "SKIP_WAITING" });
   }
 
-  async function verificarAtualizacaoAutomatica() {
-    if (verificandoAtualizacaoAutomatica) return;
+  function observarInstalacaoWorker(registro) {
+    if (!registro || registro.datasetCorponuObservado) return;
+    registro.datasetCorponuObservado = true;
+    registro.addEventListener("updatefound", () => {
+      const novoWorker = registro.installing;
+      if (!novoWorker) return;
+      mostrarStatusAtualizacao("Nova versão encontrada. Instalando automaticamente...");
+      novoWorker.addEventListener("statechange", () => {
+        if (novoWorker.state === "installed") {
+          novoWorker.postMessage({ type: "SKIP_WAITING" });
+        }
+      });
+    });
+  }
+
+  async function verificarAtualizacaoAutomatica({ silencioso = true } = {}) {
+    if (verificandoAtualizacaoAutomatica || !("serviceWorker" in navigator)) return;
     verificandoAtualizacaoAutomatica = true;
     try {
-      const resposta = await fetch(`${RELEASE_MANIFEST}?ts=${Date.now()}`, {
-        cache: "no-store",
-        headers: { "cache-control": "no-cache" }
-      });
-      if (!resposta.ok) return;
-      const manifesto = await resposta.json();
-      const versaoRemota = String(manifesto?.version || "").trim();
-      if (!versaoRemota || versaoRemota === VERSION) {
-        try { localStorage.removeItem(UPDATE_LOCK_KEY); } catch (error) {}
-        return;
-      }
-      await aplicarAtualizacaoAutomatica(versaoRemota);
+      const registro = await obterRegistroAtualizacao();
+      if (!registro) return;
+      observarInstalacaoWorker(registro);
+      await registro.update();
+      ativarWorkerEmEspera(registro);
+      if (!silencioso) mostrarStatusAtualizacao("Sistema verificado. Você está na versão mais recente.", "ok");
     } catch (error) {
-      console.warn("Não foi possível verificar atualização automática.", error);
+      console.warn("Não foi possível verificar a atualização automática.", error);
+      if (!silencioso) mostrarStatusAtualizacao("Não foi possível verificar a atualização agora. Tentaremos novamente automaticamente.", "erro");
     } finally {
       verificandoAtualizacaoAutomatica = false;
     }
@@ -260,24 +241,38 @@
     if (window.__corponuAutoUpdateIniciado) return;
     window.__corponuAutoUpdateIniciado = true;
 
-    registrarWorkerDaVersao(VERSION).catch(error => {
-      console.warn("Service Worker automático não registrado.", error);
+    if (!("serviceWorker" in navigator)) return;
+
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (window.__corponuRecarregandoNovaVersao) return;
+      window.__corponuRecarregandoNovaVersao = true;
+      mostrarStatusAtualizacao("Atualização instalada. Reabrindo o sistema...");
+      window.setTimeout(() => window.location.reload(), 350);
     });
 
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.addEventListener("controllerchange", () => {
-        const chave = `corponu_controller_reload_${VERSION}`;
-        if (sessionStorage.getItem(chave) === "1") return;
-        sessionStorage.setItem(chave, "1");
-        window.location.reload();
-      });
-    }
+    navigator.serviceWorker.addEventListener("message", event => {
+      if (event.data?.type !== "CORPONU_SW_ATIVADO") return;
+      const versaoWorker = String(event.data?.version || "");
+      if (versaoWorker && versaoWorker !== VERSION && !window.__corponuRecarregandoNovaVersao) {
+        window.__corponuRecarregandoNovaVersao = true;
+        mostrarStatusAtualizacao("Nova versão pronta. Reabrindo o sistema...");
+        window.setTimeout(() => window.location.reload(), 350);
+      }
+    });
 
-    window.setTimeout(verificarAtualizacaoAutomatica, 1600);
-    window.setInterval(verificarAtualizacaoAutomatica, 5 * 60 * 1000);
-    window.addEventListener("focus", verificarAtualizacaoAutomatica);
+    obterRegistroAtualizacao()
+      .then(registro => {
+        observarInstalacaoWorker(registro);
+        ativarWorkerEmEspera(registro);
+      })
+      .catch(error => console.warn("Service Worker automático não registrado.", error));
+
+    window.setTimeout(() => verificarAtualizacaoAutomatica({ silencioso: true }), 1200);
+    window.setInterval(() => verificarAtualizacaoAutomatica({ silencioso: true }), 10 * 60 * 1000);
+    window.addEventListener("focus", () => verificarAtualizacaoAutomatica({ silencioso: true }));
+    window.addEventListener("online", () => verificarAtualizacaoAutomatica({ silencioso: true }));
     document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) verificarAtualizacaoAutomatica();
+      if (!document.hidden) verificarAtualizacaoAutomatica({ silencioso: true });
     });
   }
 
