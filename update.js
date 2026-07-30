@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-29-restantes-faccoes-complementares-1";
+  const APP_VERSION = "2026-07-30-modo-web-sem-pwa-15";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -13645,8 +13645,9 @@
 
   window.addEventListener("load", () => {
     rememberVersion();
-    registerServiceWorker();
-    checkVersionFile();
+    unregisterOldWorkers();
+    clearAppCaches();
+    // Atualização agora é feita pelo navegador, sem PWA.
     iniciarRecursosDaVersao();
   });
 
@@ -13657,6 +13658,6 @@
   }
 
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) checkVersionFile();
+    // Sem verificação pelo version.json legado.
   });
 })();

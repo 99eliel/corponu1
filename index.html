@@ -7,39 +7,23 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="app-version" content="2026-07-27-resgate-chegada-manual-faccao-1" />
-  <script>
-    (function() {
-      var RESCUE_VERSION = "2026-07-27-resgate-chegada-manual-faccao-1";
-      var KEY = "op_confeccao_resgate_funcional_aplicado";
-      var params = new URLSearchParams(window.location.search);
-      if (params.get("resgateOk") === RESCUE_VERSION) return;
-      try {
-        if (localStorage.getItem(KEY) === RESCUE_VERSION) return;
-        localStorage.setItem(KEY, RESCUE_VERSION);
-      } catch (e) {}
-      Promise.resolve().then(async function() {
-        try {
-          if ("caches" in window) {
-            var keys = await caches.keys();
-            await Promise.all(keys.filter(function(k) { return k.indexOf("op-confeccao-") === 0; }).map(function(k) { return caches.delete(k); }));
-          }
-        } catch (e) {}
-        try {
-          if ("serviceWorker" in navigator && navigator.serviceWorker.getRegistrations) {
-            var regs = await navigator.serviceWorker.getRegistrations();
-            await Promise.all(regs.map(function(r) { return r.unregister(); }));
-          }
-        } catch (e) {}
-        var url = new URL(window.location.href);
-        url.searchParams.set("resgateOk", RESCUE_VERSION);
-        url.searchParams.set("v", RESCUE_VERSION);
-        window.location.replace(url.toString());
-      });
+  <meta name="app-version" content="2026-07-30-modo-web-sem-pwa-15" />
+<link rel="stylesheet" href="style.css?v=2026-07-30-modo-web-sem-pwa-15" />
+  <script data-corponu-sem-pwa="2026-07-30-modo-web-sem-pwa-15">
+    (() => {
+      const CACHE_PREFIX = "op-confeccao-";
+      if ("serviceWorker" in navigator && navigator.serviceWorker.getRegistrations) {
+        navigator.serviceWorker.getRegistrations()
+          .then(registros => Promise.all(registros.map(registro => registro.unregister())))
+          .catch(() => {});
+      }
+      if ("caches" in window) {
+        caches.keys()
+          .then(chaves => Promise.all(chaves.filter(chave => chave.startsWith(CACHE_PREFIX)).map(chave => caches.delete(chave))))
+          .catch(() => {});
+      }
     })();
   </script>
-
-  <link rel="stylesheet" href="style.css?v=2026-07-27-resgate-chegada-manual-faccao-1" />
 </head>
 <body>
   <section id="authScreen" class="auth-screen">
@@ -1859,8 +1843,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-27-resgate-chegada-manual-faccao-1"></script>
-  <script type="module" src="app.js?v=2026-07-27-resgate-chegada-manual-faccao-1"></script>
+  <script src="update.js?v=2026-07-30-modo-web-sem-pwa-15"></script>
+  <script type="module" src="app.js?v=2026-07-30-modo-web-sem-pwa-15"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
@@ -2059,5 +2043,11 @@
     </div>
   </div>
 
+
+  <script src="./corponu-atualizador.js?v=2026-07-30-modo-web-sem-pwa-15"></script>
+  <script src="./corponu-pagamentos-seguro.js?v=2026-07-30-modo-web-sem-pwa-15"></script>
+  <script type="module" src="./corponu-pagamentos-manual.js?v=2026-07-30-modo-web-sem-pwa-15"></script>
+  <script src="./corponu-rastreamento-interno.js?v=2026-07-30-modo-web-sem-pwa-15"></script>
+  <script src="./corponu-necessidade-livre.js?v=2026-07-30-modo-web-sem-pwa-15"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-necessidade-manejo-texto-livre-14",
-  "updatedAt": "2026-07-30T11:31:00-03:00",
-  "notes": "Libera o campo Necessidade do Manejo para qualquer texto personalizado. As sugestões deixam de limitar a digitação, e o valor informado continua sendo salvo normalmente."
+  "version": "2026-07-30-modo-web-sem-pwa-15",
+  "updatedAt": "2026-07-30T11:44:00-03:00",
+  "notes": "Remove os recursos de PWA, cache offline e instalação. O CorpoNu passa a funcionar como site comum, com os módulos carregados diretamente e atualização simples pelo navegador."
 }
