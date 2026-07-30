@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-07-30-pagamentos-interface-organizada-30";
+  const LOCAL_RELEASE = "2026-07-30-pagamento-manual-op-automatica-33";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -84,6 +84,11 @@
       "corponu-pagamentos-interface-fix.js",
       "pagamentos-interface-fix",
       "Não foi possível estabilizar a nova organização visual da aba Pagamentos."
+    );
+    carregarScript(
+      "corponu-pagamentos-manual-op-auto.js",
+      "pagamentos-manual-op-auto",
+      "Não foi possível carregar a busca automática da OP no lançamento manual."
     );
   }
 
