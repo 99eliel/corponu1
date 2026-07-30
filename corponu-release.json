@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-revisao-tela-segura-20",
-  "updatedAt": "2026-07-30T13:31:00-03:00",
-  "notes": "Corrige a tela em branco ao abrir Revisão lateral e bojo. A página agora é criada antes do botão ser liberado e o sistema preserva a tela atual caso o módulo ainda não esteja pronto."
+  "version": "2026-07-30-revisao-clique-direto-21",
+  "updatedAt": "2026-07-30T13:39:00-03:00",
+  "notes": "Corrige definitivamente a tela em branco ao abrir Revisão lateral e bojo. O clique agora é interceptado diretamente, cria e exibe a nova página antes de esconder qualquer outra tela e reinicia o módulo funcional uma única vez."
 }
