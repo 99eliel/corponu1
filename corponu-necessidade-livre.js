@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-07-30-necessidade-manejo-texto-livre-14";
+  const VERSION = "2026-07-30-busca-filtros-manejo-16";
   if (window.__CORPONU_NECESSIDADE_LIVRE__ === VERSION) return;
   window.__CORPONU_NECESSIDADE_LIVRE__ = VERSION;
 
@@ -61,6 +61,80 @@
     }
   }
 
+  function normalizarPesquisa(valor) {
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toUpperCase();
+  }
+
+  function injetarCorrecaoPesquisaFiltros() {
+    if (document.getElementById("corponuCorrecaoPesquisaFiltrosManejo")) return;
+
+    const style = document.createElement("style");
+    style.id = "corponuCorrecaoPesquisaFiltrosManejo";
+    style.textContent = `
+      .popup-filtro-excel-manejo .filtro-excel-opcao[hidden],
+      .popup-filtro-excel-manejo .filtro-excel-opcao.filtro-excel-pesquisa-oculta {
+        display: none !important;
+      }
+      .popup-filtro-excel-manejo .filtro-excel-vazio-pesquisa {
+        padding: 18px 10px;
+        text-align: center;
+        color: #64748b;
+        font-size: 13px;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function atualizarSelecionarTudoPesquisa(popup) {
+    const caixasVisiveis = [...popup.querySelectorAll('.filtro-excel-opcao input[type="checkbox"]')]
+      .filter(input => !input.closest(".filtro-excel-opcao")?.hidden);
+    const selecionarTudo = popup.querySelector("#filtroExcelSelecionarTodos");
+    if (!selecionarTudo) return;
+
+    const marcadas = caixasVisiveis.filter(input => input.checked).length;
+    selecionarTudo.checked = caixasVisiveis.length > 0 && marcadas === caixasVisiveis.length;
+    selecionarTudo.indeterminate = marcadas > 0 && marcadas < caixasVisiveis.length;
+  }
+
+  function filtrarOpcoesDoPopup(campoBusca) {
+    const popup = campoBusca.closest("#popupFiltroExcelManejo, .popup-filtro-excel-manejo");
+    if (!popup) return;
+
+    const termo = normalizarPesquisa(campoBusca.value);
+    const opcoes = [...popup.querySelectorAll(".filtro-excel-opcao")];
+    let quantidadeVisivel = 0;
+
+    opcoes.forEach(opcao => {
+      const texto = normalizarPesquisa(opcao.dataset.valor || opcao.textContent);
+      const ocultar = Boolean(termo && !texto.includes(termo));
+      opcao.hidden = ocultar;
+      opcao.classList.toggle("filtro-excel-pesquisa-oculta", ocultar);
+      if (!ocultar) quantidadeVisivel += 1;
+    });
+
+    const lista = popup.querySelector(".filtro-excel-lista");
+    if (lista) {
+      let aviso = lista.querySelector(".filtro-excel-vazio-pesquisa");
+      if (termo && quantidadeVisivel === 0) {
+        if (!aviso) {
+          aviso = document.createElement("div");
+          aviso.className = "filtro-excel-vazio-pesquisa";
+          aviso.textContent = "Nenhuma opção encontrada para esta pesquisa.";
+          lista.appendChild(aviso);
+        }
+        aviso.hidden = false;
+      } else if (aviso) {
+        aviso.hidden = true;
+      }
+    }
+
+    atualizarSelecionarTudoPesquisa(popup);
+  }
+
   function aplicar(root = document) {
     if (root instanceof Element && root.matches(SELETOR_CAMPOS)) {
       liberarCampo(root);
@@ -72,6 +146,7 @@
   }
 
   function iniciar() {
+    injetarCorrecaoPesquisaFiltros();
     aplicar(document);
 
     const observer = new MutationObserver(mutacoes => {
@@ -87,7 +162,15 @@
       subtree: true
     });
 
+    document.addEventListener("input", event => {
+      if (!(event.target instanceof Element)) return;
+      if (event.target.matches(".filtro-excel-busca")) {
+        filtrarOpcoesDoPopup(event.target);
+      }
+    }, true);
+
     document.addEventListener("click", event => {
+      if (!(event.target instanceof Element)) return;
       const botao = event.target.closest("button, [role='button']");
       if (!botao) return;
 
