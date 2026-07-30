@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-revisao-visivel-sem-aviso-19",
-  "updatedAt": "2026-07-30T13:12:00-03:00",
-  "notes": "Corrige o carregamento da área Revisão lateral e bojo no menu e remove definitivamente o aviso antigo de instalação automática do PWA."
+  "version": "2026-07-30-revisao-tela-segura-20",
+  "updatedAt": "2026-07-30T13:31:00-03:00",
+  "notes": "Corrige a tela em branco ao abrir Revisão lateral e bojo. A página agora é criada antes do botão ser liberado e o sistema preserva a tela atual caso o módulo ainda não esteja pronto."
 }
