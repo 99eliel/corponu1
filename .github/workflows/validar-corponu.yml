@@ -70,7 +70,6 @@ jobs:
           atualizador = Path('corponu-atualizador.js').read_text(encoding='utf-8')
           release = json.loads(Path('corponu-release.json').read_text(encoding='utf-8'))
 
-          # Bipado direto preservado.
           assert 'async function biparOrdemDireto(opId)' in app
           assert 'data-bipar-op-direto=' in app
           assert 'const movimentacoesAbertas = state.movimentacoesProducao' in app
@@ -81,7 +80,6 @@ jobs:
           assert 'const lote = writeBatch(db);' in app
           assert 'await lote.commit();' in app
 
-          # Novo envio direto ao Manejo.
           assert 'async function enviarOrdemParaManejoDireto(opId)' in app
           assert 'data-enviar-manejo-direto=' in app
           assert 'window.enviarOrdemParaManejoDireto = enviarOrdemParaManejoDireto;' in app
@@ -93,7 +91,6 @@ jobs:
           assert 'processoAtualMigracao: FASE_MANEJO_AGUARDANDO_MOVIMENTACAO' in app
           assert 'await setDoc(doc(db, "ordensProducao", id), patch, { merge: true });' in app
 
-          # O envio ao Manejo não pode mexer em movimentação, chegada ou pagamento.
           trecho_manejo = app[app.index('async function enviarOrdemParaManejoDireto'):app.index('async function biparOrdemDireto')]
           assert 'movimentacoesProducao' not in trecho_manejo
           assert 'entregasPagamento' not in trecho_manejo
