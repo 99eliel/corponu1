@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-07-30-faccoes-tres-abas-saida-25";
+  const LOCAL_RELEASE = "2026-07-30-pagamentos-interface-organizada-30";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -71,6 +71,14 @@
       "corponu-faccoes-corte.js",
       "faccoes-corte",
       "Não foi possível carregar a nova área Corte das facções."
+    );
+  }
+
+  function carregarPagamentos() {
+    carregarScript(
+      "corponu-pagamentos-interface.js",
+      "pagamentos-interface",
+      "Não foi possível carregar a nova organização visual da aba Pagamentos."
     );
   }
 
@@ -167,6 +175,7 @@
     observarAvisosAntigos();
     carregarRevisao();
     carregarCorte();
+    carregarPagamentos();
     await removerPwaAntigo();
     removerAvisosAntigos();
     await verificarRelease();
@@ -181,6 +190,7 @@
 
   carregarRevisao();
   carregarCorte();
+  carregarPagamentos();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", iniciar, { once: true });
