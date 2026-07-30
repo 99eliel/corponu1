@@ -80,6 +80,11 @@
       "pagamentos-interface",
       "Não foi possível carregar a nova organização visual da aba Pagamentos."
     );
+    carregarScript(
+      "corponu-pagamentos-interface-fix.js",
+      "pagamentos-interface-fix",
+      "Não foi possível estabilizar a nova organização visual da aba Pagamentos."
+    );
   }
 
   async function removerPwaAntigo() {
