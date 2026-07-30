@@ -21,6 +21,15 @@ jobs:
         with:
           node-version: 22
 
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Gerar bipado direto para validação
+        if: github.ref == 'refs/heads/manual/bipar-direto-rastreamento-20260730' || github.head_ref == 'manual/bipar-direto-rastreamento-20260730'
+        run: python gerar-bipar-direto-rastreamento.py
+
       - name: Validar JavaScript
         shell: bash
         run: |
@@ -46,3 +55,55 @@ jobs:
             throw new Error('corponu-release.json está sem versão.');
           }
           NODE
+
+      - name: Validar bipado direto e proteções
+        if: github.ref == 'refs/heads/manual/bipar-direto-rastreamento-20260730' || github.head_ref == 'manual/bipar-direto-rastreamento-20260730'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          versao = '2026-07-30-rastreamento-bipar-direto-11'
+          app = Path('app.js').read_text(encoding='utf-8')
+          sw = Path('sw.js').read_text(encoding='utf-8')
+          atualizador = Path('corponu-atualizador.js').read_text(encoding='utf-8')
+          release = json.loads(Path('corponu-release.json').read_text(encoding='utf-8'))
+
+          assert 'async function biparOrdemDireto(opId)' in app
+          assert 'data-bipar-op-direto=' in app
+          assert 'window.biparOrdemDireto = biparOrdemDireto;' in app
+          assert 'bipado-direto-${id}' in app
+          assert 'Esta OP está vinculada a uma facção. Finalize pela aba Facções.' in app
+          assert 'localAtualMigracao: "FINALIZADO_BIPADO"' in app
+          assert 'status: "finalizado"' in app
+          assert 'ocultarDoManejo: true' in app
+          assert versao in sw
+          assert versao in atualizador
+          assert release['version'] == versao
+
+          trecho = app[app.index('const ordensEmBipadoDireto'):app.index('function renderLinhaRastreamentoGlobalOP')]
+          assert 'MutationObserver' not in trecho
+          assert 'setInterval' not in trecho
+          assert 'location.reload' not in trecho
+          print('Validação rigorosa concluída.')
+          PY
+
+      - name: Montar pacote manual
+        if: github.ref == 'refs/heads/manual/bipar-direto-rastreamento-20260730' || github.head_ref == 'manual/bipar-direto-rastreamento-20260730'
+        run: |
+          mkdir pacote-bipar-direto-rastreamento
+          cp app.js pacote-bipar-direto-rastreamento/
+          cp sw.js pacote-bipar-direto-rastreamento/
+          cp corponu-atualizador.js pacote-bipar-direto-rastreamento/
+          cp corponu-release.json pacote-bipar-direto-rastreamento/
+          cp LEIA-ME-BIPAR-DIRETO-RASTREAMENTO.txt pacote-bipar-direto-rastreamento/
+          zip -r corponu-bipar-direto-rastreamento-11.zip pacote-bipar-direto-rastreamento
+
+      - name: Publicar pacote manual
+        if: github.ref == 'refs/heads/manual/bipar-direto-rastreamento-20260730' || github.head_ref == 'manual/bipar-direto-rastreamento-20260730'
+        uses: actions/upload-artifact@v4
+        with:
+          name: corponu-bipar-direto-rastreamento-11
+          path: corponu-bipar-direto-rastreamento-11.zip
+          if-no-files-found: error
+          retention-days: 7
