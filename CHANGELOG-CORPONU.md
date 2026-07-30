@@ -1,5 +1,18 @@
 # Changelog CorpoNu
 
+## 2026-07-30-organizacao-autoupdate-pagamentos-2
+
+- Criada branch de backup `backup/main-antes-organizacao-20260730` antes de qualquer publicação.
+- Criada branch de trabalho `fix/organizar-carregamento-autoupdate-20260730`.
+- Corrigido o `sw.js` para carregar simultaneamente `corponu-pagamentos-seguro.js` e `corponu-pagamentos-manual.js`.
+- Restauradas em conjunto as melhorias anteriores de Pagamentos e o lançamento manual.
+- O Service Worker remove da página controlada o resgate legado que apagava caches e desregistrava o PWA.
+- Arquivos principais passam a receber a mesma versão na URL para evitar JavaScript e CSS antigos.
+- Atualização automática verifica `corponu-release.json` a cada minuto, ao voltar para a aba, ao recuperar foco e ao voltar a ficar online.
+- Atualizações usam `skipWaiting`, `clients.claim` e recarga única protegida contra repetição.
+- Mantido `version.json` na versão legada para impedir a rotina antiga destrutiva do `update.js`.
+- Documentado o processo de recuperação de código e a diferença entre restaurar código e reparar dados do Firestore.
+
 ## 2026-07-30-lancamento-manual-pagamentos-restantes-1
 
 - Criado **Novo lançamento manual** diretamente na aba Pagamentos.
