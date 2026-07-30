@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-faccoes-corte-integracao-segura-24",
-  "updatedAt": "2026-07-30T17:42:00-03:00",
-  "notes": "Área Facções > Corte com integração segura: processos administráveis, classificação Sutiã/Calcinha, saída e chegada, pagamento por referência, Valor a definir, lateral pronta, cancelamento seguro, histórico e impressão."
+  "version": "2026-07-30-faccoes-tres-abas-saida-25",
+  "updatedAt": "2026-07-30T18:18:00-03:00",
+  "notes": "Corrige a estrutura de Facções: Corte fica ao lado de Sutiã e Calcinha, as três abas recebem Registrar saída e o processo pode ser digitado livremente no novo fluxo."
 }
