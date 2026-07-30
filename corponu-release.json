@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-pagamentos-interface-segura-31",
-  "updatedAt": "2026-07-30T19:52:00-03:00",
-  "notes": "Mantém a reorganização visual da aba Pagamentos em uma implementação segura, sem observador global. Preserva todos os cálculos, filtros, confirmações e registros existentes."
+  "version": "2026-07-30-pagamentos-visual-limpo-32",
+  "updatedAt": "2026-07-30T20:02:00-03:00",
+  "notes": "Reorganiza visualmente a aba Pagamentos sem mover elementos da estrutura original. Remove duplicações, preserva todas as funções e deixa as pendências de valor mais compactas."
 }
