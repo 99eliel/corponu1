@@ -67,21 +67,25 @@
     }
   }
 
-  async function salvarClassificacaoFaccao() {
+  async function salvarClassificacaoFaccao(dadosCapturados = {}) {
     if (!ehAdmin()) return;
-    const name = document.getElementById("faccaoNome")?.value?.trim() || "";
+    const name = String(dadosCapturados.nome || document.getElementById("faccaoNome")?.value || "").trim();
     if (!name) return;
-    const currentId = document.getElementById("faccaoId")?.value || "";
+    const currentId = String(dadosCapturados.id || document.getElementById("faccaoId")?.value || "");
+    const trabalhaSutia = dadosCapturados.trabalhaSutia === true;
+    const trabalhaCalcinha = dadosCapturados.trabalhaCalcinha === true;
     const c = await aguardarContexto();
     await new Promise(resolve => setTimeout(resolve, 650));
     let id = currentId;
     if (!id) {
       const found = await c.fs.getDocs(c.fs.query(c.fs.collection(c.db, "faccoes"), c.fs.where("nome", "==", norm(name)), c.fs.limit(1)));
-      id = found.empty ? slug(name) : found.docs[0].id;
+      id = found.empty
+        ? name.trim().replaceAll("/", "-").replaceAll("\\", "-").replaceAll("#", "-").replaceAll("?", "-")
+        : found.docs[0].id;
     }
     await c.fs.setDoc(c.fs.doc(c.db, "faccoes", id), {
-      trabalhaSutia: document.getElementById("faccaoTrabalhaSutia")?.checked === true,
-      trabalhaCalcinha: document.getElementById("faccaoTrabalhaCalcinha")?.checked === true,
+      trabalhaSutia,
+      trabalhaCalcinha,
       classificacaoPecasAtualizadaPor: user.uid,
       classificacaoPecasAtualizadaEm: c.fs.serverTimestamp()
     }, { merge: true });
@@ -140,11 +144,14 @@
     const opNumber = document.getElementById("revNumeroOP")?.value?.trim() || "";
     if (!opNumber) return;
     const lateral = document.getElementById("revLateral")?.checked === true;
-    if (!lateral) return;
     setTimeout(async () => {
       try {
         const op = await buscarOP(opNumber);
         if (!op) return;
+        if (!lateral) {
+          await recalcularLateralCorteDaOP(op.id);
+          return;
+        }
         const c = await aguardarContexto();
         await c.fs.setDoc(c.fs.doc(c.db, "ordensProducao", op.id), {
           lateralProntaOrigemAtual: "confeccao",
@@ -153,6 +160,7 @@
           atualizadoPor: user.uid,
           atualizadoEm: c.fs.serverTimestamp()
         }, { merge: true });
+        await recalcularMontagemPorOP(op.id);
       } catch (error) {}
     }, 900);
   }
@@ -197,6 +205,11 @@
       if (target.closest("#btnCancelarProcessoCorte")) return limparFormProcesso();
       const editPrice = target.closest("[data-editar-preco-corte]");
       if (editPrice) return editarPreco(editPrice.dataset.editarPrecoCorte);
+      const cancelInternalRevision = target.closest("[data-cancelar-rev]");
+      if (cancelInternalRevision) {
+        const opId = cancelInternalRevision.dataset.cancelarRev || "";
+        if (opId) [900, 2200, 4800].forEach(delay => setTimeout(() => recalcularLateralCorteDaOP(opId).catch(() => {}), delay));
+      }
 
       const editFaccao = target.closest('[onclick*="editarFaccao"]');
       if (editFaccao) {
@@ -244,7 +257,15 @@
       if (form.id === "formChegadaCorte") return salvarChegada(event);
       if (form.id === "formProcessoCorte") return salvarProcesso(event);
       if (form.id === "formPrecoCorte") return salvarPreco(event);
-      if (form.id === "formFaccao") setTimeout(() => salvarClassificacaoFaccao().catch(console.warn), 0);
+      if (form.id === "formFaccao") {
+        const dadosClassificacao = {
+          id: document.getElementById("faccaoId")?.value || "",
+          nome: document.getElementById("faccaoNome")?.value?.trim() || "",
+          trabalhaSutia: document.getElementById("faccaoTrabalhaSutia")?.checked === true,
+          trabalhaCalcinha: document.getElementById("faccaoTrabalhaCalcinha")?.checked === true
+        };
+        setTimeout(() => salvarClassificacaoFaccao(dadosClassificacao).catch(console.warn), 0);
+      }
       if (form.id === "formRevisaoComponentes") atualizarOrigemAposRevisaoInterna();
       if (["formChegadaMovimentacao", "formChegadaManualFaccao", "formEntregaPagamento"].includes(form.id)) {
         if (form.id === "formChegadaMovimentacao") {
