@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-07-30-revisao-clique-direto-21";
+  const LOCAL_RELEASE = "2026-07-30-faccoes-corte-23";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -59,12 +59,18 @@
   }
 
   function carregarRevisao() {
-    // A proteção controla o clique diretamente e também garante que o módulo
-    // funcional seja reiniciado depois que a página interna existir.
     carregarScript(
       "corponu-revisao-lateral-bojo-fix.js",
       "revisao-lateral-bojo-fix",
       "Não foi possível carregar a proteção da área Revisão lateral e bojo."
+    );
+  }
+
+  function carregarCorte() {
+    carregarScript(
+      "corponu-faccoes-corte.js",
+      "faccoes-corte",
+      "Não foi possível carregar a nova área Corte das facções."
     );
   }
 
@@ -160,6 +166,7 @@
   async function iniciar() {
     observarAvisosAntigos();
     carregarRevisao();
+    carregarCorte();
     await removerPwaAntigo();
     removerAvisosAntigos();
     await verificarRelease();
@@ -173,6 +180,7 @@
   }
 
   carregarRevisao();
+  carregarCorte();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", iniciar, { once: true });
