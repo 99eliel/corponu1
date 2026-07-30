@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-07-30-revisao-tela-segura-20";
+  const VERSION = "2026-07-30-revisao-clique-direto-21";
   const PAGINA = "revisaoComponentes";
   const NAV = "revisao-componentes";
   const MODULO = "corponu-revisao-lateral-bojo.js";
@@ -9,7 +9,8 @@
   if (window.__CORPONU_FIX_REVISAO_TELA__ === VERSION) return;
   window.__CORPONU_FIX_REVISAO_TELA__ = VERSION;
 
-  let reiniciando = false;
+  let moduloReiniciado = false;
+  let carregandoModulo = false;
 
   function criarPagina() {
     if (document.getElementById(PAGINA)) return true;
@@ -134,24 +135,63 @@
     return true;
   }
 
-  function reiniciarModulo() {
-    if (reiniciando || window.CorpoNuRevisaoComponentes?.versao) return;
+  function abrirPaginaDireto() {
+    if (!criarPagina()) return false;
+
+    const pagina = document.getElementById(PAGINA);
+    if (!pagina) return false;
+
+    document.querySelectorAll("#appShell main.main > .page").forEach(secao => {
+      secao.classList.remove("active");
+      secao.classList.add("hidden");
+    });
+
+    pagina.classList.remove("hidden");
+    pagina.classList.add("active");
+    pagina.hidden = false;
+    pagina.style.removeProperty("display");
+
+    document.querySelectorAll("#appShell .sidebar .nav-btn").forEach(botao => botao.classList.remove("active"));
+    document.querySelector(`#appShell .sidebar [data-page="${NAV}"]`)?.classList.add("active");
+
+    const titulo = document.getElementById("pageTitle");
+    const subtitulo = document.getElementById("pageSubtitle");
+    if (titulo) titulo.textContent = "Revisão lateral e bojo";
+    if (subtitulo) subtitulo.textContent = "Componentes feitos pela confecção e descontos nos pagamentos pendentes.";
+
+    Promise.resolve(window.CorpoNuRevisaoComponentes?.carregarConfig?.()).catch(() => {});
+    setTimeout(() => document.getElementById("revNumeroOP")?.focus(), 50);
+    return true;
+  }
+
+  function reiniciarModuloUmaVez() {
+    if (moduloReiniciado || carregandoModulo) return;
     if (!criarPagina() || !garantirBotao()) return;
 
-    reiniciando = true;
+    moduloReiniciado = true;
+    carregandoModulo = true;
+
     window.__CORPONU_REVISAO_COMPONENTES__ = null;
     delete document.documentElement.dataset.eventosRevisaoComponentes;
+
+    ["formRevisaoComponentes", "formConfigRev", "buscaRevLista", "btnAtualizarRev"].forEach(id => {
+      document.getElementById(id)?.removeAttribute("data-rev");
+    });
 
     const script = document.createElement("script");
     script.src = `./${MODULO}?fix=${encodeURIComponent(VERSION)}&t=${Date.now()}`;
     script.async = false;
     script.dataset.corponuReinicioRevisao = VERSION;
     script.onload = () => {
-      reiniciando = false;
+      carregandoModulo = false;
       document.documentElement.dataset.revisaoTelaPronta = VERSION;
+      if (document.querySelector(`[data-page="${NAV}"]`)?.classList.contains("active")) {
+        abrirPaginaDireto();
+      }
     };
     script.onerror = () => {
-      reiniciando = false;
+      carregandoModulo = false;
+      moduloReiniciado = false;
       console.error("Não foi possível reiniciar a área Revisão lateral e bojo.");
     };
     document.head.appendChild(script);
@@ -159,32 +199,41 @@
 
   function preparar() {
     garantirBotao();
-    if (criarPagina()) reiniciarModulo();
+    if (criarPagina()) reiniciarModuloUmaVez();
   }
 
-  // Trava de segurança: o clique não chega ao menu principal enquanto a página
-  // ainda não existir. Assim nenhuma outra tela é escondida por engano.
+  // Este clique é sempre controlado aqui. Ele nunca chega ao menu antigo,
+  // portanto nenhuma tela pode ser escondida sem a nova área ser exibida.
   document.addEventListener("click", event => {
     const alvo = event.target instanceof Element ? event.target : null;
     const botao = alvo?.closest(`[data-page="${NAV}"]`);
     if (!botao) return;
 
-    if (!document.getElementById(PAGINA) || !window.CorpoNuRevisaoComponentes?.versao) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      preparar();
-      setTimeout(() => botao.click(), 250);
-    }
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    preparar();
+    abrirPaginaDireto();
   }, true);
 
-  preparar();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", preparar, { once: true });
+  } else {
+    preparar();
+  }
 
   let tentativas = 0;
   const timer = setInterval(() => {
     tentativas += 1;
     preparar();
-    if (window.CorpoNuRevisaoComponentes?.versao || tentativas >= 40) clearInterval(timer);
+    if ((document.getElementById(PAGINA) && window.CorpoNuRevisaoComponentes?.versao) || tentativas >= 40) {
+      clearInterval(timer);
+    }
   }, 250);
 
-  new MutationObserver(preparar).observe(document.documentElement, { childList: true, subtree: true });
+  new MutationObserver(() => {
+    garantirBotao();
+    criarPagina();
+  }).observe(document.documentElement, { childList: true, subtree: true });
 })();
