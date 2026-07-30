@@ -1,52 +1,80 @@
 # Continuidade do Sistema CorpoNu
 
-## Versão desta entrega
+## Versão em organização
 
-`2026-07-30-lancamento-manual-pagamentos-restantes-1`
+`2026-07-30-organizacao-autoupdate-pagamentos-2`
 
-## Arquivos novos
+## Repositório oficial
 
-- `corponu-pagamentos-manual.js`: lançamento manual financeiro e restantes dentro de Pagamentos.
-- `corponu-atualizador.js`: atualizador automático novo, baseado em `corponu-release.json`.
-- `corponu-release.json`: fonte oficial das novas versões após esta migração.
+`99eliel/corponu1`
 
-## Arquivos substituídos
+## Proteção criada antes da organização
 
-- `sw.js`: injeta os módulos novos, atualiza pela rede, elimina caches antigos e recarrega os clientes.
-- `version.json`: mantido em `2026-07-29-restantes-faccoes-complementares-1` para ficar igual ao `APP_VERSION` interno do `update.js` legado.
+- Branch de recuperação integral: `backup/main-antes-organizacao-20260730`.
+- Commit estável preservado: `78f425eee1e26c659e815a5cc7e10288402beeed`.
+- Branch de trabalho: `fix/organizar-carregamento-autoupdate-20260730`.
+- A branch `main` não deve ser alterada diretamente durante correções grandes.
 
-## Regra de versionamento daqui para frente
+## Estrutura financeira mantida
+
+- `corponu-pagamentos-seguro.js`: filtro agrupado por processo, relatórios completo e simplificado, confirmação reforçada, Central de Pendências de Valor e exclusão segura.
+- `corponu-pagamentos-manual.js`: lançamento manual em Pagamentos, valor total opcional, chegada parcial e controle dos restantes.
+- `corponu-atualizador.js`: verificação de novas versões e recarga automática.
+- `corponu-release.json`: fonte oficial da versão nova.
+- `version.json`: mantido temporariamente na identificação legada enquanto `update.js` ainda possui a constante antiga.
+
+## Correção do carregamento
+
+O `sw.js` passa a carregar, em conjunto, os dois módulos financeiros:
+
+1. `corponu-pagamentos-seguro.js`;
+2. `corponu-pagamentos-manual.js`.
+
+Também remove da página controlada pelo PWA o resgate antigo que apagava caches e desregistrava o Service Worker. Os arquivos principais recebem a versão atual na URL para impedir que o navegador use JavaScript ou CSS antigo.
+
+## Regra de versionamento
 
 Em cada nova entrega:
 
-1. Alterar a constante `LOCAL_RELEASE` em `corponu-atualizador.js`.
-2. Alterar `APP_VERSION` em `sw.js`.
-3. Alterar a versão em `corponu-release.json`.
-4. Atualizar os parâmetros `?v=` dos módulos novos dentro do `sw.js`.
-5. Não alterar `version.json`, enquanto o `update.js` legado ainda possuir a versão fixa `2026-07-29-restantes-faccoes-complementares-1`.
+1. Criar uma branch de backup da versão publicada.
+2. Criar uma branch `fix/` ou `feature/` para trabalhar.
+3. Alterar `LOCAL_RELEASE` em `corponu-atualizador.js`.
+4. Alterar `APP_VERSION` em `sw.js`.
+5. Alterar `version` e `updatedAt` em `corponu-release.json`.
+6. Validar a sintaxe dos arquivos JavaScript.
+7. Comparar a branch com a `main`.
+8. Abrir Pull Request e publicar somente depois da conferência.
+9. Não alterar `version.json` enquanto o atualizador legado do `update.js` não for removido de forma controlada.
 
-## Estrutura criada pelo lançamento manual
+## Recuperação de código
 
-A operação grava atomicamente:
+Se uma atualização causar problema:
 
-- `movimentacoesProducao/{id}` para a chegada principal;
-- `entregasPagamento/{id}` para o pagamento das peças recebidas;
-- `movimentacoesProducao/{id-restante-1}` quando houver saldo pendente;
-- `logsAlteracoes/{id}` para auditoria.
+- não continuar fazendo correções diretamente na versão defeituosa;
+- comparar o commit problemático com a última versão estável;
+- restaurar os arquivos pela branch de backup ou por um commit de reversão;
+- publicar a recuperação com uma nova identificação de versão para que os computadores recarreguem automaticamente;
+- corrigir o recurso defeituoso em outra branch antes de tentar publicar novamente.
 
-## Entrega parcial
+## Atenção aos dados do Firebase
+
+Restaurar o código não desfaz automaticamente operações que já tenham gravado, alterado ou excluído dados no Firestore. Para mudanças financeiras, importações ou alterações estruturais:
+
+- criar backup/exportação antes da publicação;
+- preservar `logsAlteracoes` e a auditoria;
+- testar com uma OP de teste;
+- preparar uma rotina corretiva caso algum dado precise ser reparado.
+
+## Lançamento manual e entrega parcial
 
 Exemplo: OP com 50 peças e chegada de 40.
 
-- Pagamento: quantidade 40.
-- Movimentação principal: `quantidadeRecebida = 40` e `falta = 10`.
-- Restante: novo documento com `quantidadeEnviada = 10`, `origemRestanteFaccao = true` e `status = restante_pendente`.
-
-## Valor financeiro
-
-- Campo preenchido: pagamento fica `pendente` com valor total manual.
-- Campo vazio: pagamento fica `sem_valor` e aparece na Central de Pendências.
+- O pagamento é criado somente para 40 peças.
+- A movimentação principal registra `quantidadeRecebida = 40` e `falta = 10`.
+- Um documento restante registra as 10 peças pendentes.
+- Uma chegada complementar gera pagamento apenas sobre a nova quantidade recebida.
+- Se a chegada complementar também for parcial, o saldo continua pendente.
 
 ## Instrução para uma nova conversa
 
-Leia este arquivo e revise os cinco arquivos da versão antes de alterar Pagamentos, atualização automática ou controle de restantes.
+> Continue o desenvolvimento do CorpoNu pelo repositório `99eliel/corponu1`. Leia primeiro `CONTINUIDADE-CORPONU.md`, confira `corponu-release.json`, identifique a última branch de backup e nunca altere a `main` antes de criar um ponto de recuperação.

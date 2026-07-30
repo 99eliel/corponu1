@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-lancamento-manual-pagamentos-restantes-1",
-  "updatedAt": "2026-07-30T00:30:00-03:00",
-  "notes": "Adiciona lançamento manual na aba Pagamentos, valor total opcional, geração automática de saldo restante e painel de Restantes pendentes dentro de Pagamentos. Instala atualizador automático independente e recarregamento do PWA sem limpeza manual de cache."
+  "version": "2026-07-30-organizacao-autoupdate-pagamentos-2",
+  "updatedAt": "2026-07-30T00:55:00-03:00",
+  "notes": "Unifica o carregamento das melhorias financeiras, restaura a Central de Pendências e o lançamento manual, remove o resgate legado da página controlada pelo PWA e recupera a atualização automática sem apagar cache manualmente."
 }
