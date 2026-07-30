@@ -1,0 +1,117 @@
+name: Gerar remoção manual do filtro de status
+
+on:
+  push:
+    branches:
+      - manual/remover-filtro-status-pagamentos-20260730
+
+permissions:
+  contents: read
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Gerar arquivos corrigidos
+        run: python gerar-remocao-filtro-status-pagamentos.py
+
+      - name: Validar sintaxe JavaScript
+        run: |
+          node --check app.js
+          node --check corponu-pagamentos-seguro.js
+          node --check sw.js
+          node --check corponu-atualizador.js
+
+      - name: Validar HTML, JSON e escopo da remoção
+        run: |
+          python - <<'PY'
+          import json
+          from html.parser import HTMLParser
+          from pathlib import Path
+
+          VERSION = '2026-07-30-remover-filtro-status-pagamentos-10'
+
+          class Finder(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.matches = []
+              def handle_starttag(self, tag, attrs):
+                  data = dict(attrs)
+                  if data.get('id') == 'pagamentoFiltroStatus':
+                      self.matches.append((tag, data))
+
+          html = Path('index.html').read_text(encoding='utf-8')
+          finder = Finder()
+          finder.feed(html)
+          assert len(finder.matches) == 1, finder.matches
+          tag, attrs = finder.matches[0]
+          assert tag == 'input', finder.matches
+          assert attrs.get('type') == 'hidden', finder.matches
+          assert attrs.get('value') == 'pendente', finder.matches
+          assert '<select id="pagamentoFiltroStatus">' not in html
+
+          app = Path('app.js').read_text(encoding='utf-8')
+          assert 'const filtroStatus = "pendente"; // Filtro de status desativado temporariamente.' in app
+          assert '"pagamentoFiltroPreco",\n    "pagamentoFiltroStatus"' not in app
+          assert 'document.getElementById("pagamentoFiltroStatus")?.value' not in app
+
+          seguro = Path('corponu-pagamentos-seguro.js').read_text(encoding='utf-8')
+          assert 'status: "pendente" // Filtro de status removido temporariamente.' in seguro
+          assert '"Pagamento: Pendentes"' in seguro
+          assert '"pagamentoFiltroPreco",\n        "pagamentoFiltroStatus"' not in seguro
+          assert 'document.getElementById("pagamentoFiltroStatus")?.value' not in seguro
+
+          release = json.loads(Path('corponu-release.json').read_text(encoding='utf-8'))
+          assert release['version'] == VERSION
+          assert VERSION in Path('sw.js').read_text(encoding='utf-8')
+          assert VERSION in Path('corponu-atualizador.js').read_text(encoding='utf-8')
+
+          print('Validação rigorosa concluída: somente o filtro de status foi desativado.')
+          PY
+
+      - name: Conferir arquivos alterados pelo gerador
+        run: |
+          git diff --name-only | sort > alterados.txt
+          cat > esperados.txt <<'EOF'
+          app.js
+          corponu-atualizador.js
+          corponu-pagamentos-seguro.js
+          corponu-release.json
+          index.html
+          sw.js
+          EOF
+          sort -o esperados.txt esperados.txt
+          diff -u esperados.txt alterados.txt
+
+      - name: Montar pacote ZIP
+        run: |
+          mkdir pacote-remover-filtro-status
+          cp index.html pacote-remover-filtro-status/
+          cp app.js pacote-remover-filtro-status/
+          cp corponu-pagamentos-seguro.js pacote-remover-filtro-status/
+          cp sw.js pacote-remover-filtro-status/
+          cp corponu-atualizador.js pacote-remover-filtro-status/
+          cp corponu-release.json pacote-remover-filtro-status/
+          cp LEIA-ME-REMOVER-FILTRO-STATUS.txt pacote-remover-filtro-status/
+          zip -r corponu-remover-filtro-status-pagamentos-10.zip pacote-remover-filtro-status
+
+      - name: Publicar pacote para download
+        uses: actions/upload-artifact@v4
+        with:
+          name: corponu-remover-filtro-status-pagamentos-10
+          path: corponu-remover-filtro-status-pagamentos-10.zip
+          if-no-files-found: error
+          retention-days: 7
