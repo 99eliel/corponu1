@@ -3,15 +3,14 @@
 
   if (window.__CORPONU_ATUALIZADOR_NOVO__) return;
 
-  const LOCAL_RELEASE = "2026-07-30-rastreamento-interno-sem-faccao-4";
+  const ATUALIZADOR_VERSION = "modo-rapido-v1";
   const LEGACY_VERSION = "2026-07-29-restantes-faccoes-complementares-1";
   const STORAGE_KEY = "corponu_release_instalada";
   const RELOAD_KEY = "corponu_release_recarregada";
-  const INTERVALO_VERIFICACAO = 60 * 1000;
+  const INTERVALO_VERIFICACAO = 30 * 1000;
   const originalFetch = window.fetch.bind(window);
 
-  window.__CORPONU_ATUALIZADOR_NOVO__ = LOCAL_RELEASE;
-  window.CORPONU_RELEASE_VERSION = LOCAL_RELEASE;
+  window.__CORPONU_ATUALIZADOR_NOVO__ = ATUALIZADOR_VERSION;
 
   // Mantém o verificador legado sem executar o fluxo destrutivo de apagar
   // caches e desregistrar o PWA. O version.json continua apenas como ponte.
@@ -22,7 +21,7 @@
       if (url.pathname.endsWith("/version.json")) {
         return Promise.resolve(new Response(JSON.stringify({
           version: LEGACY_VERSION,
-          updatedAt: "2026-07-30T01:32:00-03:00",
+          updatedAt: "2026-07-30T01:56:00-03:00",
           notes: "Compatibilidade com o atualizador legado do CorpoNu."
         }), {
           status: 200,
@@ -67,11 +66,19 @@
     aviso._timer = setTimeout(() => aviso.remove(), 6000);
   }
 
-  function recarregarUmaVez(versao) {
-    const release = String(versao || LOCAL_RELEASE).trim() || LOCAL_RELEASE;
-    const url = new URL(window.location.href);
+  function obterReleaseDaUrl() {
+    try {
+      return new URL(window.location.href).searchParams.get("release") || "";
+    } catch (error) {
+      return "";
+    }
+  }
 
-    // Se a própria URL já identifica esta versão, não recarrega de novo.
+  function recarregarUmaVez(versao) {
+    const release = String(versao || "").trim();
+    if (!release) return;
+
+    const url = new URL(window.location.href);
     if (url.searchParams.get("release") === release) return;
 
     const chave = `${RELOAD_KEY}_${release}`;
@@ -90,8 +97,8 @@
   async function obterRegistroWorker() {
     if (!("serviceWorker" in navigator)) return null;
 
-    // Usa o MESMO registro criado pelo update.js legado. Não registra o mesmo
-    // sw.js com URLs diferentes, pois isso foi a causa do loop de carregamento.
+    // Reutiliza o mesmo registro criado pelo sistema legado. Nunca registra
+    // URLs concorrentes do mesmo sw.js, evitando o antigo loop de recarga.
     let registro = await navigator.serviceWorker.getRegistration("./").catch(() => null);
     if (!registro) {
       registro = await navigator.serviceWorker.register(
@@ -127,7 +134,7 @@
 
   navigator.serviceWorker?.addEventListener("message", event => {
     if (event.data?.type !== "CORPONU_UPDATE_READY") return;
-    recarregarUmaVez(event.data.version || LOCAL_RELEASE);
+    recarregarUmaVez(event.data.version);
   });
 
   let verificando = false;
@@ -147,7 +154,16 @@
       const remota = String(dados?.version || "").trim();
       if (!remota) return;
 
-      if (remota === LOCAL_RELEASE) {
+      window.CORPONU_RELEASE_VERSION = remota;
+
+      let instalada = "";
+      try {
+        instalada = String(localStorage.getItem(STORAGE_KEY) || "").trim();
+      } catch (error) {}
+
+      // Quando a página já abriu com a release remota, apenas confirma a
+      // instalação. Isso evita uma segunda recarga durante atualizações grandes.
+      if (obterReleaseDaUrl() === remota) {
         try {
           localStorage.setItem(STORAGE_KEY, remota);
         } catch (error) {}
@@ -156,15 +172,39 @@
         return;
       }
 
+      // Primeiro acesso ao novo atualizador: registra a versão atual sem forçar
+      // recarga desnecessária.
+      if (!instalada) {
+        try {
+          localStorage.setItem(STORAGE_KEY, remota);
+        } catch (error) {}
+        await registro?.update().catch(() => {});
+        ativarWorkerEmEspera(registro);
+        return;
+      }
+
+      if (instalada === remota) {
+        await registro?.update().catch(() => {});
+        ativarWorkerEmEspera(registro);
+        return;
+      }
+
       mostrarAviso("Nova versão encontrada. O sistema será atualizado automaticamente.");
 
-      // Atualiza o registro existente, sem trocar a URL do Service Worker.
+      // Salva antes da recarga. Assim, mini mudanças exigem apenas atualizar
+      // corponu-ajustes-rapidos.js e corponu-release.json.
+      try {
+        localStorage.setItem(STORAGE_KEY, remota);
+      } catch (error) {}
+
       await registro?.update().catch(() => {});
       ativarWorkerEmEspera(registro);
 
       if (navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({ type: "CHECK_UPDATE" });
       }
+
+      window.setTimeout(() => recarregarUmaVez(remota), 350);
     } catch (error) {
       console.warn("Não foi possível verificar a nova versão do CorpoNu.", error);
     } finally {
