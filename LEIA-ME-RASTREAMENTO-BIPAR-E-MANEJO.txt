@@ -1,0 +1,20 @@
+CORPONU - RASTREAMENTO: BIPAR E ENVIAR PARA MANEJO
+
+Envie juntos para a raiz do repositorio:
+- app.js
+- sw.js
+- corponu-atualizador.js
+- corponu-release.json
+
+NOVO BOTAO ENVIAR PARA MANEJO
+- Aparece ao pesquisar uma OP no Rastreamento.
+- Identifica automaticamente se a OP pertence ao manejo Sutia ou Calcinha.
+- Recoloca a OP no manejo com a fase AGUARDANDO MOVIMENTACAO.
+- Limpa somente os campos de novo destino do manejo: faccao, chegada, falta e celu.
+- Preserva silk, tecido, necessidade, dados da OP e historico de movimentacoes.
+- Nao registra chegada, nao altera movimentacoes existentes e nao gera pagamento.
+
+BIPAR DIRETO
+- Continua funcionando mesmo com movimentacao aberta.
+- Nao abre Editar local e nao solicita chegada.
+- As gravacoes do bipado permanecem atomicas.

@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-hotfix-filtro-pagamentos-estavel-9",
-  "updatedAt": "2026-07-30T07:18:00-03:00",
-  "notes": "Corrige o travamento ao alternar os filtros de status em Pagamentos. Os filtros passam a atualizar somente totais e tabelas, sem reconstruir facções, referências, preços e formulários a cada mudança."
+  "version": "2026-07-30-rastreamento-bipar-manejo-13",
+  "updatedAt": "2026-07-30T10:58:00-03:00",
+  "notes": "Adiciona no Rastreamento o botão Enviar para manejo, que recoloca a OP no manejo correto de Sutiã ou Calcinha com a fase AGUARDANDO MOVIMENTAÇÃO. Mantém também o bipado direto mesmo com movimentações abertas."
 }

@@ -1,4 +1,4 @@
-const APP_VERSION = "2026-07-30-hotfix-filtro-pagamentos-estavel-9";
+const APP_VERSION = "2026-07-30-rastreamento-bipar-manejo-13";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 const INJECT_MARKER = "data-corponu-release-injetado";
 
