@@ -116,6 +116,11 @@
   }
 
   async function biparMovimentacaoInterna(id) {
+    const paginaAtiva = document.querySelector(".page.active")?.id || "";
+    if (paginaAtiva !== "rastreamento" && typeof funcaoOriginalBipar === "function") {
+      return funcaoOriginalBipar(id);
+    }
+
     if (bipando) return;
     bipando = true;
 
