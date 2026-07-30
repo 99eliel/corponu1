@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-faccoes-processos-cadastrados-27",
-  "updatedAt": "2026-07-30T18:48:00-03:00",
-  "notes": "O campo Processo a ser feito no registro de saída passa a ser um seletor alimentado pelos processos já cadastrados no sistema. Sutiã e Calcinha respeitam o tipo da aba; Corte exibe todos os processos cadastrados."
+  "version": "2026-07-30-faccoes-sem-resumo-processos-28",
+  "updatedAt": "2026-07-30T19:22:00-03:00",
+  "notes": "Remove da tela de Facções o bloco visual Processos das facções, preservando as abas Sutiã, Calcinha e Corte, os filtros, as movimentações, as chegadas e o cadastro de facções."
 }
