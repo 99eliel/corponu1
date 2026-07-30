@@ -1,0 +1,105 @@
+name: Corrigir carregamento da revisão lateral e bojo
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/corrigir-carregamento-revisao-componentes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  corrigir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Corrigir carregamento e visibilidade
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          nova = "2026-07-30-revisao-lateral-bojo-19"
+          antigas = [
+              "2026-07-30-rastreamento-enviar-manejo-17",
+              "2026-07-30-revisao-lateral-bojo-18",
+          ]
+
+          index = Path("index.html")
+          texto = index.read_text(encoding="utf-8")
+          for antiga in antigas:
+              texto = texto.replace(antiga, nova)
+
+          script = f'  <script src="./corponu-revisao-lateral-bojo.js?v={nova}"></script>\n'
+          if "./corponu-revisao-lateral-bojo.js" not in texto:
+              marcador = f'  <script src="./corponu-necessidade-livre.js?v={nova}"></script>'
+              if marcador not in texto:
+                  raise SystemExit("Não foi possível localizar o ponto de inclusão do módulo.")
+              texto = texto.replace(marcador, script + marcador)
+          index.write_text(texto, encoding="utf-8")
+
+          modulo = Path("corponu-revisao-lateral-bojo.js")
+          texto = modulo.read_text(encoding="utf-8")
+          texto = texto.replace('const VERSION = "2026-07-30-revisao-lateral-bojo-18";', f'const VERSION = "{nova}";')
+
+          antigo_observer = 'new MutationObserver(() => { injetarUI(); eventosPagina(); manterNav(); }).observe(document.body, { childList: true, subtree: true });'
+          novo_observer = '''new MutationObserver(() => { injetarUI(); eventosPagina(); manterNav(); }).observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "style", "hidden"]
+    });
+    window.setInterval(() => { injetarUI(); eventosPagina(); manterNav(); }, 1200);'''
+          if antigo_observer not in texto:
+              raise SystemExit("Observer esperado não encontrado no módulo.")
+          texto = texto.replace(antigo_observer, novo_observer)
+
+          antigo_auth = 'if (u) { await carregarPerfil().catch(() => {}); await carregarConfig().catch(() => {}); }'
+          novo_auth = 'if (u) { await carregarPerfil().catch(() => {}); await carregarConfig().catch(() => {}); manterNav(); window.setTimeout(manterNav, 250); window.setTimeout(manterNav, 900); }'
+          if antigo_auth not in texto:
+              raise SystemExit("Trecho de autenticação esperado não encontrado.")
+          texto = texto.replace(antigo_auth, novo_auth)
+          modulo.write_text(texto, encoding="utf-8")
+
+          for nome in ["corponu-atualizador.js", "corponu-necessidade-livre.js"]:
+              caminho = Path(nome)
+              texto = caminho.read_text(encoding="utf-8")
+              for antiga in antigas:
+                  texto = texto.replace(antiga, nova)
+              caminho.write_text(texto, encoding="utf-8")
+
+          release = {
+              "version": nova,
+              "updatedAt": "2026-07-30T13:05:00-03:00",
+              "notes": "Corrige o carregamento e a visibilidade da aba Revisão lateral e bojo. O módulo agora é carregado diretamente pelo index e permanece visível após a aplicação das permissões do usuário."
+          }
+          Path("corponu-release.json").write_text(json.dumps(release, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          PY
+
+      - name: Validar correção
+        shell: bash
+        run: |
+          node --check corponu-revisao-lateral-bojo.js
+          node --check corponu-atualizador.js
+          node --check corponu-necessidade-livre.js
+          python -m json.tool corponu-release.json > /dev/null
+          grep -q 'corponu-revisao-lateral-bojo.js?v=2026-07-30-revisao-lateral-bojo-19' index.html
+          grep -q 'data-page="${NAV}"' corponu-revisao-lateral-bojo.js
+          grep -q 'attributeFilter: \["class", "style", "hidden"\]' corponu-revisao-lateral-bojo.js
+          git diff --check
+
+      - name: Publicar
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html corponu-revisao-lateral-bojo.js corponu-atualizador.js corponu-necessidade-livre.js corponu-release.json
+          git commit -m "fix: exibir revisão lateral e bojo no menu"
+          git push origin main
