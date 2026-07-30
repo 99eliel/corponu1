@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-reversao-interface-pagamentos-7",
-  "updatedAt": "2026-07-30T06:50:00-03:00",
-  "notes": "Reverte somente a interface simplificada de Pagamentos e restaura a aparência anterior. Mantém intactos o modo rápido, os cálculos, as pendências, os relatórios, o lançamento manual e a atualização automática."
+  "version": "2026-07-30-hotfix-entrega-ajustes-rapidos-8",
+  "updatedAt": "2026-07-30T06:57:00-03:00",
+  "notes": "Força a entrega da reversão visual de Pagamentos e corrige o modo rápido para usar uma URL exclusiva do arquivo de ajustes em cada release. Não altera cálculos, Firestore ou funções financeiras."
 }
