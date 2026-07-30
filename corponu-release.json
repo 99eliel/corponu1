@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-revisao-lateral-bojo-18",
-  "updatedAt": "2026-07-30T12:27:00-03:00",
-  "notes": "Cria a área Revisão lateral e bojo. A OP pode registrar lateral e bojo feitos pela confecção, com descontos configuráveis e cumulativos nos processos SUTIÃ MONTAGEM e SUTIÃ COMPLETO. Somente pagamentos pendentes são recalculados."
+  "version": "2026-07-30-revisao-visivel-sem-aviso-19",
+  "updatedAt": "2026-07-30T13:12:00-03:00",
+  "notes": "Corrige o carregamento da área Revisão lateral e bojo no menu e remove definitivamente o aviso antigo de instalação automática do PWA."
 }
