@@ -3,7 +3,7 @@
 
   if (window.__CORPONU_ATUALIZADOR_WEB__) return;
 
-  const LOCAL_RELEASE = "2026-07-30-busca-filtros-manejo-16";
+  const LOCAL_RELEASE = "2026-07-30-rastreamento-enviar-manejo-17";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
   let verificando = false;

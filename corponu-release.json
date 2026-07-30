@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-busca-filtros-manejo-16",
-  "updatedAt": "2026-07-30T11:58:00-03:00",
-  "notes": "Corrige a pesquisa dentro dos filtros acumulativos do Manejo. As opções agora desaparecem e reaparecem imediatamente conforme o texto digitado, inclusive ignorando diferenças de acentuação."
+  "version": "2026-07-30-rastreamento-enviar-manejo-17",
+  "updatedAt": "2026-07-30T12:04:00-03:00",
+  "notes": "Adiciona na listagem geral do Rastreamento o botão Enviar para manejo. A ação preserva o histórico da movimentação, identifica Sutiã ou Calcinha e define a fase AGUARDANDO MOVIMENTAÇÃO."
 }
