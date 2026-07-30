@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-modo-manutencao-rapida-5",
-  "updatedAt": "2026-07-30T01:56:00-03:00",
-  "notes": "Prepara o CorpoNu para mini mudanças rápidas. Adiciona módulo permanente de ajustes, recarga automática baseada somente no corponu-release.json e mantém o Service Worker estável nas próximas alterações pequenas."
+  "version": "2026-07-30-pagamentos-interface-simples-6",
+  "updatedAt": "2026-07-30T02:18:00-03:00",
+  "notes": "Simplifica a aba Pagamentos sem alterar cálculos ou gravações. Cria uma área própria para pendências de valores, reorganiza filtros e ações, reduz o peso visual dos indicadores e recolhe as tabelas e a conferência avançada por padrão."
 }
