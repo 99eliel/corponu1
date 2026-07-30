@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-revisao-saida-restaurada-22",
-  "updatedAt": "2026-07-30T13:45:00-03:00",
-  "notes": "Corrige a navegação ao sair da área Revisão lateral e bojo. As telas normais deixam de permanecer com a classe hidden e voltam a abrir normalmente pelo menu original."
+  "version": "2026-07-30-faccoes-corte-23",
+  "updatedAt": "2026-07-30T17:20:00-03:00",
+  "notes": "Primeira versão da área Facções > Corte: processos administráveis, classificação Sutiã/Calcinha, saída e chegada, pagamento por referência, Valor a definir, lateral pronta, cancelamento seguro, histórico e impressão."
 }
