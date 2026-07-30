@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-07-30-busca-filtros-manejo-16";
+  const VERSION = "2026-07-30-revisao-lateral-bojo-18";
   if (window.__CORPONU_NECESSIDADE_LIVRE__ === VERSION) return;
   window.__CORPONU_NECESSIDADE_LIVRE__ = VERSION;
 
@@ -145,7 +145,17 @@
     }
   }
 
+  function carregarRevisaoLateralBojo() {
+    if (document.querySelector('script[data-corponu-revisao-lateral-bojo="1"]')) return;
+    const script = document.createElement("script");
+    script.src = `./corponu-revisao-lateral-bojo.js?v=${encodeURIComponent(VERSION)}`;
+    script.dataset.corponuRevisaoLateralBojo = "1";
+    script.async = false;
+    document.head.appendChild(script);
+  }
+
   function iniciar() {
+    carregarRevisaoLateralBojo();
     injetarCorrecaoPesquisaFiltros();
     aplicar(document);
 
