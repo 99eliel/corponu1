@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-rastreamento-bipar-manejo-13",
-  "updatedAt": "2026-07-30T10:58:00-03:00",
-  "notes": "Adiciona no Rastreamento o botão Enviar para manejo, que recoloca a OP no manejo correto de Sutiã ou Calcinha com a fase AGUARDANDO MOVIMENTAÇÃO. Mantém também o bipado direto mesmo com movimentações abertas."
+  "version": "2026-07-30-necessidade-manejo-texto-livre-14",
+  "updatedAt": "2026-07-30T11:31:00-03:00",
+  "notes": "Libera o campo Necessidade do Manejo para qualquer texto personalizado. As sugestões deixam de limitar a digitação, e o valor informado continua sendo salvo normalmente."
 }
