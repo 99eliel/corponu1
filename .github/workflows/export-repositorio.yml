@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - maintenance/export-organizacao-20260730
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -22,6 +25,7 @@ jobs:
           rsync -a \
             --exclude='.git/' \
             --exclude='.github/workflows/export-repositorio.yml' \
+            --exclude='.github/export-trigger.txt' \
             ./ pacote/corponu1/
           cd pacote
           zip -r ../corponu1-original.zip corponu1
