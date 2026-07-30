@@ -1,21 +1,24 @@
 /*
- * CorpoNu — Pagamentos seguros + central de pendências de valores
- * Versão: 2026-07-29-pendencias-valores-financeiro-3
+ * CorpoNu — Pagamentos seguros + central financeira organizada
+ * Versão: 2026-07-29-pendencias-organizadas-auto-update-4
  *
- * Inclui filtro agrupado por processo, confirmação forte, relatórios PIX
- * e central financeira para resolver todos os pagamentos sem valor.
+ * Inclui filtro agrupado por processo, confirmação forte, relatórios PIX,
+ * central financeira organizada, exclusão segura e atualização automática.
  *
  * Instalação: este arquivo é carregado automaticamente pelo sw.js desta atualização.
  */
 (() => {
   "use strict";
 
-  const VERSION = "2026-07-29-pendencias-valores-financeiro-3";
+  const VERSION = "2026-07-29-pendencias-organizadas-auto-update-4";
   const FIREBASE_VERSION = "10.12.5";
   const DATASET_KEY = "corponuPagamentosSeguro";
   const ID_BOTAO_RELATORIO = "btnRelatorioPagamentoSimplificado";
   const ID_MODAL = "modalConfirmacaoFortePagamentos";
   const ID_MODAL_PENDENCIAS = "modalPendenciasValoresFinanceiro";
+  const ID_MODAL_EXCLUIR_PENDENCIA = "modalExcluirPendenciaFinanceiro";
+  const RELEASE_MANIFEST = "corponu-release.json";
+  const UPDATE_LOCK_KEY = "corponu_auto_update_lock";
   const ID_STYLE = "styleCorpoNuPagamentosSeguro";
   const ID_PRECO_PADRAO_ALCA = "valor-padrao-alca";
   const MULTIPLICADOR_ALCAS = 2;
@@ -44,6 +47,10 @@
   let pendenciasValoresAtuais = [];
   let dadosPendenciasAtuais = null;
   let carregandoPendenciasValores = false;
+  let filtroTipoPendencia = "todos";
+  let filtroProcessoPendencia = "";
+  let pendenciaExclusaoAtual = null;
+  let verificandoAtualizacaoAutomatica = false;
 
   function normalizarNome(valor) {
     return String(valor || "")
@@ -139,6 +146,139 @@
       return;
     }
     window.alert(mensagem);
+  }
+
+
+  function mostrarStatusAtualizacao(mensagem, tipo = "info") {
+    let toast = document.getElementById("corponuToastAtualizacaoAutomatica");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "corponuToastAtualizacaoAutomatica";
+      toast.setAttribute("role", "status");
+      toast.style.cssText = [
+        "position:fixed",
+        "right:18px",
+        "bottom:18px",
+        "z-index:1000000",
+        "max-width:min(390px,calc(100vw - 28px))",
+        "padding:13px 15px",
+        "border-radius:13px",
+        "box-shadow:0 18px 42px rgba(15,23,42,.24)",
+        "font:800 13px/1.45 Arial,sans-serif",
+        "color:#fff",
+        "transition:opacity .2s ease"
+      ].join(";");
+      document.body.appendChild(toast);
+    }
+    toast.style.background = tipo === "erro" ? "#991b1b" : (tipo === "ok" ? "#166534" : "#0f172a");
+    toast.textContent = mensagem;
+    toast.style.opacity = "1";
+    window.clearTimeout(toast._timer);
+    if (tipo !== "info") {
+      toast._timer = window.setTimeout(() => {
+        toast.style.opacity = "0";
+        window.setTimeout(() => toast.remove(), 240);
+      }, 5500);
+    }
+  }
+
+  async function limparCachesAntigosAtualizacao() {
+    if (!("caches" in window)) return;
+    try {
+      const chaves = await caches.keys();
+      await Promise.all(
+        chaves
+          .filter(chave => chave.startsWith("op-confeccao-"))
+          .map(chave => caches.delete(chave))
+      );
+    } catch (error) {
+      console.warn("Não foi possível limpar caches antigos automaticamente.", error);
+    }
+  }
+
+  async function registrarWorkerDaVersao(versao) {
+    if (!("serviceWorker" in navigator)) return null;
+    const registro = await navigator.serviceWorker.register(
+      `sw.js?release=${encodeURIComponent(versao)}`,
+      { scope: "./", updateViaCache: "none" }
+    );
+    if (registro.waiting) registro.waiting.postMessage({ type: "SKIP_WAITING" });
+    await registro.update().catch(() => {});
+    return registro;
+  }
+
+  async function aplicarAtualizacaoAutomatica(versaoRemota) {
+    const agora = Date.now();
+    let lock = {};
+    try { lock = JSON.parse(localStorage.getItem(UPDATE_LOCK_KEY) || "{}"); } catch (error) {}
+    if (lock?.versao === versaoRemota && agora - Number(lock?.criadoEm || 0) < 45000) return;
+
+    try {
+      localStorage.setItem(UPDATE_LOCK_KEY, JSON.stringify({ versao: versaoRemota, criadoEm: agora }));
+    } catch (error) {}
+
+    mostrarStatusAtualizacao("Nova versão encontrada. Atualizando o sistema automaticamente...");
+    try {
+      await registrarWorkerDaVersao(versaoRemota);
+      await limparCachesAntigosAtualizacao();
+    } catch (error) {
+      console.warn("O Service Worker será atualizado no recarregamento.", error);
+    }
+
+    window.setTimeout(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("release", versaoRemota);
+      url.searchParams.set("ts", Date.now().toString());
+      window.location.replace(url.toString());
+    }, 1300);
+  }
+
+  async function verificarAtualizacaoAutomatica() {
+    if (verificandoAtualizacaoAutomatica) return;
+    verificandoAtualizacaoAutomatica = true;
+    try {
+      const resposta = await fetch(`${RELEASE_MANIFEST}?ts=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "cache-control": "no-cache" }
+      });
+      if (!resposta.ok) return;
+      const manifesto = await resposta.json();
+      const versaoRemota = String(manifesto?.version || "").trim();
+      if (!versaoRemota || versaoRemota === VERSION) {
+        try { localStorage.removeItem(UPDATE_LOCK_KEY); } catch (error) {}
+        return;
+      }
+      await aplicarAtualizacaoAutomatica(versaoRemota);
+    } catch (error) {
+      console.warn("Não foi possível verificar atualização automática.", error);
+    } finally {
+      verificandoAtualizacaoAutomatica = false;
+    }
+  }
+
+  function iniciarAtualizacaoAutomatica() {
+    if (window.__corponuAutoUpdateIniciado) return;
+    window.__corponuAutoUpdateIniciado = true;
+
+    registrarWorkerDaVersao(VERSION).catch(error => {
+      console.warn("Service Worker automático não registrado.", error);
+    });
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        const chave = `corponu_controller_reload_${VERSION}`;
+        if (sessionStorage.getItem(chave) === "1") return;
+        sessionStorage.setItem(chave, "1");
+        window.location.reload();
+      });
+    }
+
+    window.setTimeout(verificarAtualizacaoAutomatica, 1600);
+    window.setInterval(verificarAtualizacaoAutomatica, 5 * 60 * 1000);
+    window.addEventListener("focus", verificarAtualizacaoAutomatica);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) verificarAtualizacaoAutomatica();
+    });
   }
 
   function processoValorTotalManual(valor) {
@@ -1361,28 +1501,67 @@
       }
 
       .corponu-pendencias-card {
-        width: min(1180px, 100%);
+        width: min(1240px, 100%);
+        max-height: min(94vh, 940px);
         border-color: #cbd5e1;
+        overflow: hidden;
       }
 
-      .corponu-pendencias-card .corponu-pagamento-modal-header h3 {
-        color: #0f172a;
+      .corponu-pendencias-card .corponu-pagamento-modal-header {
+        padding: 18px 20px;
+        background: linear-gradient(135deg, #0f172a, #1e293b);
+      }
+
+      .corponu-pendencias-card .corponu-pagamento-modal-header h3,
+      .corponu-pendencias-card .corponu-pagamento-modal-header p {
+        color: #ffffff;
+      }
+
+      .corponu-pendencias-card .corponu-pagamento-modal-header p {
+        color: #cbd5e1;
+      }
+
+      .corponu-pendencias-card .corponu-pagamento-modal-fechar {
+        border-color: rgba(255,255,255,.32);
+        color: #ffffff;
+      }
+
+      .corponu-pendencias-card .corponu-pagamento-modal-body {
+        max-height: calc(94vh - 105px);
+        overflow: auto;
+        padding: 18px 20px 24px;
+        background: #f1f5f9;
       }
 
       .corponu-pendencias-toolbar {
+        position: sticky;
+        top: -18px;
+        z-index: 5;
         display: grid;
-        grid-template-columns: minmax(220px, 1fr) auto;
+        grid-template-columns: minmax(250px, 1.5fr) minmax(180px, .8fr) minmax(170px, .75fr) auto;
         gap: 10px;
-        margin-bottom: 14px;
+        margin: -2px -2px 14px;
+        padding: 12px 2px;
+        background: rgba(241,245,249,.96);
+        backdrop-filter: blur(10px);
       }
 
-      .corponu-pendencias-toolbar input {
-        min-height: 42px;
+      .corponu-pendencias-toolbar input,
+      .corponu-pendencias-toolbar select {
+        min-height: 44px;
         width: 100%;
         padding: 9px 12px;
         border: 1px solid #94a3b8;
         border-radius: 10px;
+        background: #ffffff;
         font: inherit;
+      }
+
+      .corponu-pendencias-toolbar input:focus,
+      .corponu-pendencias-toolbar select:focus,
+      .corponu-pendencia-valor-input:focus {
+        outline: 3px solid rgba(37,99,235,.14);
+        border-color: #2563eb;
       }
 
       .corponu-pendencias-resumo {
@@ -1392,11 +1571,26 @@
         margin-bottom: 14px;
       }
 
-      .corponu-pendencias-resumo > div {
-        padding: 12px;
+      .corponu-pendencias-resumo button {
+        min-width: 0;
+        padding: 13px 14px;
         border: 1px solid #cbd5e1;
-        border-radius: 12px;
-        background: #f8fafc;
+        border-radius: 13px;
+        background: #ffffff;
+        text-align: left;
+        cursor: pointer;
+        transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+      }
+
+      .corponu-pendencias-resumo button:hover {
+        transform: translateY(-1px);
+        border-color: #94a3b8;
+        box-shadow: 0 7px 18px rgba(15,23,42,.07);
+      }
+
+      .corponu-pendencias-resumo button.ativo {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37,99,235,.12);
       }
 
       .corponu-pendencias-resumo span {
@@ -1411,19 +1605,20 @@
         display: block;
         margin-top: 4px;
         color: #0f172a;
-        font-size: 21px;
+        font-size: 23px;
       }
 
       .corponu-pendencias-alca {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(170px, 230px) auto;
+        grid-template-columns: minmax(0, 1fr) minmax(180px, 230px) auto;
         align-items: end;
         gap: 12px;
         margin-bottom: 14px;
-        padding: 14px;
+        padding: 15px;
         border: 1px solid #f59e0b;
-        border-radius: 13px;
+        border-radius: 14px;
         background: #fff7ed;
+        box-shadow: 0 7px 18px rgba(154,52,18,.06);
       }
 
       .corponu-pendencias-alca.hidden {
@@ -1452,7 +1647,7 @@
       .corponu-pendencias-alca input,
       .corponu-pendencia-valor-input {
         width: 100%;
-        min-height: 40px;
+        min-height: 42px;
         margin-top: 5px;
         padding: 8px 10px;
         border: 1px solid #94a3b8;
@@ -1462,34 +1657,75 @@
       }
 
       .corponu-pendencias-aviso {
-        margin-bottom: 12px;
-        padding: 10px 12px;
+        margin-bottom: 14px;
+        padding: 11px 13px;
         border: 1px solid #bfdbfe;
-        border-radius: 10px;
+        border-radius: 11px;
         background: #eff6ff;
         color: #1e3a8a;
         font-size: 12px;
         line-height: 1.5;
       }
 
-      .corponu-pendencias-lista {
+      .corponu-pendencias-contagem {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin: 0 2px 10px;
+        color: #475569;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .corponu-pendencias-grupo {
+        margin-bottom: 16px;
+      }
+
+      .corponu-pendencias-grupo-cabecalho {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+        padding: 0 3px;
+      }
+
+      .corponu-pendencias-grupo-cabecalho h4 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 14px;
+      }
+
+      .corponu-pendencias-grupo-cabecalho span {
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        color: #334155;
+        font-size: 10px;
+        font-weight: 900;
+      }
+
+      .corponu-pendencias-lista,
+      .corponu-pendencias-grupo-lista {
         display: grid;
         gap: 10px;
       }
 
       .corponu-pendencia-item {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(190px, 250px);
-        gap: 14px;
-        padding: 14px;
+        grid-template-columns: minmax(0, 1fr) minmax(245px, 300px);
+        gap: 15px;
+        padding: 15px;
         border: 1px solid #dbe3ee;
-        border-radius: 13px;
+        border-radius: 14px;
         background: #ffffff;
+        box-shadow: 0 3px 10px rgba(15,23,42,.035);
       }
 
       .corponu-pendencia-item:hover {
         border-color: #94a3b8;
-        box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+        box-shadow: 0 9px 24px rgba(15,23,42,.075);
       }
 
       .corponu-pendencia-cabecalho {
@@ -1497,12 +1733,12 @@
         flex-wrap: wrap;
         align-items: center;
         gap: 7px;
-        margin-bottom: 8px;
+        margin-bottom: 9px;
       }
 
       .corponu-pendencia-cabecalho strong {
         color: #0f172a;
-        font-size: 15px;
+        font-size: 16px;
       }
 
       .corponu-pendencia-badge {
@@ -1518,9 +1754,50 @@
         text-transform: uppercase;
       }
 
+      .corponu-pendencia-identificacao {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+        margin-bottom: 10px;
+      }
+
+      .corponu-pendencia-identificacao b {
+        color: #0f172a;
+        font-size: 14px;
+      }
+
+      .corponu-pendencia-identificacao span {
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .corponu-pendencia-faccao {
+        margin-bottom: 10px;
+        padding: 9px 11px;
+        border-left: 4px solid #7c3aed;
+        border-radius: 9px;
+        background: #f5f3ff;
+      }
+
+      .corponu-pendencia-faccao span {
+        display: block;
+        color: #6d28d9;
+        font-size: 9px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .corponu-pendencia-faccao strong {
+        display: block;
+        margin-top: 2px;
+        color: #4c1d95;
+        font-size: 14px;
+      }
+
       .corponu-pendencia-dados {
         display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 8px;
       }
 
@@ -1550,10 +1827,13 @@
       }
 
       .corponu-pendencia-edicao {
-        align-self: center;
-        padding: 10px;
+        align-self: stretch;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 12px;
         border: 1px solid #e2e8f0;
-        border-radius: 11px;
+        border-radius: 12px;
         background: #f8fafc;
       }
 
@@ -1572,16 +1852,34 @@
         line-height: 1.35;
       }
 
-      .corponu-pendencia-edicao .btn {
-        width: 100%;
-        margin-top: 9px;
+      .corponu-pendencia-acoes {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .corponu-pendencia-acoes .btn {
+        min-height: 40px;
+        margin: 0;
+      }
+
+      .corponu-btn-excluir-pendencia {
+        background: #ffffff !important;
+        border-color: #fca5a5 !important;
+        color: #b91c1c !important;
+      }
+
+      .corponu-btn-excluir-pendencia:hover {
+        background: #fef2f2 !important;
+        border-color: #ef4444 !important;
       }
 
       .corponu-pendencias-vazio {
-        padding: 30px 18px;
+        padding: 34px 18px;
         border: 1px dashed #94a3b8;
-        border-radius: 13px;
-        background: #f8fafc;
+        border-radius: 14px;
+        background: #ffffff;
         color: #475569;
         text-align: center;
       }
@@ -1594,13 +1892,38 @@
       }
 
       .corponu-pendencias-carregando {
-        padding: 28px;
+        padding: 34px;
         color: #475569;
         text-align: center;
         font-weight: 800;
       }
 
-      @media (max-width: 980px) {
+      .corponu-excluir-pendencia-card {
+        width: min(520px, 100%);
+      }
+
+      .corponu-excluir-pendencia-resumo {
+        margin: 12px 0;
+        padding: 12px;
+        border: 1px solid #fecaca;
+        border-radius: 11px;
+        background: #fff7f7;
+        color: #7f1d1d;
+        font-size: 12px;
+        line-height: 1.55;
+      }
+
+      .corponu-excluir-pendencia-alerta {
+        margin: 0;
+        color: #475569;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      @media (max-width: 1040px) {
+        .corponu-pendencias-toolbar {
+          grid-template-columns: 1fr 1fr;
+        }
         .corponu-pendencias-resumo {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
@@ -1614,12 +1937,21 @@
       }
 
       @media (max-width: 700px) {
+        .corponu-pendencias-card .corponu-pagamento-modal-body {
+          padding: 14px;
+        }
         .corponu-pendencias-toolbar,
         .corponu-pendencias-resumo {
           grid-template-columns: 1fr;
         }
         .corponu-pendencia-dados {
           grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .corponu-pendencia-acoes {
+          grid-template-columns: 1fr;
+        }
+        .corponu-pendencia-acoes .btn {
+          width: 100%;
         }
       }
 
@@ -1900,8 +2232,54 @@
     document.body.style.overflow = "";
   }
 
+  function fecharModalExcluirPendencia() {
+    document.getElementById(ID_MODAL_EXCLUIR_PENDENCIA)?.classList.add("hidden");
+    pendenciaExclusaoAtual = null;
+  }
+
+  function injetarModalExcluirPendencia() {
+    if (document.getElementById(ID_MODAL_EXCLUIR_PENDENCIA)) return;
+    const modal = document.createElement("div");
+    modal.id = ID_MODAL_EXCLUIR_PENDENCIA;
+    modal.className = "corponu-pagamento-modal hidden";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.innerHTML = `
+      <div class="corponu-pagamento-modal-card corponu-excluir-pendencia-card">
+        <div class="corponu-pagamento-modal-header">
+          <div>
+            <h3>Apagar lançamento sem valor?</h3>
+            <p>Confira os dados antes de excluir.</p>
+          </div>
+          <button class="corponu-pagamento-modal-fechar" id="btnFecharExcluirPendencia" type="button" aria-label="Fechar">×</button>
+        </div>
+        <div class="corponu-pagamento-modal-body">
+          <div class="corponu-excluir-pendencia-resumo" id="resumoExcluirPendencia"></div>
+          <p class="corponu-excluir-pendencia-alerta">
+            Esta ação apaga somente o lançamento financeiro em <strong>entregasPagamento</strong>.
+            A OP e a movimentação da facção continuam no sistema. A exclusão ficará registrada na auditoria.
+          </p>
+          <div class="corponu-pagamento-modal-acoes">
+            <button class="btn" id="btnCancelarExcluirPendencia" type="button">Cancelar</button>
+            <button class="btn btn-danger" id="btnConfirmarExcluirPendencia" type="button">Apagar lançamento</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    document.getElementById("btnFecharExcluirPendencia")?.addEventListener("click", fecharModalExcluirPendencia);
+    document.getElementById("btnCancelarExcluirPendencia")?.addEventListener("click", fecharModalExcluirPendencia);
+    document.getElementById("btnConfirmarExcluirPendencia")?.addEventListener("click", confirmarExclusaoPendencia);
+    modal.addEventListener("click", event => {
+      if (event.target === modal) fecharModalExcluirPendencia();
+    });
+  }
+
   function injetarModalPendenciasValores() {
-    if (document.getElementById(ID_MODAL_PENDENCIAS)) return;
+    if (document.getElementById(ID_MODAL_PENDENCIAS)) {
+      injetarModalExcluirPendencia();
+      return;
+    }
     const modal = document.createElement("div");
     modal.id = ID_MODAL_PENDENCIAS;
     modal.className = "corponu-pagamento-modal hidden";
@@ -1912,28 +2290,37 @@
       <div class="corponu-pagamento-modal-card corponu-pendencias-card">
         <div class="corponu-pagamento-modal-header">
           <div>
-            <h3 id="tituloPendenciasValoresFinanceiro">Pendências de valores do financeiro</h3>
-            <p>Veja todos os lançamentos sem valor, informe o valor correto e transforme-os em pagamentos pendentes para conferência.</p>
+            <h3 id="tituloPendenciasValoresFinanceiro">Central financeira — valores pendentes</h3>
+            <p>Localize o lançamento, confira quem fez, informe o valor correto ou apague um registro lançado por engano.</p>
           </div>
           <button class="corponu-pagamento-modal-fechar" id="btnFecharPendenciasValores" type="button" aria-label="Fechar">×</button>
         </div>
         <div class="corponu-pagamento-modal-body">
           <div class="corponu-pendencias-toolbar">
-            <input id="buscaPendenciasValores" type="search" autocomplete="off" placeholder="Buscar por OP, referência, facção ou processo" />
-            <button class="btn" id="btnRecarregarPendenciasValores" type="button">Atualizar pendências</button>
+            <input id="buscaPendenciasValores" type="search" autocomplete="off" placeholder="Buscar OP, referência ou facção..." />
+            <select id="filtroProcessoPendenciasValores" aria-label="Filtrar por processo">
+              <option value="">Todos os processos</option>
+            </select>
+            <select id="filtroTipoPendenciasValores" aria-label="Filtrar por tipo de valor">
+              <option value="todos">Todos os tipos</option>
+              <option value="manual">Valor total da OP</option>
+              <option value="unitario">Valor unitário</option>
+              <option value="alca">Alça</option>
+            </select>
+            <button class="btn" id="btnRecarregarPendenciasValores" type="button">Atualizar lista</button>
           </div>
 
           <div class="corponu-pendencias-resumo">
-            <div><span>Total sem valor</span><strong id="resumoPendenciasTotal">0</strong></div>
-            <div><span>Valor total da OP</span><strong id="resumoPendenciasManual">0</strong></div>
-            <div><span>Valor unitário</span><strong id="resumoPendenciasUnitario">0</strong></div>
-            <div><span>Alça</span><strong id="resumoPendenciasAlca">0</strong></div>
+            <button type="button" data-filtro-resumo="todos"><span>Total sem valor</span><strong id="resumoPendenciasTotal">0</strong></button>
+            <button type="button" data-filtro-resumo="manual"><span>Valor total da OP</span><strong id="resumoPendenciasManual">0</strong></button>
+            <button type="button" data-filtro-resumo="unitario"><span>Valor unitário</span><strong id="resumoPendenciasUnitario">0</strong></button>
+            <button type="button" data-filtro-resumo="alca"><span>Alça</span><strong id="resumoPendenciasAlca">0</strong></button>
           </div>
 
           <div class="corponu-pendencias-alca hidden" id="painelPendenciaValorAlca">
             <div>
               <h4>Valor padrão da Alça</h4>
-              <p>Informe o valor de uma alça. O sistema multiplicará por duas alças para cada sutiã e recalculará todos os pagamentos de Alça ainda abertos.</p>
+              <p>Informe o valor de uma alça. O sistema multiplica por duas alças em cada sutiã e recalcula todos os lançamentos de Alça ainda abertos.</p>
             </div>
             <label>
               Valor de uma alça
@@ -1943,7 +2330,12 @@
           </div>
 
           <div class="corponu-pendencias-aviso">
-            <strong>Como preencher:</strong> Sutiã Montagem e Sutiã Completo recebem o valor total final daquela OP. Os demais serviços recebem valor unitário por peça. Para Alça, o valor é global e deve ser informado somente uma vez.
+            <strong>Preenchimento:</strong> Sutiã Montagem e Sutiã Completo recebem o valor total final da OP. Os demais serviços recebem valor por peça. A exclusão remove somente o lançamento financeiro, sem apagar a OP.
+          </div>
+
+          <div class="corponu-pendencias-contagem">
+            <span id="textoContagemPendencias">0 pendência(s) exibida(s)</span>
+            <span>Organizado por processo</span>
           </div>
 
           <div class="corponu-pendencias-lista" id="listaPendenciasValores">
@@ -1953,10 +2345,27 @@
       </div>
     `;
     document.body.appendChild(modal);
+    injetarModalExcluirPendencia();
 
     document.getElementById("btnFecharPendenciasValores")?.addEventListener("click", fecharModalPendenciasValores);
     document.getElementById("btnRecarregarPendenciasValores")?.addEventListener("click", () => abrirModalPendenciasValores(true));
     document.getElementById("buscaPendenciasValores")?.addEventListener("input", renderizarListaPendenciasValores);
+    document.getElementById("filtroProcessoPendenciasValores")?.addEventListener("change", event => {
+      filtroProcessoPendencia = processoCanonico(event.target.value || "");
+      renderizarListaPendenciasValores();
+    });
+    document.getElementById("filtroTipoPendenciasValores")?.addEventListener("change", event => {
+      filtroTipoPendencia = String(event.target.value || "todos");
+      renderizarListaPendenciasValores();
+    });
+    document.querySelectorAll("[data-filtro-resumo]").forEach(botao => {
+      botao.addEventListener("click", () => {
+        filtroTipoPendencia = String(botao.dataset.filtroResumo || "todos");
+        const select = document.getElementById("filtroTipoPendenciasValores");
+        if (select) select.value = filtroTipoPendencia;
+        renderizarListaPendenciasValores();
+      });
+    });
     document.getElementById("btnSalvarPendenciaValorAlca")?.addEventListener("click", salvarValorAlcaPelaCentral);
     modal.addEventListener("click", event => {
       if (event.target === modal) fecharModalPendenciasValores();
@@ -1966,6 +2375,7 @@
       const acao = String(botao.dataset.acaoPendencia || "");
       if (acao === "salvar-manual") salvarValorManualPelaCentral(id, botao);
       if (acao === "salvar-unitario") salvarValorUnitarioPelaCentral(id, botao);
+      if (acao === "excluir") abrirConfirmacaoExcluirPendencia(id);
     });
   }
 
@@ -1976,11 +2386,48 @@
     return "Valor unitário por peça";
   }
 
+  function preencherFiltroProcessosPendencias() {
+    const select = document.getElementById("filtroProcessoPendenciasValores");
+    if (!select) return;
+    const atual = filtroProcessoPendencia;
+    const processos = ordenarProcessos(new Set(
+      pendenciasValoresAtuais.map(item => processoDoPagamento(item)).filter(Boolean)
+    ));
+    select.innerHTML = '<option value="">Todos os processos</option>' + processos
+      .map(processo => `<option value="${escapeHtml(processo)}">${escapeHtml(processo)}</option>`)
+      .join("");
+    if (atual && processos.some(processo => normalizarNome(processo) === normalizarNome(atual))) {
+      select.value = processos.find(processo => normalizarNome(processo) === normalizarNome(atual)) || "";
+    } else {
+      filtroProcessoPendencia = "";
+      select.value = "";
+    }
+  }
+
+  function podeExcluirPendencia(item) {
+    const dados = dadosPendenciasAtuais;
+    if (!dados?.usuario || !item) return false;
+    if (dados.ehAdminAtivo) return true;
+    const uid = String(dados.usuario.uid || "");
+    const dono = String(item?.criadoPor || item?.usuarioUid || item?.usuarioId || "");
+    return Boolean(uid && dono === uid && statusPagamento(item) !== "pago");
+  }
+
+  function htmlBotaoExcluirPendencia(item) {
+    if (!podeExcluirPendencia(item)) return "";
+    return `<button class="btn corponu-btn-excluir-pendencia" type="button" data-acao-pendencia="excluir" data-id="${escapeHtml(item.id)}" title="Apagar este lançamento financeiro">Excluir</button>`;
+  }
+
   function renderizarListaPendenciasValores() {
     const lista = document.getElementById("listaPendenciasValores");
     if (!lista) return;
     const busca = normalizarNome(document.getElementById("buscaPendenciasValores")?.value || "");
     const filtradas = pendenciasValoresAtuais.filter(item => {
+      if (filtroTipoPendencia !== "todos" && tipoPendenciaValor(item) !== filtroTipoPendencia) return false;
+      if (
+        filtroProcessoPendencia &&
+        normalizarNome(processoDoPagamento(item)) !== normalizarNome(filtroProcessoPendencia)
+      ) return false;
       if (!busca) return true;
       return normalizarNome([
         item?.numeroOP,
@@ -1998,54 +2445,96 @@
     setTexto("resumoPendenciasManual", manual.toLocaleString("pt-BR"));
     setTexto("resumoPendenciasAlca", alca.toLocaleString("pt-BR"));
     setTexto("resumoPendenciasUnitario", unitario.toLocaleString("pt-BR"));
+    setTexto("textoContagemPendencias", `${filtradas.length.toLocaleString("pt-BR")} pendência(s) exibida(s)`);
     document.getElementById("painelPendenciaValorAlca")?.classList.toggle("hidden", alca === 0);
 
+    document.querySelectorAll("[data-filtro-resumo]").forEach(botao => {
+      botao.classList.toggle("ativo", String(botao.dataset.filtroResumo || "todos") === filtroTipoPendencia);
+    });
+
     if (!filtradas.length) {
-      lista.innerHTML = busca
-        ? '<div class="corponu-pendencias-vazio"><strong>Nenhuma pendência encontrada</strong>Altere a busca para visualizar outros lançamentos.</div>'
+      lista.innerHTML = busca || filtroTipoPendencia !== "todos" || filtroProcessoPendencia
+        ? '<div class="corponu-pendencias-vazio"><strong>Nenhuma pendência encontrada</strong>Limpe ou altere os filtros para visualizar outros lançamentos.</div>'
         : '<div class="corponu-pendencias-vazio"><strong>Tudo certo!</strong>Não existem pagamentos aguardando definição de valor.</div>';
       return;
     }
 
-    lista.innerHTML = filtradas.map(item => {
-      const tipo = tipoPendenciaValor(item);
-      const alcaPendente = tipo === "alca";
-      const labelInput = tipo === "manual" ? "Valor total final desta OP" : "Valor unitário por peça";
-      const ajuda = tipo === "manual"
-        ? "Digite o total final calculado pelo financeiro, já considerando descontos e componentes."
-        : "Este valor será aplicado a todos os lançamentos sem valor da mesma referência e processo.";
-      return `
-        <article class="corponu-pendencia-item" data-pendencia-id="${escapeHtml(item.id)}">
-          <div>
-            <div class="corponu-pendencia-cabecalho">
-              <strong>${escapeHtml(processoDoPagamento(item) || "Processo não informado")}</strong>
-              <span class="corponu-pendencia-badge">${escapeHtml(textoTipoPendencia(item))}</span>
+    const grupos = new Map();
+    filtradas.forEach(item => {
+      const processo = processoDoPagamento(item) || "Processo não informado";
+      const chave = normalizarNome(processo) || "SEM PROCESSO";
+      if (!grupos.has(chave)) grupos.set(chave, { processo, itens: [] });
+      grupos.get(chave).itens.push(item);
+    });
+
+    lista.innerHTML = ordenarProcessos([...grupos.values()].map(grupo => grupo.processo))
+      .map(processo => {
+        const grupo = grupos.get(normalizarNome(processo));
+        if (!grupo) return "";
+        const cards = grupo.itens.map(item => {
+          const tipo = tipoPendenciaValor(item);
+          const alcaPendente = tipo === "alca";
+          const labelInput = tipo === "manual" ? "Valor total final desta OP" : "Valor unitário por peça";
+          const ajuda = tipo === "manual"
+            ? "Digite o total final calculado pelo financeiro."
+            : "Aplicado aos lançamentos sem valor da mesma referência e processo.";
+          const botaoExcluir = htmlBotaoExcluirPendencia(item);
+          return `
+            <article class="corponu-pendencia-item" data-pendencia-id="${escapeHtml(item.id)}">
+              <div>
+                <div class="corponu-pendencia-cabecalho">
+                  <strong>${escapeHtml(processoDoPagamento(item) || "Processo não informado")}</strong>
+                  <span class="corponu-pendencia-badge">${escapeHtml(textoTipoPendencia(item))}</span>
+                </div>
+                <div class="corponu-pendencia-identificacao">
+                  <b>OP ${escapeHtml(item?.numeroOP || "-")}</b>
+                  <span>REF ${escapeHtml(item?.referencia || "-")}</span>
+                </div>
+                <div class="corponu-pendencia-faccao">
+                  <span>Quem fez / facção</span>
+                  <strong>${escapeHtml(item?.faccao || "-")}</strong>
+                </div>
+                <div class="corponu-pendencia-dados">
+                  <div><span>Quantidade</span><b>${Number(item?.quantidade || 0).toLocaleString("pt-BR")}</b></div>
+                  <div><span>Chegada</span><b>${escapeHtml(formatarDataBR(item?.dataEntrega))}</b></div>
+                  <div><span>Cor</span><b title="${escapeHtml(item?.cor || "-")}">${escapeHtml(item?.cor || "-")}</b></div>
+                  <div><span>Situação</span><b>Aguardando valor</b></div>
+                </div>
+              </div>
+              <div class="corponu-pendencia-edicao">
+                ${alcaPendente ? `
+                  <label>Valor definido no painel global da Alça</label>
+                  <small>Um único valor recalcula todos os lançamentos de Alça em aberto.</small>
+                  <div class="corponu-pendencia-acoes">
+                    <button class="btn" type="button" onclick="document.getElementById('inputPendenciaValorAlca')?.focus(); document.getElementById('painelPendenciaValorAlca')?.scrollIntoView({behavior:'smooth', block:'center'});">Ir para valor da Alça</button>
+                    ${botaoExcluir}
+                  </div>
+                ` : `
+                  <label>
+                    ${escapeHtml(labelInput)}
+                    <input class="corponu-pendencia-valor-input" id="valorPendencia-${escapeHtml(item.id)}" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: ${tipo === "manual" ? "500,00" : "0,2800"}" />
+                  </label>
+                  <small>${escapeHtml(ajuda)}</small>
+                  <div class="corponu-pendencia-acoes">
+                    <button class="btn btn-success" type="button" data-acao-pendencia="${tipo === "manual" ? "salvar-manual" : "salvar-unitario"}" data-id="${escapeHtml(item.id)}">Salvar valor</button>
+                    ${botaoExcluir}
+                  </div>
+                `}
+              </div>
+            </article>
+          `;
+        }).join("");
+
+        return `
+          <section class="corponu-pendencias-grupo">
+            <div class="corponu-pendencias-grupo-cabecalho">
+              <h4>${escapeHtml(grupo.processo)}</h4>
+              <span>${grupo.itens.length.toLocaleString("pt-BR")} pendência(s)</span>
             </div>
-            <div class="corponu-pendencia-dados">
-              <div><span>OP</span><b>${escapeHtml(item?.numeroOP || "-")}</b></div>
-              <div><span>Referência</span><b>${escapeHtml(item?.referencia || "-")}</b></div>
-              <div><span>Facção</span><b title="${escapeHtml(item?.faccao || "-")}">${escapeHtml(item?.faccao || "-")}</b></div>
-              <div><span>Quantidade</span><b>${Number(item?.quantidade || 0).toLocaleString("pt-BR")}</b></div>
-              <div><span>Chegada</span><b>${escapeHtml(formatarDataBR(item?.dataEntrega))}</b></div>
-            </div>
-          </div>
-          <div class="corponu-pendencia-edicao">
-            ${alcaPendente ? `
-              <label>Valor controlado no painel de Alça acima</label>
-              <small>Um único valor recalcula todos os lançamentos de Alça em aberto.</small>
-              <button class="btn" type="button" onclick="document.getElementById('inputPendenciaValorAlca')?.focus(); document.getElementById('painelPendenciaValorAlca')?.scrollIntoView({behavior:'smooth', block:'center'});">Ir para valor da Alça</button>
-            ` : `
-              <label>
-                ${escapeHtml(labelInput)}
-                <input class="corponu-pendencia-valor-input" id="valorPendencia-${escapeHtml(item.id)}" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: ${tipo === "manual" ? "500,00" : "0,2800"}" />
-              </label>
-              <small>${escapeHtml(ajuda)}</small>
-              <button class="btn btn-success" type="button" data-acao-pendencia="${tipo === "manual" ? "salvar-manual" : "salvar-unitario"}" data-id="${escapeHtml(item.id)}">Salvar valor</button>
-            `}
-          </div>
-        </article>
-      `;
-    }).join("");
+            <div class="corponu-pendencias-grupo-lista">${cards}</div>
+          </section>
+        `;
+      }).join("");
   }
 
   async function abrirModalPendenciasValores(forcarServidor = true) {
@@ -2065,6 +2554,7 @@
       }
       dadosPendenciasAtuais = dados;
       pendenciasValoresAtuais = pendenciasSemValor(dados.pagamentos);
+      preencherFiltroProcessosPendencias();
       renderizarListaPendenciasValores();
       const valorAlcaExistente = pendenciasValoresAtuais.find(item => tipoPendenciaValor(item) === "alca")?.valorUnitarioAlca;
       const inputAlca = document.getElementById("inputPendenciaValorAlca");
@@ -2078,6 +2568,87 @@
       }
     } finally {
       carregandoPendenciasValores = false;
+    }
+  }
+
+
+  function abrirConfirmacaoExcluirPendencia(id) {
+    const item = pendenciasValoresAtuais.find(pagamento => String(pagamento.id) === String(id));
+    if (!item) return avisar("Lançamento não encontrado. Atualize a lista.");
+    if (!podeExcluirPendencia(item)) {
+      return avisar("Somente administrador ou o usuário que criou este lançamento pode apagá-lo.");
+    }
+    pendenciaExclusaoAtual = item;
+    const resumo = document.getElementById("resumoExcluirPendencia");
+    if (resumo) {
+      resumo.innerHTML = `
+        <strong>OP ${escapeHtml(item?.numeroOP || "-")} — REF ${escapeHtml(item?.referencia || "-")}</strong><br>
+        ${escapeHtml(processoDoPagamento(item) || "Processo não informado")}<br>
+        Facção: <strong>${escapeHtml(item?.faccao || "-")}</strong> ·
+        Quantidade: <strong>${Number(item?.quantidade || 0).toLocaleString("pt-BR")}</strong>
+      `;
+    }
+    document.getElementById(ID_MODAL_EXCLUIR_PENDENCIA)?.classList.remove("hidden");
+  }
+
+  async function confirmarExclusaoPendencia(event) {
+    const item = pendenciaExclusaoAtual;
+    const botao = event?.currentTarget || document.getElementById("btnConfirmarExcluirPendencia");
+    if (!item) return fecharModalExcluirPendencia();
+    if (!travarBotaoPendencia(botao, "Apagando...")) return;
+
+    try {
+      const dados = dadosPendenciasAtuais || await carregarDadosRelatorio();
+      const uid = String(dados?.usuario?.uid || "");
+      const dono = String(item?.criadoPor || item?.usuarioUid || item?.usuarioId || "");
+      const permitido = dados.ehAdminAtivo || (uid && dono === uid && statusPagamento(item) !== "pago");
+      if (!permitido) {
+        throw Object.assign(new Error("Seu usuário não possui permissão para apagar este lançamento."), { code: "permission-denied" });
+      }
+
+      const { contexto } = dados;
+      const referencia = contexto.firestore.doc(contexto.db, "entregasPagamento", item.id);
+      const atual = await contexto.firestore.getDoc(referencia);
+      if (!atual.exists()) {
+        pendenciasValoresAtuais = pendenciasValoresAtuais.filter(pagamento => pagamento.id !== item.id);
+        fecharModalExcluirPendencia();
+        renderizarListaPendenciasValores();
+        return avisar("Este lançamento já havia sido apagado.");
+      }
+      if (String(atual.data()?.statusPagamento || "").toLowerCase() === "pago") {
+        throw new Error("Pagamento já quitado não pode ser apagado por esta central.");
+      }
+
+      await contexto.firestore.deleteDoc(referencia);
+      await registrarLogPendencia(
+        contexto,
+        dados,
+        "entrega_pagamento_sem_valor_excluida_central",
+        item.id,
+        `OP ${item?.numeroOP || "-"} | Ref. ${item?.referencia || "-"} | ${item?.faccao || "-"} | ${processoDoPagamento(item) || "-"} | ${Number(item?.quantidade || 0)} peça(s)`
+      );
+
+      pendenciasValoresAtuais = pendenciasValoresAtuais.filter(pagamento => pagamento.id !== item.id);
+      if (dadosPendenciasAtuais?.pagamentos) {
+        dadosPendenciasAtuais.pagamentos = dadosPendenciasAtuais.pagamentos.filter(pagamento => pagamento.id !== item.id);
+      }
+      cacheTelaPagamentos.expiraEm = 0;
+      fecharModalExcluirPendencia();
+      preencherFiltroProcessosPendencias();
+      renderizarListaPendenciasValores();
+      avisar(`Lançamento da OP ${item?.numeroOP || "-"} apagado. A OP e a movimentação foram preservadas.`);
+
+      window.setTimeout(() => {
+        try { window.renderPagamentos?.(); } catch (error) { console.warn(error); }
+        if (processoSelecionadoAgrupado) renderizarProcessoAgrupado({ forcarServidor: true });
+      }, 350);
+    } catch (error) {
+      console.error("Erro ao apagar pendência financeira.", error);
+      avisar(String(error?.code || "").includes("permission-denied")
+        ? "Seu usuário não possui permissão para apagar este lançamento."
+        : (error?.message || "Não foi possível apagar o lançamento."));
+    } finally {
+      destravarBotaoPendencia(botao);
     }
   }
 
@@ -2447,6 +3018,7 @@
   }
 
   function iniciar() {
+    iniciarAtualizacaoAutomatica();
     organizarInterface();
 
     // Os listeners no window/captura executam antes das rotinas antigas instaladas no document.
@@ -2505,6 +3077,10 @@
 
     document.addEventListener("keydown", event => {
       if (event.key !== "Escape") return;
+      if (!document.getElementById(ID_MODAL_EXCLUIR_PENDENCIA)?.classList.contains("hidden")) {
+        fecharModalExcluirPendencia();
+        return;
+      }
       if (!document.getElementById(ID_MODAL_PENDENCIAS)?.classList.contains("hidden")) {
         fecharModalPendenciasValores();
         return;

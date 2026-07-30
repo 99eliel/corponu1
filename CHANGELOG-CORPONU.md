@@ -1,25 +1,41 @@
 # Changelog — CorpoNu
 
-## 2026-07-29-pendencias-valores-financeiro-3
+## 2026-07-29-pendencias-organizadas-auto-update-4
 
-### Pagamentos
-- Corrigido o botão `Conferir agora`, que antes somente recarregava a conferência.
-- Renomeado para `Ver pendências de valor`.
-- Criada central financeira com todos os pagamentos sem valor.
-- Incluída busca por OP, referência, facção e processo.
-- Incluídos contadores de pendências por tipo.
-- Permitida definição do valor total final por OP em Sutiã Montagem e Sutiã Completo.
-- Permitida definição do valor padrão global de uma Alça, com multiplicação por duas e recálculo dos lançamentos abertos.
-- Incluída definição administrativa do valor unitário por Referência + Processo, com recálculo dos lançamentos equivalentes.
-- Após salvar um valor, o pagamento passa automaticamente para `pendente`, sem ser marcado como pago.
-- Incluídos registros adicionais em `logsAlteracoes`.
+### Central de pendências de valor
 
-### Segurança
-- Nenhum pagamento é quitado pela central de valores.
-- A confirmação de pagamentos filtrados continua separada e protegida pela confirmação reforçada.
-- Mantidas as regras atuais do Firebase e as permissões financeiras existentes.
+- Interface reorganizada e mais intuitiva.
+- Indicadores clicáveis para mostrar todas as pendências, valores totais de OP, Alça e valores unitários.
+- Pesquisa por OP, referência, facção, processo e cor.
+- Filtro por processo.
+- Filtro por tipo de valor pendente.
+- Lançamentos agrupados por processo.
+- Identificação destacada de OP, referência, responsável, quantidade, chegada, cor e situação.
+- Área global da Alça separada dos valores individuais.
 
-## 2026-07-29-pagamentos-processos-agrupados-2
-- Filtro de pagamentos agrupado pelo nome do processo.
-- Relatório simplificado com Nome, PIX e Valor.
-- Confirmação reforçada para fechamento em lote.
+### Exclusão segura
+
+- Adicionado botão **Excluir** em cada pendência autorizada.
+- Adicionada confirmação com os dados principais do lançamento.
+- A exclusão remove somente o registro financeiro sem valor.
+- OP e movimentação de facção são preservadas.
+- Pagamentos já quitados não podem ser apagados por essa central.
+- Ação registrada na auditoria do sistema.
+- Lista, indicadores e tela de pagamentos são atualizados após a exclusão.
+
+### Atualização automática
+
+- Criado o manifesto independente `corponu-release.json`.
+- Verificação automática ao abrir, a cada cinco minutos, ao recuperar foco e ao retornar para a página.
+- Service Worker registrado com URL versionada e `updateViaCache: none`.
+- Remoção automática somente dos caches antigos do CorpoNu.
+- Página principal carregada em estratégia network-first.
+- Arquivos principais carregados em network-first com a versão atual forçada.
+- Inclusão automática do módulo `corponu-pagamentos-seguro.js` na página.
+- Proteção contra ciclos de recarregamento.
+
+### Firebase
+
+- Nenhuma alteração nas coleções.
+- Nenhuma alteração nas regras do Firestore.
+- Nenhuma alteração nas regras do Storage.

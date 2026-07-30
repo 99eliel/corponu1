@@ -1,24 +1,25 @@
-TESTES TÉCNICOS — CENTRAL DE PENDÊNCIAS DE VALORES
-Versão: 2026-07-29-pendencias-valores-financeiro-3
+TESTES TÉCNICOS REALIZADOS
+Versão: 2026-07-29-pendencias-organizadas-auto-update-4
 
-VALIDAÇÕES REALIZADAS
 [OK] Sintaxe JavaScript de corponu-pagamentos-seguro.js validada com node --check.
 [OK] Sintaxe JavaScript de sw.js validada com node --check.
-[OK] Versão do módulo e versão do Service Worker sincronizadas.
-[OK] O botão de conferência é interceptado antes da rotina antiga do update.js.
-[OK] A central carrega todos os pagamentos efetivamente classificados como sem valor.
-[OK] Valor manual de Sutiã usa os mesmos campos financeiros do fluxo já existente.
-[OK] Valor de Alça usa o documento valor-padrao-alca e multiplicador 2.
-[OK] O recálculo preserva desconto por defeito e impede total negativo.
-[OK] A central não grava status pago.
-[OK] Operações financeiras geram log complementar.
-[OK] O layout possui adaptação para computador, tablet e celular.
+[OK] Mesma versão aplicada no módulo financeiro e no Service Worker.
+[OK] Manifesto corponu-release.json criado com JSON válido.
+[OK] Service Worker força a versão atual nos arquivos principais, inclusive quando o index.html ainda solicita uma identificação antiga.
+[OK] Navegação configurada como network-first e sem cache HTTP durante a busca da página.
+[OK] Arquivos principais configurados como network-first.
+[OK] Caches antigos op-confeccao-* são removidos ao ativar a nova versão.
+[OK] Verificação automática configurada ao abrir, a cada 5 minutos, ao voltar o foco e ao tornar a página visível.
+[OK] Proteção contra recarregamento repetitivo usando bloqueio temporário e chave de sessão.
+[OK] Central de pendências com pesquisa, filtro por processo, filtro por tipo e agrupamento por processo.
+[OK] Botão Excluir condicionado à permissão do usuário.
+[OK] Exclusão possui confirmação com os dados do lançamento.
+[OK] Pagamento quitado é bloqueado antes da exclusão.
+[OK] Registro de auditoria solicitado após a exclusão.
+[OK] Lista e totais são atualizados após salvar ou apagar uma pendência.
 
-TESTES QUE DEPENDEM DO FIREBASE DE PRODUÇÃO
-[PENDENTE] Abrir a central autenticado e conferir os 4 lançamentos reais.
-[PENDENTE] Salvar um valor manual real de teste previamente conferido.
-[PENDENTE] Confirmar atualização imediata do total da tela.
-[PENDENTE] Testar usuário financeiro não administrador, conforme permissões cadastradas.
-
-OBSERVAÇÃO
-O código não foi executado contra o banco de produção para evitar alterar pagamentos reais sem a conferência do usuário.
+TESTE QUE DEPENDE DO FIREBASE DE PRODUÇÃO
+- Confirmar uma exclusão de teste com usuário administrador.
+- Confirmar que o documento saiu de entregasPagamento.
+- Confirmar que a OP e a movimentação permanecem no sistema.
+- Publicar uma versão de teste posterior e confirmar atualização automática em outro computador sem limpar cache.

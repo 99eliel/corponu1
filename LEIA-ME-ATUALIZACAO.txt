@@ -1,53 +1,55 @@
-ATUALIZAÇÃO CORPONU — CENTRAL DE PENDÊNCIAS DE VALORES
-Versão: 2026-07-29-pendencias-valores-financeiro-3
+ATUALIZAÇÃO CORPONU
+Versão: 2026-07-29-pendencias-organizadas-auto-update-4
 
 OBJETIVO
-Corrigir o botão "Conferir agora", que apenas atualizava os números da conferência e não mostrava os lançamentos sem valor.
+1. Organizar a Central de Pendências de Valor para o financeiro.
+2. Permitir apagar um lançamento financeiro sem valor, com confirmação.
+3. Restaurar a atualização automática do PWA, sem precisar limpar o cache manualmente em cada computador.
 
-O QUE MUDA
-1. O botão passa a se chamar "Ver pendências de valor".
-2. Ao clicar, abre uma central com TODOS os pagamentos sem valor, independentemente dos filtros da tela.
-3. A central mostra OP, referência, facção, processo, quantidade e data de chegada.
-4. Sutiã Montagem e Sutiã Completo:
-   - o financeiro informa o valor total final de cada OP;
-   - o lançamento passa de "sem valor" para "pendente".
-5. Alça:
-   - o financeiro informa uma única vez o valor de uma alça;
-   - o sistema multiplica por duas alças por sutiã;
-   - todos os pagamentos de Alça ainda abertos são recalculados.
-6. Demais processos:
-   - o administrador informa o valor unitário por peça;
-   - o valor é cadastrado para Referência + Processo;
-   - todos os lançamentos iguais ainda sem valor são recalculados.
-7. Busca interna por OP, referência, facção ou processo.
-8. Contadores separados por tipo de pendência.
-9. Registro de auditoria das alterações.
+ARQUIVOS A ENVIAR PARA A RAIZ DO GITHUB
+- corponu-pagamentos-seguro.js  (substituir)
+- sw.js                         (substituir)
+- corponu-release.json          (arquivo novo)
 
-ARQUIVOS PARA PUBLICAR NA RAIZ DO GITHUB
-- corponu-pagamentos-seguro.js  (substituir o anterior)
-- sw.js                         (substituir o anterior)
-
-NÃO ALTERAR
+NÃO É NECESSÁRIO ALTERAR
 - app.js
 - update.js
 - index.html
-- regras do Firebase
+- style.css
+- regras do Firestore
+- regras do Storage
 
 COMO PUBLICAR
-1. Abra a raiz do repositório corponu1.
-2. Substitua os dois arquivos indicados acima.
-3. Aguarde a publicação.
-4. Abra o sistema e clique no botão "Atualizar" do topo.
-5. Entre em Pagamentos.
-6. Clique em "Ver pendências de valor".
+1. Abra a raiz do repositório corponu1 no GitHub.
+2. Substitua corponu-pagamentos-seguro.js.
+3. Substitua sw.js.
+4. Adicione corponu-release.json.
+5. Aguarde o GitHub Pages concluir a publicação.
+6. Nos computadores que já usam o sistema, basta fechar e abrir o PWA/site uma vez ou clicar no botão Atualizar.
+7. Não use a limpeza manual de cache. A partir desta versão, novas versões são verificadas automaticamente.
 
-TESTE SEGURO RECOMENDADO
-1. Abra a central e confira se aparecem os 4 lançamentos indicados na conferência.
-2. Escolha primeiro uma OP conhecida de Sutiã Montagem ou Sutiã Completo.
-3. Informe o valor final correto e salve.
-4. Confirme que a pendência desapareceu da central e passou a constar como pagamento pendente com valor.
-5. Não confirme o pagamento em lote antes de conferir o total recalculado.
+COMO TESTAR A EXCLUSÃO
+1. Entre como administrador.
+2. Abra Pagamentos > Ver pendências de valor.
+3. Localize um lançamento de teste.
+4. Clique em Excluir.
+5. Confira OP, referência, facção, processo e quantidade na confirmação.
+6. Confirme somente quando tiver certeza.
 
-PERMISSÕES
-- Valor total de Sutiã e valor padrão de Alça usam as permissões financeiras já existentes.
-- Valor unitário de Referência + Processo continua administrativo, conforme as regras atuais do Firestore.
+IMPORTANTE SOBRE A EXCLUSÃO
+- Apaga somente o documento financeiro da coleção entregasPagamento.
+- Não apaga a OP.
+- Não apaga a movimentação/chegada da facção.
+- Não permite apagar pagamento já quitado.
+- A ação é registrada na auditoria.
+- O botão aparece de acordo com as permissões já aceitas pelo sistema: administrador ou criador do lançamento ainda não pago.
+
+COMO FUNCIONA A ATUALIZAÇÃO AUTOMÁTICA
+- corponu-release.json informa a versão publicada.
+- O sistema verifica a versão ao abrir, ao voltar para a janela e a cada 5 minutos.
+- Quando encontra versão nova, registra o novo Service Worker, remove caches antigos do CorpoNu e recarrega a aplicação uma única vez.
+- O Service Worker força app.js, update.js, style.css e módulos complementares a usarem a mesma versão.
+- Para as próximas atualizações, os três arquivos desta atualização devem receber a nova identificação de versão.
+
+OBSERVAÇÃO DA PRIMEIRA INSTALAÇÃO
+A passagem do Service Worker antigo para este novo pode exigir fechar e abrir o sistema uma vez. Isso não é apagar cache e não deverá ser repetido a cada versão futura.
