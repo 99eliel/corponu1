@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-rastreamento-interno-sem-faccao-4",
-  "updatedAt": "2026-07-30T01:32:00-03:00",
-  "notes": "Separa o Rastreamento das operações de facção. Remove a opção Em facção do ajuste manual, retira Chegada do Rastreamento, direciona movimentações de facção para a aba Facções e permite bipar movimentações internas sem exigir data de chegada."
+  "version": "2026-07-30-modo-manutencao-rapida-5",
+  "updatedAt": "2026-07-30T01:56:00-03:00",
+  "notes": "Prepara o CorpoNu para mini mudanças rápidas. Adiciona módulo permanente de ajustes, recarga automática baseada somente no corponu-release.json e mantém o Service Worker estável nas próximas alterações pequenas."
 }

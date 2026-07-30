@@ -1,5 +1,18 @@
 # Changelog CorpoNu
 
+## 2026-07-30-modo-manutencao-rapida-5
+
+- Criado `corponu-ajustes-rapidos.js` como ponto único para mini mudanças futuras.
+- O novo módulo não altera telas sozinho e só executa ajustes registrados explicitamente.
+- Mini mudanças passam a exigir, normalmente, apenas `corponu-ajustes-rapidos.js` e `corponu-release.json`.
+- `corponu-atualizador.js` deixou de depender de uma versão local fixa para decidir a recarga.
+- O sistema passa a recarregar uma única vez quando `corponu-release.json` muda, mesmo sem alteração no Service Worker.
+- A verificação de versão passa a ocorrer a cada 30 segundos, ao voltar para a aba, ao recuperar foco e ao retornar a conexão.
+- O Service Worker foi alterado uma única vez para carregar o módulo rápido com estratégia de rede primeiro.
+- Criado workflow do GitHub Actions para validar a sintaxe dos JavaScript e todos os JSON antes da publicação.
+- Criada branch de recuperação `backup/main-antes-modo-rapido-20260730`.
+- Criado o guia `MODO-RAPIDO-CORPONU.md`.
+
 ## 2026-07-30-rastreamento-interno-sem-faccao-4
 
 - Criado o módulo `corponu-rastreamento-interno.js` para separar a movimentação interna das operações de facção.
