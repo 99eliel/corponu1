@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-revisao-clique-direto-21",
-  "updatedAt": "2026-07-30T13:39:00-03:00",
-  "notes": "Corrige definitivamente a tela em branco ao abrir Revisão lateral e bojo. O clique agora é interceptado diretamente, cria e exibe a nova página antes de esconder qualquer outra tela e reinicia o módulo funcional uma única vez."
+  "version": "2026-07-30-revisao-saida-restaurada-22",
+  "updatedAt": "2026-07-30T13:45:00-03:00",
+  "notes": "Corrige a navegação ao sair da área Revisão lateral e bojo. As telas normais deixam de permanecer com a classe hidden e voltam a abrir normalmente pelo menu original."
 }
