@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-faccoes-sem-bloco-processos-29",
-  "updatedAt": "2026-07-30T19:36:00-03:00",
-  "notes": "Remove definitivamente da tela de Facções o bloco visual de processos e facções vinculadas, usando a posição estrutural entre os cartões de resumo e o cabeçalho das movimentações."
+  "version": "2026-07-30-pagamentos-interface-organizada-30",
+  "updatedAt": "2026-07-30T19:35:00-03:00",
+  "notes": "Reorganiza visualmente a aba Pagamentos sem alterar regras: indicadores no topo, filtros agrupados, ações separadas, abas para lançamentos e resumo por facção, gerenciamento de valores preservado e pendências de valor exibidas de forma simples."
 }
