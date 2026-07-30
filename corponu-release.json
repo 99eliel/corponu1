@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-faccoes-tres-abas-saida-25",
-  "updatedAt": "2026-07-30T18:18:00-03:00",
-  "notes": "Corrige a estrutura de Facções: Corte fica ao lado de Sutiã e Calcinha, as três abas recebem Registrar saída e o processo pode ser digitado livremente no novo fluxo."
+  "version": "2026-07-30-faccoes-corte-sem-gerenciamento-26",
+  "updatedAt": "2026-07-30T18:34:00-03:00",
+  "notes": "Remove da aba Corte o bloco duplicado de gerenciamento de processos e valores. A área Corte mantém somente operação, filtros e movimentações; o gerenciamento continua centralizado na aba Processos."
 }
