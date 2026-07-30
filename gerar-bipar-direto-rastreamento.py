@@ -2,8 +2,8 @@ from pathlib import Path
 import json
 import re
 
-VERSION = "2026-07-30-rastreamento-bipar-direto-11"
-UPDATED_AT = "2026-07-30T08:28:00-03:00"
+VERSION = "2026-07-30-rastreamento-bipar-direto-12"
+UPDATED_AT = "2026-07-30T09:20:00-03:00"
 
 app_path = Path("app.js")
 sw_path = Path("sw.js")
@@ -25,69 +25,97 @@ async function biparOrdemDireto(opId) {
     return;
   }
 
-  const localSalvo = normalizarTexto([
-    ordem.localAtualMigracao,
-    ordem.statusMigracaoLigia,
-    ordem.destinoAtualMigracao
-  ].join(" ")).toUpperCase();
-
-  const faccaoEmAberto = state.movimentacoesProducao.some(mov => {
-    if (String(mov.opId || "") !== id) return false;
-    if (normalizarTexto(mov.tipoDestino || "") !== "faccao") return false;
-    return !["finalizado", "encaminhado"].includes(String(mov.status || "em_andamento"));
-  });
-
-  if (faccaoEmAberto || localSalvo.includes("EM_FACCAO") || localSalvo.includes("AGUARDANDO_CHEGADA")) {
-    toast("Esta OP está vinculada a uma facção. Finalize pela aba Facções.");
-    return;
-  }
-
   ordensEmBipadoDireto.add(id);
   try {
     const hoje = getDataHojeISO();
-    const quantidade = Math.max(0, Number(ordem.quantidade || ordem.quantidadeTotal || 0));
+    const movimentacoesAbertas = state.movimentacoesProducao
+      .filter(mov => {
+        if (String(mov.opId || "") !== id) return false;
+        return !["finalizado", "encaminhado"].includes(String(mov.status || "em_andamento"));
+      })
+      .sort((a, b) => getMovTimestamp(b) - getMovTimestamp(a));
+
+    const movimentacaoPrincipal = movimentacoesAbertas[0] || null;
+    const quantidade = Math.max(0, Number(
+      movimentacaoPrincipal?.quantidadeRecebida ||
+      movimentacaoPrincipal?.quantidadeEnviada ||
+      ordem.quantidade ||
+      ordem.quantidadeTotal ||
+      0
+    ));
     const processo = limparTexto(
+      movimentacaoPrincipal?.processo ||
       ordem.processoAtualMigracao ||
       ordem.faseOriginalLigia ||
       "FINALIZAÇÃO"
     ).toUpperCase() || "FINALIZAÇÃO";
-    const movimentacaoId = docIdSeguro(`bipado-direto-${id}`);
-
-    const movimentacao = {
-      id: movimentacaoId,
-      origem: "rastreamento_bipado_direto",
-      origemManual: true,
-      opId: id,
-      numeroOP: ordem.numeroOP || ordem.numeroOPExterno || id,
-      referencia: ordem.referencia || "",
-      cor: ordem.cor || "",
-      produtoNome: ordem.produtoNome || ordem.nomeProduto || "",
-      setor: getSetorPrincipalOrdem(ordem),
-      tipoDestino: "interno",
-      tipoDestinoLabel: "Interno",
-      destino: "FINALIZADO / BIPADO",
-      processo,
-      quantidadeEnviada: quantidade,
-      quantidadeRecebida: quantidade,
-      dataEnvio: ordem.dataEnvioAtualMigracao || ordem.dataOriginalLigia || "",
-      dataChegada: hoje,
-      falta: 0,
-      descontoDefeito: 0,
-      defeito: 0,
-      status: "finalizado",
-      bipado: true,
-      bipadoInternamente: true,
-      origemBipado: "rastreamento_direto_op",
-      bipadoPor: state.currentUser.uid,
-      bipadoEm: serverTimestamp(),
-      atualizadoPor: state.currentUser.uid,
-      atualizadoEm: serverTimestamp(),
-      criadoPor: state.currentUser.uid,
-      criadoEm: serverTimestamp()
-    };
+    const movimentacaoId = movimentacaoPrincipal?.id || docIdSeguro(`bipado-direto-${id}`);
+    const numeroOP = ordem.numeroOP || ordem.numeroOPExterno || id;
 
     const lote = writeBatch(db);
-    lote.set(doc(db, "movimentacoesProducao", movimentacaoId), movimentacao, { merge: true });
+
+    if (movimentacaoPrincipal) {
+      lote.set(doc(db, "movimentacoesProducao", movimentacaoId), {
+        status: "finalizado",
+        bipado: true,
+        bipadoInternamente: true,
+        origemBipado: "rastreamento_direto_op",
+        encerradoAutomaticamente: true,
+        bipadoPor: state.currentUser.uid,
+        bipadoEm: serverTimestamp(),
+        atualizadoPor: state.currentUser.uid,
+        atualizadoEm: serverTimestamp()
+      }, { merge: true });
+    } else {
+      lote.set(doc(db, "movimentacoesProducao", movimentacaoId), {
+        id: movimentacaoId,
+        origem: "rastreamento_bipado_direto",
+        origemManual: true,
+        opId: id,
+        numeroOP,
+        referencia: ordem.referencia || "",
+        cor: ordem.cor || "",
+        produtoNome: ordem.produtoNome || ordem.nomeProduto || "",
+        setor: getSetorPrincipalOrdem(ordem),
+        tipoDestino: "interno",
+        tipoDestinoLabel: "Interno",
+        destino: "FINALIZADO / BIPADO",
+        processo,
+        quantidadeEnviada: quantidade,
+        quantidadeRecebida: quantidade,
+        dataEnvio: ordem.dataEnvioAtualMigracao || ordem.dataOriginalLigia || "",
+        dataChegada: hoje,
+        falta: 0,
+        descontoDefeito: 0,
+        defeito: 0,
+        status: "finalizado",
+        bipado: true,
+        bipadoInternamente: true,
+        origemBipado: "rastreamento_direto_op",
+        bipadoPor: state.currentUser.uid,
+        bipadoEm: serverTimestamp(),
+        atualizadoPor: state.currentUser.uid,
+        atualizadoEm: serverTimestamp(),
+        criadoPor: state.currentUser.uid,
+        criadoEm: serverTimestamp()
+      }, { merge: true });
+    }
+
+    movimentacoesAbertas.slice(1).forEach(mov => {
+      lote.set(doc(db, "movimentacoesProducao", String(mov.id)), {
+        status: "encaminhado",
+        encaminhado: true,
+        encaminhadoParaTipo: "finalizado",
+        encaminhadoParaLabel: "Finalizado / bipado",
+        encaminhadoParaDestino: "FINALIZADO / BIPADO",
+        movimentacaoDestinoId: movimentacaoId,
+        encerradoAutomaticamente: true,
+        encerradoPorBipadoDireto: true,
+        atualizadoPor: state.currentUser.uid,
+        atualizadoEm: serverTimestamp()
+      }, { merge: true });
+    });
+
     lote.set(doc(db, "ordensProducao", id), {
       localAtualMigracao: "FINALIZADO_BIPADO",
       statusMigracaoLigia: "FINALIZADO_BIPADO",
@@ -100,16 +128,17 @@ async function biparOrdemDireto(opId) {
       atualizadoPor: state.currentUser.uid,
       atualizadoEm: serverTimestamp()
     }, { merge: true });
+
     await lote.commit();
 
     await registrarLog(
       "op_bipada_direto_rastreamento",
       "movimentacaoProducao",
       movimentacaoId,
-      `OP ${movimentacao.numeroOP} | bipada diretamente no Rastreamento | ${quantidade} peças`
+      `OP ${numeroOP} | bipada diretamente no Rastreamento | ${quantidade} peças | ${movimentacoesAbertas.length} movimentação(ões) aberta(s) encerrada(s)`
     );
 
-    toast(`OP ${movimentacao.numeroOP} bipada e enviada para o relatório de bipadas.`);
+    toast(`OP ${numeroOP} bipada e enviada para o relatório de bipadas.`);
   } catch (error) {
     console.error("Erro ao bipar OP diretamente pelo Rastreamento.", error);
     toast(error?.code === "permission-denied"
@@ -142,15 +171,12 @@ bloco_antigo = '''function renderLinhaRastreamentoGlobalOP(op) {
 bloco_novo = '''function renderLinhaRastreamentoGlobalOP(op) {
   const local = getLocalizacaoAtualOrdem(op);
   const quantidade = Number(op?.quantidade || 0);
-  const localEhFaccao = /facção|faccao/i.test(`${local.tipo || ""} ${local.local || ""}`);
   const jaPossuiBipadoReal = state.movimentacoesProducao.some(mov =>
     String(mov.opId || "") === String(op.id) && String(mov.status || "") === "finalizado"
   );
-  const botaoBipar = !localEhFaccao && !jaPossuiBipadoReal
+  const botaoBipar = !jaPossuiBipadoReal
     ? `<button class="btn btn-sm btn-bipado" data-bipar-op-direto="${escapeHtml(op.id)}" onclick="biparOrdemDireto('${op.id}')">Bipar</button>`
-    : jaPossuiBipadoReal
-      ? `<span class="badge ok">Bipado ✓</span>`
-      : "";
+    : `<span class="badge ok">Bipado ✓</span>`;
   const acoes = ehAdmin()
     ? `${botaoBipar}
        <button class="btn btn-sm btn-primary" onclick="abrirModalAjusteMigracao('${op.id}')">Editar local</button>
@@ -190,7 +216,7 @@ atualizador_path.write_text(atualizador, encoding="utf-8")
 release = {
     "version": VERSION,
     "updatedAt": UPDATED_AT,
-    "notes": "Adiciona o botão Bipar diretamente no resultado da busca do Rastreamento. A OP é finalizada e enviada ao relatório de bipadas automaticamente, sem abrir Editar local ou exigir chegada. Operações de facção permanecem bloqueadas e exclusivas da aba Facções."
+    "notes": "Permite bipar uma OP diretamente no Rastreamento mesmo com movimentações abertas. A movimentação mais recente vira o registro principal do bipado, as anteriores são encerradas como etapas encaminhadas e a OP entra em Finalizado / bipado sem exigir chegada."
 }
 release_path.write_text(json.dumps(release, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -201,12 +227,13 @@ Path("LEIA-ME-BIPAR-DIRETO-RASTREAMENTO.txt").write_text(
     "- sw.js\n"
     "- corponu-atualizador.js\n"
     "- corponu-release.json\n\n"
-    "O botao Bipar passa a aparecer ao pesquisar uma OP no Rastreamento.\n"
-    "Ao clicar, a OP e finalizada automaticamente e entra no relatorio de bipadas.\n"
-    "Nao abre Editar local e nao solicita chegada.\n"
-    "OPs ainda vinculadas a faccao continuam bloqueadas e devem ser finalizadas na aba Faccoes.\n"
-    "Movimentacao e OP sao salvas juntas; se uma falhar, nenhuma fica pela metade.\n"
-    "O ID do movimento e fixo por OP para impedir duplicidade em clique repetido.\n",
+    "O botao Bipar aparece ao pesquisar uma OP no Rastreamento.\n"
+    "Ao clicar, a OP e finalizada automaticamente sem abrir Editar local e sem solicitar chegada.\n"
+    "O bipado funciona mesmo se existir movimentacao aberta, inclusive de faccao.\n"
+    "A movimentacao aberta mais recente vira o registro principal do bipado.\n"
+    "Outras movimentacoes abertas da mesma OP sao encerradas como etapas anteriores para evitar duplicidade no relatorio.\n"
+    "Esta acao nao registra chegada e nao gera pagamento automatico para faccao.\n"
+    "Todas as gravacoes operacionais sao feitas no mesmo lote; se uma falhar, nenhuma fica pela metade.\n",
     encoding="utf-8"
 )
 
