@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - manual/remover-filtro-status-pagamentos-20260730
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -115,5 +118,3 @@ jobs:
           path: corponu-remover-filtro-status-pagamentos-10.zip
           if-no-files-found: error
           retention-days: 7
-
-# disparo manual de validação do pacote
