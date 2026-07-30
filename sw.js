@@ -1,4 +1,4 @@
-const APP_VERSION = "2026-07-30-modo-manutencao-rapida-5";
+const APP_VERSION = "2026-07-30-hotfix-entrega-ajustes-rapidos-8";
 const CACHE_NAME = `op-confeccao-${APP_VERSION}`;
 const INJECT_MARKER = "data-corponu-release-injetado";
 
@@ -52,7 +52,7 @@ function atualizarMetaVersao(html) {
   return html.replace("</head>", `  ${novaMeta}\n</head>`);
 }
 
-function montarScriptsAusentes(html) {
+function montarScriptsAusentes(html, releaseVersion = APP_VERSION) {
   const scripts = [];
 
   if (!html.includes("corponu-atualizador.js")) {
@@ -73,12 +73,12 @@ function montarScriptsAusentes(html) {
     scripts.push(`<script ${INJECT_MARKER}="${APP_VERSION}" src="./corponu-rastreamento-interno.js?v=${APP_VERSION}"></script>`);
   }
   if (!html.includes("corponu-ajustes-rapidos.js")) {
-    scripts.push(`<script ${INJECT_MARKER}="${APP_VERSION}" src="./corponu-ajustes-rapidos.js?v=${APP_VERSION}"></script>`);
+    scripts.push(`<script ${INJECT_MARKER}="${releaseVersion}" src="./corponu-ajustes-rapidos.js?v=${encodeURIComponent(releaseVersion)}"></script>`);
   }
   return scripts.join("\n");
 }
 
-function prepararHtml(htmlOriginal) {
+function prepararHtml(htmlOriginal, releaseVersion = APP_VERSION) {
   let html = String(htmlOriginal || "");
   html = removerResgateLegado(html);
   html = atualizarMetaVersao(html);
@@ -86,7 +86,7 @@ function prepararHtml(htmlOriginal) {
     html = versionarArquivoNoHtml(html, arquivo);
   });
 
-  const scripts = montarScriptsAusentes(html);
+  const scripts = montarScriptsAusentes(html, releaseVersion);
   if (!scripts) return html;
   if (html.includes("</body>")) return html.replace("</body>", `${scripts}\n</body>`);
   return `${html}\n${scripts}`;
@@ -97,7 +97,8 @@ async function respostaHtmlAtualizada(request) {
     const resposta = await fetch(request, { cache: "no-store" });
     if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
 
-    const html = prepararHtml(await resposta.text());
+    const releaseVersion = new URL(request.url).searchParams.get("release") || APP_VERSION;
+    const html = prepararHtml(await resposta.text(), releaseVersion);
     const headers = new Headers(resposta.headers);
     headers.set("Content-Type", "text/html; charset=utf-8");
     headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
