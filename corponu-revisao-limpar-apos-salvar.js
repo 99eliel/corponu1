@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-07-31-revisao-limpar-apos-salvar-55";
+  const VERSION = "2026-07-31-revisao-manter-aberta-56";
 
   if (window.__CORPONU_REVISAO_LIMPAR_APOS_SALVAR__ === VERSION) return;
   window.__CORPONU_REVISAO_LIMPAR_APOS_SALVAR__ = VERSION;
@@ -23,39 +23,65 @@
     if (!toast) return;
     toast.textContent = mensagem;
     toast.classList.remove("hidden");
-    window.clearTimeout(window.__revLimparToast55);
-    window.__revLimparToast55 = window.setTimeout(() => toast.classList.add("hidden"), 4500);
+    window.clearTimeout(window.__revLimparToast56);
+    window.__revLimparToast56 = window.setTimeout(() => toast.classList.add("hidden"), 4500);
+  }
+
+  function manterPaginaRevisaoAtiva() {
+    const pagina = document.getElementById("revisaoComponentes");
+    if (pagina) {
+      pagina.classList.remove("hidden");
+      pagina.classList.add("active");
+      pagina.hidden = false;
+      pagina.style.removeProperty("display");
+    }
+
+    const botaoNav = document.querySelector('#appShell .sidebar .nav-btn[data-page="revisao-componentes"]');
+    if (botaoNav) {
+      document.querySelectorAll("#appShell .sidebar .nav-btn").forEach(botao => botao.classList.remove("active"));
+      botaoNav.classList.add("active");
+    }
+
+    const titulo = document.getElementById("pageTitle");
+    const subtitulo = document.getElementById("pageSubtitle");
+    if (titulo) titulo.textContent = "Revisão lateral e bojo";
+    if (subtitulo) subtitulo.textContent = "Componentes feitos pela confecção e descontos nos pagamentos pendentes.";
   }
 
   function limparTelaParaProximaOP() {
-    const botaoLimpar = document.getElementById("btnLimparRev");
+    const form = document.getElementById("formRevisaoComponentes");
+    if (form) form.reset();
 
-    if (botaoLimpar) {
-      botaoLimpar.click();
-    } else {
-      document.getElementById("formRevisaoComponentes")?.reset();
-      document.getElementById("revPreview")?.classList.add("hidden");
-      document.getElementById("revBox")?.classList.add("hidden");
+    const numero = document.getElementById("revNumeroOP");
+    if (numero) {
+      numero.value = "";
+      numero.dispatchEvent(new Event("input", { bubbles: true }));
+      numero.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
+    ["revLateralQuemFez", "revBojoQuemFez"].forEach(id => {
+      const campo = document.getElementById(id);
+      if (!campo) return;
+      campo.value = "";
+      campo.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    ["revLateral", "revBojo"].forEach(id => {
+      const campo = document.getElementById(id);
+      if (!campo) return;
+      campo.checked = false;
+      campo.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    document.getElementById("revPreview")?.classList.add("hidden");
+    document.getElementById("revBox")?.classList.add("hidden");
+
+    manterPaginaRevisaoAtiva();
+
     window.setTimeout(() => {
-      const numero = document.getElementById("revNumeroOP");
-      if (numero) numero.value = "";
-
-      ["revLateralQuemFez", "revBojoQuemFez"].forEach(id => {
-        const campo = document.getElementById(id);
-        if (campo) campo.value = "";
-      });
-
-      ["revLateral", "revBojo"].forEach(id => {
-        const campo = document.getElementById(id);
-        if (campo) campo.checked = false;
-      });
-
-      document.getElementById("revPreview")?.classList.add("hidden");
-      document.getElementById("revBox")?.classList.add("hidden");
+      manterPaginaRevisaoAtiva();
       numero?.focus();
-      mostrarAviso("Revisão salva. A tela está pronta para uma nova OP.");
+      mostrarAviso("Revisão salva. Digite a próxima OP.");
     }, 80);
   }
 
@@ -98,9 +124,9 @@
 
   function instalarEvento() {
     const form = document.getElementById("formRevisaoComponentes");
-    if (!form || form.dataset.limparAposSalvar55 === "1") return false;
+    if (!form || form.dataset.limparAposSalvar56 === "1") return false;
 
-    form.dataset.limparAposSalvar55 = "1";
+    form.dataset.limparAposSalvar56 = "1";
     form.addEventListener("submit", () => {
       const numero = texto(document.getElementById("revNumeroOP")?.value);
       if (!numero) return;
