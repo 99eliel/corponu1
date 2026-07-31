@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-07-31-revisao-limpar-apos-salvar-55";
+  const LOCAL_RELEASE = "2026-07-31-revisao-manter-aberta-56";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
