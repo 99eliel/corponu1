@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-31-revisao-manter-aberta-56",
-  "updatedAt": "2026-07-31T16:14:00-03:00",
-  "notes": "Após salvar a revisão lateral e bojo, limpa somente os campos e cartões da OP atual, mantém o usuário na aba Revisão lateral e bojo e devolve o foco ao campo Número da OP. Não aciona o botão Limpar e não retorna ao Manejo."
+  "version": "2026-07-31-revisao-filtros-57",
+  "updatedAt": "2026-07-31T16:23:00-03:00",
+  "notes": "Adiciona na aba Revisão lateral e bojo filtros por facção e por componente: com lateral, com bojo, lateral e bojo, somente lateral e somente bojo. Exibe também o nome da facção abaixo de cada componente na lista, preservando o salvamento e sem alterar pagamentos ou cálculos."
 }
