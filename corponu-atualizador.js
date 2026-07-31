@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-07-31-faccoes-saida-processos-direto-46";
+  const LOCAL_RELEASE = "2026-07-31-faccoes-saida-unificada-47";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
