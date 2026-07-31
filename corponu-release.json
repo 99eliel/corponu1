@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-pendencias-modal-estavel-41",
-  "updatedAt": "2026-07-30T22:23:00-03:00",
-  "notes": "Corrige a abertura de Pendências de valores restaurando o modal original, removendo restos da página antiga e impedindo que o estilo compacto seja aplicado ao fundo inteiro da janela. Mantém as funções financeiras existentes e libera a rolagem ao fechar."
+  "version": "2026-07-31-pagamento-manual-componentes-42",
+  "updatedAt": "2026-07-31T07:48:00-03:00",
+  "notes": "Permite definir lateral e bojo diretamente no lançamento manual quando a OP ainda não possui essas informações. A escolha é usada no cálculo do pagamento, salva na própria OP e registrada na auditoria, preservando informações já existentes."
 }
