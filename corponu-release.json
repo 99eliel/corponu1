@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-31-revisao-limpar-apos-salvar-55",
-  "updatedAt": "2026-07-31T15:56:00-03:00",
-  "notes": "Após uma revisão lateral e bojo ser realmente salva, limpa automaticamente a OP atual, os cartões, as marcações e as facções selecionadas, e devolve o foco ao campo Número da OP para iniciar o próximo lançamento. Não altera pagamentos, valores ou regras de cálculo."
+  "version": "2026-07-31-revisao-manter-aberta-56",
+  "updatedAt": "2026-07-31T16:14:00-03:00",
+  "notes": "Após salvar a revisão lateral e bojo, limpa somente os campos e cartões da OP atual, mantém o usuário na aba Revisão lateral e bojo e devolve o foco ao campo Número da OP. Não aciona o botão Limpar e não retorna ao Manejo."
 }
