@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-31-faccoes-grupos-saida-direto-45",
-  "updatedAt": "2026-07-31T08:58:00-03:00",
-  "notes": "Substitui a correção anterior por um controlador direto do formulário Registrar saída. O seletor de processo passa a carregar as facções diretamente dos grupos salvos, dos nomes e IDs vinculados e dos processosPermitidos da própria facção, impedindo que eventos antigos sobrescrevam a lista."
+  "version": "2026-07-31-faccoes-saida-processos-direto-46",
+  "updatedAt": "2026-07-31T09:04:00-03:00",
+  "notes": "O formulário Registrar saída passa a usar diretamente o campo processosPermitidos das facções, exatamente como exibido na tabela de Gerenciar facções. A correção também bloqueia eventos antigos que sobrescreviam o seletor e protege a lista carregada durante o uso do modal."
 }
