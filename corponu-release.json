@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-rollback-pagamentos-estavel-40",
-  "updatedAt": "2026-07-30T22:18:00-03:00",
-  "notes": "Retorna Pagamentos ao último fluxo estável, removendo o carregamento da página separada de Pendências de valores e da correção de rolagem. Mantém filtros, relatórios, lançamento manual, chegada manual e demais funções existentes."
+  "version": "2026-07-30-pendencias-modal-estavel-41",
+  "updatedAt": "2026-07-30T22:23:00-03:00",
+  "notes": "Corrige a abertura de Pendências de valores restaurando o modal original, removendo restos da página antiga e impedindo que o estilo compacto seja aplicado ao fundo inteiro da janela. Mantém as funções financeiras existentes e libera a rolagem ao fechar."
 }
