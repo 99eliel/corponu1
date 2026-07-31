@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-31-sutia-completo-calculo-51",
-  "updatedAt": "2026-07-31T14:55:00-03:00",
-  "notes": "Implementa de forma isolada o cálculo automático do SUTIÃ COMPLETO. Usa valor geral configurável, exceção por referência, valores ativos de LATERAL e ENCAPAR BOJO por referência e descontos configuráveis de fecho e ponto de luz quando não vierem feitos. A chegada permite completar informações ausentes de lateral/bojo, preserva pagamentos pagos e não recalcula pendentes antigos sem autorização do administrador."
+  "version": "2026-07-31-sutia-completo-calculo-seguro-52",
+  "updatedAt": "2026-07-31T15:08:00-03:00",
+  "notes": "Implementa o cálculo automático e isolado do SUTIÃ COMPLETO, com valor geral configurável, referência especial, valores ativos de LATERAL e ENCAPAR BOJO por referência e descontos de fecho e ponto de luz somente quando não vierem feitos. Permite completar informações ausentes na chegada, preserva pagamentos pagos, mantém recálculo antigo desligado por padrão e desativa com histórico a fonte fixa anterior para impedir descontos duplicados."
 }
