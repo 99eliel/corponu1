@@ -208,7 +208,8 @@
       bojoMarcado,
       lateralQuem: lateralMarcada ? lateralQuem : "",
       bojoQuem: bojoMarcado ? bojoQuem : "",
-      revisaoAnteriorEm: opCarregada?.atualizadoEm || 0
+      revisaoAnteriorEm: opCarregada?.atualizadoEm || 0,
+      iniciadoEm: Date.now()
     };
   }
 
@@ -247,8 +248,9 @@
         const estadoConfere = revisao.ativa === true &&
           revisao.lateralFeita === dados.lateralMarcada &&
           revisao.bojoFeito === dados.bojoMarcado;
-        const atualizacaoNova = millis(revisao.atualizadoEm || revisao.criadoEm) > dados.revisaoAnteriorEm;
-        if (!estadoConfere || (!atualizacaoNova && tentativa < 10)) continue;
+        const atualizadoEm = millis(revisao.atualizadoEm || revisao.criadoEm);
+        const atualizacaoDaAcao = atualizadoEm >= dados.iniciadoEm - 1500;
+        if (!estadoConfere || !atualizacaoDaAcao) continue;
 
         const ctx = await contexto();
         const usuario = ctx.auth.currentUser;
