@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-07-30-chegada-manual-visual-faccoes-34";
+  const LOCAL_RELEASE = "2026-07-30-pagamentos-multiplos-processos-35";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -88,6 +88,11 @@
       "corponu-chegada-manual-visual.js",
       "chegada-manual-visual",
       "Não foi possível carregar a nova aparência da Chegada manual de facção."
+    );
+    carregarScript(
+      "corponu-pagamentos-multifiltro.js",
+      "pagamentos-multifiltro-processos",
+      "Não foi possível carregar a seleção de múltiplos processos em Pagamentos."
     );
   }
 
