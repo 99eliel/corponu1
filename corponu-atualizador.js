@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-07-30-pendencias-valores-pagina-38";
+  const LOCAL_RELEASE = "2026-07-30-pendencias-valores-scroll-seguro-39";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -34,7 +34,8 @@
       ["corponu-chegada-manual-visual.js", "chegada-manual-visual", "Não foi possível carregar a aparência da chegada manual."],
       ["corponu-pagamentos-multifiltro.js", "pagamentos-multifiltro-processos", "Não foi possível carregar a seleção de múltiplos processos."],
       ["corponu-pagamentos-multifiltro-visual.js", "pagamentos-multifiltro-visual", "Não foi possível carregar o acabamento visual do multifiltro."],
-      ["corponu-pendencias-valores-pagina.js", "pendencias-valores-pagina", "Não foi possível carregar a página de pendências de valores."]
+      ["corponu-pendencias-valores-pagina.js", "pendencias-valores-pagina", "Não foi possível carregar a página de pendências de valores."],
+      ["corponu-pendencias-valores-scroll-fix.js", "pendencias-valores-scroll-fix", "Não foi possível restaurar a rolagem da página de pendências."]
     ];
     modulos.forEach(([arquivo, marcador, erro]) => carregarScript(arquivo, marcador, erro));
   }
