@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-31-revisao-faccoes-select-54",
-  "updatedAt": "2026-07-31T15:44:00-03:00",
-  "notes": "Na aba Revisão lateral e bojo, substitui os campos de digitação por seletores de facções. Lateral mostra apenas facções vinculadas ao processo LATERAL e bojo mostra apenas facções vinculadas ao processo ENCAPAR BOJO. Preserva registros antigos e não altera pagamentos, valores ou cálculos."
+  "version": "2026-07-31-revisao-limpar-apos-salvar-55",
+  "updatedAt": "2026-07-31T15:56:00-03:00",
+  "notes": "Após uma revisão lateral e bojo ser realmente salva, limpa automaticamente a OP atual, os cartões, as marcações e as facções selecionadas, e devolve o foco ao campo Número da OP para iniciar o próximo lançamento. Não altera pagamentos, valores ou regras de cálculo."
 }
