@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-31-pagamento-manual-componentes-42",
-  "updatedAt": "2026-07-31T07:48:00-03:00",
-  "notes": "Permite definir lateral e bojo diretamente no lançamento manual quando a OP ainda não possui essas informações. A escolha é usada no cálculo do pagamento, salva na própria OP e registrada na auditoria, preservando informações já existentes."
+  "version": "2026-07-31-faccoes-grupos-processos-43",
+  "updatedAt": "2026-07-31T08:33:00-03:00",
+  "notes": "Adiciona ao Gerenciar facções os grupos por processo e a seleção de processos no cadastro individual. Permite definir quais facções fazem Lateral, Encapar Bojo, Alça, Montagem e demais processos cadastrados, usando os grupos para filtrar quem aparece no registro de saída."
 }
