@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-pagamentos-multifiltro-visual-36",
-  "updatedAt": "2026-07-30T21:24:00-03:00",
-  "notes": "Refina a seleção múltipla de processos em Pagamentos com checkboxes compactos, busca, nomes unificados, resumo claro e acabamento visual consistente, mantendo os filtros, relatórios e confirmações existentes."
+  "version": "2026-07-30-pagamentos-multifiltro-profissional-37",
+  "updatedAt": "2026-07-30T21:36:00-03:00",
+  "notes": "Corrige o multifiltro de processos em Pagamentos com acabamento profissional, checkboxes compactos, busca, deduplicação de aliases, resumo claro e preservação integral dos filtros, relatórios e confirmação de pagamentos."
 }
