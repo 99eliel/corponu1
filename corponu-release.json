@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-pagamentos-multiplos-processos-35",
-  "updatedAt": "2026-07-30T21:03:00-03:00",
-  "notes": "Permite selecionar um ou vários processos nos filtros de Pagamentos. A seleção combinada atualiza a tela, o relatório simplificado, o relatório completo com PIX e a confirmação em lote, preservando os demais filtros e regras financeiras."
+  "version": "2026-07-30-pagamentos-multifiltro-visual-36",
+  "updatedAt": "2026-07-30T21:24:00-03:00",
+  "notes": "Refina a seleção múltipla de processos em Pagamentos com checkboxes compactos, busca, nomes unificados, resumo claro e acabamento visual consistente, mantendo os filtros, relatórios e confirmações existentes."
 }
