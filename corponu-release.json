@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-chegada-manual-visual-faccoes-34",
-  "updatedAt": "2026-07-30T20:28:00-03:00",
-  "notes": "Reorganiza visualmente a Chegada manual de facção no mesmo padrão da aba Facções. Mantém busca, cálculos, bloqueios, pagamento e gravações atuais sem alteração funcional."
+  "version": "2026-07-30-pagamentos-multiplos-processos-35",
+  "updatedAt": "2026-07-30T21:10:00-03:00",
+  "notes": "Permite selecionar um ou vários processos nos filtros de Pagamentos. A seleção combinada atualiza a tela, o relatório simplificado, o relatório completo com PIX e a confirmação em lote, preservando os demais filtros e regras financeiras."
 }
