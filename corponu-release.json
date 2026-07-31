@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-31-faccoes-grupos-saida-44",
-  "updatedAt": "2026-07-31T08:49:00-03:00",
-  "notes": "Corrige o registro de saída para carregar as facções vinculadas ao processo selecionado. A leitura agora consulta o grupo atualizado, os IDs salvos e os processosPermitidos de cada facção, funcionando mesmo quando o seletor de processo é recriado dinamicamente."
+  "version": "2026-07-31-faccoes-grupos-saida-direto-45",
+  "updatedAt": "2026-07-31T08:58:00-03:00",
+  "notes": "Substitui a correção anterior por um controlador direto do formulário Registrar saída. O seletor de processo passa a carregar as facções diretamente dos grupos salvos, dos nomes e IDs vinculados e dos processosPermitidos da própria facção, impedindo que eventos antigos sobrescrevam a lista."
 }
