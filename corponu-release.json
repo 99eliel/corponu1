@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-31-faccoes-grupos-processos-43",
-  "updatedAt": "2026-07-31T08:33:00-03:00",
-  "notes": "Adiciona ao Gerenciar facções os grupos por processo e a seleção de processos no cadastro individual. Permite definir quais facções fazem Lateral, Encapar Bojo, Alça, Montagem e demais processos cadastrados, usando os grupos para filtrar quem aparece no registro de saída."
+  "version": "2026-07-31-faccoes-grupos-saida-44",
+  "updatedAt": "2026-07-31T08:49:00-03:00",
+  "notes": "Corrige o registro de saída para carregar as facções vinculadas ao processo selecionado. A leitura agora consulta o grupo atualizado, os IDs salvos e os processosPermitidos de cada facção, funcionando mesmo quando o seletor de processo é recriado dinamicamente."
 }
