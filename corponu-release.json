@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-pendencias-valores-scroll-seguro-39",
-  "updatedAt": "2026-07-30T22:12:00-03:00",
-  "notes": "Corrige a trava de rolagem causada pela integração da antiga janela de pendências com a nova página dedicada. Restaura a rolagem ao abrir, atualizar, voltar e trocar de área, sem alterar as funções financeiras."
+  "version": "2026-07-30-rollback-pagamentos-estavel-40",
+  "updatedAt": "2026-07-30T22:18:00-03:00",
+  "notes": "Retorna Pagamentos ao último fluxo estável, removendo o carregamento da página separada de Pendências de valores e da correção de rolagem. Mantém filtros, relatórios, lançamento manual, chegada manual e demais funções existentes."
 }
