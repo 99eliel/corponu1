@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-31-faccoes-saida-processos-direto-46",
-  "updatedAt": "2026-07-31T09:04:00-03:00",
-  "notes": "O formulário Registrar saída passa a usar diretamente o campo processosPermitidos das facções, exatamente como exibido na tabela de Gerenciar facções. A correção também bloqueia eventos antigos que sobrescreviam o seletor e protege a lista carregada durante o uso do modal."
+  "version": "2026-07-31-faccoes-saida-unificada-47",
+  "updatedAt": "2026-07-31T09:58:00-03:00",
+  "notes": "Unifica a seleção de facções por processo nos dois fluxos: Facções > Registrar saída e Manejo > Enviar para facção. Ambos passam a ler diretamente processosPermitidos das facções, sincronizam o processo usado na movimentação e protegem o campo Destino contra sobrescritas da lógica antiga."
 }
