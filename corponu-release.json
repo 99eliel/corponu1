@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-31-faccoes-label-lateral-permanente-49",
-  "updatedAt": "2026-07-31T11:24:00-03:00",
-  "notes": "Mantém permanentemente o nome visível Lateral na terceira aba de Facções, inclusive quando o botão é criado depois ou tem o contador atualizado. Toda a estrutura interna continua usando corte para preservar o funcionamento."
+  "version": "2026-07-31-revisao-responsaveis-50",
+  "updatedAt": "2026-07-31T11:25:00-03:00",
+  "notes": "Adiciona na Revisão lateral e bojo campos separados para informar quem fez a lateral e quem fez o bojo. Os nomes ficam registrados na OP e nos logs, são obrigatórios quando o respectivo componente estiver marcado e voltam preenchidos ao editar revisões antigas ou atuais."
 }
