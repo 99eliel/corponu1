@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-31-faccoes-saida-unificada-47",
-  "updatedAt": "2026-07-31T09:58:00-03:00",
-  "notes": "Unifica a seleção de facções por processo nos dois fluxos: Facções > Registrar saída e Manejo > Enviar para facção. Ambos passam a ler diretamente processosPermitidos das facções, sincronizam o processo usado na movimentação e protegem o campo Destino contra sobrescritas da lógica antiga."
+  "version": "2026-07-31-faccoes-label-lateral-48",
+  "updatedAt": "2026-07-31T11:15:00-03:00",
+  "notes": "Altera somente a nomenclatura visível da área Corte para Lateral na tela de Facções e nos títulos relacionados. IDs, campos internos, filtros, movimentações, coleções e regras continuam usando corte para preservar todo o funcionamento existente."
 }
