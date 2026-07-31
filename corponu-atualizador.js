@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-07-31-revisao-faccoes-select-54";
+  const LOCAL_RELEASE = "2026-07-31-revisao-limpar-apos-salvar-55";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -29,6 +29,7 @@
       ["corponu-revisao-lateral-bojo-fix.js", "revisao-lateral-bojo-fix", "Não foi possível carregar a proteção da área Revisão lateral e bojo."],
       ["corponu-revisao-responsaveis.js", "revisao-responsaveis", "Não foi possível carregar o registro de quem fez lateral e bojo."],
       ["corponu-revisao-faccoes-select.js", "revisao-faccoes-select", "Não foi possível carregar as facções por processo na revisão."],
+      ["corponu-revisao-limpar-apos-salvar.js", "revisao-limpar-apos-salvar", "Não foi possível limpar a revisão após o salvamento."],
       ["corponu-componentes-consolidados-hotfix.js", "componentes-nao-informados", "Não foi possível proteger componentes ainda não informados."],
       ["corponu-sutia-completo-calculo.js", "sutia-completo-calculo", "Não foi possível carregar o cálculo automático do Sutiã Completo."],
       ["corponu-sutia-completo-compatibilidade.js", "sutia-completo-compatibilidade", "Não foi possível desativar a fonte antiga de descontos."],
