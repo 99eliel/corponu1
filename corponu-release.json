@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-31-sutia-completo-calculo-seguro-53",
-  "updatedAt": "2026-07-31T15:16:00-03:00",
-  "notes": "Implementa o cálculo automático e isolado do SUTIÃ COMPLETO, com valor geral configurável, referência especial, valores ativos de LATERAL e ENCAPAR BOJO por referência e descontos de fecho e ponto de luz somente quando não vierem feitos. Permite completar informações ausentes na chegada, preserva pagamentos pagos, mantém recálculo antigo desligado por padrão, desativa com histórico a fonte fixa anterior e garante que um componente ainda não informado continue sendo perguntado ao usuário."
+  "version": "2026-07-31-revisao-faccoes-select-54",
+  "updatedAt": "2026-07-31T15:44:00-03:00",
+  "notes": "Na aba Revisão lateral e bojo, substitui os campos de digitação por seletores de facções. Lateral mostra apenas facções vinculadas ao processo LATERAL e bojo mostra apenas facções vinculadas ao processo ENCAPAR BOJO. Preserva registros antigos e não altera pagamentos, valores ou cálculos."
 }
