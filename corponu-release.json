@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30-pagamentos-multifiltro-profissional-37",
-  "updatedAt": "2026-07-30T21:36:00-03:00",
-  "notes": "Corrige o multifiltro de processos em Pagamentos com acabamento profissional, checkboxes compactos, busca, deduplicação de aliases, resumo claro e preservação integral dos filtros, relatórios e confirmação de pagamentos."
+  "version": "2026-07-30-pendencias-valores-pagina-38",
+  "updatedAt": "2026-07-30T21:56:00-03:00",
+  "notes": "Transforma Pendências de valores em uma página própria do sistema, com resumo, filtros, agrupamentos e edição organizada, reaproveitando as regras financeiras e os salvamentos existentes sem alterar pagamentos já pagos."
 }
