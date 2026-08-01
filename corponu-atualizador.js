@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-01-conferencia-financeira-visivel-66";
+  const LOCAL_RELEASE = "2026-08-01-saida-idempotente-69";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -32,6 +32,8 @@
       ["corponu-revisao-limpar-apos-salvar.js", "revisao-limpar-apos-salvar", "Não foi possível limpar a revisão após o salvamento."],
       ["corponu-revisao-lista-estavel.js", "revisao-lista-estavel", "Não foi possível carregar a lista estável de lateral e bojo."],
       ["corponu-componentes-consolidados-hotfix.js", "componentes-nao-informados", "Não foi possível proteger componentes ainda não informados."],
+      ["corponu-saida-antiduplicidade.js", "saida-antiduplicidade", "Não foi possível ativar a proteção contra saídas duplicadas."],
+      ["corponu-pagamento-manual-antiduplicidade.js", "pagamento-manual-antiduplicidade", "Não foi possível ativar a verificação cruzada do lançamento manual."],
       ["corponu-financeiro-travas.js", "financeiro-travas", "Não foi possível ativar as travas contra pagamentos duplicados."],
       ["corponu-sutia-completo-calculo.js", "sutia-completo-calculo", "Não foi possível carregar o cálculo automático do Sutiã Completo."],
       ["corponu-processos-somente-valores.js", "processos-somente-valores", "Não foi possível simplificar a aba Processos para gestão de valores."],
