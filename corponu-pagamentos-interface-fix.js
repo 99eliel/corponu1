@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-01-chegada-confirmacao-botoes-73";
+  const VERSION = "2026-08-01-chegada-restaurada-74";
   window.__CORPONU_PAGAMENTOS_INTERFACE_FIX__ = VERSION;
 
   function carregar(nome, marcador, mensagemErro) {
@@ -22,8 +22,8 @@
 
   carregar(
     "corponu-chegada-confirmacao-servico.js",
-    "chegada-confirmacao-servico",
-    "Não foi possível carregar os botões de confirmação do serviço recebido."
+    "chegada-restaurada",
+    "Não foi possível restaurar o modal simples de chegada."
   );
 
   carregar(
