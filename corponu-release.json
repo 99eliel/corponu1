@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-chegada-confirmacao-restaurada-75",
+  "version": "2026-08-01-chegada-confirmacao-estavel-76",
   "updatedAt": "2026-08-01T20:55:00-03:00",
-  "notes": "Restaura na tela Registrar chegada a confirmação obrigatória do processo e de quem realizou o serviço. O usuário precisa selecionar novamente os dois dados antes de confirmar; a conferência não cria outra saída nem altera a movimentação original."
+  "notes": "Estabiliza a confirmação de chegada da facção. O modal deixa de reprocessar os campos durante o uso, evitando o travamento ao selecionar processo e facção."
 }
