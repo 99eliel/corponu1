@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-revisao-lista-estavel-60",
-  "updatedAt": "2026-08-01T11:03:00-03:00",
-  "notes": "Estabiliza a lista da aba Revisão lateral e bojo, removendo o ciclo de atualização contínua que fazia o contador piscar. Mantém os filtros por facção e componente, reconhece chegadas automáticas de LATERAL e ENCAPAR BOJO e remove a coluna Desconto/peça dessa tela. Pagamentos e valores não são alterados."
+  "version": "2026-08-01-processos-somente-valores-61",
+  "updatedAt": "2026-08-01T12:30:00-03:00",
+  "notes": "Simplifica a aba Processos para deixar somente a gestão dos valores usados no cálculo: Sutiã Completo geral, referência 912, fecho, ponto de luz, LATERAL e ENCAPAR BOJO por referência. As demais áreas ficam ocultas, sem excluir dados do banco e sem alterar pagamentos ou movimentações existentes."
 }
