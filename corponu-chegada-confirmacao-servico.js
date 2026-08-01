@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-01-chegada-confirmacao-segura-71";
+  const VERSION = "2026-08-01-chegada-confirmacao-estavel-72";
   const FB = "10.12.5";
   const MODAL_ID = "modalChegadaMovimentacao";
   const FORM_ID = "formChegadaMovimentacao";
@@ -14,8 +14,9 @@
 
   let contextoPromise = null;
   let movimentoAtual = null;
+  let movimentoPreparadoId = "";
   let observador = null;
-  let preparando = false;
+  let preparandoId = "";
 
   const texto = valor => String(valor ?? "").trim();
   const normalizar = valor => texto(valor)
@@ -41,8 +42,8 @@
     toast.textContent = mensagem;
     toast.classList.remove("hidden");
     toast.style.background = "#991b1b";
-    window.clearTimeout(window.__sf71Toast);
-    window.__sf71Toast = window.setTimeout(() => {
+    window.clearTimeout(window.__sf72Toast);
+    window.__sf72Toast = window.setTimeout(() => {
       toast.classList.add("hidden");
       toast.style.background = "";
     }, 6500);
@@ -113,11 +114,14 @@
     return card;
   }
 
-  function preencherSelect(select, valor, rotulo) {
+  function preencherSelectUmaVez(select, valor, rotulo, movimentoId) {
     if (!(select instanceof HTMLSelectElement)) return;
+    if (select.dataset.movimentoId === movimentoId && select.options.length >= 2) return;
+
     select.innerHTML = `<option value="">Selecione para confirmar</option><option value="${escapar(valor)}">${escapar(rotulo || valor)}</option>`;
     select.value = "";
     select.required = true;
+    select.dataset.movimentoId = movimentoId;
   }
 
   async function carregarMovimento(id) {
@@ -127,8 +131,25 @@
     return snap.exists() ? { id: snap.id, ...snap.data() } : null;
   }
 
+  function limparConfirmacao() {
+    movimentoAtual = null;
+    movimentoPreparadoId = "";
+    preparandoId = "";
+    const card = document.getElementById(CARD_ID);
+    if (card) {
+      card.classList.add("hidden");
+      delete card.dataset.movimentoId;
+    }
+    [PROCESSO_ID, FACCAO_ID].forEach(id => {
+      const select = document.getElementById(id);
+      if (!(select instanceof HTMLSelectElement)) return;
+      select.innerHTML = '<option value="">Selecione para confirmar</option>';
+      select.value = "";
+      delete select.dataset.movimentoId;
+    });
+  }
+
   async function prepararConfirmacao() {
-    if (preparando) return false;
     const modal = document.getElementById(MODAL_ID);
     if (!modal || modal.classList.contains("hidden")) return false;
     const card = garantirCard();
@@ -137,18 +158,41 @@
     const id = texto(document.getElementById("chegadaMovimentacaoId")?.value);
     if (!id) return false;
 
-    preparando = true;
+    if (movimentoPreparadoId === id && movimentoAtual?.id === id && card.dataset.movimentoId === id) {
+      card.classList.remove("hidden");
+      return true;
+    }
+    if (preparandoId === id) return false;
+
+    preparandoId = id;
     try {
       const movimento = await carregarMovimento(id);
       if (!movimento) return false;
+
+      const modalAindaAberto = !modal.classList.contains("hidden");
+      const idAindaAtual = texto(document.getElementById("chegadaMovimentacaoId")?.value) === id;
+      if (!modalAindaAberto || !idAindaAtual) return false;
+
       movimentoAtual = movimento;
+      movimentoPreparadoId = id;
+      card.dataset.movimentoId = id;
 
       const ehFaccao = normalizar(movimento.tipoDestino).includes("FACCAO") || Boolean(texto(movimento.destino));
       card.classList.toggle("hidden", !ehFaccao);
       if (!ehFaccao) return true;
 
-      preencherSelect(document.getElementById(PROCESSO_ID), movimento.processo || "", movimento.processo || "Processo não informado");
-      preencherSelect(document.getElementById(FACCAO_ID), movimento.destino || "", movimento.destino || "Facção não informada");
+      preencherSelectUmaVez(
+        document.getElementById(PROCESSO_ID),
+        movimento.processo || "",
+        movimento.processo || "Processo não informado",
+        id
+      );
+      preencherSelectUmaVez(
+        document.getElementById(FACCAO_ID),
+        movimento.destino || "",
+        movimento.destino || "Facção não informada",
+        id
+      );
 
       const resumo = document.getElementById("modalChegadaResumo");
       if (resumo) resumo.textContent = "Confira o serviço e a facção. Depois informe data, falta e desconto por defeito.";
@@ -158,7 +202,7 @@
       avisar("Não foi possível carregar os dados da saída. Feche a chegada e tente novamente.");
       return false;
     } finally {
-      preparando = false;
+      if (preparandoId === id) preparandoId = "";
     }
   }
 
@@ -180,17 +224,17 @@
 
   function observarModal() {
     const modal = document.getElementById(MODAL_ID);
-    if (!modal || modal.dataset.sf71Observado === "1") return;
-    modal.dataset.sf71Observado = "1";
+    if (!modal || modal.dataset.sf72Observado === "1") return;
+    modal.dataset.sf72Observado = "1";
     observador?.disconnect();
     observador = new MutationObserver(() => {
-      if (!modal.classList.contains("hidden")) {
-        [0, 80, 220, 500].forEach(atraso => window.setTimeout(prepararConfirmacao, atraso));
-      } else {
-        movimentoAtual = null;
+      if (modal.classList.contains("hidden")) {
+        limparConfirmacao();
+        return;
       }
+      window.setTimeout(prepararConfirmacao, 40);
     });
-    observador.observe(modal, { attributes: true, attributeFilter: ["class"], childList: true, subtree: true });
+    observador.observe(modal, { attributes: true, attributeFilter: ["class"] });
   }
 
   document.addEventListener("submit", event => {
@@ -207,8 +251,8 @@
     const alvo = event.target instanceof Element ? event.target : null;
     if (!alvo) return;
     if (alvo.closest("[data-chegada], [data-registrar-chegada], button[onclick*='registrarChegadaMovimentacao']")) {
-      movimentoAtual = null;
-      [50, 140, 320, 700].forEach(atraso => window.setTimeout(prepararConfirmacao, atraso));
+      limparConfirmacao();
+      [60, 180, 400].forEach(atraso => window.setTimeout(prepararConfirmacao, atraso));
     }
   }, true);
 
