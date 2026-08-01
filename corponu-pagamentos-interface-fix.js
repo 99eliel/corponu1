@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-01-fluxo-saida-unico-70";
+  const VERSION = "2026-08-01-chegada-confirmacao-segura-71";
   window.__CORPONU_PAGAMENTOS_INTERFACE_FIX__ = VERSION;
 
   function carregar(nome, marcador, mensagemErro) {
@@ -14,13 +14,16 @@
     document.head.appendChild(script);
   }
 
-  // Assume o fluxo próprio da aba Facções antes do módulo legado.
-  // A saída usa ID determinístico e transação, e a chegada deixa de pedir
-  // novamente processo e facção já registrados na saída.
   carregar(
     "corponu-fluxo-faccao-unico.js",
     "fluxo-faccao-unico",
     "Não foi possível ativar o fluxo único de saída e chegada da facção."
+  );
+
+  carregar(
+    "corponu-chegada-confirmacao-servico.js",
+    "chegada-confirmacao-servico",
+    "Não foi possível carregar a conferência de serviço e facção na chegada."
   );
 
   carregar(
