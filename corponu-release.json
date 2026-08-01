@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-pagamento-manual-sutia-completo-64",
-  "updatedAt": "2026-08-01T13:45:00-03:00",
-  "notes": "Corrige o lançamento manual de pagamento: lateral e bojo passam a aparecer em uma única conferência, fecho e ponto de luz são perguntados no Sutiã Completo, e o campo de valor total manual aparece somente quando lateral ou bojo ainda não foram informados. Com os componentes definidos, o valor é calculado automaticamente pelos valores gerais e por referência."
+  "version": "2026-08-01-seguranca-financeira-65",
+  "updatedAt": "2026-08-01T18:20:00-03:00",
+  "notes": "Fase 1 de segurança financeira: cria travas por origem para impedir chegada e pagamento duplicados, congela movimentações com pagamento pago, vincula movimentação e pagamento, unifica o cálculo manual do Sutiã Completo na configuração oficial e adiciona conferência de integridade financeira somente de leitura. Nenhum pagamento antigo é apagado ou recalculado automaticamente."
 }
