@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-chegada-restaurada-74",
-  "updatedAt": "2026-08-01T20:14:00-03:00",
-  "notes": "Restaura o modal simples e funcional de Registrar chegada. Remove completamente a conferência experimental por selects e botões, mantendo processo e facção visíveis no resumo da saída. A saída determinística, a trava contra movimentações duplicadas e a segurança dos pagamentos permanecem ativas."
+  "version": "2026-08-01-chegada-confirmacao-restaurada-75",
+  "updatedAt": "2026-08-01T20:55:00-03:00",
+  "notes": "Restaura na tela Registrar chegada a confirmação obrigatória do processo e de quem realizou o serviço. O usuário precisa selecionar novamente os dois dados antes de confirmar; a conferência não cria outra saída nem altera a movimentação original."
 }
