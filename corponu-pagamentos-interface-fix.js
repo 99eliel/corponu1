@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-01-bootstrap-financeiro-67";
+  const VERSION = "2026-08-01-antiduplicidade-cruzada-68";
   window.__CORPONU_PAGAMENTOS_INTERFACE_FIX__ = VERSION;
 
   function carregar(nome, marcador, mensagemErro) {
@@ -14,10 +14,14 @@
     document.head.appendChild(script);
   }
 
-  // Este módulo já é carregado pelas versões antigas do atualizador.
-  // Ele funciona como ponte para garantir que as proteções financeiras
-  // e a conferência de integridade entrem mesmo quando o navegador ainda
-  // mantém o corponu-atualizador.js antigo em cache.
+  // Carrega primeiro a validação cruzada. Ela precisa interceptar o
+  // lançamento manual antes dos módulos que calculam e salvam o pagamento.
+  carregar(
+    "corponu-pagamento-manual-antiduplicidade.js",
+    "pagamento-manual-antiduplicidade",
+    "Não foi possível ativar a verificação cruzada de duplicidade."
+  );
+
   carregar(
     "corponu-financeiro-travas.js",
     "financeiro-travas-bootstrap",
