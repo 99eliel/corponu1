@@ -1,87 +1,287 @@
 (() => {
   "use strict";
-  const VERSION = "2026-08-01-seguranca-financeira-65";
+
+  const VERSION = "2026-08-01-conferencia-financeira-visivel-66";
   const FB = "10.12.5";
-  const ID = "sf65AuditoriaFinanceira";
+  const ID = "sf66AuditoriaFinanceira";
+  const STYLE_ID = "sf66AuditoriaStyle";
   let ctxPromise = null;
   let perfil = null;
+  let carregandoPerfil = false;
+
   if (window.__CORPONU_AUDITORIA_FINANCEIRA__ === VERSION) return;
   window.__CORPONU_AUDITORIA_FINANCEIRA__ = VERSION;
 
-  const t = v => String(v ?? "").trim();
-  const n = v => t(v).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Z0-9]+/gi, " ").replace(/\s+/g, " ").trim().toUpperCase();
-  const esc = v => String(v ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
-  const ativo = p => p?.excluido !== true && !["CANCELADO","CANCELADA","ESTORNADO","ESTORNADA","EXCLUIDO","EXCLUIDA"].includes(n(p?.statusPagamento || p?.status));
-  const pago = p => n(p?.statusPagamento || p?.status) === "PAGO";
+  const texto = valor => String(valor ?? "").trim();
+  const normalizar = valor => texto(valor)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]+/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+  const escapar = valor => String(valor ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+  const pagamentoAtivo = pagamento => pagamento?.excluido !== true && ![
+    "CANCELADO", "CANCELADA", "ESTORNADO", "ESTORNADA", "EXCLUIDO", "EXCLUIDA"
+  ].includes(normalizar(pagamento?.statusPagamento || pagamento?.status));
+  const pagamentoPago = pagamento => normalizar(pagamento?.statusPagamento || pagamento?.status) === "PAGO";
 
-  async function ctx() {
+  async function contexto() {
     if (ctxPromise) return ctxPromise;
     ctxPromise = Promise.all([
       import(`https://www.gstatic.com/firebasejs/${FB}/firebase-app.js`),
       import(`https://www.gstatic.com/firebasejs/${FB}/firebase-auth.js`),
       import(`https://www.gstatic.com/firebasejs/${FB}/firebase-firestore.js`)
-    ]).then(([app, auth, fs]) => { const a = app.getApp(); return { auth: auth.getAuth(a), db: fs.getFirestore(a), fs }; }).catch(e => { ctxPromise = null; throw e; });
+    ]).then(([app, auth, fs]) => {
+      if (!app.getApps().length) throw new Error("Firebase ainda não inicializado.");
+      const firebaseApp = app.getApp();
+      return { auth: auth.getAuth(firebaseApp), db: fs.getFirestore(firebaseApp), fs };
+    }).catch(error => {
+      ctxPromise = null;
+      throw error;
+    });
     return ctxPromise;
   }
 
   async function carregarPerfil() {
-    const { auth, db, fs } = await ctx();
-    for (let i = 0; i < 40 && !auth.currentUser; i++) await new Promise(r => setTimeout(r, 150));
-    if (!auth.currentUser) return null;
-    const s = await fs.getDoc(fs.doc(db, "usuarios", auth.currentUser.uid));
-    perfil = s.exists() ? s.data() : null;
-    return perfil;
+    if (carregandoPerfil) return perfil;
+    carregandoPerfil = true;
+    try {
+      const { auth, db, fs } = await contexto();
+      for (let tentativa = 0; tentativa < 30 && !auth.currentUser; tentativa += 1) {
+        await new Promise(resolve => window.setTimeout(resolve, 200));
+      }
+      if (!auth.currentUser) return null;
+      const perfilSnap = await fs.getDoc(fs.doc(db, "usuarios", auth.currentUser.uid));
+      perfil = perfilSnap.exists() ? perfilSnap.data() : null;
+      return perfil;
+    } finally {
+      carregandoPerfil = false;
+    }
   }
 
-  function pode() {
+  function podeAcessar() {
     if (!perfil || perfil.ativo === false) return false;
-    if (n(perfil.tipo) === "ADMIN") return true;
-    const r = perfil.permissoes?.recursos || {};
-    return r.gerenciarValores === true || r.marcarPagamentos === true;
+    if (normalizar(perfil.tipo) === "ADMIN") return true;
+    const recursos = perfil.permissoes?.recursos || {};
+    return recursos.gerenciarValores === true || recursos.marcarPagamentos === true;
   }
 
-  function estilo() {
-    if (document.getElementById("sf65AuditoriaStyle")) return;
-    const s = document.createElement("style"); s.id = "sf65AuditoriaStyle"; s.textContent = `
-      #${ID}{margin:0 0 16px;padding:14px;border:1px solid #bfdbfe;border-radius:14px;background:#eff6ff}
-      #${ID} .cab{display:flex;justify-content:space-between;gap:12px;align-items:center} #${ID} h3{margin:0;color:#1e3a8a} #${ID} p{margin:4px 0 0;color:#475569;font-size:12px}
-      #${ID} .res{margin-top:11px;padding:10px;border-radius:10px;background:#fff;color:#334155;font-weight:800;line-height:1.5}
-      #${ID} table{width:100%;margin-top:10px;border-collapse:collapse;background:#fff} #${ID} th,#${ID} td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left;font-size:11px}
-      @media(max-width:680px){#${ID} .cab{align-items:flex-start;flex-direction:column}}`;
-    document.head.appendChild(s);
+  function aplicarEstilo() {
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = `
+      #${ID}{margin:14px 0;padding:16px;border:1px solid #93c5fd;border-radius:14px;background:#eff6ff;box-shadow:0 8px 22px rgba(37,99,235,.06)}
+      #${ID} .sf66-cabecalho{display:flex;justify-content:space-between;gap:14px;align-items:center}
+      #${ID} h3{margin:0;color:#1e3a8a;font-size:16px}
+      #${ID} p{margin:5px 0 0;color:#475569;font-size:12px;line-height:1.45}
+      #${ID} .sf66-resultado{margin-top:12px;padding:11px 12px;border:1px solid #dbeafe;border-radius:10px;background:#fff;color:#334155;font-weight:800;line-height:1.5}
+      #${ID} table{width:100%;margin-top:10px;border-collapse:collapse;background:#fff}
+      #${ID} th,#${ID} td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left;font-size:11px;vertical-align:top}
+      @media(max-width:680px){#${ID} .sf66-cabecalho{align-items:flex-start;flex-direction:column}#${ID} .sf66-cabecalho .btn{width:100%}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function localizarPaginaPagamentos() {
+    return document.getElementById("pagamentos") ||
+      [...document.querySelectorAll("section.page, .page")].find(elemento =>
+        normalizar(elemento.querySelector("h2,h3")?.textContent).includes("PAGAMENTO")
+      ) || null;
+  }
+
+  function localizarPainelConferencia(pagina) {
+    if (!pagina) return null;
+    const titulos = [...pagina.querySelectorAll("h2,h3,h4,strong")];
+    const titulo = titulos.find(elemento => {
+      const valor = normalizar(elemento.textContent);
+      return valor.includes("CONFERENCIA ANTES DO PAGAMENTO") ||
+        valor.includes("CONFERENCIA ANTES DO PAGAMENTO");
+    });
+    return titulo?.closest(".panel") || titulo?.parentElement?.parentElement || null;
+  }
+
+  function localizarPainelResumo(pagina) {
+    if (!pagina) return null;
+    const titulo = [...pagina.querySelectorAll("h2,h3,h4,strong")].find(elemento =>
+      normalizar(elemento.textContent).includes("RESUMO POR FACCOES E PROCESSO") ||
+      normalizar(elemento.textContent).includes("RESUMO POR FACCAO E PROCESSO")
+    );
+    return titulo?.closest(".panel") || titulo?.parentElement?.parentElement || null;
   }
 
   function inserir() {
-    const pag = document.getElementById("pagamentos");
-    if (!pag || document.getElementById(ID) || !pode()) return false;
-    estilo(); const p = document.createElement("section"); p.id = ID; p.innerHTML = `
-      <div class="cab"><div><h3>Conferência de integridade financeira</h3><p>Verifica duplicidades, chegadas sem pagamento e pagamentos sem origem. A análise não altera nem exclui dados.</p></div><button class="btn btn-primary" id="sf65Analisar" type="button">Analisar agora</button></div>
-      <div class="res" id="sf65Resultado">A análise é executada somente quando solicitada.</div><div id="sf65Tabela"></div>`;
-    pag.prepend(p); document.getElementById("sf65Analisar")?.addEventListener("click", analisar); return true;
+    if (document.getElementById(ID) || !podeAcessar()) return Boolean(document.getElementById(ID));
+    const pagina = localizarPaginaPagamentos();
+    if (!pagina) return false;
+
+    aplicarEstilo();
+    const painel = document.createElement("section");
+    painel.id = ID;
+    painel.innerHTML = `
+      <div class="sf66-cabecalho">
+        <div>
+          <h3>Conferência de integridade financeira</h3>
+          <p>Verifica pagamentos duplicados, chegadas sem pagamento e pagamentos sem origem. A análise é somente de leitura e não altera nenhum registro.</p>
+        </div>
+        <button class="btn btn-primary" id="sf66Analisar" type="button">Analisar agora</button>
+      </div>
+      <div class="sf66-resultado" id="sf66Resultado">A análise será executada somente quando você clicar em “Analisar agora”.</div>
+      <div id="sf66Tabela"></div>
+    `;
+
+    const conferenciaAtual = localizarPainelConferencia(pagina);
+    const resumo = localizarPainelResumo(pagina);
+    if (conferenciaAtual?.parentNode) conferenciaAtual.insertAdjacentElement("afterend", painel);
+    else if (resumo?.parentNode) resumo.insertAdjacentElement("beforebegin", painel);
+    else pagina.appendChild(painel);
+
+    document.getElementById("sf66Analisar")?.addEventListener("click", analisar);
+    return true;
   }
 
   async function analisar() {
-    const b = document.getElementById("sf65Analisar"), r = document.getElementById("sf65Resultado"), box = document.getElementById("sf65Tabela");
-    if (!b || !r || !box) return; const original = b.textContent; b.disabled = true; b.textContent = "Analisando..."; r.textContent = "Lendo movimentações e pagamentos. Nenhum dado será modificado.";
+    const botao = document.getElementById("sf66Analisar");
+    const resultado = document.getElementById("sf66Resultado");
+    const tabela = document.getElementById("sf66Tabela");
+    if (!botao || !resultado || !tabela) return;
+
+    const textoOriginal = botao.textContent;
+    botao.disabled = true;
+    botao.textContent = "Analisando...";
+    resultado.textContent = "Lendo movimentações e pagamentos. Nenhum dado será modificado.";
+    tabela.innerHTML = "";
+
     try {
-      const { db, fs } = await ctx();
-      const [ms, ps] = await Promise.all([fs.getDocs(fs.collection(db, "movimentacoesProducao")), fs.getDocs(fs.collection(db, "entregasPagamento"))]);
-      const movs = ms.docs.map(x => ({ id: x.id, ...x.data() })); const pags = ps.docs.map(x => ({ id: x.id, ...x.data() }));
-      const movMap = new Map(movs.map(x => [x.id, x])); const porMov = new Map();
-      pags.filter(ativo).forEach(x => { if (!x.movimentacaoId) return; const a = porMov.get(x.movimentacaoId) || []; a.push(x); porMov.set(x.movimentacaoId, a); });
+      const { db, fs } = await contexto();
+      const [movimentacoesSnap, pagamentosSnap] = await Promise.all([
+        fs.getDocs(fs.collection(db, "movimentacoesProducao")),
+        fs.getDocs(fs.collection(db, "entregasPagamento"))
+      ]);
+
+      const movimentacoes = movimentacoesSnap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      const pagamentos = pagamentosSnap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      const movimentacoesPorId = new Map(movimentacoes.map(item => [item.id, item]));
+      const pagamentosPorMovimentacao = new Map();
+
+      pagamentos.filter(pagamentoAtivo).forEach(pagamento => {
+        if (!pagamento.movimentacaoId) return;
+        const grupo = pagamentosPorMovimentacao.get(pagamento.movimentacaoId) || [];
+        grupo.push(pagamento);
+        pagamentosPorMovimentacao.set(pagamento.movimentacaoId, grupo);
+      });
+
       const problemas = [];
-      porMov.forEach((a, id) => { if (a.length > 1) { const m = movMap.get(id) || {}; problemas.push({ tipo: a.some(pago) ? "Pago com duplicata ativa" : "Pagamentos duplicados", op: m.numeroOP || a[0]?.numeroOP || "-", proc: m.processo || a[0]?.processo || "-", origem: id, detalhe: a.map(x => x.id).join(", ") }); } });
-      movs.filter(x => n(x.tipoDestino) === "FACCAO" && t(x.dataChegada) && !["CANCELADO","EXCLUIDO"].includes(n(x.status))).filter(x => !(porMov.get(x.id) || []).length).forEach(x => problemas.push({ tipo: "Chegada sem pagamento", op: x.numeroOP || "-", proc: x.processo || "-", origem: x.id, detalhe: x.destino || "-" }));
-      pags.filter(ativo).filter(x => x.movimentacaoId && !movMap.has(x.movimentacaoId)).forEach(x => problemas.push({ tipo: "Pagamento sem movimentação", op: x.numeroOP || "-", proc: x.processo || x.servicoNome || "-", origem: x.id, detalhe: x.movimentacaoId }));
-      pags.filter(ativo).filter(x => n(x.statusPagamento).includes("SEM VALOR") || n(x.statusPagamento).includes("AGUARDANDO VALOR") || x.valorPendente === true).forEach(x => problemas.push({ tipo: "Aguardando valor", op: x.numeroOP || "-", proc: x.processo || x.servicoNome || "-", origem: x.id, detalhe: x.avisoPagamento || "Valor pendente" }));
-      const d = problemas.filter(x => x.tipo.toLowerCase().includes("duplic")).length, s = problemas.filter(x => x.tipo === "Chegada sem pagamento").length, o = problemas.filter(x => x.tipo === "Pagamento sem movimentação").length, v = problemas.filter(x => x.tipo === "Aguardando valor").length;
-      r.textContent = problemas.length ? `${problemas.length} ponto(s): ${d} duplicidade(s), ${s} chegada(s) sem pagamento, ${o} pagamento(s) sem movimentação e ${v} aguardando valor.` : "Nenhum conflito financeiro foi encontrado.";
-      box.innerHTML = problemas.length ? `<div style="overflow:auto"><table><thead><tr><th>Situação</th><th>OP</th><th>Processo</th><th>Origem</th><th>Detalhe</th></tr></thead><tbody>${problemas.slice(0,150).map(x => `<tr><td><strong>${esc(x.tipo)}</strong></td><td>${esc(x.op)}</td><td>${esc(x.proc)}</td><td>${esc(x.origem)}</td><td>${esc(x.detalhe)}</td></tr>`).join("")}</tbody></table></div>${problemas.length > 150 ? `<small>Mostrando 150 de ${problemas.length} resultados.</small>` : ""}` : "";
-    } catch (e) { console.error(e); r.textContent = "Não foi possível concluir a análise. Verifique as permissões."; box.innerHTML = ""; }
-    finally { b.disabled = false; b.textContent = original; }
+      pagamentosPorMovimentacao.forEach((grupo, movimentacaoId) => {
+        if (grupo.length <= 1) return;
+        const movimento = movimentacoesPorId.get(movimentacaoId) || {};
+        problemas.push({
+          tipo: grupo.some(pagamentoPago) ? "Pago com duplicata ativa" : "Pagamentos duplicados",
+          op: movimento.numeroOP || grupo[0]?.numeroOP || "-",
+          processo: movimento.processo || grupo[0]?.processo || "-",
+          origem: movimentacaoId,
+          detalhe: grupo.map(item => item.id).join(", ")
+        });
+      });
+
+      movimentacoes
+        .filter(item => normalizar(item.tipoDestino) === "FACCAO" && texto(item.dataChegada))
+        .filter(item => !["CANCELADO", "EXCLUIDO"].includes(normalizar(item.status)))
+        .filter(item => !(pagamentosPorMovimentacao.get(item.id) || []).length)
+        .forEach(item => problemas.push({
+          tipo: "Chegada sem pagamento",
+          op: item.numeroOP || "-",
+          processo: item.processo || "-",
+          origem: item.id,
+          detalhe: item.destino || "-"
+        }));
+
+      pagamentos
+        .filter(pagamentoAtivo)
+        .filter(item => item.movimentacaoId && !movimentacoesPorId.has(item.movimentacaoId))
+        .forEach(item => problemas.push({
+          tipo: "Pagamento sem movimentação",
+          op: item.numeroOP || "-",
+          processo: item.processo || item.servicoNome || "-",
+          origem: item.id,
+          detalhe: item.movimentacaoId
+        }));
+
+      pagamentos
+        .filter(pagamentoAtivo)
+        .filter(item => normalizar(item.statusPagamento).includes("SEM VALOR") ||
+          normalizar(item.statusPagamento).includes("AGUARDANDO VALOR") || item.valorPendente === true)
+        .forEach(item => problemas.push({
+          tipo: "Aguardando valor",
+          op: item.numeroOP || "-",
+          processo: item.processo || item.servicoNome || "-",
+          origem: item.id,
+          detalhe: item.avisoPagamento || "Valor pendente"
+        }));
+
+      const duplicidades = problemas.filter(item => item.tipo.toLowerCase().includes("duplic")).length;
+      const semPagamento = problemas.filter(item => item.tipo === "Chegada sem pagamento").length;
+      const semMovimentacao = problemas.filter(item => item.tipo === "Pagamento sem movimentação").length;
+      const aguardandoValor = problemas.filter(item => item.tipo === "Aguardando valor").length;
+
+      resultado.textContent = problemas.length
+        ? `${problemas.length} ponto(s): ${duplicidades} duplicidade(s), ${semPagamento} chegada(s) sem pagamento, ${semMovimentacao} pagamento(s) sem movimentação e ${aguardandoValor} aguardando valor.`
+        : "Nenhum conflito financeiro foi encontrado.";
+
+      tabela.innerHTML = problemas.length ? `
+        <div style="overflow:auto">
+          <table>
+            <thead><tr><th>Situação</th><th>OP</th><th>Processo</th><th>Origem</th><th>Detalhe</th></tr></thead>
+            <tbody>${problemas.slice(0, 150).map(item => `
+              <tr>
+                <td><strong>${escapar(item.tipo)}</strong></td>
+                <td>${escapar(item.op)}</td>
+                <td>${escapar(item.processo)}</td>
+                <td>${escapar(item.origem)}</td>
+                <td>${escapar(item.detalhe)}</td>
+              </tr>`).join("")}</tbody>
+          </table>
+        </div>
+        ${problemas.length > 150 ? `<small>Mostrando 150 de ${problemas.length} resultados.</small>` : ""}
+      ` : "";
+    } catch (error) {
+      console.error("Erro na conferência financeira.", error);
+      resultado.textContent = "Não foi possível concluir a análise. Verifique as permissões e tente novamente.";
+      tabela.innerHTML = "";
+    } finally {
+      botao.disabled = false;
+      botao.textContent = textoOriginal;
+    }
   }
 
-  async function iniciar() { await carregarPerfil().catch(() => null); let i = 0; const tmr = setInterval(() => { i++; if (inserir() || i > 40) clearInterval(tmr); }, 300); }
-  document.addEventListener("click", e => { if (e.target instanceof Element && e.target.closest('[data-page="pagamentos"]')) setTimeout(inserir, 150); }, true);
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar, { once: true }); else iniciar();
+  async function tentarPreparar() {
+    if (!perfil) await carregarPerfil().catch(() => null);
+    if (!podeAcessar()) return false;
+    return inserir();
+  }
+
+  function iniciar() {
+    let tentativas = 0;
+    const intervalo = window.setInterval(async () => {
+      tentativas += 1;
+      const pronto = await tentarPreparar().catch(() => false);
+      if (pronto || tentativas >= 80) window.clearInterval(intervalo);
+    }, 350);
+  }
+
+  document.addEventListener("click", event => {
+    const alvo = event.target instanceof Element ? event.target : null;
+    if (!alvo?.closest('[data-page="pagamentos"]')) return;
+    [120, 500, 1200].forEach(atraso => window.setTimeout(() => tentarPreparar().catch(() => false), atraso));
+  }, true);
+
+  window.addEventListener("focus", () => tentarPreparar().catch(() => false));
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar, { once: true });
+  else iniciar();
 })();
