@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-31-revisao-filtros-57",
-  "updatedAt": "2026-07-31T16:23:00-03:00",
-  "notes": "Adiciona na aba Revisão lateral e bojo filtros por facção e por componente: com lateral, com bojo, lateral e bojo, somente lateral e somente bojo. Exibe também o nome da facção abaixo de cada componente na lista, preservando o salvamento e sem alterar pagamentos ou cálculos."
+  "version": "2026-08-01-chegada-sem-componentes-duplicados-58",
+  "updatedAt": "2026-08-01T10:18:00-03:00",
+  "notes": "Remove da chegada de facção a primeira conferência duplicada de lateral e bojo. Mantém a confirmação obrigatória do processo e da facção e usa somente o bloco inferior Conferência do Sutiã Completo para lateral, bojo, fecho e ponto de luz."
 }
