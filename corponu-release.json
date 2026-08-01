@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-chegada-confirmacao-estavel-72",
-  "updatedAt": "2026-08-01T19:58:00-03:00",
-  "notes": "Corrige o travamento dos campos de confirmação da chegada. Processo e facção são carregados somente uma vez ao abrir cada movimentação e não são mais zerados enquanto o usuário seleciona. Mantém a saída determinística, a proteção contra duplicidade e um único salvamento no botão Confirmar chegada."
+  "version": "2026-08-01-chegada-confirmacao-botoes-73",
+  "updatedAt": "2026-08-01T20:08:00-03:00",
+  "notes": "Substitui os selects que travavam na conferência da chegada por dois botões diretos: confirmar o processo recebido e confirmar a facção responsável. Os dados são carregados uma única vez por movimentação, sem MutationObserver contínuo, sem reset de campos e sem segundo salvamento. Mantém a saída determinística e todas as travas contra duplicidade."
 }
