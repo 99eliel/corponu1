@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-bootstrap-financeiro-67",
-  "updatedAt": "2026-08-01T18:50:00-03:00",
-  "notes": "Garante o carregamento das travas financeiras e da Conferência de integridade mesmo quando o navegador ainda mantém uma versão antiga do corponu-atualizador.js em cache. Não exige alteração nas regras do Firebase e não modifica pagamentos ou movimentações automaticamente."
+  "version": "2026-08-01-antiduplicidade-cruzada-68",
+  "updatedAt": "2026-08-01T19:08:00-03:00",
+  "notes": "Corrige a proteção financeira para impedir que o Novo lançamento manual crie novamente uma movimentação já registrada pelo fluxo normal de saída e chegada. A verificação cruza OP, facção, processo, data e quantidade em movimentações e pagamentos existentes. Nenhum registro antigo é apagado automaticamente."
 }
