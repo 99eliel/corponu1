@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-01-antiduplicidade-cruzada-68";
+  const VERSION = "2026-08-01-saida-idempotente-69";
   window.__CORPONU_PAGAMENTOS_INTERFACE_FIX__ = VERSION;
 
   function carregar(nome, marcador, mensagemErro) {
@@ -14,8 +14,15 @@
     document.head.appendChild(script);
   }
 
-  // Carrega primeiro a validação cruzada. Ela precisa interceptar o
-  // lançamento manual antes dos módulos que calculam e salvam o pagamento.
+  // Protege primeiro a criação da saída. A reserva no Firestore acontece
+  // antes de o fluxo antigo criar a movimentação.
+  carregar(
+    "corponu-saida-antiduplicidade.js",
+    "saida-antiduplicidade",
+    "Não foi possível ativar a proteção contra saídas duplicadas."
+  );
+
+  // Validação cruzada do lançamento manual contra movimentações normais.
   carregar(
     "corponu-pagamento-manual-antiduplicidade.js",
     "pagamento-manual-antiduplicidade",
