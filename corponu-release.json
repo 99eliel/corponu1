@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-chegada-confirmacao-segura-71",
-  "updatedAt": "2026-08-01T19:56:00-03:00",
-  "notes": "Restaura na chegada a conferência obrigatória do serviço/processo recebido e da facção responsável, sem voltar ao fluxo que duplicava registros. Os dois dados são selecionados no próprio modal e o botão Confirmar chegada continua sendo o único salvamento. A saída determinística e as travas financeiras permanecem ativas."
+  "version": "2026-08-01-chegada-confirmacao-estavel-72",
+  "updatedAt": "2026-08-01T19:58:00-03:00",
+  "notes": "Corrige o travamento dos campos de confirmação da chegada. Processo e facção são carregados somente uma vez ao abrir cada movimentação e não são mais zerados enquanto o usuário seleciona. Mantém a saída determinística, a proteção contra duplicidade e um único salvamento no botão Confirmar chegada."
 }
