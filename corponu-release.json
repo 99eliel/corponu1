@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-conferencia-financeira-visivel-66",
-  "updatedAt": "2026-08-01T18:42:00-03:00",
-  "notes": "Corrige a exibição da Conferência de integridade financeira na aba Pagamentos. O módulo agora aguarda a inicialização do Firebase e do perfil do usuário e insere o card logo abaixo da conferência existente. A análise continua somente de leitura e não altera pagamentos, movimentações ou valores."
+  "version": "2026-08-01-bootstrap-financeiro-67",
+  "updatedAt": "2026-08-01T18:50:00-03:00",
+  "notes": "Garante o carregamento das travas financeiras e da Conferência de integridade mesmo quando o navegador ainda mantém uma versão antiga do corponu-atualizador.js em cache. Não exige alteração nas regras do Firebase e não modifica pagamentos ou movimentações automaticamente."
 }
