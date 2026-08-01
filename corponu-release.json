@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-antiduplicidade-cruzada-68",
-  "updatedAt": "2026-08-01T19:08:00-03:00",
-  "notes": "Corrige a proteção financeira para impedir que o Novo lançamento manual crie novamente uma movimentação já registrada pelo fluxo normal de saída e chegada. A verificação cruza OP, facção, processo, data e quantidade em movimentações e pagamentos existentes. Nenhum registro antigo é apagado automaticamente."
+  "version": "2026-08-01-saida-idempotente-69",
+  "updatedAt": "2026-08-01T19:24:00-03:00",
+  "notes": "Impede a duplicação já no Registrar saída. A primeira tentativa reserva a saída no Firestore, bloqueia o botão e libera o fluxo antigo somente uma vez. Cliques repetidos, duas confirmações, internet lenta ou duas abas não podem criar uma segunda movimentação aberta com a mesma OP, destino, processo, quantidade e data. Nenhum registro antigo é excluído automaticamente."
 }
