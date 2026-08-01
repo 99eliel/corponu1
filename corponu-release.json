@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-chegada-confirmacao-botoes-73",
-  "updatedAt": "2026-08-01T20:08:00-03:00",
-  "notes": "Substitui os selects que travavam na conferência da chegada por dois botões diretos: confirmar o processo recebido e confirmar a facção responsável. Os dados são carregados uma única vez por movimentação, sem MutationObserver contínuo, sem reset de campos e sem segundo salvamento. Mantém a saída determinística e todas as travas contra duplicidade."
+  "version": "2026-08-01-chegada-restaurada-74",
+  "updatedAt": "2026-08-01T20:14:00-03:00",
+  "notes": "Restaura o modal simples e funcional de Registrar chegada. Remove completamente a conferência experimental por selects e botões, mantendo processo e facção visíveis no resumo da saída. A saída determinística, a trava contra movimentações duplicadas e a segurança dos pagamentos permanecem ativas."
 }
