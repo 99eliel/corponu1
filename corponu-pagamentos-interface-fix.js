@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-01-chegada-confirmacao-estavel-72";
+  const VERSION = "2026-08-01-chegada-confirmacao-botoes-73";
   window.__CORPONU_PAGAMENTOS_INTERFACE_FIX__ = VERSION;
 
   function carregar(nome, marcador, mensagemErro) {
@@ -23,7 +23,7 @@
   carregar(
     "corponu-chegada-confirmacao-servico.js",
     "chegada-confirmacao-servico",
-    "Não foi possível carregar a confirmação estável do serviço recebido."
+    "Não foi possível carregar os botões de confirmação do serviço recebido."
   );
 
   carregar(
