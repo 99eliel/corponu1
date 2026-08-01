@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-01-seguranca-financeira-65";
+  const LOCAL_RELEASE = "2026-08-01-conferencia-financeira-visivel-66";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
