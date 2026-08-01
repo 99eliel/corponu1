@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-chegada-sem-componentes-duplicados-58",
-  "updatedAt": "2026-08-01T10:18:00-03:00",
-  "notes": "Remove da chegada de facção a primeira conferência duplicada de lateral e bojo. Mantém a confirmação obrigatória do processo e da facção e usa somente o bloco inferior Conferência do Sutiã Completo para lateral, bojo, fecho e ponto de luz."
+  "version": "2026-08-01-revisao-componentes-automaticos-59",
+  "updatedAt": "2026-08-01T10:33:00-03:00",
+  "notes": "A aba Revisão lateral e bojo agora reconhece automaticamente as chegadas dos processos LATERAL e ENCAPAR BOJO. A OP passa a aparecer com o componente pronto, a facção responsável e indicação de origem automática; chegadas parciais aparecem como Parcial. Revisões manuais e pagamentos não são alterados."
 }
