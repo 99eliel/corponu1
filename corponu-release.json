@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-faccao-cadastro-recolhido-62",
-  "updatedAt": "2026-08-01T13:12:00-03:00",
-  "notes": "Mantém o formulário completo de cadastro de facção oculto por padrão. Os campos de nome, cidade, PIX, celular, processos, tipos de peça e observações aparecem somente ao clicar em Cadastrar facção ou Editar. Após salvar ou cancelar, o formulário volta a ficar recolhido."
+  "version": "2026-08-01-faccao-edicao-modal-63",
+  "updatedAt": "2026-08-01T13:26:00-03:00",
+  "notes": "O cadastro e a edição de facções agora abrem em um card/modal central. Ao editar uma facção, os dados são carregados no card sem jogar a página para o topo; salvar ou cancelar fecha o card e mantém a posição atual da lista."
 }
