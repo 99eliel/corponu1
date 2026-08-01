@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-01-saida-idempotente-69";
+  const VERSION = "2026-08-01-fluxo-saida-unico-70";
   window.__CORPONU_PAGAMENTOS_INTERFACE_FIX__ = VERSION;
 
   function carregar(nome, marcador, mensagemErro) {
@@ -14,15 +14,21 @@
     document.head.appendChild(script);
   }
 
-  // Protege primeiro a criação da saída. A reserva no Firestore acontece
-  // antes de o fluxo antigo criar a movimentação.
+  // Assume o fluxo próprio da aba Facções antes do módulo legado.
+  // A saída usa ID determinístico e transação, e a chegada deixa de pedir
+  // novamente processo e facção já registrados na saída.
+  carregar(
+    "corponu-fluxo-faccao-unico.js",
+    "fluxo-faccao-unico",
+    "Não foi possível ativar o fluxo único de saída e chegada da facção."
+  );
+
   carregar(
     "corponu-saida-antiduplicidade.js",
     "saida-antiduplicidade",
     "Não foi possível ativar a proteção contra saídas duplicadas."
   );
 
-  // Validação cruzada do lançamento manual contra movimentações normais.
   carregar(
     "corponu-pagamento-manual-antiduplicidade.js",
     "pagamento-manual-antiduplicidade",
