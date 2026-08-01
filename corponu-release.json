@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-seguranca-financeira-65",
-  "updatedAt": "2026-08-01T18:20:00-03:00",
-  "notes": "Fase 1 de segurança financeira: cria travas por origem para impedir chegada e pagamento duplicados, congela movimentações com pagamento pago, vincula movimentação e pagamento, unifica o cálculo manual do Sutiã Completo na configuração oficial e adiciona conferência de integridade financeira somente de leitura. Nenhum pagamento antigo é apagado ou recalculado automaticamente."
+  "version": "2026-08-01-conferencia-financeira-visivel-66",
+  "updatedAt": "2026-08-01T18:42:00-03:00",
+  "notes": "Corrige a exibição da Conferência de integridade financeira na aba Pagamentos. O módulo agora aguarda a inicialização do Firebase e do perfil do usuário e insere o card logo abaixo da conferência existente. A análise continua somente de leitura e não altera pagamentos, movimentações ou valores."
 }
