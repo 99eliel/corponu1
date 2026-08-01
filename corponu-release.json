@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-revisao-componentes-automaticos-59",
-  "updatedAt": "2026-08-01T10:33:00-03:00",
-  "notes": "A aba Revisão lateral e bojo agora reconhece automaticamente as chegadas dos processos LATERAL e ENCAPAR BOJO. A OP passa a aparecer com o componente pronto, a facção responsável e indicação de origem automática; chegadas parciais aparecem como Parcial. Revisões manuais e pagamentos não são alterados."
+  "version": "2026-08-01-revisao-lista-estavel-60",
+  "updatedAt": "2026-08-01T11:03:00-03:00",
+  "notes": "Estabiliza a lista da aba Revisão lateral e bojo, removendo o ciclo de atualização contínua que fazia o contador piscar. Mantém os filtros por facção e componente, reconhece chegadas automáticas de LATERAL e ENCAPAR BOJO e remove a coluna Desconto/peça dessa tela. Pagamentos e valores não são alterados."
 }
