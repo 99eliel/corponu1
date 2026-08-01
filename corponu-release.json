@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-faccao-edicao-modal-63",
-  "updatedAt": "2026-08-01T13:26:00-03:00",
-  "notes": "O cadastro e a edição de facções agora abrem em um card/modal central. Ao editar uma facção, os dados são carregados no card sem jogar a página para o topo; salvar ou cancelar fecha o card e mantém a posição atual da lista."
+  "version": "2026-08-01-pagamento-manual-sutia-completo-64",
+  "updatedAt": "2026-08-01T13:45:00-03:00",
+  "notes": "Corrige o lançamento manual de pagamento: lateral e bojo passam a aparecer em uma única conferência, fecho e ponto de luz são perguntados no Sutiã Completo, e o campo de valor total manual aparece somente quando lateral ou bojo ainda não foram informados. Com os componentes definidos, o valor é calculado automaticamente pelos valores gerais e por referência."
 }
