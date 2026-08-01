@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-processos-somente-valores-61",
-  "updatedAt": "2026-08-01T12:30:00-03:00",
-  "notes": "Simplifica a aba Processos para deixar somente a gestão dos valores usados no cálculo: Sutiã Completo geral, referência 912, fecho, ponto de luz, LATERAL e ENCAPAR BOJO por referência. As demais áreas ficam ocultas, sem excluir dados do banco e sem alterar pagamentos ou movimentações existentes."
+  "version": "2026-08-01-faccao-cadastro-recolhido-62",
+  "updatedAt": "2026-08-01T13:12:00-03:00",
+  "notes": "Mantém o formulário completo de cadastro de facção oculto por padrão. Os campos de nome, cidade, PIX, celular, processos, tipos de peça e observações aparecem somente ao clicar em Cadastrar facção ou Editar. Após salvar ou cancelar, o formulário volta a ficar recolhido."
 }
