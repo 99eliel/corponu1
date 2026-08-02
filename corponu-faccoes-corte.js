@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "2026-07-30-faccoes-sem-bloco-processos-29";
+  const VERSION = "2026-08-01-faccoes-saida-segura-30";
   if (window.__CORPONU_FACCOES_CORTE_LOADER__ === VERSION) return;
   window.__CORPONU_FACCOES_CORTE_LOADER__ = VERSION;
 
@@ -58,24 +58,35 @@
     );
   }
 
-  Promise.all(parts.map(name => fetch(`./${name}?v=${encodeURIComponent(VERSION)}&t=${Date.now()}`, { cache: "no-store" }).then(response => {
-    if (!response.ok) throw new Error(`${name}: ${response.status}`);
-    return response.text();
-  }))).then(chunks => {
-    const blob = new Blob([chunks.join("")], { type: "text/javascript" });
-    const url = URL.createObjectURL(blob);
-    const script = document.createElement("script");
-    script.src = url;
-    script.async = false;
-    script.dataset.corponuFaccoesCorte = VERSION;
-    script.onload = () => {
-      URL.revokeObjectURL(url);
-      carregarCorrecaoTresAbas();
-    };
-    script.onerror = () => {
-      URL.revokeObjectURL(url);
-      console.error("Não foi possível iniciar a área Corte das facções.");
-    };
-    document.head.appendChild(script);
-  }).catch(error => console.error("Não foi possível carregar a área Corte das facções.", error));
+  function iniciarAreaFaccoes() {
+    Promise.all(parts.map(name => fetch(`./${name}?v=${encodeURIComponent(VERSION)}&t=${Date.now()}`, { cache: "no-store" }).then(response => {
+      if (!response.ok) throw new Error(`${name}: ${response.status}`);
+      return response.text();
+    }))).then(chunks => {
+      const blob = new Blob([chunks.join("")], { type: "text/javascript" });
+      const url = URL.createObjectURL(blob);
+      const script = document.createElement("script");
+      script.src = url;
+      script.async = false;
+      script.dataset.corponuFaccoesCorte = VERSION;
+      script.onload = () => {
+        URL.revokeObjectURL(url);
+        carregarCorrecaoTresAbas();
+      };
+      script.onerror = () => {
+        URL.revokeObjectURL(url);
+        console.error("Não foi possível iniciar a área Corte das facções.");
+      };
+      document.head.appendChild(script);
+    }).catch(error => console.error("Não foi possível carregar a área Corte das facções.", error));
+  }
+
+  // Esta proteção é carregada primeiro. Ela remove apenas a confirmação do navegador
+  // e bloqueia o segundo envio antes que o formulário original seja iniciado.
+  carregarScript(
+    "corponu-saida-sem-confirmacao.js",
+    "saida-sem-confirmacao-dupla",
+    "Não foi possível carregar a proteção contra saída duplicada.",
+    iniciarAreaFaccoes
+  );
 })();
