@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-02-chegada-manual-trava-movimentacao-86",
-  "updatedAt": "2026-08-02T15:32:00-03:00",
-  "notes": "A chegada manual da aba Facções agora verifica primeiro se já existe movimentação para a mesma OP, processo e facção. Quando existe saída ou chegada registrada, o lançamento manual é bloqueado e o usuário é orientado a usar a movimentação existente. As proteções atuais de pagamento permanecem separadas e intactas."
+  "version": "2026-08-02-pagamentos-sem-lancamento-manual-87",
+  "updatedAt": "2026-08-02T15:45:00-03:00",
+  "notes": "Remove a criação manual de novos pagamentos da área Pagamentos. O fluxo oficial fica Registrar saída na Facção, Registrar chegada e Gerar pagamento. Pagamentos existentes, edição, auditoria e Restantes pendentes continuam disponíveis."
 }
