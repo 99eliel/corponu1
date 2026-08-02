@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-chegada-confirmacao-estavel-76",
-  "updatedAt": "2026-08-01T20:55:00-03:00",
-  "notes": "Estabiliza a confirmação de chegada da facção. O modal deixa de reprocessar os campos durante o uso, evitando o travamento ao selecionar processo e facção."
+  "version": "2026-08-01-chegada-confirmacao-definitiva-77",
+  "updatedAt": "2026-08-01T21:18:00-03:00",
+  "notes": "Corrige definitivamente a confirmação da chegada. Os campos são preparados uma única vez por abertura, não são reconstruídos durante o uso e reaparecem corretamente ao fechar e abrir novamente."
 }
