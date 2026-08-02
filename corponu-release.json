@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-02-pagamentos-sem-lancamento-manual-87",
-  "updatedAt": "2026-08-02T15:45:00-03:00",
-  "notes": "Remove a criação manual de novos pagamentos da área Pagamentos. O fluxo oficial fica Registrar saída na Facção, Registrar chegada e Gerar pagamento. Pagamentos existentes, edição, auditoria e Restantes pendentes continuam disponíveis."
+  "version": "2026-08-02-verificacao-sutia-completo-segura-89",
+  "updatedAt": "2026-08-02T16:19:00-03:00",
+  "notes": "Adiciona uma verificação somente leitura para pagamentos antigos de Sutiã Completo. Todos os módulos existentes permanecem na mesma ordem; a nova verificação carrega por último, só consulta pagamentos ao clicar e só consulta o histórico de uma OP sob demanda. Nenhum valor, pagamento, movimentação ou função da área Facções é alterado."
 }
