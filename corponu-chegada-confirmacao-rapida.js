@@ -1,15 +1,15 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-01-chegada-unica-rapida-81";
+  const VERSION = "2026-08-01-chegada-sem-travamento-82";
   const FIREBASE_VERSION = "10.12.5";
   const MODAL_ID = "modalChegadaMovimentacao";
   const FORM_ID = "formChegadaMovimentacao";
   const INFO_ID = "chegadaMovimentacaoInfo";
-  const CARD_ID = "cnChegadaUnica81";
-  const PROCESSO_ID = "cnChegadaProcesso81";
-  const FACCAO_ID = "cnChegadaFaccao81";
-  const ATUAL_ID = "cnChegadaAtual81";
+  const CARD_ID = "cnChegadaEstavel82";
+  const PROCESSO_ID = "cnChegadaProcesso82";
+  const FACCAO_ID = "cnChegadaFaccao82";
+  const ATUAL_ID = "cnChegadaAtual82";
 
   const PROCESSOS_FACCOES = Object.freeze({
     "ENCAPAR BOJO": ["DIVINA", "GRACIANE", "JESSICA", "LARISSA", "ALINE BATISTA", "DAIANY", "NAGILA", "DELMA", "GIRLAINE"],
@@ -20,12 +20,12 @@
     "SUTIÃ COMPLETO": ["DANUBIA", "KAKA", "GISLAINY", "ITAMAR", "LUCIA", "GOIANIRA"]
   });
 
-  if (window.__CN_CHEGADA_UNICA_81__ === VERSION) return;
-  window.__CN_CHEGADA_UNICA_81__ = VERSION;
+  if (window.__CN_CHEGADA_ESTAVEL_82__ === VERSION) return;
+  window.__CN_CHEGADA_ESTAVEL_82__ = VERSION;
 
-  // Impede que versões antigas inicializem depois deste módulo.
   window.__CORPONU_CHEGADA_CORRECAO_79__ = "2026-08-01-chegada-correcao-processo-faccao-79";
   window.__CN_CHEGADA_RAPIDA80__ = "2026-08-01-chegada-correcao-rapida-80";
+  window.__CN_CHEGADA_UNICA_81__ = "2026-08-01-chegada-unica-rapida-81";
   window.__CORPONU_CHEGADA_CONFIRMACAO__ = VERSION;
   window.__CORPONU_CHEGADA_CONFIRMACAO_DEFINITIVA__ = VERSION;
 
@@ -37,7 +37,8 @@
     "corponuConfirmacaoChegada77",
     "corponuConfirmacaoChegada78",
     "corponuConfirmacaoChegada79",
-    "cnChegadaRapida80"
+    "cnChegadaRapida80",
+    "cnChegadaUnica81"
   ];
 
   const ESTILOS_ANTIGOS = [
@@ -49,7 +50,8 @@
     "styleCorponuConfirmacaoChegada77",
     "styleCorponuConfirmacaoChegada78",
     "styleCorponuConfirmacaoChegada79",
-    "cnChegadaRapida80Style"
+    "cnChegadaRapida80Style",
+    "cnChegadaUnica81Style"
   ];
 
   let contextoPromise = null;
@@ -58,7 +60,6 @@
   let tokenAbertura = 0;
   let observadorModal = null;
   let eventosInstalados = false;
-  let removendoDuplicados = false;
 
   const texto = valor => String(valor ?? "").trim();
   const normalizar = valor => texto(valor)
@@ -93,8 +94,8 @@
     toast.textContent = mensagem;
     toast.classList.remove("hidden");
     toast.style.background = "#991b1b";
-    window.clearTimeout(window.__cnChegada81Toast);
-    window.__cnChegada81Toast = window.setTimeout(() => {
+    window.clearTimeout(window.__cnChegada82Toast);
+    window.__cnChegada82Toast = window.setTimeout(() => {
       toast.classList.add("hidden");
       toast.style.background = "";
     }, 5000);
@@ -120,57 +121,52 @@
     return contextoPromise;
   }
 
-  function ehPainelDeConferencia(elemento) {
-    if (!(elemento instanceof Element) || elemento.id === CARD_ID) return false;
-    const conteudo = normalizar(elemento.textContent);
-    return conteudo.includes("CONFIRMACAO OBRIGATORIA DA CHEGADA") ||
-      conteudo.includes("CONFERENCIA E CORRECAO OBRIGATORIA DA CHEGADA");
-  }
+  function removerVersoesAntigas() {
+    IDS_ANTIGOS.forEach(id => document.getElementById(id)?.remove());
+    ESTILOS_ANTIGOS.forEach(id => document.getElementById(id)?.remove());
 
-  function removerDuplicados() {
-    if (removendoDuplicados) return;
-    removendoDuplicados = true;
-    try {
-      IDS_ANTIGOS.forEach(id => document.getElementById(id)?.remove());
-      ESTILOS_ANTIGOS.forEach(id => document.getElementById(id)?.remove());
-
-      const form = document.getElementById(FORM_ID);
-      if (form) {
-        [...form.children].forEach(filho => {
-          if (ehPainelDeConferencia(filho)) filho.remove();
-        });
+    const form = document.getElementById(FORM_ID);
+    if (!form) return;
+    [...form.children].forEach(filho => {
+      if (filho.id === CARD_ID) return;
+      const conteudo = normalizar(filho.textContent);
+      if (
+        conteudo.includes("CONFIRMACAO OBRIGATORIA DA CHEGADA") ||
+        conteudo.includes("CONFERENCIA E CORRECAO OBRIGATORIA DA CHEGADA")
+      ) {
+        filho.remove();
       }
-    } finally {
-      removendoDuplicados = false;
-    }
+    });
   }
 
   function instalarEstilo() {
-    if (document.getElementById("cnChegadaUnica81Style")) return;
+    if (document.getElementById("cnChegadaEstavel82Style")) return;
     const style = document.createElement("style");
-    style.id = "cnChegadaUnica81Style";
+    style.id = "cnChegadaEstavel82Style";
     style.textContent = `
+      body.cn-chegada-modal-aberta .toast,
+      body.cn-chegada-modal-aberta [id*="toast" i],
+      body.cn-chegada-modal-aberta [class*="toast" i]{pointer-events:none!important;user-select:none!important}
       #${CARD_ID}{margin:14px 0 18px;padding:14px;border:1px solid #c4b5fd;border-radius:16px;background:#faf8ff}
       #${CARD_ID}.hidden{display:none!important}
-      #${CARD_ID} .cn81-title{margin:0;color:#5b21b6;font-size:14px;font-weight:900}
-      #${CARD_ID} .cn81-description{margin:4px 0 10px;color:#64748b;font-size:12px;line-height:1.45}
-      #${CARD_ID} .cn81-current{margin:0 0 12px;padding:9px 11px;border:1px solid #ddd6fe;border-radius:10px;background:#fff;color:#475569;font-size:11px;font-weight:800}
-      #${CARD_ID} .cn81-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+      #${CARD_ID} .cn82-title{margin:0;color:#5b21b6;font-size:14px;font-weight:900}
+      #${CARD_ID} .cn82-description{margin:4px 0 10px;color:#64748b;font-size:12px;line-height:1.45}
+      #${CARD_ID} .cn82-current{margin:0 0 12px;padding:9px 11px;border:1px solid #ddd6fe;border-radius:10px;background:#fff;color:#475569;font-size:11px;font-weight:800}
+      #${CARD_ID} .cn82-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
       #${CARD_ID} label{margin:0;color:#334155;font-size:12px;font-weight:900}
       #${CARD_ID} select{width:100%;min-height:46px;margin-top:6px;padding:0 12px;border:1px solid #a78bfa;border-radius:12px;background:#fff;font-size:14px;font-weight:800}
       #${CARD_ID} select:disabled{background:#f3f4f6;color:#9ca3af}
-      #${CARD_ID} .cn81-note{margin-top:10px;padding:9px 11px;border-radius:10px;background:#ede9fe;color:#6d28d9;font-size:11px;font-weight:800}
-      @media(max-width:640px){#${CARD_ID} .cn81-grid{grid-template-columns:1fr}}
+      #${CARD_ID} .cn82-note{margin-top:10px;padding:9px 11px;border-radius:10px;background:#ede9fe;color:#6d28d9;font-size:11px;font-weight:800}
+      @media(max-width:640px){#${CARD_ID} .cn82-grid{grid-template-columns:1fr}}
     `;
     document.head.appendChild(style);
   }
 
   function preencherSelect(select, placeholder, valores = [], desabilitado = false) {
     if (!(select instanceof HTMLSelectElement)) return;
-    select.replaceChildren(
-      new Option(placeholder, ""),
-      ...valores.map(valor => new Option(valor, valor))
-    );
+    const opcoes = [new Option(placeholder, "")];
+    valores.forEach(valor => opcoes.push(new Option(valor, valor)));
+    select.replaceChildren(...opcoes);
     select.value = "";
     select.disabled = desabilitado;
   }
@@ -195,8 +191,6 @@
   }
 
   function garantirCard() {
-    removerDuplicados();
-
     let card = document.getElementById(CARD_ID);
     if (card) return card;
 
@@ -207,10 +201,10 @@
     card.id = CARD_ID;
     card.className = "hidden";
     card.innerHTML = `
-      <p class="cn81-title">Conferência e correção obrigatória da chegada</p>
-      <p class="cn81-description">Escolha o processo que realmente foi feito e depois selecione quem realizou.</p>
-      <div class="cn81-current" id="${ATUAL_ID}">Carregando dados registrados...</div>
-      <div class="cn81-grid">
+      <p class="cn82-title">Conferência e correção obrigatória da chegada</p>
+      <p class="cn82-description">Escolha o processo que realmente foi feito e depois selecione quem realizou.</p>
+      <div class="cn82-current" id="${ATUAL_ID}">Carregando dados registrados...</div>
+      <div class="cn82-grid">
         <label>
           Processo realizado
           <select id="${PROCESSO_ID}" required>
@@ -224,7 +218,7 @@
           </select>
         </label>
       </div>
-      <div class="cn81-note">Uma correção feita aqui será salva antes do pagamento ser calculado.</div>
+      <div class="cn82-note">Uma correção feita aqui será salva antes do pagamento ser calculado.</div>
     `;
 
     const info = document.getElementById(INFO_ID);
@@ -318,15 +312,15 @@
   }
 
   function prepararAbertura() {
-    removerDuplicados();
-    garantirCard();
-
     const token = ++tokenAbertura;
     let tentativas = 0;
 
+    removerVersoesAntigas();
+    garantirCard();
+    document.body.classList.add("cn-chegada-modal-aberta");
+
     const tentar = () => {
       if (token !== tokenAbertura || !modalAberto()) return;
-      removerDuplicados();
 
       const id = texto(document.getElementById("chegadaMovimentacaoId")?.value);
       if (!id) {
@@ -446,7 +440,7 @@
   }
 
   function liberarSubmit(form) {
-    form.dataset.cnChegada81Liberada = "1";
+    form.dataset.cnChegada82Liberada = "1";
     form.requestSubmit();
   }
 
@@ -458,12 +452,11 @@
       if (event.target?.id !== FORM_ID) return;
       const form = event.target;
 
-      if (form.dataset.cnChegada81Liberada === "1") {
-        delete form.dataset.cnChegada81Liberada;
+      if (form.dataset.cnChegada82Liberada === "1") {
+        delete form.dataset.cnChegada82Liberada;
         return;
       }
 
-      removerDuplicados();
       const card = document.getElementById(CARD_ID);
       if (!card || card.classList.contains("hidden")) return;
 
@@ -523,37 +516,29 @@
       if (alvo?.closest("#btnFecharModalChegada,#btnCancelarModalChegada")) {
         tokenAbertura += 1;
         limparEstado();
-        removerDuplicados();
+        document.body.classList.remove("cn-chegada-modal-aberta");
       }
     }, true);
   }
 
   function observarModal() {
     const modal = document.getElementById(MODAL_ID);
-    if (!modal || modal.dataset.cnChegadaUnica81 === "1") return Boolean(modal);
+    if (!modal || modal.dataset.cnChegadaEstavel82 === "1") return Boolean(modal);
 
-    modal.dataset.cnChegadaUnica81 = "1";
+    modal.dataset.cnChegadaEstavel82 = "1";
     observadorModal?.disconnect();
-    observadorModal = new MutationObserver(mudancas => {
-      const mudouConteudo = mudancas.some(mudanca => mudanca.type === "childList");
-      const mudouClasse = mudancas.some(mudanca => mudanca.type === "attributes");
 
-      if (mudouConteudo) removerDuplicados();
-      if (!mudouClasse) return;
-
+    observadorModal = new MutationObserver(() => {
       if (modal.classList.contains("hidden")) {
         tokenAbertura += 1;
         limparEstado();
-        removerDuplicados();
+        document.body.classList.remove("cn-chegada-modal-aberta");
       } else {
-        removerDuplicados();
         prepararAbertura();
       }
     });
 
     observadorModal.observe(modal, {
-      childList: true,
-      subtree: true,
       attributes: true,
       attributeFilter: ["class"]
     });
@@ -561,23 +546,20 @@
   }
 
   function iniciar() {
-    removerDuplicados();
+    removerVersoesAntigas();
     instalarEstilo();
     garantirCard();
     instalarEventos();
 
-    // Inicializa os módulos Firebase sem bloquear a abertura do modal.
     window.setTimeout(() => contextoFirebase().catch(() => {}), 300);
 
     let tentativas = 0;
     const intervalo = window.setInterval(() => {
       tentativas += 1;
-      removerDuplicados();
       if (observarModal() || tentativas >= 30) window.clearInterval(intervalo);
     }, 150);
 
     window.addEventListener("pageshow", () => {
-      removerDuplicados();
       observarModal();
       if (modalAberto()) prepararAbertura();
     });
