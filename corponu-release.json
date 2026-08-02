@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-02-verificacao-sutia-completo-segura-89",
-  "updatedAt": "2026-08-02T16:19:00-03:00",
-  "notes": "Adiciona uma verificação somente leitura para pagamentos antigos de Sutiã Completo. Todos os módulos existentes permanecem na mesma ordem; a nova verificação carrega por último, só consulta pagamentos ao clicar e só consulta o histórico de uma OP sob demanda. Nenhum valor, pagamento, movimentação ou função da área Facções é alterado."
+  "version": "2026-08-02-filtro-op-pagamentos-90",
+  "updatedAt": "2026-08-02T16:51:00-03:00",
+  "notes": "Adiciona filtro por número da OP na aba Pagamentos. O filtro acumula com período, facção, referência, processos e status, atualizando totais, tabelas, relatórios e confirmação dos pagamentos filtrados. Quando o campo OP está vazio, o fluxo original permanece inalterado."
 }
