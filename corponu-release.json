@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-chegada-dados-corretos-78",
-  "updatedAt": "2026-08-01T21:24:00-03:00",
-  "notes": "Corrige a confirmação da chegada para ler exclusivamente a linha de facção e processo. Os campos agora mostram o processo realizado e quem fez, sem confundir com OP e referência."
+  "version": "2026-08-01-chegada-correcao-processo-faccao-79",
+  "updatedAt": "2026-08-01T21:29:00-03:00",
+  "notes": "Restaura o fluxo correto da chegada: lista todos os processos ativos, mostra as facções vinculadas ao processo escolhido e salva a correção antes de calcular o pagamento."
 }
