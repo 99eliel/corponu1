@@ -1,13 +1,13 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-01-chegada-confirmacao-definitiva-77";
+  const VERSION = "2026-08-01-chegada-dados-corretos-78";
   const MODAL_ID = "modalChegadaMovimentacao";
   const FORM_ID = "formChegadaMovimentacao";
   const INFO_ID = "chegadaMovimentacaoInfo";
-  const CARD_ID = "corponuConfirmacaoChegada77";
-  const PROCESSO_ID = "corponuChegadaProcesso77";
-  const RESPONSAVEL_ID = "corponuChegadaResponsavel77";
+  const CARD_ID = "corponuConfirmacaoChegada78";
+  const PROCESSO_ID = "corponuChegadaProcesso78";
+  const RESPONSAVEL_ID = "corponuChegadaResponsavel78";
 
   if (window.__CORPONU_CHEGADA_CONFIRMACAO_DEFINITIVA__ === VERSION) return;
   window.__CORPONU_CHEGADA_CONFIRMACAO_DEFINITIVA__ = VERSION;
@@ -17,7 +17,6 @@
   let idPreparado = "";
   let tokenPreparacao = 0;
   let observadorModal = null;
-  let eventosInstalados = false;
 
   const texto = valor => String(valor ?? "").trim();
   const normalizar = valor => texto(valor)
@@ -38,8 +37,8 @@
     toast.textContent = mensagem;
     toast.classList.remove("hidden");
     toast.style.background = "#991b1b";
-    window.clearTimeout(window.__corponuChegada77Toast);
-    window.__corponuChegada77Toast = window.setTimeout(() => {
+    window.clearTimeout(window.__corponuChegada78Toast);
+    window.__corponuChegada78Toast = window.setTimeout(() => {
       toast.classList.add("hidden");
       toast.style.background = "";
     }, 5000);
@@ -50,33 +49,35 @@
       "sf71ConfirmacaoServico",
       "sf73ConfirmacaoServico",
       "corponuConfirmacaoChegada75",
-      "corponuChegadaConfirmacao76"
+      "corponuChegadaConfirmacao76",
+      "corponuConfirmacaoChegada77"
     ].forEach(id => document.getElementById(id)?.remove());
 
     [
       "styleChegadaConfirmacaoSegura71",
       "styleChegadaConfirmacaoBotoes73",
       "styleCorponuChegadaConfirmacao75",
-      "styleCorponuChegadaConfirmacao76"
+      "styleCorponuChegadaConfirmacao76",
+      "styleCorponuConfirmacaoChegada77"
     ].forEach(id => document.getElementById(id)?.remove());
   }
 
   function instalarEstilo() {
-    if (document.getElementById("styleCorponuConfirmacaoChegada77")) return;
+    if (document.getElementById("styleCorponuConfirmacaoChegada78")) return;
 
     const style = document.createElement("style");
-    style.id = "styleCorponuConfirmacaoChegada77";
+    style.id = "styleCorponuConfirmacaoChegada78";
     style.textContent = `
       #${CARD_ID}{margin:14px 0 18px;padding:14px;border:1px solid #c4b5fd;border-radius:16px;background:#faf8ff}
       #${CARD_ID}.hidden{display:none!important}
-      #${CARD_ID} .cc77-title{margin:0 0 4px;color:#5b21b6;font-size:14px;font-weight:900}
-      #${CARD_ID} .cc77-text{margin:0 0 12px;color:#64748b;font-size:12px;line-height:1.5}
-      #${CARD_ID} .cc77-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+      #${CARD_ID} .cc78-title{margin:0 0 4px;color:#5b21b6;font-size:14px;font-weight:900}
+      #${CARD_ID} .cc78-text{margin:0 0 12px;color:#64748b;font-size:12px;line-height:1.5}
+      #${CARD_ID} .cc78-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
       #${CARD_ID} label{display:block;margin:0;color:#334155;font-size:12px;font-weight:900}
       #${CARD_ID} select{width:100%;min-height:44px;margin-top:6px;padding:0 12px;border:1px solid #c4b5fd;border-radius:12px;background:#fff;color:#111827;font-size:14px;font-weight:800}
       #${CARD_ID} select:disabled{background:#f3f4f6;color:#9ca3af;cursor:not-allowed}
-      #${CARD_ID} .cc77-note{margin-top:10px;padding:9px 11px;border-radius:10px;background:#ede9fe;color:#6d28d9;font-size:11px;font-weight:800;line-height:1.45}
-      @media(max-width:640px){#${CARD_ID} .cc77-grid{grid-template-columns:1fr}}
+      #${CARD_ID} .cc78-note{margin-top:10px;padding:9px 11px;border-radius:10px;background:#ede9fe;color:#6d28d9;font-size:11px;font-weight:800;line-height:1.45}
+      @media(max-width:640px){#${CARD_ID} .cc78-grid{grid-template-columns:1fr}}
     `;
     document.head.appendChild(style);
   }
@@ -98,8 +99,6 @@
   }
 
   function garantirCard() {
-    removerVersoesAntigas();
-
     let card = document.getElementById(CARD_ID);
     if (card) return card;
 
@@ -110,9 +109,9 @@
     card.id = CARD_ID;
     card.className = "hidden";
     card.innerHTML = `
-      <p class="cc77-title">Confirmação obrigatória da chegada</p>
-      <p class="cc77-text">Selecione novamente o processo e quem realizou o serviço antes de registrar a chegada.</p>
-      <div class="cc77-grid">
+      <p class="cc78-title">Confirmação obrigatória da chegada</p>
+      <p class="cc78-text">Selecione novamente o processo e quem realizou o serviço antes de registrar a chegada.</p>
+      <div class="cc78-grid">
         <label>
           Processo realizado
           <select id="${PROCESSO_ID}">
@@ -126,7 +125,7 @@
           </select>
         </label>
       </div>
-      <div class="cc77-note">A conferência valida a chegada na saída correta. Ela não cria outra movimentação.</div>
+      <div class="cc78-note">A conferência valida o processo e a facção da saída registrada. Ela não cria outra movimentação.</div>
     `;
 
     const info = document.getElementById(INFO_ID);
@@ -134,9 +133,8 @@
     else form.prepend(card);
 
     card.querySelector(`#${PROCESSO_ID}`)?.addEventListener("change", () => {
-      const processoSelect = document.getElementById(PROCESSO_ID);
+      const processoSelecionado = texto(document.getElementById(PROCESSO_ID)?.value);
       const responsavelSelect = document.getElementById(RESPONSAVEL_ID);
-      const processoSelecionado = texto(processoSelect?.value);
 
       if (!esperado || normalizar(processoSelecionado) !== normalizar(esperado.processo)) {
         limparSelect(responsavelSelect, "Selecione o processo primeiro", true);
@@ -144,7 +142,6 @@
       }
 
       preencherSelect(responsavelSelect, "Selecione quem realizou", esperado.responsavel);
-      responsavelSelect?.focus();
     });
 
     return card;
@@ -163,22 +160,26 @@
 
   function extrairDadosDoResumo() {
     const info = document.getElementById(INFO_ID);
-    const conteudo = texto(info?.innerText || info?.textContent || "");
-    if (!conteudo) return null;
+    if (!info) return null;
 
-    const linhas = conteudo.split(/\n+/).map(texto).filter(Boolean);
-    const linhaDados = linhas.find(linha => linha.includes("|")) || "";
-    const partes = linhaDados.split("|").map(texto).filter(Boolean);
+    const linhaDestinoProcesso = texto(info.querySelector("span")?.textContent);
+    if (!linhaDestinoProcesso) return null;
+
+    const partes = linhaDestinoProcesso
+      .split("|")
+      .map(texto)
+      .filter(Boolean);
+
     if (partes.length < 2) return null;
 
     const responsavel = partes[0];
-    const processo = partes.find((parte, indice) => indice > 0 && !normalizar(parte).startsWith("ENVIADO")) || "";
-    if (!responsavel || !processo) return null;
+    const processo = partes[1];
 
+    if (!responsavel || !processo || normalizar(processo).startsWith("ENVIADO")) return null;
     return { processo, responsavel };
   }
 
-  function limparCamposSemOcultar() {
+  function limparCampos() {
     esperado = null;
     idPreparado = "";
     limparSelect(document.getElementById(PROCESSO_ID), "Selecione novamente o processo", false);
@@ -186,7 +187,7 @@
   }
 
   function esconderParaOutroTipo() {
-    limparCamposSemOcultar();
+    limparCampos();
     document.getElementById(CARD_ID)?.classList.add("hidden");
   }
 
@@ -233,7 +234,7 @@
       if (tokenAtual !== tokenPreparacao || !modalAberto()) return;
       tentativa += 1;
       if (prepararUmaVez()) return;
-      if (tentativa < 8) window.setTimeout(tentar, 50);
+      if (tentativa < 10) window.setTimeout(tentar, 40);
     };
 
     window.setTimeout(tentar, 0);
@@ -266,9 +267,6 @@
   }
 
   function instalarEventos() {
-    if (eventosInstalados) return;
-    eventosInstalados = true;
-
     document.addEventListener("submit", event => {
       if (event.target?.id !== FORM_ID) return;
       const resultado = validar();
@@ -284,33 +282,23 @@
       const alvo = event.target instanceof Element ? event.target : null;
       if (!alvo) return;
 
-      const botao = alvo.closest("button");
-      const abreChegada = botao?.getAttribute("onclick")?.includes("registrarChegadaMovimentacao") ||
-        normalizar(botao?.textContent) === "CHEGADA" ||
-        Boolean(alvo.closest("[data-chegada],[data-registrar-chegada]"));
-
-      if (abreChegada) {
-        limparCamposSemOcultar();
-        iniciarPreparacao();
-      }
-
       if (alvo.closest("#btnFecharModalChegada,#btnCancelarModalChegada")) {
         tokenPreparacao += 1;
-        limparCamposSemOcultar();
+        limparCampos();
       }
     }, true);
   }
 
   function observarModal() {
     const modal = document.getElementById(MODAL_ID);
-    if (!modal || modal.dataset.corponuChegada77 === "1") return Boolean(modal);
+    if (!modal || modal.dataset.corponuChegada78 === "1") return Boolean(modal);
 
-    modal.dataset.corponuChegada77 = "1";
+    modal.dataset.corponuChegada78 = "1";
     observadorModal?.disconnect();
     observadorModal = new MutationObserver(() => {
       if (modal.classList.contains("hidden")) {
         tokenPreparacao += 1;
-        limparCamposSemOcultar();
+        limparCampos();
       } else {
         iniciarPreparacao();
       }
