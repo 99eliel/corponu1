@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-01-pagamento-manual-sutia-completo-64";
+  const LOCAL_RELEASE = "2026-08-01-antiduplicidade-isolada-84";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -26,6 +26,7 @@
 
   function carregarModulos() {
     const modulos = [
+      ["corponu-pagamento-antiduplicidade-isolada.js", "pagamento-antiduplicidade-isolada", "Não foi possível carregar a proteção isolada contra pagamentos duplicados."],
       ["corponu-revisao-lateral-bojo-fix.js", "revisao-lateral-bojo-fix", "Não foi possível carregar a proteção da área Revisão lateral e bojo."],
       ["corponu-revisao-responsaveis.js", "revisao-responsaveis", "Não foi possível carregar o registro de quem fez lateral e bojo."],
       ["corponu-revisao-faccoes-select.js", "revisao-faccoes-select", "Não foi possível carregar as facções por processo na revisão."],
