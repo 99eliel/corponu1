@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-saida-sem-confirmacao-dupla-85",
-  "updatedAt": "2026-08-01T22:45:00-03:00",
-  "notes": "Remove somente a janela de confirmação do navegador ao registrar saída nas abas Sutiã, Calcinha e Corte. O primeiro envio continua pelo fluxo original e qualquer segundo clique no mesmo formulário é bloqueado antes de nova consulta ou gravação."
+  "version": "2026-08-02-chegada-manual-trava-movimentacao-86",
+  "updatedAt": "2026-08-02T15:32:00-03:00",
+  "notes": "A chegada manual da aba Facções agora verifica primeiro se já existe movimentação para a mesma OP, processo e facção. Quando existe saída ou chegada registrada, o lançamento manual é bloqueado e o usuário é orientado a usar a movimentação existente. As proteções atuais de pagamento permanecem separadas e intactas."
 }
