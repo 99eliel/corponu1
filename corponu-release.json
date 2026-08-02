@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-chegada-sem-travamento-82",
-  "updatedAt": "2026-08-01T21:53:00-03:00",
-  "notes": "Remove a observação contínua do conteúdo do modal, impede que avisos capturem cliques e desativa definitivamente o módulo antigo de confirmação. Mantém a correção de processo e facção antes do pagamento."
+  "version": "2026-08-01-chegada-confirmacao-final-83",
+  "updatedAt": "2026-08-01T22:04:00-03:00",
+  "notes": "Substitui a verificação contínua por uma confirmação aberta somente após clicar em Confirmar chegada. Primeiro seleciona o processo, depois aparecem as facções correspondentes, e só então a chegada é concluída."
 }
