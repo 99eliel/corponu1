@@ -1,32 +1,591 @@
-(()=>{"use strict";
-const V="2026-08-01-chegada-correcao-rapida-80",FB="10.12.5",MID="modalChegadaMovimentacao",FID="formChegadaMovimentacao",INFO="chegadaMovimentacaoInfo",CARD="cnChegadaRapida80",PROC="cnChegadaProcesso80",FAC="cnChegadaFaccao80",ATUAL="cnChegadaAtual80";
-const MAP={"ENCAPAR BOJO":["DIVINA","GRACIANE","JESSICA","LARISSA","ALINE BATISTA","DAIANY","NAGILA","DELMA","GIRLAINE"],"ALÇA":["JANAINA","IVONE","LUANA","KARYTA","SIMEI","SIMONE"],"CALCINHA MONTAGEM":["ANA FLAVIA","KAUANE","LIANA","DAIANA","LEIDIANE","ANDREZA"],"CALCINHA COMPLETA":["LORENA","JEAN","SCHENEIDER","DANIELA","KAMILA","LIANDRA","JUZENI","THEILLOR","SILVANY","LEONARDO","MATHEUS","BEATRIZ","MARILIA","DARLLEN","RONEIDIA"],"SUTIÃ MONTAGEM":["LIVIA","FRACEILDA","MOCINHA","NAYARA","NAGILA","GIRLAINE","JHENIFER"],"SUTIÃ COMPLETO":["DANUBIA","KAKA","GISLAINY","ITAMAR","LUCIA","GOIANIRA"]};
-if(window.__CN_CHEGADA_RAPIDA80__===V)return;window.__CN_CHEGADA_RAPIDA80__=V;window.__CORPONU_CHEGADA_CONFIRMACAO__=V;window.__CORPONU_CHEGADA_CONFIRMACAO_DEFINITIVA__=V;
-let ctxP=null,mov=null,prepared="",token=0,obs=null,installed=false;
-const txt=v=>String(v??"").trim(),norm=v=>txt(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9]+/g," ").replace(/\s+/g," ").trim().toUpperCase(),uniq=a=>[...new Map(a.map(txt).filter(Boolean).map(v=>[norm(v),v])).values()].sort((a,b)=>a.localeCompare(b,"pt-BR"));
-const PROCS=Object.freeze(uniq(Object.keys(MAP))),FMAP=new Map(Object.entries(MAP).map(([p,f])=>[norm(p),Object.freeze(uniq(f))]));
-function toast(m){const t=document.getElementById("toast");if(!t)return alert(m);t.textContent=m;t.classList.remove("hidden");t.style.background="#991b1b";clearTimeout(window.__cn80Toast);window.__cn80Toast=setTimeout(()=>{t.classList.add("hidden");t.style.background=""},5000)}
-async function ctx(){if(ctxP)return ctxP;ctxP=Promise.all([import(`https://www.gstatic.com/firebasejs/${FB}/firebase-app.js`),import(`https://www.gstatic.com/firebasejs/${FB}/firebase-auth.js`),import(`https://www.gstatic.com/firebasejs/${FB}/firebase-firestore.js`)]).then(([a,u,f])=>{const app=a.getApp();return{auth:u.getAuth(app),db:f.getFirestore(app),f}}).catch(e=>{ctxP=null;throw e});return ctxP}
-function cleanOld(){["sf71ConfirmacaoServico","sf73ConfirmacaoServico","corponuConfirmacaoChegada75","corponuChegadaConfirmacao76","corponuConfirmacaoChegada77","corponuConfirmacaoChegada78","corponuConfirmacaoChegada79"].forEach(id=>document.getElementById(id)?.remove());["styleChegadaConfirmacaoSegura71","styleChegadaConfirmacaoBotoes73","corponuStyleConfirmacaoChegada75","styleCorponuChegadaConfirmacao75","styleCorponuChegadaConfirmacao76","styleCorponuConfirmacaoChegada77","styleCorponuConfirmacaoChegada78","styleCorponuConfirmacaoChegada79"].forEach(id=>document.getElementById(id)?.remove())}
-function style(){if(document.getElementById("cnChegadaRapida80Style"))return;const s=document.createElement("style");s.id="cnChegadaRapida80Style";s.textContent=`#${CARD}{margin:14px 0 18px;padding:14px;border:1px solid #c4b5fd;border-radius:16px;background:#faf8ff}#${CARD}.hidden{display:none!important}#${CARD} .t{margin:0;color:#5b21b6;font-size:14px;font-weight:900}#${CARD} .d{margin:4px 0 10px;color:#64748b;font-size:12px;line-height:1.45}#${CARD} .a{margin:0 0 12px;padding:9px 11px;border:1px solid #ddd6fe;border-radius:10px;background:#fff;color:#475569;font-size:11px;font-weight:800}#${CARD} .g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#${CARD} label{margin:0;color:#334155;font-size:12px;font-weight:900}#${CARD} select{width:100%;min-height:46px;margin-top:6px;padding:0 12px;border:1px solid #a78bfa;border-radius:12px;background:#fff;font-size:14px;font-weight:800}#${CARD} select:disabled{background:#f3f4f6;color:#9ca3af}#${CARD} .n{margin-top:10px;padding:9px 11px;border-radius:10px;background:#ede9fe;color:#6d28d9;font-size:11px;font-weight:800}@media(max-width:640px){#${CARD} .g{grid-template-columns:1fr}}`;document.head.appendChild(s)}
-function fill(el,ph,vals=[],disabled=false){if(!(el instanceof HTMLSelectElement))return;el.replaceChildren(new Option(ph,""),...vals.map(v=>new Option(v,v)));el.value="";el.disabled=disabled}
-function procList(){if(!mov?.processo||PROCS.some(p=>norm(p)===norm(mov.processo)))return PROCS;return uniq([...PROCS,mov.processo])}
-function facList(p){const base=FMAP.get(norm(p))||[];if(mov?.destino&&norm(p)===norm(mov.processo)&&!base.some(f=>norm(f)===norm(mov.destino)))return uniq([...base,mov.destino]);return base}
-function card(){let c=document.getElementById(CARD);if(c)return c;const form=document.getElementById(FID);if(!form)return null;c=document.createElement("section");c.id=CARD;c.className="hidden";c.innerHTML=`<p class="t">Conferência e correção obrigatória da chegada</p><p class="d">Escolha o processo que realmente foi feito e depois selecione quem realizou.</p><div class="a" id="${ATUAL}">Carregando dados registrados...</div><div class="g"><label>Processo realizado<select id="${PROC}" required><option value="">Selecione o processo correto</option></select></label><label>Quem fez / facção<select id="${FAC}" required disabled><option value="">Selecione o processo primeiro</option></select></label></div><div class="n">Uma correção feita aqui será salva antes do pagamento ser calculado.</div>`;const info=document.getElementById(INFO);info?.parentElement===form?info.insertAdjacentElement("afterend",c):form.prepend(c);c.querySelector(`#${PROC}`)?.addEventListener("change",e=>{const p=txt(e.currentTarget.value),f=document.getElementById(FAC);if(!p)return fill(f,"Selecione o processo primeiro",[],true);const list=facList(p);fill(f,list.length?"Selecione quem realizou":"Nenhuma facção vinculada",list,!list.length)});return c}
-const open=()=>{const m=document.getElementById(MID);return!!m&&!m.classList.contains("hidden")};
-function fromDom(id){const line=txt(document.getElementById(INFO)?.querySelector("span")?.textContent),parts=line.split("|").map(txt).filter(Boolean);if(!id||parts.length<2||norm(parts[1]).startsWith("ENVIADO"))return null;return{id,destino:parts[0],processo:parts[1],destinoId:"",tipoDestino:"faccao",dom:true}}
-function show(m){mov=m;prepared=m.id;const c=card();if(!c)return false;c.classList.remove("hidden");const a=document.getElementById(ATUAL);if(a)a.textContent=`Registrado na saída: ${txt(m.processo)||"não informado"} • ${txt(m.destino)||"não informado"}`;fill(document.getElementById(PROC),"Selecione o processo correto",procList());fill(document.getElementById(FAC),"Selecione o processo primeiro",[],true);const r=document.getElementById("modalChegadaResumo");if(r)r.textContent="Confira ou corrija o processo e a facção. Depois informe data, falta e desconto por defeito.";return true}
-function reset(){mov=null;prepared="";fill(document.getElementById(PROC),"Selecione o processo correto");fill(document.getElementById(FAC),"Selecione o processo primeiro",[],true);const a=document.getElementById(ATUAL);if(a)a.textContent="Carregando dados registrados..."}
-async function fallback(id,t){try{const{db,f}=await ctx(),s=await f.getDoc(f.doc(db,"movimentacoesProducao",id));if(t===token&&open()&&s.exists())show({id:s.id,...s.data()})}catch(e){console.error(e);toast("Não foi possível carregar os dados da chegada.")}}
-function prepare(){const t=++token;let tries=0;const run=()=>{if(t!==token||!open())return;const id=txt(document.getElementById("chegadaMovimentacaoId")?.value);if(!id){if(++tries<6)setTimeout(run,25);return}if(prepared===id&&mov?.id===id)return document.getElementById(CARD)?.classList.remove("hidden");const local=fromDom(id);local?show(local):fallback(id,t)};setTimeout(run,0)}
-function valid(){const p=txt(document.getElementById(PROC)?.value),f=txt(document.getElementById(FAC)?.value);if(!p)return{ok:false,m:"Selecione o processo que realmente foi realizado.",id:PROC};if(!f)return{ok:false,m:"Selecione quem fez / a facção responsável.",id:FAC};if(!facList(p).some(x=>norm(x)===norm(f)))return{ok:false,m:"A facção escolhida não está vinculada ao processo selecionado.",id:FAC};return{ok:true,p,f}}
-const changed=(p,f)=>norm(p)!==norm(mov?.processo)||norm(f)!==norm(mov?.destino);
-async function save(id,p,fa){if(!changed(p,fa))return false;const{auth,db,f}=await ctx();let u=auth.currentUser;for(let i=0;i<10&&!u;i++){await new Promise(r=>setTimeout(r,50));u=auth.currentUser}if(!u)throw Error("Usuário não autenticado");const fm=norm(fa)!==norm(mov?.destino),d={processoAnteriorChegada:mov?.processoAnteriorChegada||mov?.processo||"",destinoAnteriorChegada:mov?.destinoAnteriorChegada||mov?.destino||"",destinoIdAnteriorChegada:mov?.destinoIdAnteriorChegada||mov?.destinoId||"",processo:p,destino:fa,correcaoNaChegada:true,correcaoChegadaVersao:V,correcaoChegadaPor:u.uid,correcaoChegadaEm:f.serverTimestamp(),atualizadoPor:u.uid,atualizadoEm:f.serverTimestamp()};if(fm){d.destinoId="";d.destinoIdPendenteCorrecao=true}await f.updateDoc(f.doc(db,"movimentacoesProducao",id),d);mov.processo=p;mov.destino=fa;if(fm)mov.destinoId="";return fm}
-async function syncId(id,fa){try{const{db,f}=await ctx(),q=f.query(f.collection(db,"faccoes"),f.where("nome","==",fa),f.limit(1)),s=await f.getDocs(q);if(s.empty)return;const ref=f.doc(db,"movimentacoesProducao",id),m=await f.getDoc(ref);if(m.exists()&&norm(m.data().destino)===norm(fa))await f.updateDoc(ref,{destinoId:s.docs[0].id,destinoIdPendenteCorrecao:false})}catch(e){console.warn("ID da facção será sincronizado depois.",e)}}
-function visual(p,f){const span=document.getElementById(INFO)?.querySelector("span");if(span){const sent=txt(span.textContent).split("|").map(txt).find(x=>norm(x).startsWith("ENVIADO"))||"";span.textContent=`${f} | ${p}${sent?` | ${sent}`:""}`}const a=document.getElementById(ATUAL);if(a)a.textContent=`Confirmado para a chegada: ${p} • ${f}`}
-function release(form){form.dataset.cn80="1";form.requestSubmit()}
-function events(){if(installed)return;installed=true;document.addEventListener("submit",e=>{if(e.target?.id!==FID)return;const form=e.target;if(form.dataset.cn80==="1"){delete form.dataset.cn80;return}const c=document.getElementById(CARD);if(!c||c.classList.contains("hidden"))return;const v=valid();e.preventDefault();e.stopImmediatePropagation();if(!v.ok){toast(v.m);document.getElementById(v.id)?.focus();return}const id=txt(document.getElementById("chegadaMovimentacaoId")?.value);if(!id||!mov)return toast("A movimentação da chegada não foi encontrada.");if(!changed(v.p,v.f)){visual(v.p,v.f);return release(form)}const b=form.querySelector('button[type="submit"]'),old=b?.textContent||"Confirmar chegada";if(b){b.disabled=true;b.textContent="Salvando correção..."}save(id,v.p,v.f).then(fm=>{visual(v.p,v.f);if(b){b.disabled=false;b.textContent=old}release(form);if(fm)setTimeout(()=>syncId(id,v.f),500)}).catch(err=>{console.error(err);if(b){b.disabled=false;b.textContent=old}toast("Não foi possível salvar a correção. A chegada não foi registrada.")})},true);document.addEventListener("click",e=>{const a=e.target instanceof Element?e.target:null;if(a?.closest("#btnFecharModalChegada,#btnCancelarModalChegada")){token++;reset()}},true)}
-function watch(){const m=document.getElementById(MID);if(!m||m.dataset.cnChegada80==="1")return!!m;m.dataset.cnChegada80="1";obs?.disconnect();obs=new MutationObserver(()=>{m.classList.contains("hidden")?(token++,reset()):prepare()});obs.observe(m,{attributes:true,attributeFilter:["class"]});return true}
-function init(){cleanOld();style();card();events();setTimeout(()=>ctx().catch(()=>{}),300);let i=0,x=setInterval(()=>{if(watch()||++i>=30)clearInterval(x)},150);addEventListener("pageshow",()=>{watch();if(open())prepare()})}
-document.readyState==="loading"?document.addEventListener("DOMContentLoaded",init,{once:true}):init();
+(() => {
+  "use strict";
+
+  const VERSION = "2026-08-01-chegada-unica-rapida-81";
+  const FIREBASE_VERSION = "10.12.5";
+  const MODAL_ID = "modalChegadaMovimentacao";
+  const FORM_ID = "formChegadaMovimentacao";
+  const INFO_ID = "chegadaMovimentacaoInfo";
+  const CARD_ID = "cnChegadaUnica81";
+  const PROCESSO_ID = "cnChegadaProcesso81";
+  const FACCAO_ID = "cnChegadaFaccao81";
+  const ATUAL_ID = "cnChegadaAtual81";
+
+  const PROCESSOS_FACCOES = Object.freeze({
+    "ENCAPAR BOJO": ["DIVINA", "GRACIANE", "JESSICA", "LARISSA", "ALINE BATISTA", "DAIANY", "NAGILA", "DELMA", "GIRLAINE"],
+    "ALÇA": ["JANAINA", "IVONE", "LUANA", "KARYTA", "SIMEI", "SIMONE"],
+    "CALCINHA MONTAGEM": ["ANA FLAVIA", "KAUANE", "LIANA", "DAIANA", "LEIDIANE", "ANDREZA"],
+    "CALCINHA COMPLETA": ["LORENA", "JEAN", "SCHENEIDER", "DANIELA", "KAMILA", "LIANDRA", "JUZENI", "THEILLOR", "SILVANY", "LEONARDO", "MATHEUS", "BEATRIZ", "MARILIA", "DARLLEN", "RONEIDIA"],
+    "SUTIÃ MONTAGEM": ["LIVIA", "FRACEILDA", "MOCINHA", "NAYARA", "NAGILA", "GIRLAINE", "JHENIFER"],
+    "SUTIÃ COMPLETO": ["DANUBIA", "KAKA", "GISLAINY", "ITAMAR", "LUCIA", "GOIANIRA"]
+  });
+
+  if (window.__CN_CHEGADA_UNICA_81__ === VERSION) return;
+  window.__CN_CHEGADA_UNICA_81__ = VERSION;
+
+  // Impede que versões antigas inicializem depois deste módulo.
+  window.__CORPONU_CHEGADA_CORRECAO_79__ = "2026-08-01-chegada-correcao-processo-faccao-79";
+  window.__CN_CHEGADA_RAPIDA80__ = "2026-08-01-chegada-correcao-rapida-80";
+  window.__CORPONU_CHEGADA_CONFIRMACAO__ = VERSION;
+  window.__CORPONU_CHEGADA_CONFIRMACAO_DEFINITIVA__ = VERSION;
+
+  const IDS_ANTIGOS = [
+    "sf71ConfirmacaoServico",
+    "sf73ConfirmacaoServico",
+    "corponuConfirmacaoChegada75",
+    "corponuChegadaConfirmacao76",
+    "corponuConfirmacaoChegada77",
+    "corponuConfirmacaoChegada78",
+    "corponuConfirmacaoChegada79",
+    "cnChegadaRapida80"
+  ];
+
+  const ESTILOS_ANTIGOS = [
+    "styleChegadaConfirmacaoSegura71",
+    "styleChegadaConfirmacaoBotoes73",
+    "corponuStyleConfirmacaoChegada75",
+    "styleCorponuChegadaConfirmacao75",
+    "styleCorponuChegadaConfirmacao76",
+    "styleCorponuConfirmacaoChegada77",
+    "styleCorponuConfirmacaoChegada78",
+    "styleCorponuConfirmacaoChegada79",
+    "cnChegadaRapida80Style"
+  ];
+
+  let contextoPromise = null;
+  let movimentoAtual = null;
+  let idPreparado = "";
+  let tokenAbertura = 0;
+  let observadorModal = null;
+  let eventosInstalados = false;
+  let removendoDuplicados = false;
+
+  const texto = valor => String(valor ?? "").trim();
+  const normalizar = valor => texto(valor)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+
+  const unicosOrdenados = valores => [...new Map(
+    (Array.isArray(valores) ? valores : [])
+      .map(texto)
+      .filter(Boolean)
+      .map(valor => [normalizar(valor), valor])
+  ).values()].sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+  const PROCESSOS = Object.freeze(unicosOrdenados(Object.keys(PROCESSOS_FACCOES)));
+  const FACCOES_POR_PROCESSO = new Map(
+    Object.entries(PROCESSOS_FACCOES).map(([processo, faccoes]) => [
+      normalizar(processo),
+      Object.freeze(unicosOrdenados(faccoes))
+    ])
+  );
+
+  function avisar(mensagem) {
+    const toast = document.getElementById("toast");
+    if (!toast) {
+      window.alert(mensagem);
+      return;
+    }
+    toast.textContent = mensagem;
+    toast.classList.remove("hidden");
+    toast.style.background = "#991b1b";
+    window.clearTimeout(window.__cnChegada81Toast);
+    window.__cnChegada81Toast = window.setTimeout(() => {
+      toast.classList.add("hidden");
+      toast.style.background = "";
+    }, 5000);
+  }
+
+  async function contextoFirebase() {
+    if (contextoPromise) return contextoPromise;
+    contextoPromise = Promise.all([
+      import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`),
+      import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-auth.js`),
+      import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-firestore.js`)
+    ]).then(([appMod, authMod, firestore]) => {
+      const app = appMod.getApp();
+      return {
+        auth: authMod.getAuth(app),
+        db: firestore.getFirestore(app),
+        firestore
+      };
+    }).catch(error => {
+      contextoPromise = null;
+      throw error;
+    });
+    return contextoPromise;
+  }
+
+  function ehPainelDeConferencia(elemento) {
+    if (!(elemento instanceof Element) || elemento.id === CARD_ID) return false;
+    const conteudo = normalizar(elemento.textContent);
+    return conteudo.includes("CONFIRMACAO OBRIGATORIA DA CHEGADA") ||
+      conteudo.includes("CONFERENCIA E CORRECAO OBRIGATORIA DA CHEGADA");
+  }
+
+  function removerDuplicados() {
+    if (removendoDuplicados) return;
+    removendoDuplicados = true;
+    try {
+      IDS_ANTIGOS.forEach(id => document.getElementById(id)?.remove());
+      ESTILOS_ANTIGOS.forEach(id => document.getElementById(id)?.remove());
+
+      const form = document.getElementById(FORM_ID);
+      if (form) {
+        [...form.children].forEach(filho => {
+          if (ehPainelDeConferencia(filho)) filho.remove();
+        });
+      }
+    } finally {
+      removendoDuplicados = false;
+    }
+  }
+
+  function instalarEstilo() {
+    if (document.getElementById("cnChegadaUnica81Style")) return;
+    const style = document.createElement("style");
+    style.id = "cnChegadaUnica81Style";
+    style.textContent = `
+      #${CARD_ID}{margin:14px 0 18px;padding:14px;border:1px solid #c4b5fd;border-radius:16px;background:#faf8ff}
+      #${CARD_ID}.hidden{display:none!important}
+      #${CARD_ID} .cn81-title{margin:0;color:#5b21b6;font-size:14px;font-weight:900}
+      #${CARD_ID} .cn81-description{margin:4px 0 10px;color:#64748b;font-size:12px;line-height:1.45}
+      #${CARD_ID} .cn81-current{margin:0 0 12px;padding:9px 11px;border:1px solid #ddd6fe;border-radius:10px;background:#fff;color:#475569;font-size:11px;font-weight:800}
+      #${CARD_ID} .cn81-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+      #${CARD_ID} label{margin:0;color:#334155;font-size:12px;font-weight:900}
+      #${CARD_ID} select{width:100%;min-height:46px;margin-top:6px;padding:0 12px;border:1px solid #a78bfa;border-radius:12px;background:#fff;font-size:14px;font-weight:800}
+      #${CARD_ID} select:disabled{background:#f3f4f6;color:#9ca3af}
+      #${CARD_ID} .cn81-note{margin-top:10px;padding:9px 11px;border-radius:10px;background:#ede9fe;color:#6d28d9;font-size:11px;font-weight:800}
+      @media(max-width:640px){#${CARD_ID} .cn81-grid{grid-template-columns:1fr}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function preencherSelect(select, placeholder, valores = [], desabilitado = false) {
+    if (!(select instanceof HTMLSelectElement)) return;
+    select.replaceChildren(
+      new Option(placeholder, ""),
+      ...valores.map(valor => new Option(valor, valor))
+    );
+    select.value = "";
+    select.disabled = desabilitado;
+  }
+
+  function processosDisponiveis() {
+    if (!movimentoAtual?.processo || PROCESSOS.some(item => normalizar(item) === normalizar(movimentoAtual.processo))) {
+      return PROCESSOS;
+    }
+    return unicosOrdenados([...PROCESSOS, movimentoAtual.processo]);
+  }
+
+  function faccoesDoProcesso(processo) {
+    const cadastradas = FACCOES_POR_PROCESSO.get(normalizar(processo)) || [];
+    if (
+      movimentoAtual?.destino &&
+      normalizar(processo) === normalizar(movimentoAtual.processo) &&
+      !cadastradas.some(nome => normalizar(nome) === normalizar(movimentoAtual.destino))
+    ) {
+      return unicosOrdenados([...cadastradas, movimentoAtual.destino]);
+    }
+    return cadastradas;
+  }
+
+  function garantirCard() {
+    removerDuplicados();
+
+    let card = document.getElementById(CARD_ID);
+    if (card) return card;
+
+    const form = document.getElementById(FORM_ID);
+    if (!form) return null;
+
+    card = document.createElement("section");
+    card.id = CARD_ID;
+    card.className = "hidden";
+    card.innerHTML = `
+      <p class="cn81-title">Conferência e correção obrigatória da chegada</p>
+      <p class="cn81-description">Escolha o processo que realmente foi feito e depois selecione quem realizou.</p>
+      <div class="cn81-current" id="${ATUAL_ID}">Carregando dados registrados...</div>
+      <div class="cn81-grid">
+        <label>
+          Processo realizado
+          <select id="${PROCESSO_ID}" required>
+            <option value="">Selecione o processo correto</option>
+          </select>
+        </label>
+        <label>
+          Quem fez / facção
+          <select id="${FACCAO_ID}" required disabled>
+            <option value="">Selecione o processo primeiro</option>
+          </select>
+        </label>
+      </div>
+      <div class="cn81-note">Uma correção feita aqui será salva antes do pagamento ser calculado.</div>
+    `;
+
+    const info = document.getElementById(INFO_ID);
+    if (info?.parentElement === form) info.insertAdjacentElement("afterend", card);
+    else form.prepend(card);
+
+    card.querySelector(`#${PROCESSO_ID}`)?.addEventListener("change", event => {
+      const processo = texto(event.currentTarget.value);
+      const faccaoSelect = document.getElementById(FACCAO_ID);
+      if (!processo) {
+        preencherSelect(faccaoSelect, "Selecione o processo primeiro", [], true);
+        return;
+      }
+      const faccoes = faccoesDoProcesso(processo);
+      preencherSelect(
+        faccaoSelect,
+        faccoes.length ? "Selecione quem realizou" : "Nenhuma facção vinculada",
+        faccoes,
+        !faccoes.length
+      );
+    });
+
+    return card;
+  }
+
+  function modalAberto() {
+    const modal = document.getElementById(MODAL_ID);
+    return Boolean(modal && !modal.classList.contains("hidden"));
+  }
+
+  function movimentoDoResumo(id) {
+    const linha = texto(document.getElementById(INFO_ID)?.querySelector("span")?.textContent);
+    const partes = linha.split("|").map(texto).filter(Boolean);
+    if (!id || partes.length < 2 || normalizar(partes[1]).startsWith("ENVIADO")) return null;
+    return {
+      id,
+      destino: partes[0],
+      processo: partes[1],
+      destinoId: "",
+      tipoDestino: "faccao",
+      origemLocal: true
+    };
+  }
+
+  function aplicarMovimento(movimento) {
+    movimentoAtual = movimento;
+    idPreparado = movimento.id;
+
+    const card = garantirCard();
+    if (!card) return false;
+    card.classList.remove("hidden");
+
+    const atual = document.getElementById(ATUAL_ID);
+    if (atual) {
+      atual.textContent = `Registrado na saída: ${texto(movimento.processo) || "não informado"} • ${texto(movimento.destino) || "não informado"}`;
+    }
+
+    preencherSelect(
+      document.getElementById(PROCESSO_ID),
+      "Selecione o processo correto",
+      processosDisponiveis()
+    );
+    preencherSelect(document.getElementById(FACCAO_ID), "Selecione o processo primeiro", [], true);
+
+    const resumo = document.getElementById("modalChegadaResumo");
+    if (resumo) {
+      resumo.textContent = "Confira ou corrija o processo e a facção. Depois informe data, falta e desconto por defeito.";
+    }
+    return true;
+  }
+
+  function limparEstado() {
+    movimentoAtual = null;
+    idPreparado = "";
+    preencherSelect(document.getElementById(PROCESSO_ID), "Selecione o processo correto");
+    preencherSelect(document.getElementById(FACCAO_ID), "Selecione o processo primeiro", [], true);
+    const atual = document.getElementById(ATUAL_ID);
+    if (atual) atual.textContent = "Carregando dados registrados...";
+  }
+
+  async function carregarMovimentoComoReserva(id, token) {
+    try {
+      const { db, firestore } = await contextoFirebase();
+      const snap = await firestore.getDoc(firestore.doc(db, "movimentacoesProducao", id));
+      if (token !== tokenAbertura || !modalAberto() || !snap.exists()) return;
+      aplicarMovimento({ id: snap.id, ...snap.data() });
+    } catch (error) {
+      console.error("Erro ao carregar a movimentação da chegada.", error);
+      avisar("Não foi possível carregar os dados da chegada.");
+    }
+  }
+
+  function prepararAbertura() {
+    removerDuplicados();
+    garantirCard();
+
+    const token = ++tokenAbertura;
+    let tentativas = 0;
+
+    const tentar = () => {
+      if (token !== tokenAbertura || !modalAberto()) return;
+      removerDuplicados();
+
+      const id = texto(document.getElementById("chegadaMovimentacaoId")?.value);
+      if (!id) {
+        tentativas += 1;
+        if (tentativas < 6) window.setTimeout(tentar, 25);
+        return;
+      }
+
+      if (idPreparado === id && movimentoAtual?.id === id) {
+        document.getElementById(CARD_ID)?.classList.remove("hidden");
+        return;
+      }
+
+      const movimentoLocal = movimentoDoResumo(id);
+      if (movimentoLocal) aplicarMovimento(movimentoLocal);
+      else carregarMovimentoComoReserva(id, token);
+    };
+
+    window.setTimeout(tentar, 0);
+  }
+
+  function validarSelecao() {
+    const processo = texto(document.getElementById(PROCESSO_ID)?.value);
+    const faccao = texto(document.getElementById(FACCAO_ID)?.value);
+
+    if (!processo) {
+      return { ok: false, mensagem: "Selecione o processo que realmente foi realizado.", foco: PROCESSO_ID };
+    }
+    if (!faccao) {
+      return { ok: false, mensagem: "Selecione quem fez / a facção responsável.", foco: FACCAO_ID };
+    }
+    if (!faccoesDoProcesso(processo).some(nome => normalizar(nome) === normalizar(faccao))) {
+      return { ok: false, mensagem: "A facção escolhida não está vinculada ao processo selecionado.", foco: FACCAO_ID };
+    }
+    return { ok: true, processo, faccao };
+  }
+
+  function houveCorrecao(processo, faccao) {
+    return normalizar(processo) !== normalizar(movimentoAtual?.processo) ||
+      normalizar(faccao) !== normalizar(movimentoAtual?.destino);
+  }
+
+  async function salvarCorrecao(id, processo, faccao) {
+    if (!houveCorrecao(processo, faccao)) return false;
+
+    const { auth, db, firestore } = await contextoFirebase();
+    let usuario = auth.currentUser;
+    for (let tentativa = 0; tentativa < 10 && !usuario; tentativa += 1) {
+      await new Promise(resolve => window.setTimeout(resolve, 50));
+      usuario = auth.currentUser;
+    }
+    if (!usuario) throw new Error("Usuário não autenticado.");
+
+    const mudouFaccao = normalizar(faccao) !== normalizar(movimentoAtual?.destino);
+    const dados = {
+      processoAnteriorChegada: movimentoAtual?.processoAnteriorChegada || movimentoAtual?.processo || "",
+      destinoAnteriorChegada: movimentoAtual?.destinoAnteriorChegada || movimentoAtual?.destino || "",
+      destinoIdAnteriorChegada: movimentoAtual?.destinoIdAnteriorChegada || movimentoAtual?.destinoId || "",
+      processo,
+      destino: faccao,
+      correcaoNaChegada: true,
+      correcaoChegadaVersao: VERSION,
+      correcaoChegadaPor: usuario.uid,
+      correcaoChegadaEm: firestore.serverTimestamp(),
+      atualizadoPor: usuario.uid,
+      atualizadoEm: firestore.serverTimestamp()
+    };
+
+    if (mudouFaccao) {
+      dados.destinoId = "";
+      dados.destinoIdPendenteCorrecao = true;
+    }
+
+    await firestore.updateDoc(firestore.doc(db, "movimentacoesProducao", id), dados);
+    movimentoAtual.processo = processo;
+    movimentoAtual.destino = faccao;
+    if (mudouFaccao) movimentoAtual.destinoId = "";
+    return mudouFaccao;
+  }
+
+  async function sincronizarDestinoIdEmSegundoPlano(id, faccao) {
+    try {
+      const { db, firestore } = await contextoFirebase();
+      const busca = firestore.query(
+        firestore.collection(db, "faccoes"),
+        firestore.where("nome", "==", faccao),
+        firestore.limit(1)
+      );
+      const snap = await firestore.getDocs(busca);
+      if (snap.empty) return;
+
+      const ref = firestore.doc(db, "movimentacoesProducao", id);
+      const movimentoSnap = await firestore.getDoc(ref);
+      if (!movimentoSnap.exists() || normalizar(movimentoSnap.data().destino) !== normalizar(faccao)) return;
+
+      await firestore.updateDoc(ref, {
+        destinoId: snap.docs[0].id,
+        destinoIdPendenteCorrecao: false
+      });
+    } catch (error) {
+      console.warn("O ID da facção será sincronizado posteriormente.", error);
+    }
+  }
+
+  function atualizarResumoVisual(processo, faccao) {
+    const span = document.getElementById(INFO_ID)?.querySelector("span");
+    if (span) {
+      const enviado = texto(span.textContent)
+        .split("|")
+        .map(texto)
+        .find(parte => normalizar(parte).startsWith("ENVIADO")) || "";
+      span.textContent = `${faccao} | ${processo}${enviado ? ` | ${enviado}` : ""}`;
+    }
+
+    const atual = document.getElementById(ATUAL_ID);
+    if (atual) atual.textContent = `Confirmado para a chegada: ${processo} • ${faccao}`;
+  }
+
+  function liberarSubmit(form) {
+    form.dataset.cnChegada81Liberada = "1";
+    form.requestSubmit();
+  }
+
+  function instalarEventos() {
+    if (eventosInstalados) return;
+    eventosInstalados = true;
+
+    document.addEventListener("submit", event => {
+      if (event.target?.id !== FORM_ID) return;
+      const form = event.target;
+
+      if (form.dataset.cnChegada81Liberada === "1") {
+        delete form.dataset.cnChegada81Liberada;
+        return;
+      }
+
+      removerDuplicados();
+      const card = document.getElementById(CARD_ID);
+      if (!card || card.classList.contains("hidden")) return;
+
+      const validacao = validarSelecao();
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      if (!validacao.ok) {
+        avisar(validacao.mensagem);
+        document.getElementById(validacao.foco)?.focus();
+        return;
+      }
+
+      const id = texto(document.getElementById("chegadaMovimentacaoId")?.value);
+      if (!id || !movimentoAtual) {
+        avisar("A movimentação da chegada não foi encontrada.");
+        return;
+      }
+
+      if (!houveCorrecao(validacao.processo, validacao.faccao)) {
+        atualizarResumoVisual(validacao.processo, validacao.faccao);
+        liberarSubmit(form);
+        return;
+      }
+
+      const botao = form.querySelector('button[type="submit"]');
+      const textoOriginal = botao?.textContent || "Confirmar chegada";
+      if (botao) {
+        botao.disabled = true;
+        botao.textContent = "Salvando correção...";
+      }
+
+      salvarCorrecao(id, validacao.processo, validacao.faccao)
+        .then(mudouFaccao => {
+          atualizarResumoVisual(validacao.processo, validacao.faccao);
+          if (botao) {
+            botao.disabled = false;
+            botao.textContent = textoOriginal;
+          }
+          liberarSubmit(form);
+          if (mudouFaccao) {
+            window.setTimeout(() => sincronizarDestinoIdEmSegundoPlano(id, validacao.faccao), 500);
+          }
+        })
+        .catch(error => {
+          console.error("Erro ao salvar correção da chegada.", error);
+          if (botao) {
+            botao.disabled = false;
+            botao.textContent = textoOriginal;
+          }
+          avisar("Não foi possível salvar a correção. A chegada não foi registrada.");
+        });
+    }, true);
+
+    document.addEventListener("click", event => {
+      const alvo = event.target instanceof Element ? event.target : null;
+      if (alvo?.closest("#btnFecharModalChegada,#btnCancelarModalChegada")) {
+        tokenAbertura += 1;
+        limparEstado();
+        removerDuplicados();
+      }
+    }, true);
+  }
+
+  function observarModal() {
+    const modal = document.getElementById(MODAL_ID);
+    if (!modal || modal.dataset.cnChegadaUnica81 === "1") return Boolean(modal);
+
+    modal.dataset.cnChegadaUnica81 = "1";
+    observadorModal?.disconnect();
+    observadorModal = new MutationObserver(mudancas => {
+      const mudouConteudo = mudancas.some(mudanca => mudanca.type === "childList");
+      const mudouClasse = mudancas.some(mudanca => mudanca.type === "attributes");
+
+      if (mudouConteudo) removerDuplicados();
+      if (!mudouClasse) return;
+
+      if (modal.classList.contains("hidden")) {
+        tokenAbertura += 1;
+        limparEstado();
+        removerDuplicados();
+      } else {
+        removerDuplicados();
+        prepararAbertura();
+      }
+    });
+
+    observadorModal.observe(modal, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class"]
+    });
+    return true;
+  }
+
+  function iniciar() {
+    removerDuplicados();
+    instalarEstilo();
+    garantirCard();
+    instalarEventos();
+
+    // Inicializa os módulos Firebase sem bloquear a abertura do modal.
+    window.setTimeout(() => contextoFirebase().catch(() => {}), 300);
+
+    let tentativas = 0;
+    const intervalo = window.setInterval(() => {
+      tentativas += 1;
+      removerDuplicados();
+      if (observarModal() || tentativas >= 30) window.clearInterval(intervalo);
+    }, 150);
+
+    window.addEventListener("pageshow", () => {
+      removerDuplicados();
+      observarModal();
+      if (modalAberto()) prepararAbertura();
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", iniciar, { once: true });
+  } else {
+    iniciar();
+  }
 })();
