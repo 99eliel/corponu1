@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-antiduplicidade-isolada-84",
-  "updatedAt": "2026-08-01T22:13:00-03:00",
-  "notes": "Adiciona proteção isolada contra pagamentos duplicados somente no momento da confirmação. Protege chegada normal, chegada manual e lançamento manual, sem alterar modais, manejo, facções ou demais funções do sistema."
+  "version": "2026-08-01-saida-sem-confirmacao-dupla-85",
+  "updatedAt": "2026-08-01T22:45:00-03:00",
+  "notes": "Remove somente a janela de confirmação do navegador ao registrar saída nas abas Sutiã, Calcinha e Corte. O primeiro envio continua pelo fluxo original e qualquer segundo clique no mesmo formulário é bloqueado antes de nova consulta ou gravação."
 }
