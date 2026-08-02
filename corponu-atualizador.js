@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-01-chegada-confirmacao-definitiva-77";
+  const LOCAL_RELEASE = "2026-08-01-chegada-correcao-processo-faccao-79";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -33,7 +33,7 @@
       ["corponu-revisao-lista-estavel.js", "revisao-lista-estavel", "Não foi possível carregar a lista estável de lateral e bojo."],
       ["corponu-componentes-consolidados-hotfix.js", "componentes-nao-informados", "Não foi possível proteger componentes ainda não informados."],
       ["corponu-fluxo-faccao-unico.js", "fluxo-faccao-unico", "Não foi possível ativar o fluxo único de saída e chegada da facção."],
-      ["corponu-chegada-confirmacao-servico.js", "chegada-confirmacao-definitiva", "Não foi possível carregar a confirmação definitiva de processo e facção na chegada."],
+      ["corponu-chegada-confirmacao-servico.js", "chegada-correcao-processo-faccao", "Não foi possível carregar a correção de processo e facção na chegada."],
       ["corponu-saida-antiduplicidade.js", "saida-antiduplicidade", "Não foi possível ativar a proteção contra saídas duplicadas."],
       ["corponu-pagamento-manual-antiduplicidade.js", "pagamento-manual-antiduplicidade", "Não foi possível ativar a verificação cruzada do lançamento manual."],
       ["corponu-financeiro-travas.js", "financeiro-travas", "Não foi possível ativar as travas contra pagamentos duplicados."],
