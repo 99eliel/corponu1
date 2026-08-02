@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-chegada-correcao-rapida-80",
-  "updatedAt": "2026-08-01T21:36:00-03:00",
-  "notes": "Mantém a correção de processo e facção na chegada, mas elimina leituras repetidas, transação desnecessária e atualização geral da tela. A janela abre usando os dados já carregados e só grava quando houver correção real."
+  "version": "2026-08-01-chegada-unica-rapida-81",
+  "updatedAt": "2026-08-01T21:44:00-03:00",
+  "notes": "Remove a duplicação da conferência de chegada, bloqueia módulos antigos e mantém somente a versão rápida com correção de processo e facção antes do pagamento."
 }
