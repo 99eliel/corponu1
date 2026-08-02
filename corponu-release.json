@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-pagamento-manual-sutia-completo-64",
-  "updatedAt": "2026-08-01T13:45:00-03:00",
-  "notes": "Corrige o lançamento manual de pagamento: lateral e bojo passam a aparecer em uma única conferência, fecho e ponto de luz são perguntados no Sutiã Completo, e o campo de valor total manual aparece somente quando lateral ou bojo ainda não foram informados. Com os componentes definidos, o valor é calculado automaticamente pelos valores gerais e por referência."
+  "version": "2026-08-01-antiduplicidade-isolada-84",
+  "updatedAt": "2026-08-01T22:13:00-03:00",
+  "notes": "Adiciona proteção isolada contra pagamentos duplicados somente no momento da confirmação. Protege chegada normal, chegada manual e lançamento manual, sem alterar modais, manejo, facções ou demais funções do sistema."
 }
