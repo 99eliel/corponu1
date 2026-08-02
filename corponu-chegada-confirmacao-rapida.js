@@ -1,35 +1,41 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-01-chegada-sem-travamento-82";
+  const VERSION = "2026-08-01-chegada-confirmacao-final-83";
   const FIREBASE_VERSION = "10.12.5";
-  const MODAL_ID = "modalChegadaMovimentacao";
   const FORM_ID = "formChegadaMovimentacao";
+  const MODAL_CHEGADA_ID = "modalChegadaMovimentacao";
   const INFO_ID = "chegadaMovimentacaoInfo";
-  const CARD_ID = "cnChegadaEstavel82";
-  const PROCESSO_ID = "cnChegadaProcesso82";
-  const FACCAO_ID = "cnChegadaFaccao82";
-  const ATUAL_ID = "cnChegadaAtual82";
+  const MODAL_CONFIRMACAO_ID = "modalConfirmacaoChegada83";
+  const PROCESSO_ID = "confirmacaoChegadaProcesso83";
+  const FACCAO_ID = "confirmacaoChegadaFaccao83";
+  const RESUMO_ID = "confirmacaoChegadaResumo83";
+  const ERRO_ID = "confirmacaoChegadaErro83";
+  const BTN_CONFIRMAR_ID = "btnConfirmarCorrecaoChegada83";
+  const BTN_CANCELAR_ID = "btnCancelarCorrecaoChegada83";
+  const BTN_FECHAR_ID = "btnFecharCorrecaoChegada83";
 
   const PROCESSOS_FACCOES = Object.freeze({
     "ENCAPAR BOJO": ["DIVINA", "GRACIANE", "JESSICA", "LARISSA", "ALINE BATISTA", "DAIANY", "NAGILA", "DELMA", "GIRLAINE"],
     "ALÇA": ["JANAINA", "IVONE", "LUANA", "KARYTA", "SIMEI", "SIMONE"],
     "CALCINHA MONTAGEM": ["ANA FLAVIA", "KAUANE", "LIANA", "DAIANA", "LEIDIANE", "ANDREZA"],
     "CALCINHA COMPLETA": ["LORENA", "JEAN", "SCHENEIDER", "DANIELA", "KAMILA", "LIANDRA", "JUZENI", "THEILLOR", "SILVANY", "LEONARDO", "MATHEUS", "BEATRIZ", "MARILIA", "DARLLEN", "RONEIDIA"],
+    "LATERAL": [],
     "SUTIÃ MONTAGEM": ["LIVIA", "FRACEILDA", "MOCINHA", "NAYARA", "NAGILA", "GIRLAINE", "JHENIFER"],
     "SUTIÃ COMPLETO": ["DANUBIA", "KAKA", "GISLAINY", "ITAMAR", "LUCIA", "GOIANIRA"]
   });
 
-  if (window.__CN_CHEGADA_ESTAVEL_82__ === VERSION) return;
-  window.__CN_CHEGADA_ESTAVEL_82__ = VERSION;
+  if (window.__CORPONU_CHEGADA_CONFIRMACAO_FINAL_83__ === VERSION) return;
+  window.__CORPONU_CHEGADA_CONFIRMACAO_FINAL_83__ = VERSION;
 
   window.__CORPONU_CHEGADA_CORRECAO_79__ = "2026-08-01-chegada-correcao-processo-faccao-79";
   window.__CN_CHEGADA_RAPIDA80__ = "2026-08-01-chegada-correcao-rapida-80";
   window.__CN_CHEGADA_UNICA_81__ = "2026-08-01-chegada-unica-rapida-81";
+  window.__CN_CHEGADA_ESTAVEL_82__ = "2026-08-01-chegada-sem-travamento-82";
   window.__CORPONU_CHEGADA_CONFIRMACAO__ = VERSION;
   window.__CORPONU_CHEGADA_CONFIRMACAO_DEFINITIVA__ = VERSION;
 
-  const IDS_ANTIGOS = [
+  const IDS_PAINEIS_ANTIGOS = [
     "sf71ConfirmacaoServico",
     "sf73ConfirmacaoServico",
     "corponuConfirmacaoChegada75",
@@ -38,10 +44,11 @@
     "corponuConfirmacaoChegada78",
     "corponuConfirmacaoChegada79",
     "cnChegadaRapida80",
-    "cnChegadaUnica81"
+    "cnChegadaUnica81",
+    "cnChegadaEstavel82"
   ];
 
-  const ESTILOS_ANTIGOS = [
+  const IDS_ESTILOS_ANTIGOS = [
     "styleChegadaConfirmacaoSegura71",
     "styleChegadaConfirmacaoBotoes73",
     "corponuStyleConfirmacaoChegada75",
@@ -51,15 +58,15 @@
     "styleCorponuConfirmacaoChegada78",
     "styleCorponuConfirmacaoChegada79",
     "cnChegadaRapida80Style",
-    "cnChegadaUnica81Style"
+    "cnChegadaUnica81Style",
+    "cnChegadaEstavel82Style"
   ];
 
   let contextoPromise = null;
-  let movimentoAtual = null;
-  let idPreparado = "";
-  let tokenAbertura = 0;
-  let observadorModal = null;
-  let eventosInstalados = false;
+  let formPendente = null;
+  let movimentoPendente = null;
+  let carregandoFaccoes = false;
+  let cacheFaccoesRemotas = null;
 
   const texto = valor => String(valor ?? "").trim();
   const normalizar = valor => texto(valor)
@@ -77,32 +84,121 @@
       .map(valor => [normalizar(valor), valor])
   ).values()].sort((a, b) => a.localeCompare(b, "pt-BR"));
 
-  const PROCESSOS = Object.freeze(unicosOrdenados(Object.keys(PROCESSOS_FACCOES)));
-  const FACCOES_POR_PROCESSO = new Map(
-    Object.entries(PROCESSOS_FACCOES).map(([processo, faccoes]) => [
-      normalizar(processo),
-      Object.freeze(unicosOrdenados(faccoes))
-    ])
-  );
+  function removerInterfaceAntiga() {
+    IDS_PAINEIS_ANTIGOS.forEach(id => document.getElementById(id)?.remove());
+    IDS_ESTILOS_ANTIGOS.forEach(id => document.getElementById(id)?.remove());
 
-  function avisar(mensagem) {
-    const toast = document.getElementById("toast");
-    if (!toast) {
-      window.alert(mensagem);
-      return;
-    }
-    toast.textContent = mensagem;
-    toast.classList.remove("hidden");
-    toast.style.background = "#991b1b";
-    window.clearTimeout(window.__cnChegada82Toast);
-    window.__cnChegada82Toast = window.setTimeout(() => {
-      toast.classList.add("hidden");
-      toast.style.background = "";
-    }, 5000);
+    const form = document.getElementById(FORM_ID);
+    if (!form) return;
+
+    [...form.children].forEach(elemento => {
+      const conteudo = normalizar(elemento.textContent);
+      if (
+        conteudo.includes("CONFIRMACAO OBRIGATORIA DA CHEGADA") ||
+        conteudo.includes("CONFERENCIA E CORRECAO OBRIGATORIA DA CHEGADA")
+      ) {
+        elemento.remove();
+      }
+    });
+  }
+
+  function instalarEstilo() {
+    if (document.getElementById("styleConfirmacaoFinalChegada83")) return;
+
+    const style = document.createElement("style");
+    style.id = "styleConfirmacaoFinalChegada83";
+    style.textContent = `
+      #${MODAL_CONFIRMACAO_ID}{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.58)}
+      #${MODAL_CONFIRMACAO_ID}.hidden{display:none!important}
+      #${MODAL_CONFIRMACAO_ID} .cc83-card{width:min(520px,100%);max-height:calc(100vh - 36px);overflow:auto;border-radius:20px;background:#fff;box-shadow:0 30px 80px rgba(15,23,42,.34)}
+      #${MODAL_CONFIRMACAO_ID} .cc83-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 20px 14px;border-bottom:1px solid #e2e8f0}
+      #${MODAL_CONFIRMACAO_ID} .cc83-head h3{margin:0;color:#111827;font-size:19px}
+      #${MODAL_CONFIRMACAO_ID} .cc83-head p{margin:5px 0 0;color:#64748b;font-size:12px;line-height:1.45}
+      #${MODAL_CONFIRMACAO_ID} .cc83-close{width:38px;height:38px;border:0;border-radius:12px;background:#eef2ff;color:#111827;font-size:24px;font-weight:900;cursor:pointer}
+      #${MODAL_CONFIRMACAO_ID} .cc83-body{padding:18px 20px 20px}
+      #${MODAL_CONFIRMACAO_ID} .cc83-current{margin-bottom:14px;padding:11px 12px;border:1px solid #ddd6fe;border-radius:12px;background:#faf8ff;color:#5b21b6;font-size:12px;font-weight:900;line-height:1.45}
+      #${MODAL_CONFIRMACAO_ID} label{display:block;margin:0 0 14px;color:#334155;font-size:12px;font-weight:900}
+      #${MODAL_CONFIRMACAO_ID} select{width:100%;min-height:48px;margin-top:7px;padding:0 13px;border:1px solid #a78bfa;border-radius:12px;background:#fff;color:#111827;font-size:14px;font-weight:800}
+      #${MODAL_CONFIRMACAO_ID} select:disabled{background:#f3f4f6;color:#9ca3af;cursor:not-allowed}
+      #${MODAL_CONFIRMACAO_ID} .cc83-help{margin:-4px 0 14px;color:#64748b;font-size:11px;line-height:1.45}
+      #${MODAL_CONFIRMACAO_ID} .cc83-error{margin:0 0 14px;padding:10px 12px;border-radius:11px;background:#fee2e2;color:#991b1b;font-size:12px;font-weight:800}
+      #${MODAL_CONFIRMACAO_ID} .cc83-error.hidden{display:none!important}
+      #${MODAL_CONFIRMACAO_ID} .cc83-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+      #${MODAL_CONFIRMACAO_ID} .cc83-btn{min-height:43px;padding:0 16px;border:1px solid #cbd5e1;border-radius:11px;background:#fff;color:#111827;font-weight:900;cursor:pointer}
+      #${MODAL_CONFIRMACAO_ID} .cc83-btn-primary{border-color:#7c3aed;background:#7c3aed;color:#fff}
+      #${MODAL_CONFIRMACAO_ID} .cc83-btn:disabled{opacity:.55;cursor:not-allowed}
+      body.cc83-aberto{overflow:hidden}
+      body.cc83-aberto #toast,
+      body.cc83-aberto #toastAtualizacaoSistema,
+      body.cc83-aberto #corponuToastAtualizacaoAutomatica,
+      body.cc83-aberto #toastAtualizadorCorpoNu{pointer-events:none!important}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function garantirModalConfirmacao() {
+    let modal = document.getElementById(MODAL_CONFIRMACAO_ID);
+    if (modal) return modal;
+
+    modal = document.createElement("div");
+    modal.id = MODAL_CONFIRMACAO_ID;
+    modal.className = "hidden";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.innerHTML = `
+      <div class="cc83-card">
+        <div class="cc83-head">
+          <div>
+            <h3>Confirmar processo e facção</h3>
+            <p>Esta verificação aparece somente agora, antes de concluir a chegada e calcular o pagamento.</p>
+          </div>
+          <button class="cc83-close" id="${BTN_FECHAR_ID}" type="button" aria-label="Fechar">×</button>
+        </div>
+        <div class="cc83-body">
+          <div class="cc83-current" id="${RESUMO_ID}">Movimentação selecionada</div>
+
+          <label>
+            1. Processo realmente realizado
+            <select id="${PROCESSO_ID}">
+              <option value="">Selecione o processo</option>
+            </select>
+          </label>
+
+          <p class="cc83-help">Depois de escolher o processo, o sistema mostrará somente as facções que realizam esse serviço.</p>
+
+          <label>
+            2. Quem fez / facção
+            <select id="${FACCAO_ID}" disabled>
+              <option value="">Selecione o processo primeiro</option>
+            </select>
+          </label>
+
+          <div class="cc83-error hidden" id="${ERRO_ID}"></div>
+
+          <div class="cc83-actions">
+            <button class="cc83-btn" id="${BTN_CANCELAR_ID}" type="button">Voltar</button>
+            <button class="cc83-btn cc83-btn-primary" id="${BTN_CONFIRMAR_ID}" type="button">Confirmar operação</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById(PROCESSO_ID)?.addEventListener("change", selecionarProcesso);
+    document.getElementById(BTN_CONFIRMAR_ID)?.addEventListener("click", confirmarOperacao);
+    document.getElementById(BTN_CANCELAR_ID)?.addEventListener("click", fecharConfirmacao);
+    document.getElementById(BTN_FECHAR_ID)?.addEventListener("click", fecharConfirmacao);
+
+    modal.addEventListener("click", event => {
+      if (event.target === modal) fecharConfirmacao();
+    });
+
+    return modal;
   }
 
   async function contextoFirebase() {
     if (contextoPromise) return contextoPromise;
+
     contextoPromise = Promise.all([
       import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`),
       import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-auth.js`),
@@ -118,267 +214,290 @@
       contextoPromise = null;
       throw error;
     });
+
     return contextoPromise;
   }
 
-  function removerVersoesAntigas() {
-    IDS_ANTIGOS.forEach(id => document.getElementById(id)?.remove());
-    ESTILOS_ANTIGOS.forEach(id => document.getElementById(id)?.remove());
-
-    const form = document.getElementById(FORM_ID);
-    if (!form) return;
-    [...form.children].forEach(filho => {
-      if (filho.id === CARD_ID) return;
-      const conteudo = normalizar(filho.textContent);
-      if (
-        conteudo.includes("CONFIRMACAO OBRIGATORIA DA CHEGADA") ||
-        conteudo.includes("CONFERENCIA E CORRECAO OBRIGATORIA DA CHEGADA")
-      ) {
-        filho.remove();
-      }
-    });
+  function mostrarErro(mensagem) {
+    const erro = document.getElementById(ERRO_ID);
+    if (!erro) return;
+    erro.textContent = mensagem;
+    erro.classList.remove("hidden");
   }
 
-  function instalarEstilo() {
-    if (document.getElementById("cnChegadaEstavel82Style")) return;
-    const style = document.createElement("style");
-    style.id = "cnChegadaEstavel82Style";
-    style.textContent = `
-      body.cn-chegada-modal-aberta .toast,
-      body.cn-chegada-modal-aberta [id*="toast" i],
-      body.cn-chegada-modal-aberta [class*="toast" i]{pointer-events:none!important;user-select:none!important}
-      #${CARD_ID}{margin:14px 0 18px;padding:14px;border:1px solid #c4b5fd;border-radius:16px;background:#faf8ff}
-      #${CARD_ID}.hidden{display:none!important}
-      #${CARD_ID} .cn82-title{margin:0;color:#5b21b6;font-size:14px;font-weight:900}
-      #${CARD_ID} .cn82-description{margin:4px 0 10px;color:#64748b;font-size:12px;line-height:1.45}
-      #${CARD_ID} .cn82-current{margin:0 0 12px;padding:9px 11px;border:1px solid #ddd6fe;border-radius:10px;background:#fff;color:#475569;font-size:11px;font-weight:800}
-      #${CARD_ID} .cn82-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-      #${CARD_ID} label{margin:0;color:#334155;font-size:12px;font-weight:900}
-      #${CARD_ID} select{width:100%;min-height:46px;margin-top:6px;padding:0 12px;border:1px solid #a78bfa;border-radius:12px;background:#fff;font-size:14px;font-weight:800}
-      #${CARD_ID} select:disabled{background:#f3f4f6;color:#9ca3af}
-      #${CARD_ID} .cn82-note{margin-top:10px;padding:9px 11px;border-radius:10px;background:#ede9fe;color:#6d28d9;font-size:11px;font-weight:800}
-      @media(max-width:640px){#${CARD_ID} .cn82-grid{grid-template-columns:1fr}}
-    `;
-    document.head.appendChild(style);
+  function limparErro() {
+    const erro = document.getElementById(ERRO_ID);
+    if (!erro) return;
+    erro.textContent = "";
+    erro.classList.add("hidden");
   }
 
-  function preencherSelect(select, placeholder, valores = [], desabilitado = false) {
+  function preencherSelect(select, placeholder, valores, desabilitado = false) {
     if (!(select instanceof HTMLSelectElement)) return;
-    const opcoes = [new Option(placeholder, "")];
-    valores.forEach(valor => opcoes.push(new Option(valor, valor)));
-    select.replaceChildren(...opcoes);
+
+    select.replaceChildren(
+      new Option(placeholder, ""),
+      ...unicosOrdenados(valores).map(valor => new Option(valor, valor))
+    );
     select.value = "";
     select.disabled = desabilitado;
   }
 
-  function processosDisponiveis() {
-    if (!movimentoAtual?.processo || PROCESSOS.some(item => normalizar(item) === normalizar(movimentoAtual.processo))) {
-      return PROCESSOS;
-    }
-    return unicosOrdenados([...PROCESSOS, movimentoAtual.processo]);
-  }
-
-  function faccoesDoProcesso(processo) {
-    const cadastradas = FACCOES_POR_PROCESSO.get(normalizar(processo)) || [];
-    if (
-      movimentoAtual?.destino &&
-      normalizar(processo) === normalizar(movimentoAtual.processo) &&
-      !cadastradas.some(nome => normalizar(nome) === normalizar(movimentoAtual.destino))
-    ) {
-      return unicosOrdenados([...cadastradas, movimentoAtual.destino]);
-    }
-    return cadastradas;
-  }
-
-  function garantirCard() {
-    let card = document.getElementById(CARD_ID);
-    if (card) return card;
-
-    const form = document.getElementById(FORM_ID);
-    if (!form) return null;
-
-    card = document.createElement("section");
-    card.id = CARD_ID;
-    card.className = "hidden";
-    card.innerHTML = `
-      <p class="cn82-title">Conferência e correção obrigatória da chegada</p>
-      <p class="cn82-description">Escolha o processo que realmente foi feito e depois selecione quem realizou.</p>
-      <div class="cn82-current" id="${ATUAL_ID}">Carregando dados registrados...</div>
-      <div class="cn82-grid">
-        <label>
-          Processo realizado
-          <select id="${PROCESSO_ID}" required>
-            <option value="">Selecione o processo correto</option>
-          </select>
-        </label>
-        <label>
-          Quem fez / facção
-          <select id="${FACCAO_ID}" required disabled>
-            <option value="">Selecione o processo primeiro</option>
-          </select>
-        </label>
-      </div>
-      <div class="cn82-note">Uma correção feita aqui será salva antes do pagamento ser calculado.</div>
-    `;
-
+  function obterMovimentoDaTela() {
+    const id = texto(document.getElementById("chegadaMovimentacaoId")?.value);
     const info = document.getElementById(INFO_ID);
-    if (info?.parentElement === form) info.insertAdjacentElement("afterend", card);
-    else form.prepend(card);
+    const titulo = normalizar(document.getElementById("modalChegadaTitulo")?.textContent);
 
-    card.querySelector(`#${PROCESSO_ID}`)?.addEventListener("change", event => {
-      const processo = texto(event.currentTarget.value);
-      const faccaoSelect = document.getElementById(FACCAO_ID);
-      if (!processo) {
-        preencherSelect(faccaoSelect, "Selecione o processo primeiro", [], true);
-        return;
+    if (!id || (!titulo.includes("FACCAO") && !titulo.includes("FACÇÃO"))) return null;
+
+    let linha = texto(info?.querySelector("span")?.textContent);
+    if (!linha) {
+      linha = texto(info?.innerText || info?.textContent)
+        .split(/\n+/)
+        .map(texto)
+        .find(item => item.includes("|") && normalizar(item).includes("ENVIADO")) || "";
+    }
+
+    const partes = linha.split("|").map(texto).filter(Boolean);
+    const destino = partes[0] || "";
+    const processo = partes.find((parte, indice) =>
+      indice > 0 && !normalizar(parte).startsWith("ENVIADO")
+    ) || "";
+
+    return { id, destino, processo };
+  }
+
+  function processosDisponiveis(movimento) {
+    let processos = [];
+
+    try {
+      if (typeof window.getNomesProcessosFaccoesAtivos === "function") {
+        processos = window.getNomesProcessosFaccoesAtivos();
       }
-      const faccoes = faccoesDoProcesso(processo);
-      preencherSelect(
-        faccaoSelect,
-        faccoes.length ? "Selecione quem realizou" : "Nenhuma facção vinculada",
-        faccoes,
-        !faccoes.length
-      );
+    } catch (error) {
+      console.warn("Não foi possível usar os processos dinâmicos.", error);
+    }
+
+    if (!Array.isArray(processos) || !processos.length) {
+      processos = Object.keys(PROCESSOS_FACCOES);
+    }
+
+    if (movimento?.processo) processos = [...processos, movimento.processo];
+    return unicosOrdenados(processos);
+  }
+
+  function faccoesLocaisDoProcesso(processo, movimento) {
+    let faccoes = [];
+
+    try {
+      if (typeof window.getFaccoesGerenciadasPorProcesso === "function") {
+        faccoes = window.getFaccoesGerenciadasPorProcesso(processo);
+      }
+    } catch (error) {
+      console.warn("Não foi possível usar as facções dinâmicas.", error);
+    }
+
+    if (!Array.isArray(faccoes) || !faccoes.length) {
+      const chave = Object.keys(PROCESSOS_FACCOES)
+        .find(nome => normalizar(nome) === normalizar(processo));
+      faccoes = chave ? PROCESSOS_FACCOES[chave] : [];
+    }
+
+    if (
+      movimento?.destino &&
+      normalizar(processo) === normalizar(movimento.processo)
+    ) {
+      faccoes = [...faccoes, movimento.destino];
+    }
+
+    return unicosOrdenados(faccoes);
+  }
+
+  function processosDaFaccao(faccao) {
+    const campos = [
+      faccao?.processosPermitidos,
+      faccao?.processos,
+      faccao?.servicosPermitidos,
+      faccao?.servicos,
+      faccao?.processo
+    ];
+
+    const processos = [];
+    campos.forEach(campo => {
+      const itens = Array.isArray(campo) ? campo : (campo ? [campo] : []);
+      itens.forEach(item => {
+        const nome = texto(
+          typeof item === "string"
+            ? item
+            : item?.nome || item?.processo || item?.servicoNome || item?.label
+        );
+        if (nome) processos.push(nome);
+      });
     });
 
-    return card;
+    return unicosOrdenados(processos);
   }
 
-  function modalAberto() {
-    const modal = document.getElementById(MODAL_ID);
-    return Boolean(modal && !modal.classList.contains("hidden"));
+  async function carregarFaccoesRemotas() {
+    if (cacheFaccoesRemotas) return cacheFaccoesRemotas;
+
+    const { db, firestore } = await contextoFirebase();
+    const snap = await firestore.getDocs(firestore.collection(db, "faccoes"));
+    cacheFaccoesRemotas = snap.docs
+      .map(documento => ({ id: documento.id, ...documento.data() }))
+      .filter(faccao =>
+        faccao.ativo !== false &&
+        !faccao.cadastroPendente &&
+        !faccao.duplicadaDe &&
+        faccao.statusImportacao !== "duplicada_consolidada"
+      );
+
+    return cacheFaccoesRemotas;
   }
 
-  function movimentoDoResumo(id) {
-    const linha = texto(document.getElementById(INFO_ID)?.querySelector("span")?.textContent);
-    const partes = linha.split("|").map(texto).filter(Boolean);
-    if (!id || partes.length < 2 || normalizar(partes[1]).startsWith("ENVIADO")) return null;
-    return {
-      id,
-      destino: partes[0],
-      processo: partes[1],
-      destinoId: "",
-      tipoDestino: "faccao",
-      origemLocal: true
-    };
+  async function selecionarProcesso() {
+    limparErro();
+
+    const processo = texto(document.getElementById(PROCESSO_ID)?.value);
+    const faccaoSelect = document.getElementById(FACCAO_ID);
+
+    if (!processo) {
+      preencherSelect(faccaoSelect, "Selecione o processo primeiro", [], true);
+      return;
+    }
+
+    const locais = faccoesLocaisDoProcesso(processo, movimentoPendente);
+    if (locais.length) {
+      preencherSelect(faccaoSelect, "Selecione quem realizou", locais, false);
+      return;
+    }
+
+    if (carregandoFaccoes) return;
+    carregandoFaccoes = true;
+    preencherSelect(faccaoSelect, "Carregando facções...", [], true);
+
+    try {
+      const faccoes = await carregarFaccoesRemotas();
+      const nomes = faccoes
+        .filter(faccao => processosDaFaccao(faccao)
+          .some(nome => normalizar(nome) === normalizar(processo)))
+        .map(faccao => texto(faccao.nome || faccao.nomeFaccao || faccao.razaoSocial))
+        .filter(Boolean);
+
+      if (
+        movimentoPendente?.destino &&
+        normalizar(processo) === normalizar(movimentoPendente.processo)
+      ) {
+        nomes.push(movimentoPendente.destino);
+      }
+
+      preencherSelect(
+        faccaoSelect,
+        nomes.length ? "Selecione quem realizou" : "Nenhuma facção vinculada",
+        nomes,
+        !nomes.length
+      );
+    } catch (error) {
+      console.error("Erro ao carregar facções do processo.", error);
+      preencherSelect(faccaoSelect, "Erro ao carregar facções", [], true);
+      mostrarErro("Não foi possível carregar as facções deste processo.");
+    } finally {
+      carregandoFaccoes = false;
+    }
   }
 
-  function aplicarMovimento(movimento) {
-    movimentoAtual = movimento;
-    idPreparado = movimento.id;
+  function abrirConfirmacao(form) {
+    removerInterfaceAntiga();
+    instalarEstilo();
+    garantirModalConfirmacao();
+    limparErro();
 
-    const card = garantirCard();
-    if (!card) return false;
-    card.classList.remove("hidden");
+    const movimento = obterMovimentoDaTela();
+    if (!movimento) {
+      form.dataset.chegada83Liberada = "1";
+      form.requestSubmit();
+      return;
+    }
 
-    const atual = document.getElementById(ATUAL_ID);
-    if (atual) {
-      atual.textContent = `Registrado na saída: ${texto(movimento.processo) || "não informado"} • ${texto(movimento.destino) || "não informado"}`;
+    formPendente = form;
+    movimentoPendente = movimento;
+
+    const resumo = document.getElementById(RESUMO_ID);
+    if (resumo) {
+      resumo.textContent = `Registrado na saída: ${movimento.processo || "não informado"} • ${movimento.destino || "não informado"}`;
     }
 
     preencherSelect(
       document.getElementById(PROCESSO_ID),
-      "Selecione o processo correto",
-      processosDisponiveis()
+      "Selecione o processo",
+      processosDisponiveis(movimento),
+      false
     );
     preencherSelect(document.getElementById(FACCAO_ID), "Selecione o processo primeiro", [], true);
 
-    const resumo = document.getElementById("modalChegadaResumo");
-    if (resumo) {
-      resumo.textContent = "Confira ou corrija o processo e a facção. Depois informe data, falta e desconto por defeito.";
+    const botao = document.getElementById(BTN_CONFIRMAR_ID);
+    if (botao) {
+      botao.disabled = false;
+      botao.textContent = "Confirmar operação";
     }
-    return true;
+
+    document.getElementById(MODAL_CONFIRMACAO_ID)?.classList.remove("hidden");
+    document.body.classList.add("cc83-aberto");
+    window.setTimeout(() => document.getElementById(PROCESSO_ID)?.focus(), 0);
   }
 
-  function limparEstado() {
-    movimentoAtual = null;
-    idPreparado = "";
-    preencherSelect(document.getElementById(PROCESSO_ID), "Selecione o processo correto");
-    preencherSelect(document.getElementById(FACCAO_ID), "Selecione o processo primeiro", [], true);
-    const atual = document.getElementById(ATUAL_ID);
-    if (atual) atual.textContent = "Carregando dados registrados...";
+  function fecharConfirmacao() {
+    document.getElementById(MODAL_CONFIRMACAO_ID)?.classList.add("hidden");
+    document.body.classList.remove("cc83-aberto");
+    limparErro();
+    formPendente = null;
+    movimentoPendente = null;
+    carregandoFaccoes = false;
   }
 
-  async function carregarMovimentoComoReserva(id, token) {
+  async function aguardarUsuario(auth) {
+    if (auth.currentUser) return auth.currentUser;
+
+    for (let tentativa = 0; tentativa < 12; tentativa += 1) {
+      await new Promise(resolve => window.setTimeout(resolve, 50));
+      if (auth.currentUser) return auth.currentUser;
+    }
+
+    return null;
+  }
+
+  async function localizarIdFaccao(faccao) {
     try {
       const { db, firestore } = await contextoFirebase();
-      const snap = await firestore.getDoc(firestore.doc(db, "movimentacoesProducao", id));
-      if (token !== tokenAbertura || !modalAberto() || !snap.exists()) return;
-      aplicarMovimento({ id: snap.id, ...snap.data() });
+      const consulta = firestore.query(
+        firestore.collection(db, "faccoes"),
+        firestore.where("nome", "==", faccao),
+        firestore.limit(1)
+      );
+      const snap = await firestore.getDocs(consulta);
+      return snap.empty ? "" : snap.docs[0].id;
     } catch (error) {
-      console.error("Erro ao carregar a movimentação da chegada.", error);
-      avisar("Não foi possível carregar os dados da chegada.");
+      console.warn("Não foi possível localizar o ID da facção.", error);
+      return "";
     }
   }
 
-  function prepararAbertura() {
-    const token = ++tokenAbertura;
-    let tentativas = 0;
+  async function salvarCorrecao(processo, faccao) {
+    const movimento = movimentoPendente;
+    if (!movimento) throw new Error("Movimentação não encontrada.");
 
-    removerVersoesAntigas();
-    garantirCard();
-    document.body.classList.add("cn-chegada-modal-aberta");
-
-    const tentar = () => {
-      if (token !== tokenAbertura || !modalAberto()) return;
-
-      const id = texto(document.getElementById("chegadaMovimentacaoId")?.value);
-      if (!id) {
-        tentativas += 1;
-        if (tentativas < 6) window.setTimeout(tentar, 25);
-        return;
-      }
-
-      if (idPreparado === id && movimentoAtual?.id === id) {
-        document.getElementById(CARD_ID)?.classList.remove("hidden");
-        return;
-      }
-
-      const movimentoLocal = movimentoDoResumo(id);
-      if (movimentoLocal) aplicarMovimento(movimentoLocal);
-      else carregarMovimentoComoReserva(id, token);
-    };
-
-    window.setTimeout(tentar, 0);
-  }
-
-  function validarSelecao() {
-    const processo = texto(document.getElementById(PROCESSO_ID)?.value);
-    const faccao = texto(document.getElementById(FACCAO_ID)?.value);
-
-    if (!processo) {
-      return { ok: false, mensagem: "Selecione o processo que realmente foi realizado.", foco: PROCESSO_ID };
-    }
-    if (!faccao) {
-      return { ok: false, mensagem: "Selecione quem fez / a facção responsável.", foco: FACCAO_ID };
-    }
-    if (!faccoesDoProcesso(processo).some(nome => normalizar(nome) === normalizar(faccao))) {
-      return { ok: false, mensagem: "A facção escolhida não está vinculada ao processo selecionado.", foco: FACCAO_ID };
-    }
-    return { ok: true, processo, faccao };
-  }
-
-  function houveCorrecao(processo, faccao) {
-    return normalizar(processo) !== normalizar(movimentoAtual?.processo) ||
-      normalizar(faccao) !== normalizar(movimentoAtual?.destino);
-  }
-
-  async function salvarCorrecao(id, processo, faccao) {
-    if (!houveCorrecao(processo, faccao)) return false;
+    const alterouProcesso = normalizar(processo) !== normalizar(movimento.processo);
+    const alterouFaccao = normalizar(faccao) !== normalizar(movimento.destino);
+    if (!alterouProcesso && !alterouFaccao) return false;
 
     const { auth, db, firestore } = await contextoFirebase();
-    let usuario = auth.currentUser;
-    for (let tentativa = 0; tentativa < 10 && !usuario; tentativa += 1) {
-      await new Promise(resolve => window.setTimeout(resolve, 50));
-      usuario = auth.currentUser;
-    }
+    const usuario = await aguardarUsuario(auth);
     if (!usuario) throw new Error("Usuário não autenticado.");
 
-    const mudouFaccao = normalizar(faccao) !== normalizar(movimentoAtual?.destino);
+    const destinoId = alterouFaccao ? await localizarIdFaccao(faccao) : undefined;
     const dados = {
-      processoAnteriorChegada: movimentoAtual?.processoAnteriorChegada || movimentoAtual?.processo || "",
-      destinoAnteriorChegada: movimentoAtual?.destinoAnteriorChegada || movimentoAtual?.destino || "",
-      destinoIdAnteriorChegada: movimentoAtual?.destinoIdAnteriorChegada || movimentoAtual?.destinoId || "",
+      processoAnteriorChegada: movimento.processo || "",
+      destinoAnteriorChegada: movimento.destino || "",
       processo,
       destino: faccao,
       correcaoNaChegada: true,
@@ -389,180 +508,126 @@
       atualizadoEm: firestore.serverTimestamp()
     };
 
-    if (mudouFaccao) {
-      dados.destinoId = "";
-      dados.destinoIdPendenteCorrecao = true;
+    if (alterouFaccao) {
+      dados.destinoIdAnteriorChegada = "";
+      dados.destinoId = destinoId;
+      dados.destinoIdPendenteCorrecao = !destinoId;
     }
 
-    await firestore.updateDoc(firestore.doc(db, "movimentacoesProducao", id), dados);
-    movimentoAtual.processo = processo;
-    movimentoAtual.destino = faccao;
-    if (mudouFaccao) movimentoAtual.destinoId = "";
-    return mudouFaccao;
-  }
+    await firestore.updateDoc(
+      firestore.doc(db, "movimentacoesProducao", movimento.id),
+      dados
+    );
 
-  async function sincronizarDestinoIdEmSegundoPlano(id, faccao) {
-    try {
-      const { db, firestore } = await contextoFirebase();
-      const busca = firestore.query(
-        firestore.collection(db, "faccoes"),
-        firestore.where("nome", "==", faccao),
-        firestore.limit(1)
-      );
-      const snap = await firestore.getDocs(busca);
-      if (snap.empty) return;
-
-      const ref = firestore.doc(db, "movimentacoesProducao", id);
-      const movimentoSnap = await firestore.getDoc(ref);
-      if (!movimentoSnap.exists() || normalizar(movimentoSnap.data().destino) !== normalizar(faccao)) return;
-
-      await firestore.updateDoc(ref, {
-        destinoId: snap.docs[0].id,
-        destinoIdPendenteCorrecao: false
-      });
-    } catch (error) {
-      console.warn("O ID da facção será sincronizado posteriormente.", error);
-    }
-  }
-
-  function atualizarResumoVisual(processo, faccao) {
-    const span = document.getElementById(INFO_ID)?.querySelector("span");
-    if (span) {
-      const enviado = texto(span.textContent)
-        .split("|")
-        .map(texto)
-        .find(parte => normalizar(parte).startsWith("ENVIADO")) || "";
-      span.textContent = `${faccao} | ${processo}${enviado ? ` | ${enviado}` : ""}`;
-    }
-
-    const atual = document.getElementById(ATUAL_ID);
-    if (atual) atual.textContent = `Confirmado para a chegada: ${processo} • ${faccao}`;
-  }
-
-  function liberarSubmit(form) {
-    form.dataset.cnChegada82Liberada = "1";
-    form.requestSubmit();
-  }
-
-  function instalarEventos() {
-    if (eventosInstalados) return;
-    eventosInstalados = true;
-
-    document.addEventListener("submit", event => {
-      if (event.target?.id !== FORM_ID) return;
-      const form = event.target;
-
-      if (form.dataset.cnChegada82Liberada === "1") {
-        delete form.dataset.cnChegada82Liberada;
-        return;
-      }
-
-      const card = document.getElementById(CARD_ID);
-      if (!card || card.classList.contains("hidden")) return;
-
-      const validacao = validarSelecao();
-      event.preventDefault();
-      event.stopImmediatePropagation();
-
-      if (!validacao.ok) {
-        avisar(validacao.mensagem);
-        document.getElementById(validacao.foco)?.focus();
-        return;
-      }
-
-      const id = texto(document.getElementById("chegadaMovimentacaoId")?.value);
-      if (!id || !movimentoAtual) {
-        avisar("A movimentação da chegada não foi encontrada.");
-        return;
-      }
-
-      if (!houveCorrecao(validacao.processo, validacao.faccao)) {
-        atualizarResumoVisual(validacao.processo, validacao.faccao);
-        liberarSubmit(form);
-        return;
-      }
-
-      const botao = form.querySelector('button[type="submit"]');
-      const textoOriginal = botao?.textContent || "Confirmar chegada";
-      if (botao) {
-        botao.disabled = true;
-        botao.textContent = "Salvando correção...";
-      }
-
-      salvarCorrecao(id, validacao.processo, validacao.faccao)
-        .then(mudouFaccao => {
-          atualizarResumoVisual(validacao.processo, validacao.faccao);
-          if (botao) {
-            botao.disabled = false;
-            botao.textContent = textoOriginal;
-          }
-          liberarSubmit(form);
-          if (mudouFaccao) {
-            window.setTimeout(() => sincronizarDestinoIdEmSegundoPlano(id, validacao.faccao), 500);
-          }
-        })
-        .catch(error => {
-          console.error("Erro ao salvar correção da chegada.", error);
-          if (botao) {
-            botao.disabled = false;
-            botao.textContent = textoOriginal;
-          }
-          avisar("Não foi possível salvar a correção. A chegada não foi registrada.");
-        });
-    }, true);
-
-    document.addEventListener("click", event => {
-      const alvo = event.target instanceof Element ? event.target : null;
-      if (alvo?.closest("#btnFecharModalChegada,#btnCancelarModalChegada")) {
-        tokenAbertura += 1;
-        limparEstado();
-        document.body.classList.remove("cn-chegada-modal-aberta");
-      }
-    }, true);
-  }
-
-  function observarModal() {
-    const modal = document.getElementById(MODAL_ID);
-    if (!modal || modal.dataset.cnChegadaEstavel82 === "1") return Boolean(modal);
-
-    modal.dataset.cnChegadaEstavel82 = "1";
-    observadorModal?.disconnect();
-
-    observadorModal = new MutationObserver(() => {
-      if (modal.classList.contains("hidden")) {
-        tokenAbertura += 1;
-        limparEstado();
-        document.body.classList.remove("cn-chegada-modal-aberta");
-      } else {
-        prepararAbertura();
-      }
-    });
-
-    observadorModal.observe(modal, {
-      attributes: true,
-      attributeFilter: ["class"]
-    });
+    movimento.processo = processo;
+    movimento.destino = faccao;
     return true;
   }
 
-  function iniciar() {
-    removerVersoesAntigas();
-    instalarEstilo();
-    garantirCard();
-    instalarEventos();
+  function atualizarResumoPrincipal(processo, faccao) {
+    const info = document.getElementById(INFO_ID);
+    const span = info?.querySelector("span");
+    if (!span) return;
 
-    window.setTimeout(() => contextoFirebase().catch(() => {}), 300);
+    const enviado = texto(span.textContent)
+      .split("|")
+      .map(texto)
+      .find(parte => normalizar(parte).startsWith("ENVIADO")) || "";
 
-    let tentativas = 0;
-    const intervalo = window.setInterval(() => {
-      tentativas += 1;
-      if (observarModal() || tentativas >= 30) window.clearInterval(intervalo);
-    }, 150);
+    span.textContent = `${faccao} | ${processo}${enviado ? ` | ${enviado}` : ""}`;
+  }
 
-    window.addEventListener("pageshow", () => {
-      observarModal();
-      if (modalAberto()) prepararAbertura();
+  async function confirmarOperacao() {
+    limparErro();
+
+    const processo = texto(document.getElementById(PROCESSO_ID)?.value);
+    const faccao = texto(document.getElementById(FACCAO_ID)?.value);
+
+    if (!processo) {
+      mostrarErro("Selecione o processo que realmente foi realizado.");
+      document.getElementById(PROCESSO_ID)?.focus();
+      return;
+    }
+
+    if (!faccao) {
+      mostrarErro("Selecione quem fez / a facção responsável.");
+      document.getElementById(FACCAO_ID)?.focus();
+      return;
+    }
+
+    const permitidas = faccoesLocaisDoProcesso(processo, movimentoPendente);
+    if (permitidas.length && !permitidas.some(nome => normalizar(nome) === normalizar(faccao))) {
+      mostrarErro("A facção escolhida não pertence ao processo selecionado.");
+      return;
+    }
+
+    const botao = document.getElementById(BTN_CONFIRMAR_ID);
+    if (botao) {
+      botao.disabled = true;
+      botao.textContent = "Concluindo...";
+    }
+
+    try {
+      await salvarCorrecao(processo, faccao);
+      atualizarResumoPrincipal(processo, faccao);
+
+      const form = formPendente;
+      document.getElementById(MODAL_CONFIRMACAO_ID)?.classList.add("hidden");
+      document.body.classList.remove("cc83-aberto");
+      formPendente = null;
+      movimentoPendente = null;
+
+      if (form) {
+        form.dataset.chegada83Liberada = "1";
+        form.requestSubmit();
+      }
+    } catch (error) {
+      console.error("Erro ao confirmar processo e facção da chegada.", error);
+      mostrarErro("Não foi possível salvar a conferência. A chegada não foi registrada.");
+    } finally {
+      if (botao) {
+        botao.disabled = false;
+        botao.textContent = "Confirmar operação";
+      }
+    }
+  }
+
+  function instalarEventos() {
+    document.addEventListener("submit", event => {
+      if (event.target?.id !== FORM_ID) return;
+
+      const form = event.target;
+      if (form.dataset.chegada83Liberada === "1") {
+        delete form.dataset.chegada83Liberada;
+        return;
+      }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      abrirConfirmacao(form);
+    }, true);
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && !document.getElementById(MODAL_CONFIRMACAO_ID)?.classList.contains("hidden")) {
+        fecharConfirmacao();
+      }
     });
+
+    document.addEventListener("click", event => {
+      const alvo = event.target instanceof Element ? event.target : null;
+      if (!alvo) return;
+
+      if (alvo.closest("#btnFecharModalChegada,#btnCancelarModalChegada")) {
+        fecharConfirmacao();
+      }
+    }, true);
+  }
+
+  function iniciar() {
+    removerInterfaceAntiga();
+    instalarEstilo();
+    garantirModalConfirmacao();
+    instalarEventos();
   }
 
   if (document.readyState === "loading") {
