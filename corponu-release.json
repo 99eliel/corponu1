@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01-chegada-confirmacao-definitiva-77",
-  "updatedAt": "2026-08-01T21:18:00-03:00",
-  "notes": "Corrige definitivamente a confirmação da chegada. Os campos são preparados uma única vez por abertura, não são reconstruídos durante o uso e reaparecem corretamente ao fechar e abrir novamente."
+  "version": "2026-08-01-chegada-dados-corretos-78",
+  "updatedAt": "2026-08-01T21:24:00-03:00",
+  "notes": "Corrige a confirmação da chegada para ler exclusivamente a linha de facção e processo. Os campos agora mostram o processo realizado e quem fez, sem confundir com OP e referência."
 }
