@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-chegada-manual-otimizada-97",
-  "updatedAt": "2026-08-03T12:33:00-03:00",
-  "notes": "Reduz consultas extras após a chegada manual sem alterar o salvamento, a proteção contra duplicidade ou os cálculos. Somente chegadas manuais de Lateral e Alça atualizam essa aba, com uma única atualização direcionada; outros processos deixam de disparar leituras desnecessárias de Lateral e Alça."
+  "version": "2026-08-03-aba-lateral-bojo-98",
+  "updatedAt": "2026-08-03T12:45:00-03:00",
+  "notes": "Renomeia somente a aba superior de Facções de Lateral para Lateral e Bojo. Contador, título interno Lateral e Alça, movimentações, chegadas, pagamentos e demais funções permanecem inalterados."
 }
