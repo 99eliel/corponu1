@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "2026-08-03-faccoes-chegada-rapida-31";
+  const VERSION = "2026-08-03-faccoes-chegada-rapida-32";
   if (window.__CORPONU_FACCOES_CORTE_LOADER__ === VERSION) return;
   window.__CORPONU_FACCOES_CORTE_LOADER__ = VERSION;
 
@@ -46,6 +46,12 @@
       "corponu-faccoes-sem-resumo-processos.js",
       "faccoes-sem-resumo-processos",
       "Não foi possível remover o bloco de processos da tela de Facções."
+    );
+
+    carregarScript(
+      "corponu-lateral-observacao-opcional.js",
+      "lateral-observacao-opcional",
+      "Não foi possível tornar a observação opcional na chegada de Lateral."
     );
   }
 
