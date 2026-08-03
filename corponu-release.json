@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-registrar-chegada-rapido-100",
-  "updatedAt": "2026-08-03T13:45:00-03:00",
-  "notes": "A chegada de Lateral finaliza após salvar movimentação, pagamento e marcação da lateral. Recálculo de montagem, auditoria e recarga completa passam a ocorrer em segundo plano, sem manter o modal travado por minutos. Nenhuma fórmula ou proteção financeira foi removida."
+  "version": "2026-08-03-todos-pagamentos-rapidos-101",
+  "updatedAt": "2026-08-03T14:16:00-03:00",
+  "notes": "O fluxo comum de chegada e geração de pagamento deixa de usar transação de reserva na movimentação e evita repetir a verificação quando módulos de Sutiã Completo, referência especial ou componentes reenviam o mesmo formulário internamente. Continua verificando se já existe pagamento, bloqueia clique duplo, Enter e outra aba do mesmo computador, mas cada registro faz uma única consulta antes do salvamento. A otimização anterior da chegada de Lateral permanece ativa."
 }
