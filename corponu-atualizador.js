@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-03-todos-pagamentos-rapidos-101";
+  const LOCAL_RELEASE = "2026-08-03-remover-codigo-interno-alca-102";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
