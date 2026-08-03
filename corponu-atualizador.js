@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-03-sutia-912-sem-verificacoes-93";
+  const LOCAL_RELEASE = "2026-08-03-sutia-912-fluxo-rapido-94";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -35,6 +35,7 @@
       ["corponu-revisao-limpar-apos-salvar.js", "revisao-limpar-apos-salvar", "Não foi possível limpar a revisão após o salvamento."],
       ["corponu-revisao-lista-estavel.js", "revisao-lista-estavel", "Não foi possível carregar a lista estável de lateral e bojo."],
       ["corponu-componentes-consolidados-hotfix.js", "componentes-nao-informados", "Não foi possível proteger componentes ainda não informados."],
+      ["corponu-sutia-912-fluxo-rapido.js", "sutia-912-fluxo-rapido", "Não foi possível ativar o fluxo rápido da referência 912."],
       ["corponu-sutia-completo-calculo.js", "sutia-completo-calculo", "Não foi possível carregar o cálculo automático do Sutiã Completo."],
       ["corponu-sutia-completo-reconciliacao-manual.js", "sutia-completo-reconciliacao-manual", "Não foi possível reconciliar o pagamento da chegada manual de Sutiã Completo."],
       ["corponu-sutia-completo-referencia-especial-integral.js", "sutia-especial-integral", "Não foi possível aplicar o valor integral da referência especial."],
