@@ -1,12 +1,11 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-03-sutia-especial-integral-92";
+  const VERSION = "2026-08-03-sutia-912-direcionado-94";
   const FIREBASE_VERSION = "10.12.5";
   const CONFIG_PRINCIPAL = "sutia-completo-pagamento";
   const CONFIG_COMPATIVEL = "sutia-completo-financeiro";
   const PROCESSO_COMPLETO = "SUTIÃ COMPLETO";
-  const SESSION_KEY = `corponu_ref_especial_integral_${VERSION}`;
 
   if (window.__CORPONU_SUTIA_ESPECIAL_INTEGRAL__ === VERSION) return;
   window.__CORPONU_SUTIA_ESPECIAL_INTEGRAL__ = VERSION;
@@ -14,8 +13,7 @@
   let firebasePromise = null;
   let configCache = null;
   let configCacheEm = 0;
-  let aplicandoPagamentos = false;
-  let timerAplicacao = 0;
+  const tentativas = new Map();
 
   const texto = valor => String(valor ?? "").trim();
   const normalizar = valor => texto(valor)
@@ -25,9 +23,7 @@
     .replace(/\s+/g, " ")
     .trim()
     .toUpperCase();
-
   const referenciaNormalizada = valor => texto(valor).replace(/\s+/g, "").toUpperCase();
-
   const numero = (valor, padrao = 0) => {
     if (typeof valor === "number") return Number.isFinite(valor) ? valor : padrao;
     const bruto = texto(valor);
@@ -37,10 +33,12 @@
       : bruto);
     return Number.isFinite(convertido) ? convertido : padrao;
   };
-
   const arred4 = valor => Math.round((numero(valor) + Number.EPSILON) * 10000) / 10000;
   const arred2 = valor => Math.round((numero(valor) + Number.EPSILON) * 100) / 100;
-  const moeda4 = valor => `R$ ${numero(valor).toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
+  const moeda4 = valor => `R$ ${numero(valor).toLocaleString("pt-BR", {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4
+  })}`;
 
   function processoCanonico(valor) {
     return normalizar(valor) === "SUTIA COMPLETO" ? PROCESSO_COMPLETO : texto(valor).toUpperCase();
@@ -77,16 +75,16 @@
   }
 
   async function carregarConfig(forcar = false) {
-    if (!forcar && configCache && Date.now() - configCacheEm < 30000) return configCache;
+    if (!forcar && configCache && Date.now() - configCacheEm < 60000) return configCache;
 
     const { fs, db } = await firebase();
     const [principal, compativel] = await Promise.all([
       fs.getDoc(fs.doc(db, "configuracoes", CONFIG_PRINCIPAL)).catch(() => null),
       fs.getDoc(fs.doc(db, "configuracoes", CONFIG_COMPATIVEL)).catch(() => null)
     ]);
-
     const a = principal?.exists?.() ? principal.data() : {};
     const b = compativel?.exists?.() ? compativel.data() : {};
+
     configCache = {
       referencia: referenciaNormalizada(
         a.referenciaEspecial || b.referenciaEspecial || "912"
@@ -104,343 +102,355 @@
     return configCache;
   }
 
-  function ehReferenciaEspecial(referencia, config) {
-    return Boolean(config?.referencia) &&
-      referenciaNormalizada(referencia) === referenciaNormalizada(config.referencia);
+  function ehEspecial(ref, config) {
+    return referenciaNormalizada(ref) === referenciaNormalizada(config?.referencia);
   }
 
-  function garantirEstilo() {
-    if (document.getElementById("styleSutiaEspecialIntegral92")) return;
-    const style = document.createElement("style");
-    style.id = "styleSutiaEspecialIntegral92";
-    style.textContent = `
-      .sc92-referencia-integral .sc51-componentes,
-      .sc92-referencia-integral .sc51-opcoes-fixas{display:none!important}
-      .sc92-aviso{margin:0;padding:12px 13px;border:1px solid #86efac;border-radius:11px;background:#f0fdf4;color:#166534;font-size:12px;font-weight:900;line-height:1.45}
-      .sc92-aviso strong{display:block;margin-bottom:3px;color:#14532d;font-size:13px}
-      #configSutiaCompleto51 .sc92-config-aviso{display:block;margin-top:8px;color:#166534}
-    `;
-    document.head.appendChild(style);
+  function pagamentoEhEspecial(item, config) {
+    return processoCanonico(
+      item?.processo || item?.servicoNome || item?.processoMovimentacao
+    ) === PROCESSO_COMPLETO && ehEspecial(item?.referencia, config);
   }
 
-  function dispararMudanca(elemento) {
-    if (!elemento) return;
-    elemento.dispatchEvent(new Event("change", { bubbles: true }));
+  function precisaCorrigir(item, config) {
+    if (statusImutavel(item) || !pagamentoEhEspecial(item, config)) return false;
+    const quantidade = Math.max(0, numero(item?.quantidade));
+    if (!quantidade) return false;
+    const total = arred2(quantidade * config.valor);
+    const status = normalizar(item?.statusPagamento || item?.status || "PENDENTE");
+    return item?.regraReferenciaEspecialIntegral !== true ||
+      item?.valorPendente === true ||
+      ["SEM VALOR", "SEM_VALOR"].includes(status) ||
+      Math.abs(numero(item?.valorUnitario) - config.valor) > 0.0001 ||
+      Math.abs(numero(item?.total ?? item?.valorTotal) - total) > 0.009 ||
+      numero(item?.descontoDefeito) !== 0;
+  }
+
+  async function aplicarItens(itens, config, origem) {
+    const corrigir = itens.filter(item => precisaCorrigir(item, config));
+    if (!corrigir.length) {
+      return {
+        encontrados: itens.filter(item => pagamentoEhEspecial(item, config) && !statusImutavel(item)).length,
+        atualizados: 0
+      };
+    }
+
+    const { fs, db, auth } = await firebase();
+    const usuario = auth.currentUser;
+    let atualizados = 0;
+
+    for (let inicio = 0; inicio < corrigir.length; inicio += 350) {
+      const batch = fs.writeBatch(db);
+      corrigir.slice(inicio, inicio + 350).forEach(item => {
+        const quantidade = Math.max(0, numero(item.quantidade));
+        const total = arred2(quantidade * config.valor);
+        const descontoAnterior = Math.max(0, numero(item.descontoDefeito));
+        const memoriaAnterior = item.memoriaCalculoSutiaCompleto || {};
+        const agora = fs.serverTimestamp();
+
+        const patch = {
+          valorUnitario: arred4(config.valor),
+          subtotal: total,
+          total,
+          valorTotal: total,
+          valorUnitarioCalculadoSutiaCompleto: arred4(config.valor),
+          subtotalCalculadoSutiaCompleto: total,
+          totalCalculadoSutiaCompleto: total,
+          valorTotalDefinidoManualmente: true,
+          valorManualFinanceiro: false,
+          formaValorPagamento: "VALOR_INTEGRAL_REFERENCIA_ESPECIAL",
+          statusPagamento: "pendente",
+          valorPendente: false,
+          avisoPagamento: "",
+          descontoDefeito: 0,
+          regraReferenciaEspecialIntegral: true,
+          referenciaEspecialIntegral: config.referencia,
+          valorReferenciaEspecialIntegral: arred4(config.valor),
+          memoriaCalculoSutiaCompleto: {
+            ...memoriaAnterior,
+            referencia: config.referencia,
+            valorBase: arred4(config.valor),
+            lateralPronta: false,
+            bojoPronto: false,
+            fechoPronto: true,
+            pontoLuzPronto: true,
+            descontoLateral: 0,
+            descontoBojo: 0,
+            descontoFecho: 0,
+            descontoPontoLuz: 0,
+            descontoDefeitoIgnorado: descontoAnterior,
+            valorUnitarioFinal: arred4(config.valor),
+            quantidade,
+            totalFinal: total,
+            faltantes: [],
+            regra: "REFERENCIA_ESPECIAL_VALOR_INTEGRAL",
+            versao: VERSION
+          },
+          observacoes: `Referência especial ${config.referencia}: valor integral de ${moeda4(config.valor)} por peça, sem descontos.`,
+          regraReferenciaEspecialOrigem: origem,
+          atualizadoEm: agora,
+          atualizadoPor: usuario?.uid || "",
+          regraReferenciaEspecialAtualizadaEm: agora,
+          regraReferenciaEspecialAtualizadaPor: usuario?.uid || ""
+        };
+        if (descontoAnterior > 0) {
+          patch.descontoDefeitoOriginalAntesRegraIntegral = descontoAnterior;
+        }
+
+        batch.set(fs.doc(db, "entregasPagamento", item.id), patch, { merge: true });
+        atualizados += 1;
+      });
+      await batch.commit();
+    }
+
+    if (atualizados > 0) {
+      window.setTimeout(() => document.getElementById("btnAtualizarServidor")?.click(), 120);
+    }
+    return { encontrados: corrigir.length, atualizados };
+  }
+
+  async function buscarPorMovimentacao(movimentacaoId) {
+    const { fs, db } = await firebase();
+    const snap = await fs.getDocs(fs.query(
+      fs.collection(db, "entregasPagamento"),
+      fs.where("movimentacaoId", "==", movimentacaoId),
+      fs.limit(20)
+    ));
+    return snap.docs.map(item => ({ id: item.id, ...item.data() }));
+  }
+
+  async function buscarPorOP(numeroOP) {
+    const opTexto = texto(numeroOP);
+    if (!opTexto) return [];
+    const { fs, db } = await firebase();
+    const valores = [opTexto];
+    const numerico = Number(opTexto);
+    if (Number.isFinite(numerico)) valores.push(numerico);
+
+    const mapa = new Map();
+    for (const valor of [...new Set(valores)]) {
+      const snap = await fs.getDocs(fs.query(
+        fs.collection(db, "entregasPagamento"),
+        fs.where("numeroOP", "==", valor),
+        fs.limit(40)
+      ));
+      snap.docs.forEach(item => mapa.set(item.id, { id: item.id, ...item.data() }));
+    }
+    return [...mapa.values()];
+  }
+
+  function filtrarAssinatura(itens, assinatura, config) {
+    return itens.filter(item => {
+      if (!pagamentoEhEspecial(item, config)) return false;
+      if (assinatura.faccao && normalizar(item.faccao) !== normalizar(assinatura.faccao)) return false;
+      if (assinatura.data && texto(item.dataEntrega || item.dataChegada) !== assinatura.data) return false;
+      return true;
+    });
+  }
+
+  async function aplicarAssinatura(assinatura) {
+    const config = await carregarConfig();
+    let itens = assinatura.movimentacaoId
+      ? await buscarPorMovimentacao(assinatura.movimentacaoId)
+      : await buscarPorOP(assinatura.numeroOP);
+    itens = filtrarAssinatura(itens, assinatura, config);
+    return aplicarItens(itens, config, assinatura.origem);
+  }
+
+  function cancelarTentativas(chave) {
+    const lista = tentativas.get(chave) || [];
+    lista.forEach(timer => window.clearTimeout(timer));
+    tentativas.delete(chave);
+  }
+
+  function agendarAssinatura(assinatura) {
+    const chave = assinatura.movimentacaoId
+      ? `mov:${assinatura.movimentacaoId}`
+      : `op:${assinatura.numeroOP}|${normalizar(assinatura.faccao)}|${assinatura.data}`;
+    cancelarTentativas(chave);
+
+    const timers = [250, 750, 1600, 3200].map(atraso => window.setTimeout(async () => {
+      try {
+        const resultado = await aplicarAssinatura(assinatura);
+        if (resultado.encontrados > 0 || resultado.atualizados > 0) cancelarTentativas(chave);
+      } catch (error) {
+        console.warn("Pagamento da referência especial ainda não disponível.", error);
+      }
+    }, atraso));
+    tentativas.set(chave, timers);
   }
 
   function prepararPainel(prefixo, painel, config) {
-    if (!(painel instanceof HTMLElement) || painel.dataset.sc92 === config.referencia) return;
-
+    if (!(painel instanceof HTMLElement)) return;
     const lateral = document.getElementById(`${prefixo}LateralSituacao`);
     const bojo = document.getElementById(`${prefixo}BojoSituacao`);
-    const lateralResponsavel = document.getElementById(`${prefixo}LateralResponsavel`);
-    const bojoResponsavel = document.getElementById(`${prefixo}BojoResponsavel`);
     const fecho = document.getElementById(`${prefixo}FechoPronto`);
     const ponto = document.getElementById(`${prefixo}PontoLuzPronto`);
 
-    if (lateral instanceof HTMLSelectElement) lateral.value = "nao";
-    if (bojo instanceof HTMLSelectElement) bojo.value = "nao";
-    if (lateralResponsavel instanceof HTMLInputElement) {
-      lateralResponsavel.value = "";
-      lateralResponsavel.disabled = true;
-      lateralResponsavel.required = false;
+    if (lateral instanceof HTMLSelectElement) {
+      lateral.value = "nao";
+      lateral.required = false;
     }
-    if (bojoResponsavel instanceof HTMLInputElement) {
-      bojoResponsavel.value = "";
-      bojoResponsavel.disabled = true;
-      bojoResponsavel.required = false;
+    if (bojo instanceof HTMLSelectElement) {
+      bojo.value = "nao";
+      bojo.required = false;
     }
+    [`${prefixo}LateralResponsavel`, `${prefixo}BojoResponsavel`].forEach(id => {
+      const input = document.getElementById(id);
+      if (input instanceof HTMLInputElement) {
+        input.value = "";
+        input.required = false;
+        input.disabled = true;
+      }
+    });
     if (fecho instanceof HTMLInputElement) fecho.checked = true;
     if (ponto instanceof HTMLInputElement) ponto.checked = true;
 
-    painel.classList.add("sc92-referencia-integral");
-    painel.dataset.sc92 = config.referencia;
-
-    let aviso = painel.querySelector(".sc92-aviso");
-    if (!aviso) {
-      aviso = document.createElement("div");
-      aviso.className = "sc92-aviso";
-      painel.querySelector("h4")?.parentElement?.insertAdjacentElement("afterend", aviso);
-      if (!aviso.isConnected) painel.prepend(aviso);
-    }
-    aviso.innerHTML = `<strong>Referência ${config.referencia}: valor integral</strong>Esta referência não utiliza lateral, bojo, fecho nem ponto de luz. O valor será sempre ${moeda4(config.valor)} por peça, sem descontos desses componentes.`;
-
-    dispararMudanca(lateral);
-    dispararMudanca(bojo);
-    dispararMudanca(fecho);
-    dispararMudanca(ponto);
+    painel.style.display = "none";
+    painel.dataset.sutia912Integral = config.referencia;
   }
 
-  async function prepararChegadaManual() {
+  async function prepararManual() {
     const form = document.getElementById("formChegadaManualFaccao");
-    const painel = document.getElementById("sutCompletoComponentesChegadaManual");
-    if (!form || !painel || form.closest(".modal-backdrop")?.classList.contains("hidden")) return;
-
+    if (!(form instanceof HTMLFormElement)) return;
     const processo = processoCanonico(document.getElementById("chegadaManualProcesso")?.value);
-    if (processo !== PROCESSO_COMPLETO) return;
-
+    const ref = document.getElementById("chegadaManualRef")?.value;
     const config = await carregarConfig();
-    const referencia = document.getElementById("chegadaManualRef")?.value;
-    if (ehReferenciaEspecial(referencia, config)) prepararPainel("sc51m", painel, config);
-    else {
-      painel.classList.remove("sc92-referencia-integral");
-      painel.querySelector(".sc92-aviso")?.remove();
-      delete painel.dataset.sc92;
+
+    if (processo === PROCESSO_COMPLETO && ehEspecial(ref, config)) {
+      form.dataset.sutia912Rapido = "1";
+      prepararPainel("sc51m", document.getElementById("sutCompletoComponentesChegadaManual"), config);
+    } else {
+      delete form.dataset.sutia912Rapido;
     }
   }
 
-  async function prepararChegadaPadrao() {
+  async function prepararNormal() {
     const form = document.getElementById("formChegadaMovimentacao");
-    const painel = document.getElementById("sutCompletoComponentesChegada");
-    const movimentacaoId = texto(document.getElementById("chegadaMovimentacaoId")?.value);
-    if (!form || !painel || !movimentacaoId || form.closest(".modal-backdrop")?.classList.contains("hidden")) return;
+    const id = texto(document.getElementById("chegadaMovimentacaoId")?.value);
+    if (!(form instanceof HTMLFormElement) || !id) return;
 
     try {
       const config = await carregarConfig();
       const { fs, db } = await firebase();
-      const snap = await fs.getDoc(fs.doc(db, "movimentacoesProducao", movimentacaoId));
+      const snap = await fs.getDoc(fs.doc(db, "movimentacoesProducao", id));
       if (!snap.exists()) return;
       const mov = snap.data();
-      if (processoCanonico(mov.processo) === PROCESSO_COMPLETO && ehReferenciaEspecial(mov.referencia, config)) {
-        prepararPainel("sc51", painel, config);
+      if (processoCanonico(mov.processo) === PROCESSO_COMPLETO && ehEspecial(mov.referencia, config)) {
+        form.dataset.sutia912Rapido = "1";
+        prepararPainel("sc51", document.getElementById("sutCompletoComponentesChegada"), config);
+      } else {
+        delete form.dataset.sutia912Rapido;
       }
     } catch (error) {
-      console.warn("Não foi possível preparar a referência especial na chegada normal.", error);
+      console.warn("Não foi possível preparar a chegada rápida da referência especial.", error);
     }
   }
 
   function atualizarAjudaConfiguracao(config) {
     const ajuda = document.querySelector("#configSutiaCompleto51 .sc51-ajuda");
     if (!(ajuda instanceof HTMLElement)) return;
-    let aviso = ajuda.querySelector(".sc92-config-aviso");
+    let aviso = ajuda.querySelector(".sc94-config-aviso");
     if (!aviso) {
       aviso = document.createElement("span");
-      aviso.className = "sc92-config-aviso";
+      aviso.className = "sc94-config-aviso";
+      aviso.style.cssText = "display:block;margin-top:8px;color:#166534";
       ajuda.appendChild(aviso);
     }
-    aviso.textContent = `A referência especial ${config.referencia} sempre recebe o valor integral de ${moeda4(config.valor)}, sem descontos de lateral, bojo, fecho ou ponto de luz.`;
+    aviso.textContent = `A referência especial ${config.referencia} recebe sempre ${moeda4(config.valor)} por peça, sem descontos.`;
   }
 
-  async function consultarPagamentosSutiaCompleto() {
+  async function reconciliarReferencia() {
+    const config = await carregarConfig(true);
     const { fs, db } = await firebase();
+    const valores = [config.referencia];
+    const numerico = Number(config.referencia);
+    if (Number.isFinite(numerico)) valores.push(numerico);
+
     const mapa = new Map();
-    const campos = ["processo", "servicoNome", "processoMovimentacao"];
-    const valores = ["SUTIÃ COMPLETO", "SUTIA COMPLETO"];
-
-    for (const campo of campos) {
-      for (const valor of valores) {
-        try {
-          const snap = await fs.getDocs(fs.query(
-            fs.collection(db, "entregasPagamento"),
-            fs.where(campo, "==", valor),
-            fs.limit(500)
-          ));
-          snap.docs.forEach(item => mapa.set(item.id, { id: item.id, ...item.data() }));
-        } catch (error) {
-          console.warn(`Consulta da referência especial por ${campo} indisponível.`, error);
-        }
-      }
+    for (const valor of [...new Set(valores)]) {
+      const snap = await fs.getDocs(fs.query(
+        fs.collection(db, "entregasPagamento"),
+        fs.where("referencia", "==", valor),
+        fs.limit(500)
+      ));
+      snap.docs.forEach(item => mapa.set(item.id, { id: item.id, ...item.data() }));
     }
-    return [...mapa.values()];
-  }
-
-  function precisaCorrigir(item, config) {
-    if (statusImutavel(item)) return false;
-    if (processoCanonico(item?.processo || item?.servicoNome || item?.processoMovimentacao) !== PROCESSO_COMPLETO) return false;
-    if (!ehReferenciaEspecial(item?.referencia, config)) return false;
-
-    const quantidade = Math.max(0, numero(item?.quantidade));
-    if (!quantidade) return false;
-    const totalIntegral = arred2(quantidade * config.valor);
-    const status = normalizar(item?.statusPagamento || item?.status || "PENDENTE");
-    return item?.regraReferenciaEspecialIntegral !== true ||
-      item?.valorPendente === true ||
-      ["SEM VALOR", "SEM_VALOR"].includes(status) ||
-      Math.abs(numero(item?.valorUnitario) - config.valor) > 0.0001 ||
-      Math.abs(numero(item?.total ?? item?.valorTotal) - totalIntegral) > 0.009;
-  }
-
-  async function aplicarRegraPagamentos({ origem = "automatico" } = {}) {
-    if (aplicandoPagamentos) return { atualizados: 0 };
-    aplicandoPagamentos = true;
-
-    try {
-      const config = await carregarConfig(true);
-      if (!(config.valor > 0)) return { atualizados: 0 };
-
-      atualizarAjudaConfiguracao(config);
-      const pagamentos = (await consultarPagamentosSutiaCompleto())
-        .filter(item => precisaCorrigir(item, config));
-      if (!pagamentos.length) return { atualizados: 0 };
-
-      const { fs, db, auth } = await firebase();
-      const usuario = auth.currentUser;
-      let atualizados = 0;
-
-      for (let inicio = 0; inicio < pagamentos.length; inicio += 350) {
-        const batch = fs.writeBatch(db);
-        pagamentos.slice(inicio, inicio + 350).forEach(item => {
-          const quantidade = Math.max(0, numero(item.quantidade));
-          const totalIntegral = arred2(quantidade * config.valor);
-          const descontoAnterior = Math.max(0, numero(item.descontoDefeito));
-          const memoriaAnterior = item.memoriaCalculoSutiaCompleto || {};
-
-          const patch = {
-            valorUnitario: arred4(config.valor),
-            subtotal: totalIntegral,
-            total: totalIntegral,
-            valorTotal: totalIntegral,
-            valorUnitarioCalculadoSutiaCompleto: arred4(config.valor),
-            subtotalCalculadoSutiaCompleto: totalIntegral,
-            totalCalculadoSutiaCompleto: totalIntegral,
-            valorTotalDefinidoManualmente: true,
-            valorManualFinanceiro: false,
-            formaValorPagamento: "VALOR_INTEGRAL_REFERENCIA_ESPECIAL",
-            statusPagamento: "pendente",
-            valorPendente: false,
-            avisoPagamento: "",
-            descontoDefeito: 0,
-            regraReferenciaEspecialIntegral: true,
-            referenciaEspecialIntegral: config.referencia,
-            valorReferenciaEspecialIntegral: arred4(config.valor),
-            memoriaCalculoSutiaCompleto: {
-              ...memoriaAnterior,
-              referencia: config.referencia,
-              valorBase: arred4(config.valor),
-              lateralPronta: false,
-              bojoPronto: false,
-              fechoPronto: true,
-              pontoLuzPronto: true,
-              descontoLateral: 0,
-              descontoBojo: 0,
-              descontoFecho: 0,
-              descontoPontoLuz: 0,
-              descontoDefeitoIgnorado: descontoAnterior,
-              valorUnitarioFinal: arred4(config.valor),
-              quantidade,
-              totalFinal: totalIntegral,
-              faltantes: [],
-              regra: "REFERENCIA_ESPECIAL_VALOR_INTEGRAL",
-              versao: VERSION
-            },
-            observacoes: `Referência especial ${config.referencia}: valor integral de ${moeda4(config.valor)} por peça, sem descontos.`,
-            atualizadoEm: fs.serverTimestamp(),
-            atualizadoPor: usuario?.uid || "",
-            regraReferenciaEspecialAtualizadaEm: fs.serverTimestamp(),
-            regraReferenciaEspecialAtualizadaPor: usuario?.uid || ""
-          };
-
-          if (descontoAnterior > 0) patch.descontoDefeitoOriginalAntesRegraIntegral = descontoAnterior;
-          batch.set(fs.doc(db, "entregasPagamento", item.id), patch, { merge: true });
-          atualizados += 1;
-        });
-        await batch.commit();
-      }
-
-      try {
-        await fs.addDoc(fs.collection(db, "logsAlteracoes"), {
-          acao: "referencia_especial_sutia_valor_integral",
-          tipoAlvo: "entregaPagamento",
-          alvoId: "lote",
-          detalhes: `${atualizados} pagamento(s) da referência ${config.referencia} ajustado(s) para ${moeda4(config.valor)} por peça. Origem: ${origem}.`,
-          usuarioUid: usuario?.uid || "",
-          criadoEm: fs.serverTimestamp(),
-          versao: VERSION
-        });
-      } catch (error) {
-        console.warn("Regra integral aplicada, mas o log adicional não foi criado.", error);
-      }
-
-      window.setTimeout(() => document.getElementById("btnAtualizarServidor")?.click(), 300);
-      return { atualizados };
-    } catch (error) {
-      console.warn("Não foi possível aplicar agora a regra integral da referência especial.", error);
-      return { atualizados: 0, erro: error };
-    } finally {
-      aplicandoPagamentos = false;
-    }
-  }
-
-  function agendarAplicacao(atraso = 4500, origem = "automatico") {
-    window.clearTimeout(timerAplicacao);
-    timerAplicacao = window.setTimeout(() => aplicarRegraPagamentos({ origem }), atraso);
+    return aplicarItens([...mapa.values()], config, "reconciliacao_solicitada");
   }
 
   function instalarEventos() {
-    const prepararInterface = () => {
-      prepararChegadaManual();
-      prepararChegadaPadrao();
-      carregarConfig().then(atualizarAjudaConfiguracao).catch(() => {});
-    };
-
-    document.addEventListener("input", event => {
-      const alvo = event.target;
-      if (!(alvo instanceof HTMLInputElement || alvo instanceof HTMLSelectElement)) return;
-      if (["chegadaManualRef", "chegadaManualProcesso", "chegadaManualOP"].includes(alvo.id)) {
-        [80, 250, 650].forEach(ms => window.setTimeout(prepararInterface, ms));
-      }
-    }, true);
-
-    document.addEventListener("change", event => {
-      const alvo = event.target;
-      if (!(alvo instanceof HTMLInputElement || alvo instanceof HTMLSelectElement)) return;
-      if (["chegadaManualRef", "chegadaManualProcesso", "chegadaManualOP"].includes(alvo.id)) {
-        [50, 220, 600].forEach(ms => window.setTimeout(prepararInterface, ms));
-      }
-    }, true);
-
-    document.addEventListener("click", event => {
-      const alvo = event.target instanceof Element ? event.target : null;
-      if (!alvo) return;
-      if (alvo.closest("#btnAbrirChegadaManualFaccao, [data-registrar-chegada], #listaMovimentacoesFaccoes button")) {
-        [120, 400, 900, 1500].forEach(ms => window.setTimeout(prepararInterface, ms));
-      }
-    }, true);
-
     document.addEventListener("submit", event => {
       const form = event.target;
       if (!(form instanceof HTMLFormElement)) return;
 
-      if (["formChegadaManualFaccao", "formChegadaMovimentacao"].includes(form.id)) {
-        [5500, 11000, 18000].forEach(ms => window.setTimeout(() => aplicarRegraPagamentos({ origem: form.id }), ms));
+      if (form.id === "formChegadaManualFaccao") {
+        const processo = processoCanonico(document.getElementById("chegadaManualProcesso")?.value);
+        const ref = referenciaNormalizada(document.getElementById("chegadaManualRef")?.value);
+        if (processo === PROCESSO_COMPLETO && ref === "912") {
+          agendarAssinatura({
+            numeroOP: texto(document.getElementById("chegadaManualOP")?.value),
+            faccao: texto(document.getElementById("chegadaManualFaccao")?.value),
+            data: texto(document.getElementById("chegadaManualDataChegada")?.value),
+            origem: "chegada_manual_912"
+          });
+        }
+      }
+
+      if (form.id === "formChegadaMovimentacao" && form.dataset.sutia912Rapido === "1") {
+        agendarAssinatura({
+          movimentacaoId: texto(document.getElementById("chegadaMovimentacaoId")?.value),
+          origem: "chegada_normal_912"
+        });
       }
 
       if (form.id === "configSutiaCompleto51") {
         configCache = null;
         configCacheEm = 0;
-        [2500, 6500].forEach(ms => window.setTimeout(() => aplicarRegraPagamentos({ origem: "configuracao" }), ms));
+        window.setTimeout(() => reconciliarReferencia().catch(error => {
+          console.warn("Referência especial não reconciliada após configuração.", error);
+        }), 1800);
       }
     }, true);
 
-    window.addEventListener("focus", () => {
-      prepararInterface();
-      agendarAplicacao(1800, "foco");
+    ["input", "change"].forEach(tipo => {
+      document.addEventListener(tipo, event => {
+        const alvo = event.target;
+        if (!(alvo instanceof HTMLInputElement || alvo instanceof HTMLSelectElement)) return;
+        if (["chegadaManualOP", "chegadaManualRef", "chegadaManualProcesso"].includes(alvo.id)) {
+          [40, 180, 450].forEach(ms => window.setTimeout(() => prepararManual(), ms));
+        }
+      }, true);
     });
+
+    document.addEventListener("click", event => {
+      const alvo = event.target instanceof Element ? event.target : null;
+      if (!alvo) return;
+
+      if (alvo.closest("#btnAbrirChegadaManualFaccao, #btnBuscarOPChegadaManualFaccao")) {
+        [80, 220, 500].forEach(ms => window.setTimeout(() => prepararManual(), ms));
+      }
+
+      if (alvo.closest("[data-registrar-chegada], #listaMovimentacoesFaccoes button")) {
+        const form = document.getElementById("formChegadaMovimentacao");
+        if (form instanceof HTMLFormElement) delete form.dataset.sutia912Rapido;
+        [100, 300, 700].forEach(ms => window.setTimeout(() => prepararNormal(), ms));
+      }
+    }, true);
   }
 
   function iniciar() {
-    garantirEstilo();
     instalarEventos();
-
-    [400, 1000, 2200].forEach(ms => window.setTimeout(() => {
-      prepararChegadaManual();
-      prepararChegadaPadrao();
+    [300, 800, 1500].forEach(ms => window.setTimeout(() => {
+      prepararManual();
+      prepararNormal();
       carregarConfig().then(atualizarAjudaConfiguracao).catch(() => {});
     }, ms));
-
-    try {
-      if (sessionStorage.getItem(SESSION_KEY) !== "1") {
-        sessionStorage.setItem(SESSION_KEY, "1");
-        agendarAplicacao(5200, "atualizacao_versao");
-      }
-    } catch (error) {
-      agendarAplicacao(5200, "atualizacao_versao");
-    }
   }
 
   window.CorpoNuReferenciaEspecialIntegral = {
     versao: VERSION,
-    aplicarAgora: () => aplicarRegraPagamentos({ origem: "manual_api" })
+    aplicarAgora: reconciliarReferencia
   };
 
   if (document.readyState === "loading") {
