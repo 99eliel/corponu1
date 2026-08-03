@@ -94,7 +94,7 @@
     const { fs, db } = await firebase();
     const valores = [opTexto];
     const opNumerica = Number(opTexto);
-    if (Number.isFinite(opNumerica) && String(opNumerica) !== opTexto) valores.push(opNumerica);
+    if (Number.isFinite(opNumerica)) valores.push(opNumerica);
 
     const mapa = new Map();
     for (const valor of valores) {
