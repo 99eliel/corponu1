@@ -3,6 +3,7 @@
 
   const VERSION = "2026-08-03-sutia-completo-fallbacks-off-107";
   const PROCESSO_COMPLETO = "SUTIÃ COMPLETO";
+  const FORM_MANUAL = "formChegadaManualFaccao";
 
   if (window.__CORPONU_SUTIA_FALLBACKS_OFF_107__ === VERSION) return;
   window.__CORPONU_SUTIA_FALLBACKS_OFF_107__ = VERSION;
@@ -18,13 +19,27 @@
 
   function ehSutiaCompleto(form) {
     if (!(form instanceof HTMLFormElement)) return false;
-    if (form.id === "formChegadaManualFaccao") {
+    if (form.id === FORM_MANUAL) {
       return normalizar(document.getElementById("chegadaManualProcesso")?.value) === normalizar(PROCESSO_COMPLETO);
     }
     if (form.id === "formChegadaMovimentacao") {
       return Boolean(document.getElementById("sutCompletoComponentesChegada"));
     }
     return false;
+  }
+
+  function garantirLiberacaoChegadaManual() {
+    if (window.__CORPONU_REQUEST_SUBMIT_MANUAL_COMPAT_107__) return;
+    const anterior = HTMLFormElement.prototype.requestSubmit;
+    if (typeof anterior !== "function") return;
+
+    window.__CORPONU_REQUEST_SUBMIT_MANUAL_COMPAT_107__ = true;
+    HTMLFormElement.prototype.requestSubmit = function(submitter) {
+      if (this.id === FORM_MANUAL && ehSutiaCompleto(this)) {
+        this.dataset.cnChegadaManualMov86Liberada = "1";
+      }
+      return anterior.call(this, submitter);
+    };
   }
 
   function instalarProtecao(event) {
@@ -54,5 +69,6 @@
     queueMicrotask(restaurar);
   }
 
+  garantirLiberacaoChegadaManual();
   document.addEventListener("submit", instalarProtecao, true);
 })();
