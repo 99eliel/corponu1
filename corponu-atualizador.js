@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-03-lateral-alca-chegada-manual-95";
+  const LOCAL_RELEASE = "2026-08-03-excluir-movimentacao-alca-96";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -48,6 +48,7 @@
       ["corponu-faccoes-grupos-saida-fix.js", "faccoes-grupos-saida-fix", "Não foi possível carregar as facções habilitadas do processo."],
       ["corponu-faccoes-label-lateral.js", "faccoes-label-lateral", "Não foi possível aplicar o nome Lateral na área de facções."],
       ["corponu-faccoes-lateral-alca-integracao.js", "faccoes-lateral-alca-integracao", "Não foi possível integrar Lateral e Alça na área de facções."],
+      ["corponu-faccoes-lateral-alca-exclusao.js", "faccoes-lateral-alca-exclusao", "Não foi possível carregar a exclusão segura de movimentações de Alça."],
       ["corponu-faccao-cadastro-recolhido.js", "faccao-cadastro-recolhido", "Não foi possível abrir o cadastro e a edição de facção em card."],
       ["corponu-chegada-sem-componentes-duplicados.js", "chegada-sem-componentes-duplicados", "Não foi possível remover a conferência duplicada de lateral e bojo."],
       ["corponu-pagamentos-interface.js", "pagamentos-interface", "Não foi possível carregar a organização visual de Pagamentos."],
