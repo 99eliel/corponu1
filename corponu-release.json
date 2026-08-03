@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-sutia-especial-integral-92",
-  "updatedAt": "2026-08-03T09:22:00-03:00",
-  "notes": "A referência especial configurada para o Sutiã Completo, atualmente 912, passa a usar sempre o valor integral cadastrado por peça. Não são aplicados descontos de lateral, bojo, fecho, ponto de luz ou outros descontos no pagamento pendente. A chegada deixa de exigir esses componentes para a referência especial, pagamentos pagos são preservados e pendências existentes são reconciliadas automaticamente."
+  "version": "2026-08-03-sutia-912-sem-verificacoes-93",
+  "updatedAt": "2026-08-03T09:34:00-03:00",
+  "notes": "Na chegada manual de SUTIÃ COMPLETO da referência 912, remove as perguntas de lateral, bojo, fecho e ponto de luz. O usuário seleciona somente a facção que receberá o pagamento. A validação original recebe esses componentes como não aplicáveis, e a regra de valor integral da referência 912 permanece ativa."
 }
