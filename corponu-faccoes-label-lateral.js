@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-03-faccoes-label-lateral-bojo-98";
+  const VERSION = "2026-08-03-faccoes-label-lateral-alca-103";
 
   if (window.__CORPONU_FACCOES_LABEL_LATERAL__ === VERSION) return;
   window.__CORPONU_FACCOES_LABEL_LATERAL__ = VERSION;
@@ -57,10 +57,10 @@
     if (contador) {
       let textoPrincipal = [...botao.childNodes].find(no => no.nodeType === Node.TEXT_NODE);
       if (!textoPrincipal) {
-        textoPrincipal = document.createTextNode("Lateral e Bojo ");
+        textoPrincipal = document.createTextNode("Lateral e Alça ");
         botao.insertBefore(textoPrincipal, contador);
-      } else if (String(textoPrincipal.nodeValue || "").trim() !== "Lateral e Bojo") {
-        textoPrincipal.nodeValue = "Lateral e Bojo ";
+      } else if (String(textoPrincipal.nodeValue || "").trim() !== "Lateral e Alça") {
+        textoPrincipal.nodeValue = "Lateral e Alça ";
       }
       return;
     }
