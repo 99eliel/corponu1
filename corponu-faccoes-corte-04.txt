@@ -2,7 +2,6 @@
       atualizadoPor: user.uid,
       atualizadoEm: c.fs.serverTimestamp()
     }, { merge: true });
-    await recalcularMontagemPorOP(movement.opId, true);
   }
 
   async function opPorId(opId) {
@@ -76,13 +75,53 @@
         versaoCorte: VERSION
       };
       await c.fs.setDoc(c.fs.doc(c.db, "movimentacoesProducao", movimentoChegada.id), patch, { merge: true });
-      const updated = { ...movimentoChegada, ...patch };
+      const updated = { ...movimentoChegada, ...patch, atualizadoEm: new Date() };
       const payment = await criarOuAtualizarPagamento(updated);
       await marcarLateralPronta(updated);
-      await registrarLog("corte_chegada_registrada", "movimentacaoProducao", updated.id, `OP ${updated.numeroOP} | ${updated.processo} | voltou ${received} | falta ${missing} | defeito ${dinheiro(defect)}`);
+
+      movimentoChegada = updated;
+      movimentos = movimentos.map(item => String(item.id) === String(updated.id) ? updated : item);
+
+      const pagamentoAnterior = pagamentoDoMovimento(updated.id);
+      const pagamentoLocal = {
+        ...(pagamentoAnterior || {}),
+        id: payment.paymentId || pagamentoAnterior?.id || `corte-${slug(updated.id)}`,
+        movimentacaoId: updated.id,
+        area: AREA,
+        setor: AREA,
+        numeroOP: updated.numeroOP || "",
+        referencia: updated.referencia || "",
+        processo: updated.processo || "",
+        faccao: updated.destino || "",
+        dataEntrega: date,
+        quantidade: received,
+        falta: missing,
+        descontoDefeito: defect,
+        total: payment.total,
+        statusPagamento: payment.semValor ? "sem_valor" : "pendente",
+        valorPendente: payment.semValor === true
+      };
+      if (pagamentoAnterior) {
+        pagamentosCorte = pagamentosCorte.map(item => String(item.id) === String(pagamentoAnterior.id) ? pagamentoLocal : item);
+      } else {
+        pagamentosCorte = [pagamentoLocal, ...pagamentosCorte];
+      }
+
       fecharModal("modalChegadaCorte");
+      renderTudo();
       toast(payment.semValor ? "Chegada registrada. O pagamento ficou como Valor a definir." : `Chegada registrada e pagamento gerado: ${dinheiro(payment.total)}.`, "ok");
-      await carregarTudoCorte();
+
+      Promise.resolve(recalcularMontagemPorOP(updated.opId, true)).catch(error => {
+        console.warn("Recálculo posterior da montagem não concluído", error);
+      });
+      Promise.resolve(registrarLog("corte_chegada_registrada", "movimentacaoProducao", updated.id, `OP ${updated.numeroOP} | ${updated.processo} | voltou ${received} | falta ${missing} | defeito ${dinheiro(defect)}`)).catch(error => {
+        console.warn("Log posterior da chegada não concluído", error);
+      });
+      window.setTimeout(() => {
+        Promise.resolve(carregarTudoCorte()).catch(error => {
+          console.warn("Atualização posterior da área Lateral não concluída", error);
+        });
+      }, 1500);
     } catch (error) {
       console.error(error);
       toast("Erro ao registrar a chegada de Corte.", "error");
