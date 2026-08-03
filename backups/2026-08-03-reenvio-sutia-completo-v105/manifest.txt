@@ -1,0 +1,17 @@
+BACKUP ANTES DO AJUSTE DE REENVIO DO SUTIÃ COMPLETO
+Data: 03/08/2026
+Versão anterior: 2026-08-03-pendencias-valor-seguro-105
+
+Arquivos que serão alterados:
+- corponu-atualizador.js (cópia completa nesta pasta)
+- corponu-release.json (cópia completa nesta pasta)
+
+Arquivo principal do fluxo de reenvio preservado sem alteração:
+- app.js
+- SHA do conteúdo antes da atualização: 27923bdff0c9f341f40e4ab830d7a51311671d04
+
+Estratégia da correção:
+- Não alterar app.js.
+- Adicionar um módulo isolado para consultar e registrar lateral/bojo no reenvio para facção.
+- Não alterar pagamentos existentes.
+- Manter os demais processos e movimentações funcionando como antes.
