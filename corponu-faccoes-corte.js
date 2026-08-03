@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "2026-08-01-faccoes-saida-segura-30";
+  const VERSION = "2026-08-03-faccoes-chegada-rapida-31";
   if (window.__CORPONU_FACCOES_CORTE_LOADER__ === VERSION) return;
   window.__CORPONU_FACCOES_CORTE_LOADER__ = VERSION;
 
