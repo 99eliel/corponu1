@@ -33,17 +33,18 @@
       chave === "PENDENTE"
     ) return "nao_informado";
     if (
-      chave === "SIM" || chave === "TRUE" || chave === "1" ||
-      (chave.includes("PRONTA") && !chave.includes("NAO PRONTA")) ||
-      (chave.includes("PRONTO") && !chave.includes("NAO PRONTO")) ||
-      (chave.includes("FEITA") && !chave.includes("NAO FEITA")) ||
-      (chave.includes("FEITO") && !chave.includes("NAO FEITO"))
-    ) return "sim";
-    if (
       chave === "NAO" || chave === "FALSE" || chave === "0" ||
-      chave.includes("NAO PRONTA") || chave.includes("NAO PRONTO") ||
-      chave.includes("NAO FEITA") || chave.includes("NAO FEITO")
+      (chave.includes("NAO") && (
+        chave.includes("PRONTA") || chave.includes("PRONTO") ||
+        chave.includes("FEITA") || chave.includes("FEITO") ||
+        chave.includes("VEIO")
+      ))
     ) return "nao";
+    if (
+      chave === "SIM" || chave === "TRUE" || chave === "1" ||
+      chave.includes("PRONTA") || chave.includes("PRONTO") ||
+      chave.includes("FEITA") || chave.includes("FEITO")
+    ) return "sim";
     return "";
   }
 
