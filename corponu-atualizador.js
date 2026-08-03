@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-03-aba-lateral-alca-103";
+  const LOCAL_RELEASE = "2026-08-03-lateral-observacao-opcional-104";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
