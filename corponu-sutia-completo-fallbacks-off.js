@@ -8,6 +8,9 @@
   if (window.__CORPONU_SUTIA_FALLBACKS_OFF_107__ === VERSION) return;
   window.__CORPONU_SUTIA_FALLBACKS_OFF_107__ = VERSION;
 
+  let profundidadeProtecao = 0;
+  let timeoutAnterior = null;
+
   const texto = valor => String(valor ?? "").trim();
   const normalizar = valor => texto(valor)
     .normalize("NFD")
@@ -42,31 +45,33 @@
     };
   }
 
+  function timeoutProtegido(callback, atraso, ...args) {
+    const fonte = typeof callback === "function" ? Function.prototype.toString.call(callback) : "";
+    const tempo = Number(atraso || 0);
+    const fallbackManual = tempo >= 6500 && fonte.includes("executarFallback");
+    const correcaoEspecial = [250, 750, 1600, 3200].includes(tempo) && fonte.includes("aplicarAssinatura");
+
+    if (fallbackManual || correcaoEspecial) return 0;
+    return timeoutAnterior.call(window, callback, atraso, ...args);
+  }
+
+  function restaurarProtecao() {
+    profundidadeProtecao = Math.max(0, profundidadeProtecao - 1);
+    if (profundidadeProtecao > 0) return;
+    if (window.setTimeout === timeoutProtegido && timeoutAnterior) window.setTimeout = timeoutAnterior;
+    timeoutAnterior = null;
+  }
+
   function instalarProtecao(event) {
     const form = event.target;
     if (!ehSutiaCompleto(form) || window.CorpoNuSutiaChegadaRapida?.fluxoRapidoAtivo !== true) return;
 
-    const anterior = window.setTimeout;
-    let restaurado = false;
-
-    function restaurar() {
-      if (restaurado) return;
-      restaurado = true;
-      if (window.setTimeout === protegido) window.setTimeout = anterior;
+    if (profundidadeProtecao === 0) {
+      timeoutAnterior = window.setTimeout;
+      window.setTimeout = timeoutProtegido;
     }
-
-    function protegido(callback, atraso, ...args) {
-      const fonte = typeof callback === "function" ? Function.prototype.toString.call(callback) : "";
-      const tempo = Number(atraso || 0);
-      const fallbackManual = tempo >= 6500 && fonte.includes("executarFallback");
-      const correcaoEspecial = [250, 750, 1600, 3200].includes(tempo) && fonte.includes("aplicarAssinatura");
-
-      if (fallbackManual || correcaoEspecial) return 0;
-      return anterior.call(window, callback, atraso, ...args);
-    }
-
-    window.setTimeout = protegido;
-    queueMicrotask(restaurar);
+    profundidadeProtecao += 1;
+    queueMicrotask(restaurarProtecao);
   }
 
   garantirLiberacaoChegadaManual();
