@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-alerta-pagamentos-sem-valor-108",
-  "updatedAt": "2026-08-03T20:15:00-03:00",
-  "notes": "Adiciona um alerta grande na aba Pagamentos quando os filtros atuais contêm movimentações sem valor definido. O aviso respeita período, facção, referência e processos selecionados, mostra quantidade de movimentações, peças, OPs e referências afetadas, e deixa claro que o total exibido é parcial. A verificação ignora apenas o filtro de status para impedir que pendências sem valor fiquem escondidas. Nenhum cálculo, pagamento ou filtro existente foi alterado."
+  "version": "2026-08-03-hotfix-chegada-sutia-componentes-109",
+  "updatedAt": "2026-08-03T20:31:00-03:00",
+  "notes": "Corrige o bloqueio da chegada do Sutiã Completo quando lateral e bojo já aparecem como Pronta, mas uma validação antiga escondida ainda os interpreta como não informados. O hotfix sincroniza os estados visíveis com os campos legados antes do salvamento, inclusive em reenvios do formulário, sem alterar cálculos, valores, pagamentos, OPs ou regras do Firebase."
 }
