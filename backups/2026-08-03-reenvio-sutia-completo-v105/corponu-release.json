@@ -1,0 +1,5 @@
+{
+  "version": "2026-08-03-pendencias-valor-seguro-105",
+  "updatedAt": "2026-08-03T18:57:00-03:00",
+  "notes": "Corrige o salvamento de valores unitários na Central financeira. Ao informar o valor de uma referência e processo, o sistema cadastra ou atualiza automaticamente o valor em Processos, recalcula todos os pagamentos ainda sem valor da mesma referência e processo e atualiza a tela em segundo plano, sem manter o painel travado. Pagamentos já pagos, cancelados ou excluídos não são alterados."
+}
