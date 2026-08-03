@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-remover-codigo-interno-alca-102",
-  "updatedAt": "2026-08-03T15:01:00-03:00",
-  "notes": "Remove dos formulários de saída e chegada a opção técnica __CORPONU_ALCA__, que apareceu indevidamente ao usuário. A opção correta permanece ALÇA. Também elimina opções vazias duplicadas no mesmo seletor, sem alterar processos, cálculos ou pagamentos."
+  "version": "2026-08-03-aba-lateral-alca-103",
+  "updatedAt": "2026-08-03T16:49:00-03:00",
+  "notes": "Corrige somente o nome da aba superior de Facções para Lateral e Alça. Contador, título interno, movimentações, saídas, chegadas, pagamentos, cálculos e otimizações permanecem inalterados."
 }
