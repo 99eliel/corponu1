@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-03-excluir-movimentacao-alca-96";
+  const LOCAL_RELEASE = "2026-08-03-chegada-manual-otimizada-97";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
