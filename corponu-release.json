@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-aba-lateral-bojo-98",
-  "updatedAt": "2026-08-03T12:45:00-03:00",
-  "notes": "Renomeia somente a aba superior de Facções de Lateral para Lateral e Bojo. Contador, título interno Lateral e Alça, movimentações, chegadas, pagamentos e demais funções permanecem inalterados."
+  "version": "2026-08-03-ocultar-chegada-topo-99",
+  "updatedAt": "2026-08-03T13:04:00-03:00",
+  "notes": "Oculta somente o botão superior Registrar chegada da área Lateral e Alça. Registrar saída, Chegada manual e os botões de chegada vinculados às movimentações continuam disponíveis e inalterados."
 }
