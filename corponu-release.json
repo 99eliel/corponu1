@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-lateral-observacao-opcional-104",
-  "updatedAt": "2026-08-03T18:24:00-03:00",
-  "notes": "Remove a obrigatoriedade da observação ao registrar ou editar uma chegada na aba Lateral. O campo continua disponível como opcional e, quando deixado vazio, o sistema salva a chegada normalmente sem alterar pagamentos, quantidades ou demais validações."
+  "version": "2026-08-03-pendencias-valor-seguro-105",
+  "updatedAt": "2026-08-03T18:57:00-03:00",
+  "notes": "Corrige o salvamento de valores unitários na Central financeira. Ao informar o valor de uma referência e processo, o sistema cadastra ou atualiza automaticamente o valor em Processos, recalcula todos os pagamentos ainda sem valor da mesma referência e processo e atualiza a tela em segundo plano, sem manter o painel travado. Pagamentos já pagos, cancelados ou excluídos não são alterados."
 }
