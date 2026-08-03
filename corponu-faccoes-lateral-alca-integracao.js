@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-03-lateral-alca-chegada-manual-95";
+  const VERSION = "2026-08-03-chegada-manual-otimizada-97";
   const FIREBASE_VERSION = "10.12.5";
   const VALOR_FILTRO_ALCA = "__CORPONU_ALCA__";
   const CACHE_MS = 12000;
@@ -47,6 +47,11 @@
     if (["ALCA", "ALCAS"].includes(chave)) return "ALÇA";
     if (chave === "LATERAL") return "LATERAL";
     return texto(valor).toUpperCase();
+  }
+
+  function processoEhLateralAlca(valor) {
+    const processo = processoCanonico(valor);
+    return processo === "LATERAL" || processo === "ALÇA";
   }
 
   function movimentoCancelado(item) {
@@ -384,7 +389,17 @@
     document.addEventListener("submit", event => {
       const form = event.target;
       if (!(form instanceof HTMLFormElement)) return;
-      if (["formChegadaManualFaccao", "formChegadaMovimentacao", "s3form"].includes(form.id)) {
+
+      if (form.id === "formChegadaManualFaccao") {
+        const processo = document.getElementById("chegadaManualProcesso")?.value;
+        if (!processoEhLateralAlca(processo)) return;
+
+        cache.expiraEm = 0;
+        window.setTimeout(() => agendarRender(true, 0), 1800);
+        return;
+      }
+
+      if (["formChegadaMovimentacao", "s3form"].includes(form.id)) {
         cache.expiraEm = 0;
         window.setTimeout(() => agendarRender(true, 0), 1000);
         window.setTimeout(() => agendarRender(true, 0), 2800);
