@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-todos-pagamentos-rapidos-101",
-  "updatedAt": "2026-08-03T14:16:00-03:00",
-  "notes": "O fluxo comum de chegada e geração de pagamento deixa de usar transação de reserva na movimentação e evita repetir a verificação quando módulos de Sutiã Completo, referência especial ou componentes reenviam o mesmo formulário internamente. Continua verificando se já existe pagamento, bloqueia clique duplo, Enter e outra aba do mesmo computador, mas cada registro faz uma única consulta antes do salvamento. A otimização anterior da chegada de Lateral permanece ativa."
+  "version": "2026-08-03-remover-codigo-interno-alca-102",
+  "updatedAt": "2026-08-03T15:01:00-03:00",
+  "notes": "Remove dos formulários de saída e chegada a opção técnica __CORPONU_ALCA__, que apareceu indevidamente ao usuário. A opção correta permanece ALÇA. Também elimina opções vazias duplicadas no mesmo seletor, sem alterar processos, cálculos ou pagamentos."
 }
