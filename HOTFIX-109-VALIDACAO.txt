@@ -1,0 +1,9 @@
+Hotfix 109 validado em branch isolada.
+
+Escopo:
+- sincronizar os estados visíveis de lateral e bojo com controles legados da chegada;
+- preservar cálculos, pagamentos, OPs e regras Firebase;
+- atender chegada normal e chegada manual de Sutiã Completo.
+
+Backup anterior:
+backup/2026-08-03-antes-hotfix-chegada-sutia-109
