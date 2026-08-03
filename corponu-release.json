@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-aba-lateral-alca-103",
-  "updatedAt": "2026-08-03T16:49:00-03:00",
-  "notes": "Corrige somente o nome da aba superior de Facções para Lateral e Alça. Contador, título interno, movimentações, saídas, chegadas, pagamentos, cálculos e otimizações permanecem inalterados."
+  "version": "2026-08-03-lateral-observacao-opcional-104",
+  "updatedAt": "2026-08-03T18:24:00-03:00",
+  "notes": "Remove a obrigatoriedade da observação ao registrar ou editar uma chegada na aba Lateral. O campo continua disponível como opcional e, quando deixado vazio, o sistema salva a chegada normalmente sem alterar pagamentos, quantidades ou demais validações."
 }
