@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-03-registrar-chegada-rapido-100";
+  const LOCAL_RELEASE = "2026-08-03-todos-pagamentos-rapidos-101";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
