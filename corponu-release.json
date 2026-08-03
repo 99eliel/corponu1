@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-lateral-alca-chegada-manual-95",
-  "updatedAt": "2026-08-03T11:37:00-03:00",
-  "notes": "A aba Lateral passa a se chamar Lateral e Alça, soma no contador as movimentações válidas dos dois processos e exibe também as movimentações de Alça que antes ficavam somente em Sutiã. Adiciona Chegada manual reutilizando o formulário oficial e mantém a chegada da Alça no fluxo original com sua regra financeira específica."
+  "version": "2026-08-03-excluir-movimentacao-alca-96",
+  "updatedAt": "2026-08-03T12:15:00-03:00",
+  "notes": "Administradores passam a poder excluir movimentações de Alça exibidas na aba Lateral e Alça. A exclusão remove no mesmo lote os pagamentos ainda pendentes vinculados e cria registro de auditoria. Movimentações com pagamento já marcado como pago permanecem bloqueadas para preservar o histórico financeiro."
 }
