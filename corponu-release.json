@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-sutia-completo-reconciliacao-manual-91",
-  "updatedAt": "2026-08-03T09:09:00-03:00",
-  "notes": "Corrige a associação tardia entre a chegada manual de SUTIÃ COMPLETO e o pagamento provisório criado como aguardando valor. O sistema agora reconcilia o lançamento com o cálculo oficial existente, sem criar outro pagamento, preserva registros pagos e tenta corrigir também pendências já abertas quando a nova versão carregar."
+  "version": "2026-08-03-sutia-especial-integral-92",
+  "updatedAt": "2026-08-03T09:22:00-03:00",
+  "notes": "A referência especial configurada para o Sutiã Completo, atualmente 912, passa a usar sempre o valor integral cadastrado por peça. Não são aplicados descontos de lateral, bojo, fecho, ponto de luz ou outros descontos no pagamento pendente. A chegada deixa de exigir esses componentes para a referência especial, pagamentos pagos são preservados e pendências existentes são reconciliadas automaticamente."
 }
