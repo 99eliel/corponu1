@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-sutia-912-sem-verificacoes-93",
-  "updatedAt": "2026-08-03T09:34:00-03:00",
-  "notes": "Na chegada manual de SUTIÃ COMPLETO da referência 912, remove as perguntas de lateral, bojo, fecho e ponto de luz. O usuário seleciona somente a facção que receberá o pagamento. A validação original recebe esses componentes como não aplicáveis, e a regra de valor integral da referência 912 permanece ativa."
+  "version": "2026-08-03-sutia-912-fluxo-rapido-94",
+  "updatedAt": "2026-08-03T10:12:00-03:00",
+  "notes": "O registro de chegada do Sutiã Completo referência 912 passa a usar o fluxo original de salvamento sem consultar histórico de lateral e bojo. A regra integral atualiza apenas a movimentação ou OP recém-registrada, removendo as varreduras globais repetidas que podiam levar vários minutos. Demais referências e funções permanecem com a lógica atual."
 }
