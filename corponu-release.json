@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-pendencias-valor-seguro-105",
-  "updatedAt": "2026-08-03T18:57:00-03:00",
-  "notes": "Corrige o salvamento de valores unitários na Central financeira. Ao informar o valor de uma referência e processo, o sistema cadastra ou atualiza automaticamente o valor em Processos, recalcula todos os pagamentos ainda sem valor da mesma referência e processo e atualiza a tela em segundo plano, sem manter o painel travado. Pagamentos já pagos, cancelados ou excluídos não são alterados."
+  "version": "2026-08-03-reenvio-sutia-componentes-106",
+  "updatedAt": "2026-08-03T19:12:00-03:00",
+  "notes": "Adiciona ao reenvio para facção a conferência de lateral e bojo quando o processo escolhido for SUTIÃ COMPLETO. Informações já registradas são exibidas com origem e facção; quando não existirem, o usuário precisa informar a situação antes do envio. As respostas ficam salvas na OP. O ajuste foi feito em módulo isolado, com backup prévio, sem alterar app.js, pagamentos ou outros processos."
 }
