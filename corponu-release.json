@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-02-filtro-op-pagamentos-90",
-  "updatedAt": "2026-08-02T16:51:00-03:00",
-  "notes": "Adiciona filtro por número da OP na aba Pagamentos. O filtro acumula com período, facção, referência, processos e status, atualizando totais, tabelas, relatórios e confirmação dos pagamentos filtrados. Quando o campo OP está vazio, o fluxo original permanece inalterado."
+  "version": "2026-08-03-sutia-completo-reconciliacao-manual-91",
+  "updatedAt": "2026-08-03T09:09:00-03:00",
+  "notes": "Corrige a associação tardia entre a chegada manual de SUTIÃ COMPLETO e o pagamento provisório criado como aguardando valor. O sistema agora reconcilia o lançamento com o cálculo oficial existente, sem criar outro pagamento, preserva registros pagos e tenta corrigir também pendências já abertas quando a nova versão carregar."
 }
