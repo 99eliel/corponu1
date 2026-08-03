@@ -1,15 +1,22 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-01-antiduplicidade-isolada-84";
+  const VERSION = "2026-08-03-antiduplicidade-rapida-101";
   const FIREBASE_VERSION = "10.12.5";
-  const TTL_PROCESSAMENTO = 45000;
+  const TTL_PROCESSAMENTO = 60000;
+  const AUTORIZACAO_MS = 30000;
 
   if (window.__CORPONU_ANTIDUPLICIDADE_ISOLADA__ === VERSION) return;
   window.__CORPONU_ANTIDUPLICIDADE_ISOLADA__ = VERSION;
 
   let contextoPromise = null;
   const verificacoesEmCurso = new Set();
+  const bloqueios = new WeakMap();
+  const formulariosProtegidos = new Set([
+    "formChegadaMovimentacao",
+    "formChegadaManualFaccao",
+    "formEntregaPagamento"
+  ]);
 
   const texto = valor => String(valor ?? "").trim();
   const normalizar = valor => texto(valor)
@@ -56,8 +63,8 @@
     toast.textContent = mensagem;
     toast.classList.remove("hidden");
     toast.style.background = erro ? "#991b1b" : "";
-    window.clearTimeout(window.__corponuAntidupToast84);
-    window.__corponuAntidupToast84 = window.setTimeout(() => {
+    window.clearTimeout(window.__corponuAntidupToast101);
+    window.__corponuAntidupToast101 = window.setTimeout(() => {
       toast.classList.add("hidden");
       toast.style.background = "";
     }, 5500);
@@ -68,13 +75,11 @@
 
     contextoPromise = Promise.all([
       import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`),
-      import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-auth.js`),
       import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-firestore.js`)
-    ]).then(([appModulo, authModulo, firestore]) => {
+    ]).then(([appModulo, firestore]) => {
       if (!appModulo.getApps().length) throw new Error("Firebase ainda não inicializado.");
       const app = appModulo.getApp();
       return {
-        auth: authModulo.getAuth(app),
         db: firestore.getFirestore(app),
         firestore
       };
@@ -103,173 +108,140 @@
     if (!op) return [];
 
     const { db, firestore } = await contextoFirebase();
-    const consulta = firestore.query(
-      firestore.collection(db, "entregasPagamento"),
-      firestore.where("numeroOP", "==", op)
-    );
-    const snapshot = await firestore.getDocs(consulta);
-    return snapshot.docs
-      .map(documento => ({ id: documento.id, ...documento.data() }))
-      .filter(pagamentoAtivo);
+    const valores = [op];
+    const numerico = Number(op);
+    if (Number.isFinite(numerico)) valores.push(numerico);
+
+    const resultados = await Promise.all(valores.map(valor => {
+      const consulta = firestore.query(
+        firestore.collection(db, "entregasPagamento"),
+        firestore.where("numeroOP", "==", valor)
+      );
+      return firestore.getDocs(consulta).catch(() => null);
+    }));
+
+    const unicos = new Map();
+    resultados.forEach(snapshot => {
+      snapshot?.docs?.forEach(documento => {
+        const item = { id: documento.id, ...documento.data() };
+        if (pagamentoAtivo(item)) unicos.set(item.id, item);
+      });
+    });
+    return [...unicos.values()];
   }
 
-  function bloquearBotao(form, mensagem = "Verificando duplicidade...") {
-    const botao = form.querySelector('button[type="submit"]');
-    if (!botao) return () => {};
-
-    const textoOriginal = botao.textContent;
-    const desabilitadoOriginal = botao.disabled;
-    botao.disabled = true;
-    botao.textContent = mensagem;
-
-    return () => {
-      botao.disabled = desabilitadoOriginal;
-      botao.textContent = textoOriginal;
-    };
-  }
-
-  function liberarFormulario(form, marcador) {
-    form.dataset[marcador] = "1";
-    if (typeof form.requestSubmit === "function") {
-      form.requestSubmit();
-    } else {
-      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  function bloquearBotao(form, mensagem) {
+    const anterior = bloqueios.get(form);
+    if (anterior) {
+      if (anterior.botao && mensagem) anterior.botao.textContent = mensagem;
+      return;
     }
+
+    const botao = form.querySelector('button[type="submit"]');
+    if (!botao) return;
+
+    bloqueios.set(form, {
+      botao,
+      textoOriginal: botao.textContent,
+      desabilitadoOriginal: botao.disabled
+    });
+    botao.disabled = true;
+    botao.textContent = mensagem || "Salvando...";
+  }
+
+  function restaurarBotao(form) {
+    const anterior = bloqueios.get(form);
+    if (!anterior) return;
+    anterior.botao.disabled = anterior.desabilitadoOriginal;
+    anterior.botao.textContent = anterior.textoOriginal;
+    bloqueios.delete(form);
+  }
+
+  function nomeReserva(chave) {
+    return `corponu_antidup_${hash(chave)}`;
   }
 
   function criarReservaLocal(chave) {
-    const nome = `corponu_antidup_${hash(chave)}`;
+    const nome = nomeReserva(chave);
     const agora = Date.now();
 
     try {
       const anterior = Number(localStorage.getItem(nome) || 0);
-      if (agora - anterior < TTL_PROCESSAMENTO) return false;
+      if (agora - anterior < TTL_PROCESSAMENTO) return null;
       localStorage.setItem(nome, String(agora));
-      window.setTimeout(() => {
-        try {
-          const atual = Number(localStorage.getItem(nome) || 0);
-          if (atual === agora) localStorage.removeItem(nome);
-        } catch (error) {}
-      }, TTL_PROCESSAMENTO + 1000);
     } catch (error) {}
 
-    return true;
+    return { nome, momento: agora };
   }
 
-  async function reservarMovimentacao(movimentacaoId) {
-    const { auth, db, firestore } = await contextoFirebase();
-    const referencia = firestore.doc(db, "movimentacoesProducao", movimentacaoId);
-    const agora = Date.now();
-
-    await firestore.runTransaction(db, async transacao => {
-      const snapshot = await transacao.get(referencia);
-      if (!snapshot.exists()) throw new Error("MOVIMENTACAO_NAO_ENCONTRADA");
-
-      const dados = snapshot.data() || {};
-      const inicioAnterior = Number(dados.antiduplicidadePagamentoEmMs || 0);
-      const processando = dados.antiduplicidadePagamentoProcessando === true &&
-        agora - inicioAnterior < TTL_PROCESSAMENTO;
-
-      if (processando) throw new Error("PAGAMENTO_PROCESSANDO");
-
-      transacao.set(referencia, {
-        antiduplicidadePagamentoProcessando: true,
-        antiduplicidadePagamentoEmMs: agora,
-        antiduplicidadePagamentoVersao: VERSION,
-        antiduplicidadePagamentoPor: auth.currentUser?.uid || "",
-        atualizadoEm: firestore.serverTimestamp()
-      }, { merge: true });
-    });
-  }
-
-  async function finalizarReservaMovimentacao(movimentacaoId, pagamento = null) {
+  function removerReservaLocal(reserva) {
+    if (!reserva) return;
     try {
-      const { auth, db, firestore } = await contextoFirebase();
-      const dados = {
-        antiduplicidadePagamentoProcessando: false,
-        antiduplicidadePagamentoFinalizadaEmMs: Date.now(),
-        antiduplicidadePagamentoVersao: VERSION,
-        antiduplicidadePagamentoPor: auth.currentUser?.uid || "",
-        atualizadoEm: firestore.serverTimestamp()
-      };
-
-      if (pagamento) {
-        dados.pagamentoGerado = true;
-        dados.pagamentoId = pagamento.id;
-        dados.pagamentoGeradoEm = firestore.serverTimestamp();
-      }
-
-      await firestore.setDoc(
-        firestore.doc(db, "movimentacoesProducao", movimentacaoId),
-        dados,
-        { merge: true }
-      );
-    } catch (error) {
-      console.warn("Não foi possível finalizar a reserva de pagamento.", error);
-    }
+      const atual = Number(localStorage.getItem(reserva.nome) || 0);
+      if (!atual || atual === reserva.momento) localStorage.removeItem(reserva.nome);
+    } catch (error) {}
   }
 
-  async function monitorarPagamentoDaMovimentacao(movimentacaoId) {
-    for (const espera of [500, 900, 1500, 2500, 4000]) {
-      await new Promise(resolve => window.setTimeout(resolve, espera));
-      const pagamentos = await pagamentosPorMovimentacao(movimentacaoId);
-
-      if (pagamentos.length) {
-        await finalizarReservaMovimentacao(movimentacaoId, pagamentos[0]);
-        return;
-      }
-    }
-
-    await finalizarReservaMovimentacao(movimentacaoId, null);
+  function autorizar(form, assinatura, reserva) {
+    form.dataset.antidup101Assinatura = assinatura;
+    form.dataset.antidup101Expira = String(Date.now() + AUTORIZACAO_MS);
+    form.dataset.antidup101Processando = "1";
+    form.__corponuAntidup101Reserva = reserva || null;
   }
 
-  async function protegerChegadaNormal(form) {
-    const movimentacaoId = texto(document.getElementById("chegadaMovimentacaoId")?.value);
-    if (!movimentacaoId) {
-      liberarFormulario(form, "antidup84Liberado");
-      return;
-    }
+  function assinaturaAutorizada(form, assinatura) {
+    return form.dataset.antidup101Assinatura === assinatura &&
+      Number(form.dataset.antidup101Expira || 0) > Date.now();
+  }
 
-    const chave = `chegada:${movimentacaoId}`;
-    if (verificacoesEmCurso.has(chave)) {
-      avisar("Esta chegada já está sendo verificada.");
-      return;
-    }
+  function limparAutorizacao(form) {
+    removerReservaLocal(form.__corponuAntidup101Reserva);
+    form.__corponuAntidup101Reserva = null;
+    delete form.dataset.antidup101Assinatura;
+    delete form.dataset.antidup101Expira;
+    delete form.dataset.antidup101Processando;
+    restaurarBotao(form);
+  }
 
-    verificacoesEmCurso.add(chave);
-    const restaurar = bloquearBotao(form);
+  function modalDoFormulario(form) {
+    const ids = {
+      formChegadaMovimentacao: "modalChegadaMovimentacao",
+      formChegadaManualFaccao: "modalChegadaManualFaccao"
+    };
+    return document.getElementById(ids[form.id] || "");
+  }
 
-    try {
-      const pagamentosExistentes = await pagamentosPorMovimentacao(movimentacaoId);
+  function acompanharConclusao(form) {
+    window.clearInterval(form.__corponuAntidup101Intervalo);
+    window.clearTimeout(form.__corponuAntidup101Timeout);
 
-      if (pagamentosExistentes.length > 1) {
-        avisar("Foram encontrados pagamentos duplicados nesta movimentação. Nenhum novo pagamento foi criado.", true);
-        return;
+    const modal = modalDoFormulario(form);
+    const iniciouVisivel = modal ? !modal.classList.contains("hidden") : false;
+
+    form.__corponuAntidup101Intervalo = window.setInterval(() => {
+      const expirou = Number(form.dataset.antidup101Expira || 0) <= Date.now();
+      const modalFechou = modal && iniciouVisivel && modal.classList.contains("hidden");
+      const formularioResetou = form.id === "formEntregaPagamento" &&
+        !texto(document.getElementById("entregaOP")?.value) &&
+        !texto(document.getElementById("entregaQuantidade")?.value);
+
+      if (expirou || modalFechou || formularioResetou) {
+        window.clearInterval(form.__corponuAntidup101Intervalo);
+        limparAutorizacao(form);
       }
+    }, 250);
 
-      if (pagamentosExistentes.length === 1) {
-        avisar("Esta movimentação já possui pagamento. A chegada não foi duplicada.");
-        return;
-      }
+    form.__corponuAntidup101Timeout = window.setTimeout(() => {
+      window.clearInterval(form.__corponuAntidup101Intervalo);
+      limparAutorizacao(form);
+    }, AUTORIZACAO_MS + 1000);
+  }
 
-      await reservarMovimentacao(movimentacaoId);
-      liberarFormulario(form, "antidup84Liberado");
-
-      monitorarPagamentoDaMovimentacao(movimentacaoId).catch(async error => {
-        console.error("Erro ao acompanhar a geração do pagamento.", error);
-        await finalizarReservaMovimentacao(movimentacaoId, null);
-      });
-    } catch (error) {
-      console.error("Erro na verificação de duplicidade da chegada.", error);
-      const mensagem = error?.message === "PAGAMENTO_PROCESSANDO"
-        ? "Esta chegada já está sendo processada em outra aba ou por outro usuário."
-        : error?.message === "MOVIMENTACAO_NAO_ENCONTRADA"
-          ? "A movimentação não foi encontrada."
-          : "Não foi possível verificar a duplicidade. A operação não foi realizada.";
-      avisar(mensagem, true);
-    } finally {
-      window.setTimeout(restaurar, 1200);
-      verificacoesEmCurso.delete(chave);
+  function liberarFormulario(form) {
+    if (typeof form.requestSubmit === "function") {
+      form.requestSubmit();
+    } else {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     }
   }
 
@@ -279,132 +251,223 @@
     return texto(bruto.split(" - ")[0]).replace(/^OP\s*/i, "");
   }
 
-  async function protegerChegadaManual(form) {
+  function assinaturaChegadaNormal() {
+    const movimentacaoId = texto(document.getElementById("chegadaMovimentacaoId")?.value);
+    return movimentacaoId ? `chegada:${movimentacaoId}` : "chegada:sem-id";
+  }
+
+  function assinaturaChegadaManual() {
+    const numeroOP = texto(document.getElementById("chegadaManualOP")?.value);
+    const processo = normalizar(document.getElementById("chegadaManualProcesso")?.value);
+    const faccao = normalizar(document.getElementById("chegadaManualFaccao")?.value);
+    const data = texto(document.getElementById("chegadaManualDataChegada")?.value);
+    const quantidade = inteiro(document.getElementById("chegadaManualQuantidade")?.value);
+    return `chegada-manual:${numeroOP}:${processo}:${faccao}:${data}:${quantidade}`;
+  }
+
+  function assinaturaPagamentoManual() {
+    const idAtual = texto(document.getElementById("entregaPagamentoId")?.value);
+    if (idAtual) return `pagamento-edicao:${idAtual}`;
+    const numeroOP = extrairNumeroOP(document.getElementById("entregaOP")?.value);
+    const precoId = texto(document.getElementById("entregaPreco")?.value);
+    const faccao = normalizar(document.getElementById("entregaFaccao")?.value);
+    const data = texto(document.getElementById("entregaData")?.value);
+    const quantidade = inteiro(document.getElementById("entregaQuantidade")?.value);
+    return `pagamento-manual:${numeroOP}:${precoId}:${faccao}:${data}:${quantidade}`;
+  }
+
+  function assinaturaFormulario(form) {
+    if (form.id === "formChegadaMovimentacao") return assinaturaChegadaNormal();
+    if (form.id === "formChegadaManualFaccao") return assinaturaChegadaManual();
+    return assinaturaPagamentoManual();
+  }
+
+  async function protegerChegadaNormal(form, assinatura) {
+    const movimentacaoId = texto(document.getElementById("chegadaMovimentacaoId")?.value);
+    const reserva = criarReservaLocal(assinatura);
+    if (!reserva) {
+      avisar("Esta chegada já está sendo processada nesta máquina.");
+      return;
+    }
+
+    verificacoesEmCurso.add(assinatura);
+    bloquearBotao(form, "Verificando...");
+
+    try {
+      if (movimentacaoId) {
+        const pagamentosExistentes = await pagamentosPorMovimentacao(movimentacaoId);
+        if (pagamentosExistentes.length > 1) {
+          avisar("Foram encontrados pagamentos duplicados nesta movimentação. Nenhum novo pagamento foi criado.", true);
+          removerReservaLocal(reserva);
+          restaurarBotao(form);
+          return;
+        }
+        if (pagamentosExistentes.length === 1) {
+          avisar("Esta movimentação já possui pagamento. A chegada não foi duplicada.");
+          removerReservaLocal(reserva);
+          restaurarBotao(form);
+          return;
+        }
+      }
+
+      autorizar(form, assinatura, reserva);
+      bloquearBotao(form, "Salvando...");
+      acompanharConclusao(form);
+      liberarFormulario(form);
+    } catch (error) {
+      console.error("Erro na verificação rápida da chegada.", error);
+      removerReservaLocal(reserva);
+      restaurarBotao(form);
+      avisar("Não foi possível verificar a duplicidade. A operação não foi realizada.", true);
+    } finally {
+      verificacoesEmCurso.delete(assinatura);
+    }
+  }
+
+  async function protegerChegadaManual(form, assinatura) {
     const numeroOP = texto(document.getElementById("chegadaManualOP")?.value);
     const processo = normalizar(document.getElementById("chegadaManualProcesso")?.value);
     const faccao = normalizar(document.getElementById("chegadaManualFaccao")?.value);
     const data = texto(document.getElementById("chegadaManualDataChegada")?.value);
     const quantidade = inteiro(document.getElementById("chegadaManualQuantidade")?.value);
 
-    if (!numeroOP || !processo || !faccao || !data || !quantidade) {
-      liberarFormulario(form, "antidup84Liberado");
-      return;
-    }
-
-    const chave = `chegada-manual:${numeroOP}:${processo}:${faccao}:${data}:${quantidade}`;
-    if (verificacoesEmCurso.has(chave) || !criarReservaLocal(chave)) {
+    const reserva = criarReservaLocal(assinatura);
+    if (!reserva) {
       avisar("Este lançamento manual já está sendo processado.");
       return;
     }
 
-    verificacoesEmCurso.add(chave);
-    const restaurar = bloquearBotao(form);
+    verificacoesEmCurso.add(assinatura);
+    bloquearBotao(form, "Verificando...");
 
     try {
-      const pagamentos = await pagamentosPorNumeroOP(numeroOP);
-      const duplicado = pagamentos.find(item =>
-        normalizar(item.processo || item.servicoNome) === processo &&
-        normalizar(item.faccao) === faccao &&
-        texto(item.dataEntrega) === data &&
-        inteiro(item.quantidade) === quantidade
-      );
+      if (numeroOP && processo && faccao && data && quantidade) {
+        const pagamentos = await pagamentosPorNumeroOP(numeroOP);
+        const duplicado = pagamentos.find(item =>
+          normalizar(item.processo || item.servicoNome) === processo &&
+          normalizar(item.faccao) === faccao &&
+          texto(item.dataEntrega) === data &&
+          inteiro(item.quantidade) === quantidade
+        );
 
-      if (duplicado) {
-        avisar("Já existe um pagamento com a mesma OP, processo, facção, data e quantidade. O lançamento foi bloqueado.", true);
-        return;
+        if (duplicado) {
+          avisar("Já existe um pagamento com a mesma OP, processo, facção, data e quantidade. O lançamento foi bloqueado.", true);
+          removerReservaLocal(reserva);
+          restaurarBotao(form);
+          return;
+        }
       }
 
-      liberarFormulario(form, "antidup84Liberado");
+      autorizar(form, assinatura, reserva);
+      bloquearBotao(form, "Salvando...");
+      acompanharConclusao(form);
+      liberarFormulario(form);
     } catch (error) {
       console.error("Erro na verificação da chegada manual.", error);
+      removerReservaLocal(reserva);
+      restaurarBotao(form);
       avisar("Não foi possível verificar a duplicidade. O lançamento não foi realizado.", true);
     } finally {
-      window.setTimeout(restaurar, 1200);
-      verificacoesEmCurso.delete(chave);
+      verificacoesEmCurso.delete(assinatura);
     }
   }
 
-  async function protegerPagamentoManual(form) {
+  async function protegerPagamentoManual(form, assinatura) {
     const idAtual = texto(document.getElementById("entregaPagamentoId")?.value);
-    if (idAtual) {
-      liberarFormulario(form, "antidup84Liberado");
-      return;
-    }
-
-    const numeroOP = extrairNumeroOP(document.getElementById("entregaOP")?.value);
-    const precoId = texto(document.getElementById("entregaPreco")?.value);
-    const faccao = normalizar(document.getElementById("entregaFaccao")?.value);
-    const data = texto(document.getElementById("entregaData")?.value);
-    const quantidade = inteiro(document.getElementById("entregaQuantidade")?.value);
-
-    if (!numeroOP || !precoId || !faccao || !data || !quantidade) {
-      liberarFormulario(form, "antidup84Liberado");
-      return;
-    }
-
-    const chave = `pagamento-manual:${numeroOP}:${precoId}:${faccao}:${data}:${quantidade}`;
-    if (verificacoesEmCurso.has(chave) || !criarReservaLocal(chave)) {
+    const reserva = criarReservaLocal(assinatura);
+    if (!reserva) {
       avisar("Este pagamento já está sendo processado.");
       return;
     }
 
-    verificacoesEmCurso.add(chave);
-    const restaurar = bloquearBotao(form);
+    verificacoesEmCurso.add(assinatura);
+    bloquearBotao(form, idAtual ? "Salvando..." : "Verificando...");
 
     try {
-      const pagamentos = await pagamentosPorNumeroOP(numeroOP);
-      const duplicado = pagamentos.find(item =>
-        texto(item.precoReferenciaId || item.servicoId) === precoId &&
-        normalizar(item.faccao) === faccao &&
-        texto(item.dataEntrega) === data &&
-        inteiro(item.quantidade) === quantidade
-      );
+      if (!idAtual) {
+        const numeroOP = extrairNumeroOP(document.getElementById("entregaOP")?.value);
+        const precoId = texto(document.getElementById("entregaPreco")?.value);
+        const faccao = normalizar(document.getElementById("entregaFaccao")?.value);
+        const data = texto(document.getElementById("entregaData")?.value);
+        const quantidade = inteiro(document.getElementById("entregaQuantidade")?.value);
 
-      if (duplicado) {
-        avisar("Já existe um pagamento igual para esta OP. O novo lançamento foi bloqueado.", true);
-        return;
+        if (numeroOP && precoId && faccao && data && quantidade) {
+          const pagamentos = await pagamentosPorNumeroOP(numeroOP);
+          const duplicado = pagamentos.find(item =>
+            texto(item.precoReferenciaId || item.servicoId) === precoId &&
+            normalizar(item.faccao) === faccao &&
+            texto(item.dataEntrega) === data &&
+            inteiro(item.quantidade) === quantidade
+          );
+
+          if (duplicado) {
+            avisar("Já existe um pagamento igual para esta OP. O novo lançamento foi bloqueado.", true);
+            removerReservaLocal(reserva);
+            restaurarBotao(form);
+            return;
+          }
+        }
       }
 
-      liberarFormulario(form, "antidup84Liberado");
+      autorizar(form, assinatura, reserva);
+      bloquearBotao(form, "Salvando...");
+      acompanharConclusao(form);
+      liberarFormulario(form);
     } catch (error) {
       console.error("Erro na verificação do pagamento manual.", error);
+      removerReservaLocal(reserva);
+      restaurarBotao(form);
       avisar("Não foi possível verificar a duplicidade. O pagamento não foi criado.", true);
     } finally {
-      window.setTimeout(restaurar, 1200);
-      verificacoesEmCurso.delete(chave);
+      verificacoesEmCurso.delete(assinatura);
     }
   }
 
   document.addEventListener("submit", event => {
     const form = event.target;
-    if (!(form instanceof HTMLFormElement)) return;
+    if (!(form instanceof HTMLFormElement) || !formulariosProtegidos.has(form.id)) return;
 
-    const formulariosProtegidos = new Set([
-      "formChegadaMovimentacao",
-      "formChegadaManualFaccao",
-      "formEntregaPagamento"
-    ]);
-
-    if (!formulariosProtegidos.has(form.id)) return;
-
-    if (form.dataset.antidup84Liberado === "1") {
-      delete form.dataset.antidup84Liberado;
-      return;
-    }
+    const assinatura = assinaturaFormulario(form);
+    if (assinaturaAutorizada(form, assinatura)) return;
 
     event.preventDefault();
     event.stopImmediatePropagation();
 
+    if (verificacoesEmCurso.has(assinatura)) {
+      avisar("Este registro já está sendo verificado.");
+      return;
+    }
+
     if (form.id === "formChegadaMovimentacao") {
-      protegerChegadaNormal(form);
+      protegerChegadaNormal(form, assinatura);
       return;
     }
-
     if (form.id === "formChegadaManualFaccao") {
-      protegerChegadaManual(form);
+      protegerChegadaManual(form, assinatura);
       return;
     }
-
-    protegerPagamentoManual(form);
+    protegerPagamentoManual(form, assinatura);
   }, true);
+
+  document.addEventListener("click", event => {
+    const alvo = event.target instanceof Element ? event.target.closest('button[type="submit"]') : null;
+    const form = alvo?.form;
+    if (!(form instanceof HTMLFormElement) || !formulariosProtegidos.has(form.id)) return;
+    if (form.dataset.antidup101Processando !== "1") return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    avisar("Este registro já está sendo processado. Aguarde.");
+  }, true);
+
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Enter") return;
+    const alvo = event.target instanceof Element ? event.target : null;
+    const form = alvo?.closest("form");
+    if (!(form instanceof HTMLFormElement) || !formulariosProtegidos.has(form.id)) return;
+    if (form.dataset.antidup101Processando !== "1") return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
+
+  window.setTimeout(() => contextoFirebase().catch(() => {}), 0);
 })();
