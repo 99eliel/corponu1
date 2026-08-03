@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-excluir-movimentacao-alca-96",
-  "updatedAt": "2026-08-03T12:15:00-03:00",
-  "notes": "Administradores passam a poder excluir movimentações de Alça exibidas na aba Lateral e Alça. A exclusão remove no mesmo lote os pagamentos ainda pendentes vinculados e cria registro de auditoria. Movimentações com pagamento já marcado como pago permanecem bloqueadas para preservar o histórico financeiro."
+  "version": "2026-08-03-chegada-manual-otimizada-97",
+  "updatedAt": "2026-08-03T12:33:00-03:00",
+  "notes": "Reduz consultas extras após a chegada manual sem alterar o salvamento, a proteção contra duplicidade ou os cálculos. Somente chegadas manuais de Lateral e Alça atualizam essa aba, com uma única atualização direcionada; outros processos deixam de disparar leituras desnecessárias de Lateral e Alça."
 }
