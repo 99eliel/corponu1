@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-03-aba-lateral-bojo-98";
+  const LOCAL_RELEASE = "2026-08-03-ocultar-chegada-topo-99";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -49,6 +49,7 @@
       ["corponu-faccoes-label-lateral.js", "faccoes-label-lateral", "Não foi possível aplicar o nome Lateral e Bojo na área de facções."],
       ["corponu-faccoes-lateral-alca-integracao.js", "faccoes-lateral-alca-integracao", "Não foi possível integrar Lateral e Alça na área de facções."],
       ["corponu-faccoes-lateral-alca-exclusao.js", "faccoes-lateral-alca-exclusao", "Não foi possível carregar a exclusão segura de movimentações de Alça."],
+      ["corponu-faccoes-ocultar-registrar-chegada-topo.js", "faccoes-ocultar-chegada-topo", "Não foi possível ocultar o botão superior Registrar chegada."],
       ["corponu-faccao-cadastro-recolhido.js", "faccao-cadastro-recolhido", "Não foi possível abrir o cadastro e a edição de facção em card."],
       ["corponu-chegada-sem-componentes-duplicados.js", "chegada-sem-componentes-duplicados", "Não foi possível remover a conferência duplicada de lateral e bojo."],
       ["corponu-pagamentos-interface.js", "pagamentos-interface", "Não foi possível carregar a organização visual de Pagamentos."],
