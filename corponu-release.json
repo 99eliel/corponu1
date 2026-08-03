@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-sutia-912-fluxo-rapido-94",
-  "updatedAt": "2026-08-03T10:12:00-03:00",
-  "notes": "O registro de chegada do Sutiã Completo referência 912 passa a usar o fluxo original de salvamento sem consultar histórico de lateral e bojo. A regra integral atualiza apenas a movimentação ou OP recém-registrada, removendo as varreduras globais repetidas que podiam levar vários minutos. Demais referências e funções permanecem com a lógica atual."
+  "version": "2026-08-03-lateral-alca-chegada-manual-95",
+  "updatedAt": "2026-08-03T11:37:00-03:00",
+  "notes": "A aba Lateral passa a se chamar Lateral e Alça, soma no contador as movimentações válidas dos dois processos e exibe também as movimentações de Alça que antes ficavam somente em Sutiã. Adiciona Chegada manual reutilizando o formulário oficial e mantém a chegada da Alça no fluxo original com sua regra financeira específica."
 }
