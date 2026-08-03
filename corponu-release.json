@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-chegada-sutia-completo-rapida-107",
-  "updatedAt": "2026-08-03T19:44:00-03:00",
-  "notes": "O Sutiã Completo passa a confirmar lateral, bojo, fecho e ponto de luz de forma binária na chegada. Lateral e bojo reaproveitam a informação já existente na OP e só são perguntados quando necessário; fecho e ponto de luz exigem resposta Sim ou Não. A chegada, o pagamento, a atualização da OP e o log são gravados juntos em um único lote atômico, eliminando as consultas repetidas e a espera de reconciliação. A referência especial mantém a regra de valor integral. Todas as demais funções e processos permanecem intactos."
+  "version": "2026-08-03-alerta-pagamentos-sem-valor-108",
+  "updatedAt": "2026-08-03T20:15:00-03:00",
+  "notes": "Adiciona um alerta grande na aba Pagamentos quando os filtros atuais contêm movimentações sem valor definido. O aviso respeita período, facção, referência e processos selecionados, mostra quantidade de movimentações, peças, OPs e referências afetadas, e deixa claro que o total exibido é parcial. A verificação ignora apenas o filtro de status para impedir que pendências sem valor fiquem escondidas. Nenhum cálculo, pagamento ou filtro existente foi alterado."
 }
