@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-reenvio-sutia-componentes-106",
-  "updatedAt": "2026-08-03T19:12:00-03:00",
-  "notes": "Adiciona ao reenvio para facção a conferência de lateral e bojo quando o processo escolhido for SUTIÃ COMPLETO. Informações já registradas são exibidas com origem e facção; quando não existirem, o usuário precisa informar a situação antes do envio. As respostas ficam salvas na OP. O ajuste foi feito em módulo isolado, com backup prévio, sem alterar app.js, pagamentos ou outros processos."
+  "version": "2026-08-03-chegada-sutia-completo-rapida-107",
+  "updatedAt": "2026-08-03T19:44:00-03:00",
+  "notes": "O Sutiã Completo passa a confirmar lateral, bojo, fecho e ponto de luz de forma binária na chegada. Lateral e bojo reaproveitam a informação já existente na OP e só são perguntados quando necessário; fecho e ponto de luz exigem resposta Sim ou Não. A chegada, o pagamento, a atualização da OP e o log são gravados juntos em um único lote atômico, eliminando as consultas repetidas e a espera de reconciliação. A referência especial mantém a regra de valor integral. Todas as demais funções e processos permanecem intactos."
 }
