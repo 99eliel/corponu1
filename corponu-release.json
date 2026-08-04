@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-04-unificar-lateral-118",
-  "updatedAt": "2026-08-04T10:40:00-03:00",
-  "notes": "Unifica todos os valores do processo LATERAL no setor interno lateral, remove cadastro duplicado com o mesmo valor e reaponta pagamentos vinculados antes da remoção. O salvamento de pendências de LATERAL passa a executar antes da rotina geral, evitando recriar o grupo legado corte. Os demais processos continuam usando a rotina estável 117."
+  "version": "2026-08-04-chegada-manual-faccoes-processo-119",
+  "updatedAt": "2026-08-04T10:57:00-03:00",
+  "notes": "A chegada manual de facção passa a usar a mesma fonte de facções ativas vinculadas ao processo utilizada na saída manual. Corrige o processo ALÇA para exibir KELLY e qualquer nova facção ativa cadastrada, preservando as demais chegadas, pagamentos e processos."
 }
