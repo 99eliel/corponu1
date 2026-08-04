@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-04-exclusao-faccao-pagamento-vinculado-115";
+  const LOCAL_RELEASE = "2026-08-04-pendencias-aplicar-valores-cadastrados-116";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -72,6 +72,7 @@
       ["corponu-pagamentos-alerta-duplicidades.js", "pagamentos-alerta-duplicidades", "Não foi possível verificar duplicidades nos pagamentos filtrados."],
       ["corponu-pendencias-modal-estavel.js", "pendencias-modal-estavel", "Não foi possível restaurar a abertura das pendências de valores."],
       ["corponu-pendencias-valor-seguro.js", "pendencias-valor-seguro", "Não foi possível salvar e recalcular os valores pendentes com segurança."],
+      ["corponu-pendencias-valores-cadastrados-acao.js", "pendencias-valores-cadastrados-acao", "Não foi possível localizar e aplicar os valores já cadastrados nas pendências."],
       ["corponu-verificacao-sutia-completo.js", "verificacao-sutia-completo-segura", "Não foi possível carregar a verificação segura do Sutiã Completo."]
     ];
     modulos.forEach(([arquivo, marcador, erro]) => carregarScript(arquivo, marcador, erro));
