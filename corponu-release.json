@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-04-alca-origem-segura-122",
-  "updatedAt": "2026-08-04T13:47:00-03:00",
-  "notes": "Corrige exclusivamente a origem dos pagamentos de ALÇA nos dois fluxos: chegada após saída para facção e chegada manual. O pagamento sem valor é corrigido no próprio documento, preservando o ID e o histórico, com cálculo fixo de quantidade de sutiãs x 2 alças x R$ 0,05. Não há monitoramento contínuo, exclusão ou varredura dos demais processos."
+  "version": "2026-08-04-alca-chegada-direta-123",
+  "updatedAt": "2026-08-04T14:18:00-03:00",
+  "notes": "A chegada normal da ALÇA agora grava a movimentação e o pagamento juntos, já usando o valor global cadastrado em TODAS + ALÇA e o cálculo de duas alças por sutiã. O fluxo antigo que criava Valor a definir não é executado para ALÇA. O mesmo documento de pagamento é reaproveitado quando já existe uma pendência vinculada, sem exclusão ou duplicação."
 }
