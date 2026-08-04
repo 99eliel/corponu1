@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-04-alca-chegada-direta-123";
+  const VERSION = "2026-08-04-alca-botao-direto-124";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -15,8 +15,14 @@
     document.head.appendChild(script);
   }
 
-  // A chegada normal de ALÇA é gravada junto com seu pagamento correto.
-  // O evento antigo que criava "Valor a definir" não é executado nesse fluxo.
+  // Assume exclusivamente o botão e o valor fixo da ALÇA. O botão deixa de
+  // submeter o formulário antigo e aplica R$ 0,05 diretamente nos pagamentos.
+  carregarScript(
+    "./corponu-alca-botao-direto-124.js",
+    "alca-botao-direto-124"
+  );
+
+  // Mantém a chegada normal de ALÇA já gravando o pagamento correto.
   carregarScript(
     "./corponu-alca-chegada-direta-123.js",
     "alca-chegada-direta-123"
@@ -26,13 +32,6 @@
   carregarScript(
     "./corponu-alca-origem-segura-122.js",
     "alca-origem-segura-122"
-  );
-
-  // O valor global da ALÇA é salvo por uma rotina isolada que consulta somente
-  // pagamentos de ALÇA e não executa a varredura geral que travava o sistema.
-  carregarScript(
-    "./corponu-alca-valor-seguro-120.js",
-    "alca-valor-seguro-120"
   );
 
   // O módulo específico de LATERAL precisa ser registrado primeiro para
