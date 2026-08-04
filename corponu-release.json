@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-04-alca-botao-direto-124",
-  "updatedAt": "2026-08-04T14:33:00-03:00",
-  "notes": "Corrige exclusivamente o valor da ALÇA. O botão do Gerenciador deixa de submeter o formulário antigo e passa a aplicar diretamente o valor fixo de R$ 0,05 por alça, com duas alças por sutiã. Os pagamentos abertos de ALÇA são atualizados no próprio documento, sem exclusão, duplicação, varredura dos demais processos ou recarregamento geral da tela."
+  "version": "2026-08-04-alca-lateral-formulario-125",
+  "updatedAt": "2026-08-04T14:58:00-03:00",
+  "notes": "Corrige o formulário real da aba Facções > Lateral e Alça, antiga área Corte. Quando o processo é ALÇA, a chegada e o pagamento são gravados juntos no mesmo fluxo com a regra fixa de quantidade recebida x 2 alças x R$ 0,05. O pagamento existente é reaproveitado pelo movimentacaoId, sem exclusão ou duplicação. LATERAL e os demais processos permanecem na rotina atual."
 }

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-04-alca-botao-direto-124";
+  const VERSION = "2026-08-04-alca-lateral-formulario-125";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -14,6 +14,13 @@
     script.onerror = () => console.error(`Não foi possível carregar o módulo ${modulo}.`);
     document.head.appendChild(script);
   }
+
+  // Corrige o formulário real da aba Lateral e Alça (antiga área Corte).
+  // Apenas chegadas cujo processo é ALÇA são interceptadas.
+  carregarScript(
+    "./corponu-alca-lateral-formulario-125.js",
+    "alca-lateral-formulario-125"
+  );
 
   // Assume exclusivamente o botão e o valor fixo da ALÇA. O botão deixa de
   // submeter o formulário antigo e aplica R$ 0,05 diretamente nos pagamentos.
