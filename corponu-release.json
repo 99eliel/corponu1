@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-hotfix-chegada-sutia-componentes-109",
-  "updatedAt": "2026-08-03T20:31:00-03:00",
-  "notes": "Corrige o bloqueio da chegada do Sutiã Completo quando lateral e bojo já aparecem como Pronta, mas uma validação antiga escondida ainda os interpreta como não informados. O hotfix sincroniza os estados visíveis com os campos legados antes do salvamento, inclusive em reenvios do formulário, sem alterar cálculos, valores, pagamentos, OPs ou regras do Firebase."
+  "version": "2026-08-03-correcao-definitiva-chegada-sutia-110",
+  "updatedAt": "2026-08-03T20:58:00-03:00",
+  "notes": "Corrige definitivamente o bloqueio da chegada do Sutiã Completo causado por uma validação antiga do update.js. A nova rotina intercepta somente o SUTIÃ COMPLETO antes da validação legada, lê lateral e bojo diretamente do painel atual, exige respostas binárias de fecho e ponto de luz, calcula o pagamento e grava movimentação, pagamento, OP e log em um único lote atômico. Os demais processos não são interceptados nem alterados."
 }
