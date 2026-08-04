@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-04-alca-origem-leve-126",
-  "updatedAt": "2026-08-04T15:18:00-03:00",
-  "notes": "Corrige diretamente o gerador original da área Facções > Lateral e Alça. O processo ALÇA passa a ler o valor global TODAS / ALÇA e calcular quantidade recebida x 2 x R$ 0,05 antes de criar o pagamento, impedindo Valor a definir. As antigas correções paralelas da ALÇA deixam de ser carregadas. O botão de correção atualiza somente pagamentos realmente sem valor e recarrega a página após a gravação, sem executar a atualização pesada que congelava a interface."
+  "version": "2026-08-04-duplicidade-filtros-127",
+  "updatedAt": "2026-08-04T15:35:00-03:00",
+  "notes": "Adiciona verificação automática de possíveis pagamentos duplicados ao combinar filtros na aba Pagamentos, como processo ALÇA e facção SIMONE. A conferência compara movimentação, OP, referência, cor, facção, processo, data, quantidade, falta e origem de reenvio. Quando encontra lançamentos iguais, exibe alerta vermelho, resumo do possível valor repetido, detalhes dos IDs e destaca as linhas; quando não encontra, mostra confirmação verde. A função é somente de conferência e não altera nem exclui pagamentos."
 }
