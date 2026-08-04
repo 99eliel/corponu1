@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-03-correcao-definitiva-chegada-sutia-110";
+  const LOCAL_RELEASE = "2026-08-03-chegada-manual-sem-duplicidade-111";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -55,6 +55,7 @@
       ["corponu-faccoes-ocultar-registrar-chegada-topo.js", "faccoes-ocultar-chegada-topo", "Não foi possível ocultar o botão superior Registrar chegada."],
       ["corponu-faccao-cadastro-recolhido.js", "faccao-cadastro-recolhido", "Não foi possível abrir o cadastro e a edição de facção em card."],
       ["corponu-chegada-sem-componentes-duplicados.js", "chegada-sem-componentes-duplicados", "Não foi possível remover a conferência duplicada de lateral e bojo."],
+      ["corponu-chegada-manual-sem-componentes-duplicados.js", "chegada-manual-sem-componentes-duplicados", "Não foi possível remover a conferência duplicada na chegada manual."],
       ["corponu-chegada-sutia-sync-legado.js", "chegada-sutia-definitiva", "Não foi possível ativar a chegada definitiva do Sutiã Completo."],
       ["corponu-pagamentos-interface.js", "pagamentos-interface", "Não foi possível carregar a organização visual de Pagamentos."],
       ["corponu-pagamentos-interface-fix.js", "pagamentos-interface-fix", "Não foi possível estabilizar a interface de Pagamentos."],
@@ -90,7 +91,7 @@
     try {
       if ("caches" in window) {
         const chaves = await caches.keys();
-        await Promise.all(chaves.filter(chave => chave.startsWith("op-confeccao-")).map(chave => caches.delete(chave)));
+        await Promise.all(chaves.filter(chave => chaves.startsWith?.("op-confeccao-") || chave.startsWith("op-confeccao-")).map(chave => caches.delete(chave)));
       }
     } catch (error) {
       console.warn("Não foi possível remover o cache antigo do PWA.", error);
