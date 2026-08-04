@@ -263,7 +263,8 @@
         input.value = "0,05";
       });
       document.querySelectorAll("#statusValorPadraoAlca").forEach(status => {
-        status.textContent = "Valor fixo: R$ 0,05 por alça. Cada sutiã recebe 2 alças, totalizando R$ 0,10 por sutiã.";
+        const mensagem = "Valor fixo: R$ 0,05 por alça. Cada sutiã recebe 2 alças, totalizando R$ 0,10 por sutiã.";
+        if (status.textContent !== mensagem) status.textContent = mensagem;
       });
 
       const modal = document.getElementById("modalPendenciasValoresFinanceiro");
@@ -348,39 +349,39 @@
     );
     const input = label?.querySelector("input");
     if (input) {
-      input.value = "0,05";
+      if (input.value !== "0,05") input.value = "0,05";
       input.readOnly = true;
       input.title = "Valor fixo: R$ 0,05 por alça";
     }
 
     [...modal.querySelectorAll("button")].forEach(botao => {
       const titulo = normalizar(botao.textContent);
-      if (titulo.includes("SALVAR E RECALCULAR") || titulo.includes("SALVANDO E RECALCULANDO")) {
+      if (titulo.includes("SALVAR E RECALCULAR") || titulo.includes("SALVANDO E RECALCULANDO") || botao.dataset.alcaDireta124 === "1") {
         botao.type = "button";
         botao.dataset.alcaDireta124 = "1";
-        botao.textContent = "Aplicar R$ 0,05";
+        if (botao.textContent !== "Aplicar R$ 0,05") botao.textContent = "Aplicar R$ 0,05";
       }
     });
   }
 
   function instalarInterface() {
-    const form = document.getElementById("formValorPadraoAlca");
     const input = document.getElementById("inputValorPadraoAlca");
     const botao = document.getElementById("btnSalvarValorPadraoAlca");
     const status = document.getElementById("statusValorPadraoAlca");
 
     if (input) {
-      input.value = "0,05";
+      if (input.value !== "0,05") input.value = "0,05";
       input.readOnly = true;
       input.title = "Valor fixo definido para a ALÇA";
     }
     if (botao) {
       botao.type = "button";
-      botao.textContent = "Aplicar R$ 0,05 na ALÇA";
+      if (botao.textContent !== "Aplicar R$ 0,05 na ALÇA") botao.textContent = "Aplicar R$ 0,05 na ALÇA";
       botao.dataset.alcaDireta124 = "1";
     }
     if (status) {
-      status.textContent = "Valor fixo: R$ 0,05 por alça. Cada sutiã recebe 2 alças, totalizando R$ 0,10 por sutiã.";
+      const mensagem = "Valor fixo: R$ 0,05 por alça. Cada sutiã recebe 2 alças, totalizando R$ 0,10 por sutiã.";
+      if (status.textContent !== mensagem) status.textContent = mensagem;
     }
     prepararCampoCentral();
   }
