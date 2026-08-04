@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-04-correcao-alca-valor-120",
-  "updatedAt": "2026-08-04T13:03:00-03:00",
-  "notes": "Corrige exclusivamente o valor global da ALÇA. O salvamento deixa de ler todos os pagamentos do sistema e passa a consultar somente lançamentos de ALÇA, aplicando R$ por alça x 2 em um único lote aos pagamentos pendentes. Outros processos, chegadas, filtros e cálculos permanecem intactos."
+  "version": "2026-08-04-alca-origem-segura-122",
+  "updatedAt": "2026-08-04T13:47:00-03:00",
+  "notes": "Corrige exclusivamente a origem dos pagamentos de ALÇA nos dois fluxos: chegada após saída para facção e chegada manual. O pagamento sem valor é corrigido no próprio documento, preservando o ID e o histórico, com cálculo fixo de quantidade de sutiãs x 2 alças x R$ 0,05. Não há monitoramento contínuo, exclusão ou varredura dos demais processos."
 }
