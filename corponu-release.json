@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-chegada-manual-sutia-pagamento-automatico-112",
-  "updatedAt": "2026-08-03T22:34:00-03:00",
-  "notes": "Corrige a chegada manual de SUTIÃ COMPLETO para calcular e salvar o pagamento automaticamente com a mesma regra da chegada pela movimentação. O módulo usa os dados atuais da OP, lateral, bojo, fecho, ponto de luz, falta e desconto por defeito; também reaproveita e corrige o pagamento pendente sem valor da mesma movimentação, sem criar duplicidade. Os demais processos e a chegada normal não são interceptados."
+  "version": "2026-08-03-alerta-duplicidades-pagamentos-113",
+  "updatedAt": "2026-08-03T22:52:00-03:00",
+  "notes": "Adiciona uma verificação preventiva e somente leitura para possíveis ordens de pagamento duplicadas no resultado filtrado. O alerta identifica com alta confiança pagamentos ligados à mesma movimentação e também sinaliza registros históricos com OP, referência, facção, processo, data, quantidade e valores idênticos. Mostra quantidade, OPs e valor potencialmente repetido, permite abrir os detalhes e não exclui nem altera qualquer lançamento."
 }
