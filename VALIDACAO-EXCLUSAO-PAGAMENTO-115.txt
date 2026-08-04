@@ -1,0 +1,9 @@
+Release: 2026-08-04-exclusao-faccao-pagamento-vinculado-115
+
+Escopo validado:
+- movimentacao tipoDestino=faccao: usa exclusao atomica com pagamentos pendentes vinculados;
+- movimentacao tipoDestino=celula: delega para a funcao original;
+- pagamento pago/quitado: bloqueia exclusao da movimentacao;
+- pagamento cancelado/excluido/estornado: nao entra como pagamento ativo;
+- pagamento orfao visivel na Central financeira: somente removido apos confirmacao do administrador;
+- app.js e regras Firebase nao alterados.
