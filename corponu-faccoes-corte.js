@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "2026-08-04-alca-origem-leve-126";
+  const VERSION = "2026-08-04-lateral-origem-128";
   if (window.__CORPONU_FACCOES_CORTE_LOADER__ === VERSION) return;
   window.__CORPONU_FACCOES_CORTE_LOADER__ = VERSION;
 
@@ -29,7 +29,7 @@
     return script;
   }
 
-  function aplicarHotfixAlcaNoFonte(fonteOriginal) {
+  function aplicarHotfixLateralEAlcaNoFonte(fonteOriginal) {
     let fonte = String(fonteOriginal || "");
 
     const inicioAntigo = `  async function criarOuAtualizarPagamento(movement) {
@@ -38,7 +38,10 @@
 
     const inicioNovo = `  async function criarOuAtualizarPagamento(movement) {
     const c = await aguardarContexto();
-    const ehAlcaGlobal = ["ALCA", "ALCAS"].includes(norm(movement.processo));
+    const processoNormalizadoPagamento = norm(movement.processo);
+    const ehAlcaGlobal = ["ALCA", "ALCAS"].includes(processoNormalizadoPagamento);
+    const ehLateralReferencia = processoNormalizadoPagamento === "LATERAL";
+    let conflitoPrecoLateral = false;
     let price = precoDoMovimento(movement);
 
     if (ehAlcaGlobal) {
@@ -57,13 +60,67 @@
       } catch (error) {
         console.warn("Não foi possível ler o valor global da ALÇA.", error);
       }
+    }
+
+    if (ehLateralReferencia) {
+      try {
+        const referenciaTexto = String(movement.referencia ?? "").trim();
+        const referenciasConsulta = [];
+        if (referenciaTexto) referenciasConsulta.push(referenciaTexto);
+        const referenciaNumero = Number(referenciaTexto.replace(",", "."));
+        if (
+          referenciaTexto &&
+          Number.isFinite(referenciaNumero) &&
+          !referenciasConsulta.some(item => typeof item === "number" && item === referenciaNumero)
+        ) {
+          referenciasConsulta.push(referenciaNumero);
+        }
+
+        if (referenciasConsulta.length) {
+          const colecaoPrecos = c.fs.collection(c.db, "precosReferencia");
+          const consultaPrecos = referenciasConsulta.length > 1
+            ? c.fs.query(colecaoPrecos, c.fs.where("referencia", "in", referenciasConsulta))
+            : c.fs.query(colecaoPrecos, c.fs.where("referencia", "==", referenciasConsulta[0]));
+          const snapshotPrecos = await c.fs.getDocs(consultaPrecos);
+          const candidatosLaterais = snapshotPrecos.docs
+            .map(documento => ({ id: documento.id, ...documento.data() }))
+            .filter(item => {
+              const valor = Math.max(
+                numero(item.valor ?? item.valorUnitario ?? item.preco ?? item.valorPorPeca),
+                0
+              );
+              return item.ativo !== false && norm(item.processo) === "LATERAL" && valor > 0;
+            });
+          const valoresLaterais = [...new Set(candidatosLaterais.map(item =>
+            Math.max(numero(item.valor ?? item.valorUnitario ?? item.preco ?? item.valorPorPeca), 0).toFixed(6)
+          ))];
+
+          if (valoresLaterais.length === 1) {
+            price = [...candidatosLaterais].sort((a, b) => {
+              const setorA = norm(a.setor) === "LATERAL" ? 0 : 1;
+              const setorB = norm(b.setor) === "LATERAL" ? 0 : 1;
+              return setorA - setorB || String(a.id).localeCompare(String(b.id), "pt-BR", { numeric: true });
+            })[0] || price;
+          } else if (valoresLaterais.length > 1) {
+            price = null;
+            conflitoPrecoLateral = true;
+            console.error(
+              "Existem valores ativos diferentes para a mesma referência de LATERAL.",
+              movement.referencia,
+              valoresLaterais
+            );
+          }
+        }
+      } catch (error) {
+        console.warn("Não foi possível ler o valor cadastrado da LATERAL.", error);
+      }
     }`;
 
     const calculoAntigo = `    const unit = price ? Math.max(numero(price.valor), 0) : 0;
     const subtotal = arredondar(qty * unit);`;
 
     const calculoNovo = `    const valorBase = price
-      ? Math.max(numero(price.valor ?? price.valorUnitario ?? price.preco), 0)
+      ? Math.max(numero(price.valor ?? price.valorUnitario ?? price.preco ?? price.valorPorPeca), 0)
       : 0;
     const unit = ehAlcaGlobal
       ? Math.round((valorBase * 2 + Number.EPSILON) * 10000) / 10000
@@ -78,8 +135,8 @@
 
     const setorNovo = `      precoReferenciaId: price?.id || "",
       servicoId: price?.id || "",
-      setor: ehAlcaGlobal ? "alca" : AREA,
-      setorLabel: ehAlcaGlobal ? "Alça" : "Corte",
+      setor: ehAlcaGlobal ? "alca" : (ehLateralReferencia ? "lateral" : AREA),
+      setorLabel: ehAlcaGlobal ? "Alça" : (ehLateralReferencia ? "Lateral" : "Corte"),
       dataEntrega: movement.dataChegada,`;
 
     const quantidadeAntiga = `      quantidade: qty,
@@ -93,18 +150,45 @@
         formaValorPagamento: "valor_global_alca",
         calculoAlca: "quantidade_recebida_x_2_x_valor_alca"
       } : {}),
+      ...(ehLateralReferencia ? {
+        formaValorPagamento: "valor_unitario_referencia",
+        calculoLateral: "quantidade_recebida_x_valor_referencia",
+        origemPrecoLateral: "precosReferencia"
+      } : {}),
       falta: numero(movement.falta),`;
+
+    const statusAntigo = `      statusPagamento: price ? "pendente" : "sem_valor",
+      valorPendente: !price,
+      avisoPagamento: price ? "" : \`Adicionar valor para Ref. \${movement.referencia || "-"} + \${movement.processo || "-"}.\`,
+      observacoes: price ? "Gerado pela chegada da área Corte." : "Valor a definir: não existe preço cadastrado para esta referência e processo de Corte.",`;
+
+    const statusNovo = `      statusPagamento: price ? "pendente" : "sem_valor",
+      valorPendente: !price,
+      valorManualFinanceiroPendente: !price,
+      avisoPagamento: price
+        ? ""
+        : (conflitoPrecoLateral
+          ? \`Existem valores ativos diferentes para Ref. \${movement.referencia || "-"} + LATERAL. Revise o Gerenciador de valores.\`
+          : \`Adicionar valor para Ref. \${movement.referencia || "-"} + \${movement.processo || "-"}.\`),
+      observacoes: price
+        ? (ehLateralReferencia
+          ? "Gerado pela chegada da área Lateral e Alça com o valor cadastrado da referência."
+          : "Gerado pela chegada da área Corte.")
+        : (conflitoPrecoLateral
+          ? "Valor a definir: existem valores ativos diferentes para esta referência de LATERAL."
+          : "Valor a definir: não existe preço cadastrado para esta referência e processo de Corte."),`;
 
     const substituicoes = [
       [inicioAntigo, inicioNovo, "início do gerador"],
-      [calculoAntigo, calculoNovo, "cálculo da ALÇA"],
+      [calculoAntigo, calculoNovo, "cálculo de LATERAL e ALÇA"],
       [setorAntigo, setorNovo, "setor do pagamento"],
-      [quantidadeAntiga, quantidadeNova, "quantidade de alças"]
+      [quantidadeAntiga, quantidadeNova, "metadados de quantidade"],
+      [statusAntigo, statusNovo, "situação do pagamento"]
     ];
 
     substituicoes.forEach(([antigo, novo, descricao]) => {
       if (!fonte.includes(antigo)) {
-        console.error(`Hotfix da ALÇA não encontrou: ${descricao}.`);
+        console.error(`Hotfix de LATERAL e ALÇA não encontrou: ${descricao}.`);
         return;
       }
       fonte = fonte.replace(antigo, novo);
@@ -153,7 +237,7 @@
       if (!response.ok) throw new Error(`${name}: ${response.status}`);
       return response.text();
     }))).then(chunks => {
-      const fonteCorrigida = aplicarHotfixAlcaNoFonte(chunks.join(""));
+      const fonteCorrigida = aplicarHotfixLateralEAlcaNoFonte(chunks.join(""));
       const blob = new Blob([fonteCorrigida], { type: "text/javascript" });
       const url = URL.createObjectURL(blob);
       const script = document.createElement("script");
