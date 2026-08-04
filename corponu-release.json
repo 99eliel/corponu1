@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-correcao-definitiva-chegada-sutia-110",
-  "updatedAt": "2026-08-03T20:58:00-03:00",
-  "notes": "Corrige definitivamente o bloqueio da chegada do Sutiã Completo causado por uma validação antiga do update.js. A nova rotina intercepta somente o SUTIÃ COMPLETO antes da validação legada, lê lateral e bojo diretamente do painel atual, exige respostas binárias de fecho e ponto de luz, calcula o pagamento e grava movimentação, pagamento, OP e log em um único lote atômico. Os demais processos não são interceptados nem alterados."
+  "version": "2026-08-03-chegada-manual-sem-duplicidade-111",
+  "updatedAt": "2026-08-03T22:10:00-03:00",
+  "notes": "Remove a pergunta duplicada de lateral e bojo na chegada manual de SUTIÃ COMPLETO. O sistema mantém somente a Conferência do Sutiã Completo, sincroniza silenciosamente os campos antigos para preservar compatibilidade e mantém o bloco Componentes do Sutiã disponível para SUTIÃ MONTAGEM. Nenhum cálculo, pagamento, movimentação, regra Firebase ou outro processo foi alterado."
 }
