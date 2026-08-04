@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-04-unificar-lateral-118";
+  const VERSION = "2026-08-04-chegada-manual-faccoes-processo-119";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -24,5 +24,12 @@
       "./corponu-pendencias-valor-seguro-117.js",
       "pendencias-valor-seguro-117"
     )
+  );
+
+  // A chegada manual passa a consultar as mesmas facções ativas por processo
+  // usadas na saída manual, sem depender das listas antigas fixas.
+  carregarScript(
+    "./corponu-chegada-manual-faccoes-processo-119-seguro.js",
+    "chegada-manual-faccoes-processo-119"
   );
 })();
