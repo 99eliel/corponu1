@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-04-exclusao-faccao-pagamento-vinculado-115";
+  const LOCAL_RELEASE = "2026-08-04-calcinha-planejamento-opcional-129";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -11,6 +11,14 @@
   window.__corponuAutoUpdateIniciado = true;
 
   let verificando = false;
+
+  function reservarModoCalcinhaOpcional() {
+    if (document.querySelector('script[data-corponu-dual-mode="1"]')) return;
+    const marcador = document.createElement("script");
+    marcador.dataset.corponuDualMode = "1";
+    marcador.dataset.corponuDualOpcionalGuard = LOCAL_RELEASE;
+    document.head.appendChild(marcador);
+  }
 
   function carregarScript(nomeArquivo, marcador, mensagemErro) {
     const existente = [...document.scripts].find(script => String(script.src || "").includes(nomeArquivo));
@@ -26,6 +34,7 @@
 
   function carregarModulos() {
     const modulos = [
+      ["corponu-calcinha-planejamento-opcional-129.js", "calcinha-planejamento-opcional-129", "Não foi possível tornar serviço e facção opcionais nas OPs de calcinha."],
       ["corponu-remover-lancamento-manual-pagamentos.js", "remover-lancamento-manual-pagamentos", "Não foi possível remover a criação manual de pagamentos."],
       ["corponu-chegada-manual-sutia-pagamento-automatico.js", "chegada-manual-sutia-pagamento-automatico", "Não foi possível ativar o pagamento automático do Sutiã Completo na chegada manual."],
       ["corponu-chegada-manual-trava-movimentacao.js", "chegada-manual-trava-movimentacao", "Não foi possível carregar a trava de movimentação da chegada manual."],
@@ -133,6 +142,7 @@
   }
 
   async function iniciar() {
+    reservarModoCalcinhaOpcional();
     carregarModulos();
     removerAvisosAntigos();
     await removerPwaAntigo();
@@ -143,6 +153,7 @@
     window.addEventListener("online", verificarRelease);
   }
 
+  reservarModoCalcinhaOpcional();
   carregarModulos();
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar, { once: true });
   else iniciar();

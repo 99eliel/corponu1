@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-04-lateral-origem-128",
-  "updatedAt": "2026-08-04T18:18:00-03:00",
-  "notes": "Corrige a geração de pagamentos de LATERAL na aba Facções > Lateral e Alça. A chegada passa a consultar o valor ativo por referência diretamente em precosReferencia, priorizando o setor lateral e aceitando referência salva como texto ou número. O pagamento nasce com valor, setor lateral e status pendente normal. Se houver valores ativos diferentes para a mesma referência, o sistema mantém Valor a definir e informa o conflito para revisão. A lógica da ALÇA permanece preservada com duas alças por sutiã."
+  "version": "2026-08-04-calcinha-planejamento-opcional-129",
+  "updatedAt": "2026-08-04T19:42:00-03:00",
+  "notes": "Torna serviço/processo e facção opcionais ao cadastrar manualmente ou importar por PDF uma ordem de produção de calcinha. Quando esses campos não forem informados, a OP é salva normalmente e o sistema solicita serviço e facção somente no momento do envio para a facção. O fluxo de sutiã, os pagamentos, ALÇA e LATERAL permanecem inalterados."
 }
