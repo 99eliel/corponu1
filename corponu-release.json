@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-chegada-manual-sem-duplicidade-111",
-  "updatedAt": "2026-08-03T22:10:00-03:00",
-  "notes": "Remove a pergunta duplicada de lateral e bojo na chegada manual de SUTIÃ COMPLETO. O sistema mantém somente a Conferência do Sutiã Completo, sincroniza silenciosamente os campos antigos para preservar compatibilidade e mantém o bloco Componentes do Sutiã disponível para SUTIÃ MONTAGEM. Nenhum cálculo, pagamento, movimentação, regra Firebase ou outro processo foi alterado."
+  "version": "2026-08-03-chegada-manual-sutia-pagamento-automatico-112",
+  "updatedAt": "2026-08-03T22:34:00-03:00",
+  "notes": "Corrige a chegada manual de SUTIÃ COMPLETO para calcular e salvar o pagamento automaticamente com a mesma regra da chegada pela movimentação. O módulo usa os dados atuais da OP, lateral, bojo, fecho, ponto de luz, falta e desconto por defeito; também reaproveita e corrige o pagamento pendente sem valor da mesma movimentação, sem criar duplicidade. Os demais processos e a chegada normal não são interceptados."
 }
