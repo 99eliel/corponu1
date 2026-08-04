@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "2026-08-03-faccoes-chegada-rapida-32";
+  const VERSION = "2026-08-04-alca-origem-leve-126";
   if (window.__CORPONU_FACCOES_CORTE_LOADER__ === VERSION) return;
   window.__CORPONU_FACCOES_CORTE_LOADER__ = VERSION;
 
@@ -27,6 +27,90 @@
     script.onerror = () => console.error(mensagemErro);
     document.head.appendChild(script);
     return script;
+  }
+
+  function aplicarHotfixAlcaNoFonte(fonteOriginal) {
+    let fonte = String(fonteOriginal || "");
+
+    const inicioAntigo = `  async function criarOuAtualizarPagamento(movement) {
+    const c = await aguardarContexto();
+    const price = precoDoMovimento(movement);`;
+
+    const inicioNovo = `  async function criarOuAtualizarPagamento(movement) {
+    const c = await aguardarContexto();
+    const ehAlcaGlobal = ["ALCA", "ALCAS"].includes(norm(movement.processo));
+    let price = precoDoMovimento(movement);
+
+    if (ehAlcaGlobal) {
+      try {
+        const globalSnap = await c.fs.getDoc(
+          c.fs.doc(c.db, "precosReferencia", "valor-padrao-alca")
+        );
+        if (globalSnap.exists()) {
+          const globalData = { id: globalSnap.id, ...globalSnap.data() };
+          const valorGlobal = Math.max(
+            numero(globalData.valor ?? globalData.valorUnitario ?? globalData.preco),
+            0
+          );
+          if (globalData.ativo !== false && valorGlobal > 0) price = globalData;
+        }
+      } catch (error) {
+        console.warn("Não foi possível ler o valor global da ALÇA.", error);
+      }
+    }`;
+
+    const calculoAntigo = `    const unit = price ? Math.max(numero(price.valor), 0) : 0;
+    const subtotal = arredondar(qty * unit);`;
+
+    const calculoNovo = `    const valorBase = price
+      ? Math.max(numero(price.valor ?? price.valorUnitario ?? price.preco), 0)
+      : 0;
+    const unit = ehAlcaGlobal
+      ? Math.round((valorBase * 2 + Number.EPSILON) * 10000) / 10000
+      : valorBase;
+    const subtotal = arredondar(qty * unit);`;
+
+    const setorAntigo = `      precoReferenciaId: price?.id || "",
+      servicoId: price?.id || "",
+      setor: AREA,
+      setorLabel: "Corte",
+      dataEntrega: movement.dataChegada,`;
+
+    const setorNovo = `      precoReferenciaId: price?.id || "",
+      servicoId: price?.id || "",
+      setor: ehAlcaGlobal ? "alca" : AREA,
+      setorLabel: ehAlcaGlobal ? "Alça" : "Corte",
+      dataEntrega: movement.dataChegada,`;
+
+    const quantidadeAntiga = `      quantidade: qty,
+      falta: numero(movement.falta),`;
+
+    const quantidadeNova = `      quantidade: qty,
+      ...(ehAlcaGlobal ? {
+        quantidadeAlcas: qty * 2,
+        multiplicadorAlcas: 2,
+        valorUnitarioAlca: valorBase,
+        formaValorPagamento: "valor_global_alca",
+        calculoAlca: "quantidade_recebida_x_2_x_valor_alca"
+      } : {}),
+      falta: numero(movement.falta),`;
+
+    const substituicoes = [
+      [inicioAntigo, inicioNovo, "início do gerador"],
+      [calculoAntigo, calculoNovo, "cálculo da ALÇA"],
+      [setorAntigo, setorNovo, "setor do pagamento"],
+      [quantidadeAntiga, quantidadeNova, "quantidade de alças"]
+    ];
+
+    substituicoes.forEach(([antigo, novo, descricao]) => {
+      if (!fonte.includes(antigo)) {
+        console.error(`Hotfix da ALÇA não encontrou: ${descricao}.`);
+        return;
+      }
+      fonte = fonte.replace(antigo, novo);
+    });
+
+    return fonte;
   }
 
   function carregarAjustesFinais() {
@@ -69,7 +153,8 @@
       if (!response.ok) throw new Error(`${name}: ${response.status}`);
       return response.text();
     }))).then(chunks => {
-      const blob = new Blob([chunks.join("")], { type: "text/javascript" });
+      const fonteCorrigida = aplicarHotfixAlcaNoFonte(chunks.join(""));
+      const blob = new Blob([fonteCorrigida], { type: "text/javascript" });
       const url = URL.createObjectURL(blob);
       const script = document.createElement("script");
       script.src = url;
@@ -87,8 +172,6 @@
     }).catch(error => console.error("Não foi possível carregar a área Corte das facções.", error));
   }
 
-  // Esta proteção é carregada primeiro. Ela remove apenas a confirmação do navegador
-  // e bloqueia o segundo envio antes que o formulário original seja iniciado.
   carregarScript(
     "corponu-saida-sem-confirmacao.js",
     "saida-sem-confirmacao-dupla",
