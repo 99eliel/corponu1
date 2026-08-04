@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-04-alca-origem-segura-122";
+  const VERSION = "2026-08-04-alca-chegada-direta-123";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -15,8 +15,14 @@
     document.head.appendChild(script);
   }
 
-  // Corrige a ALÇA no próprio pagamento criado pela chegada, preservando o ID
-  // e usando sempre 2 alças de R$ 0,05 por sutiã. Não usa listener do Firestore.
+  // A chegada normal de ALÇA é gravada junto com seu pagamento correto.
+  // O evento antigo que criava "Valor a definir" não é executado nesse fluxo.
+  carregarScript(
+    "./corponu-alca-chegada-direta-123.js",
+    "alca-chegada-direta-123"
+  );
+
+  // Mantém a recuperação segura para chegadas manuais e pendências anteriores.
   carregarScript(
     "./corponu-alca-origem-segura-122.js",
     "alca-origem-segura-122"
