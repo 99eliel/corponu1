@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-04-exclusao-faccao-pagamento-vinculado-115",
-  "updatedAt": "2026-08-04T07:55:00-03:00",
-  "notes": "Corrige a exclusão de movimentações na aba Facções para remover no mesmo lote os pagamentos pendentes vinculados pelo movimentacaoId. Pagamentos já pagos bloqueiam a exclusão, movimentações de célula continuam usando o fluxo original e a Central financeira pode localizar e remover, mediante confirmação do administrador, pagamentos órfãos deixados por exclusões antigas."
+  "version": "2026-08-04-pendencias-aplicar-valores-cadastrados-116",
+  "updatedAt": "2026-08-04T09:37:00-03:00",
+  "notes": "A Central financeira passa a identificar visualmente pendências que já possuem valor ativo cadastrado para a mesma referência e processo. O sistema preenche o valor encontrado e oferece o botão Aplicar valores cadastrados; nenhum pagamento é alterado automaticamente. A aplicação só ocorre após confirmação do administrador, ignora pagamentos pagos ou cancelados e bloqueia valores conflitantes."
 }
