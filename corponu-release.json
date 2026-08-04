@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-03-alerta-duplicidades-pagamentos-113",
-  "updatedAt": "2026-08-03T22:52:00-03:00",
-  "notes": "Adiciona uma verificação preventiva e somente leitura para possíveis ordens de pagamento duplicadas no resultado filtrado. O alerta identifica com alta confiança pagamentos ligados à mesma movimentação e também sinaliza registros históricos com OP, referência, facção, processo, data, quantidade e valores idênticos. Mostra quantidade, OPs e valor potencialmente repetido, permite abrir os detalhes e não exclui nem altera qualquer lançamento."
+  "version": "2026-08-04-reconciliar-valores-pendentes-114",
+  "updatedAt": "2026-08-04T07:23:00-03:00",
+  "notes": "Corrige a Central financeira — valores pendentes para reconhecer automaticamente valores que já estão cadastrados em Gerenciar valores. Ao abrir ou atualizar a central, o sistema cruza referência e processo, recalcula os pagamentos pendentes correspondentes e remove a situação Aguardando valor. Pagamentos pagos, cancelados, excluídos ou com valores cadastrados conflitantes não são alterados."
 }
