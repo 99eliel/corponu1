@@ -1,0 +1,1 @@
+Validação planejada: módulo isolado da chegada manual; será removido antes da integração.
