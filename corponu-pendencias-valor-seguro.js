@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-04-correcao-alca-valor-120";
+  const VERSION = "2026-08-04-alca-pagamento-automatico-121";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -15,8 +15,15 @@
     document.head.appendChild(script);
   }
 
-  // O valor global da ALÇA é salvo por uma rotina isolada que consulta somente
-  // pagamentos de ALÇA e não executa a varredura geral que travava o sistema.
+  // Todo pagamento de ALÇA usa a regra fixa: quantidade de sutiãs × 2 × R$ 0,05.
+  // O módulo acompanha somente documentos de ALÇA e corrige o lançamento assim que
+  // ele é criado, sem consultar pagamentos de outros processos.
+  carregarScript(
+    "./corponu-alca-pagamento-automatico-121.js",
+    "alca-pagamento-automatico-121"
+  );
+
+  // Mantém o painel de cadastro do valor global da ALÇA sem a varredura geral antiga.
   carregarScript(
     "./corponu-alca-valor-seguro-120.js",
     "alca-valor-seguro-120"

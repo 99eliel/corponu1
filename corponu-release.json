@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-04-correcao-alca-valor-120",
-  "updatedAt": "2026-08-04T13:03:00-03:00",
-  "notes": "Corrige exclusivamente o valor global da ALÇA. O salvamento deixa de ler todos os pagamentos do sistema e passa a consultar somente lançamentos de ALÇA, aplicando R$ por alça x 2 em um único lote aos pagamentos pendentes. Outros processos, chegadas, filtros e cálculos permanecem intactos."
+  "version": "2026-08-04-alca-pagamento-automatico-121",
+  "updatedAt": "2026-08-04T13:21:00-03:00",
+  "notes": "Corrige exclusivamente a geração de pagamentos de ALÇA. Cada sutiã recebe sempre duas alças de R$ 0,05, totalizando R$ 0,10 por sutiã. Lançamentos novos e pendências atuais de ALÇA são calculados sem consultar outros processos e sem usar a Central financeira geral."
 }
