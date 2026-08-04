@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-04-alca-lateral-formulario-125";
+  const VERSION = "2026-08-04-alca-origem-leve-126";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -15,34 +15,14 @@
     document.head.appendChild(script);
   }
 
-  // Corrige o formulário real da aba Lateral e Alça (antiga área Corte).
-  // Apenas chegadas cujo processo é ALÇA são interceptadas.
+  // Única rotina financeira da ALÇA: corrige somente documentos realmente sem
+  // valor e não executa atualização geral de pagamentos.
   carregarScript(
-    "./corponu-alca-lateral-formulario-125.js",
-    "alca-lateral-formulario-125"
+    "./corponu-alca-pendencia-leve-126.js",
+    "alca-pendencia-leve-126"
   );
 
-  // Assume exclusivamente o botão e o valor fixo da ALÇA. O botão deixa de
-  // submeter o formulário antigo e aplica R$ 0,05 diretamente nos pagamentos.
-  carregarScript(
-    "./corponu-alca-botao-direto-124.js",
-    "alca-botao-direto-124"
-  );
-
-  // Mantém a chegada normal de ALÇA já gravando o pagamento correto.
-  carregarScript(
-    "./corponu-alca-chegada-direta-123.js",
-    "alca-chegada-direta-123"
-  );
-
-  // Mantém a recuperação segura para chegadas manuais e pendências anteriores.
-  carregarScript(
-    "./corponu-alca-origem-segura-122.js",
-    "alca-origem-segura-122"
-  );
-
-  // O módulo específico de LATERAL precisa ser registrado primeiro para
-  // impedir que a rotina geral use o setor legado "corte".
+  // LATERAL permanece com a rotina estável já validada.
   carregarScript(
     "./corponu-lateral-unificada-118-seguro.js",
     "lateral-unificada-118",
@@ -52,8 +32,7 @@
     )
   );
 
-  // A chegada manual passa a consultar as mesmas facções ativas por processo
-  // usadas na saída manual, sem depender das listas antigas fixas.
+  // A chegada manual mantém as facções ativas vinculadas ao processo.
   carregarScript(
     "./corponu-chegada-manual-faccoes-processo-119-seguro.js",
     "chegada-manual-faccoes-processo-119"
