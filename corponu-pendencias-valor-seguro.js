@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-04-chegada-manual-faccoes-processo-119";
+  const VERSION = "2026-08-04-correcao-alca-valor-120";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -14,6 +14,13 @@
     script.onerror = () => console.error(`Não foi possível carregar o módulo ${modulo}.`);
     document.head.appendChild(script);
   }
+
+  // O valor global da ALÇA é salvo por uma rotina isolada que consulta somente
+  // pagamentos de ALÇA e não executa a varredura geral que travava o sistema.
+  carregarScript(
+    "./corponu-alca-valor-seguro-120.js",
+    "alca-valor-seguro-120"
+  );
 
   // O módulo específico de LATERAL precisa ser registrado primeiro para
   // impedir que a rotina geral use o setor legado "corte".
