@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-04-correcao-alca-valor-120";
+  const VERSION = "2026-08-04-alca-origem-segura-122";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -14,6 +14,13 @@
     script.onerror = () => console.error(`Não foi possível carregar o módulo ${modulo}.`);
     document.head.appendChild(script);
   }
+
+  // Corrige a ALÇA no próprio pagamento criado pela chegada, preservando o ID
+  // e usando sempre 2 alças de R$ 0,05 por sutiã. Não usa listener do Firestore.
+  carregarScript(
+    "./corponu-alca-origem-segura-122.js",
+    "alca-origem-segura-122"
+  );
 
   // O valor global da ALÇA é salvo por uma rotina isolada que consulta somente
   // pagamentos de ALÇA e não executa a varredura geral que travava o sistema.
