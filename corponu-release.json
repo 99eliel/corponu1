@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-04-chegada-manual-faccoes-processo-119",
-  "updatedAt": "2026-08-04T10:57:00-03:00",
-  "notes": "A chegada manual de facção passa a usar a mesma fonte de facções ativas vinculadas ao processo utilizada na saída manual. Corrige o processo ALÇA para exibir KELLY e qualquer nova facção ativa cadastrada, preservando as demais chegadas, pagamentos e processos."
+  "version": "2026-08-04-correcao-alca-valor-120",
+  "updatedAt": "2026-08-04T13:03:00-03:00",
+  "notes": "Corrige exclusivamente o valor global da ALÇA. O salvamento deixa de ler todos os pagamentos do sistema e passa a consultar somente lançamentos de ALÇA, aplicando R$ por alça x 2 em um único lote aos pagamentos pendentes. Outros processos, chegadas, filtros e cálculos permanecem intactos."
 }
