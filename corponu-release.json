@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-04-alca-lateral-formulario-125",
-  "updatedAt": "2026-08-04T14:58:00-03:00",
-  "notes": "Corrige o formulário real da aba Facções > Lateral e Alça, antiga área Corte. Quando o processo é ALÇA, a chegada e o pagamento são gravados juntos no mesmo fluxo com a regra fixa de quantidade recebida x 2 alças x R$ 0,05. O pagamento existente é reaproveitado pelo movimentacaoId, sem exclusão ou duplicação. LATERAL e os demais processos permanecem na rotina atual."
+  "version": "2026-08-04-alca-origem-leve-126",
+  "updatedAt": "2026-08-04T15:18:00-03:00",
+  "notes": "Corrige diretamente o gerador original da área Facções > Lateral e Alça. O processo ALÇA passa a ler o valor global TODAS / ALÇA e calcular quantidade recebida x 2 x R$ 0,05 antes de criar o pagamento, impedindo Valor a definir. As antigas correções paralelas da ALÇA deixam de ser carregadas. O botão de correção atualiza somente pagamentos realmente sem valor e recarrega a página após a gravação, sem executar a atualização pesada que congelava a interface."
 }
