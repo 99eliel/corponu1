@@ -1,0 +1,22 @@
+Release: 2026-08-03-correcao-definitiva-chegada-sutia-110
+
+Causa confirmada:
+- o aviso "Confirme a situação da lateral: Sim, Não ou Não informado." era emitido pela validação antiga do update.js;
+- essa validação executava no formChegadaMovimentacao antes do fluxo rápido e bloqueava o salvamento.
+
+Correção:
+- interceptação no nível document/captura somente quando há o painel atual do Sutiã Completo e o processo confirmado é SUTIÃ COMPLETO;
+- leitura de lateral e bojo somente no painel atual;
+- fecho e ponto de luz obrigatoriamente binários;
+- movimentação, pagamento, OP e log gravados em um único lote atômico;
+- pagamento existente reaproveitado e pagamento pago protegido;
+- demais processos não são interceptados.
+
+Validações executadas:
+- node --check;
+- inicialização isolada do módulo;
+- teste de escopo: ENCAPAR BOJO não interceptado; SUTIÃ COMPLETO interceptado;
+- comparação com main: somente módulo isolado, atualizador e release alterados.
+
+Backup:
+backup/2026-08-03-antes-correcao-definitiva-chegada-sutia-110
