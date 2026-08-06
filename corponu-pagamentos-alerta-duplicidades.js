@@ -1,38 +1,39 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-06-rollback-duplicidade-134";
-  if (window.__CORPONU_DUPLICIDADE_FILTROS_ROLLBACK_134__ === VERSION) return;
-  window.__CORPONU_DUPLICIDADE_FILTROS_ROLLBACK_134__ = VERSION;
+  const VERSION = "2026-08-06-duplicidade-tabela-135";
+  if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION) return;
+  window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ = VERSION;
 
-  // Desfaz imediatamente a alteração global instalada pela versão 133, caso ela
-  // ainda esteja ativa nesta aba.
+  // Garante que qualquer alteração global instalada pela tentativa 133 seja
+  // desfeita antes de carregar a conferência visual da tabela.
   try {
     const restaurar = window.__restaurarMutationObserverDuplicidade133;
     if (typeof restaurar === "function") restaurar();
   } catch (error) {
-    console.warn("[Pagamentos 134] Não foi necessário restaurar o observer.", error);
+    console.warn("[Pagamentos 135] Observer global já estava normal.", error);
   }
 
-  // Remove somente os elementos visuais das versões de conferência anteriores.
-  document.getElementById("alertaPagamentosDuplicadosFiltrado113")?.remove();
-  document.getElementById("stylePagamentosDuplicadosFiltrado113")?.remove();
-  document.getElementById("corponuDuplicidadeFiltro127")?.remove();
-  document.getElementById("corponuDuplicidadeFiltroStyle127")?.remove();
-  document.getElementById("corponuDuplicidadeFiltro133")?.remove();
-  document.getElementById("corponuDuplicidadeFiltroStyle133")?.remove();
+  [
+    "alertaPagamentosDuplicadosFiltrado113",
+    "stylePagamentosDuplicadosFiltrado113",
+    "corponuDuplicidadeFiltro127",
+    "corponuDuplicidadeFiltroStyle127",
+    "corponuDuplicidadeFiltro133",
+    "corponuDuplicidadeFiltroStyle133",
+    "corponuDuplicidadeTabela135",
+    "corponuDuplicidadeTabelaStyle135"
+  ].forEach(id => document.getElementById(id)?.remove());
 
-  // Retorna temporariamente ao verificador 127, que é somente leitura e não
-  // interfere na montagem da tabela de pagamentos.
   const existente = [...document.scripts].find(script =>
-    String(script.src || "").includes("corponu-pagamentos-duplicidade-filtros-127.js")
+    String(script.src || "").includes("corponu-pagamentos-duplicidade-tabela-135.js")
   );
   if (existente) return;
 
   const script = document.createElement("script");
-  script.src = `./corponu-pagamentos-duplicidade-filtros-127.js?v=${encodeURIComponent(VERSION)}&t=${Date.now()}`;
+  script.src = `./corponu-pagamentos-duplicidade-tabela-135.js?v=${encodeURIComponent(VERSION)}&t=${Date.now()}`;
   script.async = false;
-  script.dataset.corponuModulo = "pagamentos-duplicidade-filtros-127-restaurado";
-  script.onerror = () => console.error("Não foi possível restaurar a conferência anterior de duplicidades.");
+  script.dataset.corponuModulo = "pagamentos-duplicidade-tabela-135";
+  script.onerror = () => console.error("Não foi possível carregar a conferência visual de duplicidades.");
   document.head.appendChild(script);
 })();
