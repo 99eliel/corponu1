@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-06-aviso-chegada-admin-130",
-  "updatedAt": "2026-08-06T08:42:00-03:00",
-  "notes": "Separa o retorno operacional da confirmação financeira nas movimentações de facção. Usuários comuns passam a usar Avisar que chegou, sem gerar pagamento, e podem reenviar imediatamente para outra facção; cada reenvio é uma nova movimentação com pagamento isolado. Somente o administrador confirma oficialmente a chegada e autoriza a geração do pagamento, inclusive no fim do mês. ALÇA, LATERAL e os cálculos atuais permanecem preservados."
+  "version": "2026-08-06-chegada-usuario-guard-131",
+  "updatedAt": "2026-08-06T09:18:00-03:00",
+  "notes": "Corrige a tela principal de Facções mostrada por usuários com acesso personalizado. O botão antigo Chegada é capturado antes de abrir o formulário financeiro e passa a funcionar como Avisar que chegou, sem gerar pagamento. Chegada manual fica oculta para usuário comum, o modal financeiro é bloqueado e somente o administrador continua usando Confirmar chegada. O fluxo de reenvio independente, ALÇA, LATERAL e os cálculos atuais permanecem preservados."
 }
