@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-06-rollback-duplicidade-134",
-  "updatedAt": "2026-08-06T10:36:00-03:00",
-  "notes": "Reverte preventivamente a verificação de duplicidades 133 após a tabela passar de 23 para 17 lançamentos visíveis. Remove a alteração global de MutationObserver e restaura temporariamente o verificador anterior, sem alterar, excluir ou pagar documentos. A prioridade desta versão é recuperar a exibição completa da lista antes de refazer a conferência de duplicidade diretamente sobre as linhas renderizadas."
+  "version": "2026-08-06-duplicidade-tabela-135",
+  "updatedAt": "2026-08-06T14:12:00-03:00",
+  "notes": "Refaz a verificação de pagamentos duplicados diretamente sobre as linhas visíveis da tabela, sem consultar o Firestore e sem alterar MutationObserver global. A conferência compara OP, referência, facção, processo, quantidade e total; a data é exibida apenas para revisão e não impede o alerta. Nenhum pagamento é alterado ou excluído automaticamente."
 }
