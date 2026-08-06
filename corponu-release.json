@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-06-calcinha-identidade-136-deploy-1",
-  "updatedAt": "2026-08-06T15:44:00-03:00",
-  "notes": "Reprocessa a publicação da correção 136 no GitHub Pages. Mantém a correção da identidade das OPs de calcinha: cadastro e envio reconhecem calcinha corretamente, com serviço e facção opcionais. Nenhuma regra financeira ou dado operacional foi alterado neste disparo de deploy."
+  "version": "2026-08-06-calcinha-identidade-136-deploy-2",
+  "updatedAt": "2026-08-06T17:25:00-03:00",
+  "notes": "Novo disparo limpo de publicação da correção 136 no GitHub Pages. Mantém integralmente a correção da identidade das OPs de calcinha, com serviço e facção opcionais. Nenhum dado, pagamento, regra ou fluxo operacional foi alterado neste deploy."
 }
