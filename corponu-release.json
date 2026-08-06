@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-06-calcinha-identidade-136",
-  "updatedAt": "2026-08-06T15:19:00-03:00",
-  "notes": "Corrige o cadastro manual de OP de calcinha quando a interface mostrava Calcinha, mas o estado interno voltava para Sutiã antes do salvamento. A gravação passa a registrar sempre tipoPeca, tipoPecaPadrao, tipoPecaLabel e setor como calcinha, mantendo serviço e facção opcionais. Uma OP já salva incorretamente como sutiã é corrigida com segurança no primeiro envio para facção, desde que a referência esteja cadastrada em Produtos > Calcinha."
+  "version": "2026-08-06-calcinha-identidade-136-deploy-1",
+  "updatedAt": "2026-08-06T15:44:00-03:00",
+  "notes": "Reprocessa a publicação da correção 136 no GitHub Pages. Mantém a correção da identidade das OPs de calcinha: cadastro e envio reconhecem calcinha corretamente, com serviço e facção opcionais. Nenhuma regra financeira ou dado operacional foi alterado neste disparo de deploy."
 }
