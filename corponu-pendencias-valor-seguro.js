@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-06-chegada-usuario-guard-131";
+  const VERSION = "2026-08-06-chegada-estabilidade-132";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -21,13 +21,17 @@
     return script;
   }
 
-  // Rotina principal de aviso operacional, reenvio e confirmação administrativa.
+  // Estabiliza o observer antes de iniciar as proteções 130 e 131.
   carregarScript(
-    "./corponu-aviso-chegada-admin-130.js",
-    "aviso-chegada-admin-130",
+    "./corponu-chegada-estabilidade-132.js",
+    "chegada-estabilidade-132",
     () => carregarScript(
-      "./corponu-chegada-usuario-guard-131.js",
-      "chegada-usuario-guard-131"
+      "./corponu-aviso-chegada-admin-130.js",
+      "aviso-chegada-admin-130",
+      () => carregarScript(
+        "./corponu-chegada-usuario-guard-131.js",
+        "chegada-usuario-guard-131"
+      )
     )
   );
 

@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-06-chegada-usuario-guard-131",
-  "updatedAt": "2026-08-06T09:18:00-03:00",
-  "notes": "Corrige a tela principal de Facções mostrada por usuários com acesso personalizado. O botão antigo Chegada é capturado antes de abrir o formulário financeiro e passa a funcionar como Avisar que chegou, sem gerar pagamento. Chegada manual fica oculta para usuário comum, o modal financeiro é bloqueado e somente o administrador continua usando Confirmar chegada. O fluxo de reenvio independente, ALÇA, LATERAL e os cálculos atuais permanecem preservados."
+  "version": "2026-08-06-chegada-estabilidade-132",
+  "updatedAt": "2026-08-06T09:24:00-03:00",
+  "notes": "Elimina o efeito de tela piscando causado pelo ciclo do observer da proteção de chegada. A rotina deixa de reagir a todas as mudanças de classe da página e não reescreve textos que já estão corretos. Avisar que chegou, reenvio antes da confirmação, confirmação exclusiva do administrador, ALÇA, LATERAL e pagamentos isolados permanecem preservados."
 }
