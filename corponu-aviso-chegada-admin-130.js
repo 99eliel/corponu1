@@ -100,8 +100,8 @@
   }
 
   function aplicarAgora() {
-    document.querySelectorAll('[onclick*="registrarChegadaMovimentacao"]').forEach(bt => {
-      const id = idOnclick(bt); if (!id) return; const m = s.avisos.get(id); const cel = bt.closest("td") || bt.parentElement;
+    document.querySelectorAll('[onclick*="registrarChegadaMovimentacao"], [data-avisar-chegada]').forEach(bt => {
+      const id = bt.dataset.avisarChegada || idOnclick(bt); if (!id) return; const m = s.avisos.get(id); const cel = bt.closest("td") || bt.parentElement;
       if (admin()) { setText(bt, "Confirmar chegada"); bt.title = "Confirma oficialmente e gera pagamento"; }
       else { bt.removeAttribute("onclick"); bt.dataset.avisarChegada = id; setText(bt, m ? "Aviso enviado" : "Avisar que chegou"); bt.disabled = !!m; bt.title = "Somente controle operacional, sem pagamento"; }
       if (m) badge(cel, m);
