@@ -1,5 +1,5 @@
 {
   "version": "2026-08-06-duplicidade-tabela-135",
-  "updatedAt": "2026-08-06T13:58:00-03:00",
+  "updatedAt": "2026-08-06T14:12:00-03:00",
   "notes": "Refaz a verificação de pagamentos duplicados diretamente sobre as linhas visíveis da tabela, sem consultar o Firestore e sem alterar MutationObserver global. A conferência compara OP, referência, facção, processo, quantidade e total; a data é exibida apenas para revisão e não impede o alerta. Nenhum pagamento é alterado ou excluído automaticamente."
 }
