@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-06-aviso-chegada-admin-130";
+  const VERSION = "2026-08-06-chegada-usuario-guard-131";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -21,10 +21,14 @@
     return script;
   }
 
-  // Separa o aviso operacional da confirmação financeira da chegada.
+  // Rotina principal de aviso operacional, reenvio e confirmação administrativa.
   carregarScript(
     "./corponu-aviso-chegada-admin-130.js",
-    "aviso-chegada-admin-130"
+    "aviso-chegada-admin-130",
+    () => carregarScript(
+      "./corponu-chegada-usuario-guard-131.js",
+      "chegada-usuario-guard-131"
+    )
   );
 
   // Única rotina financeira da ALÇA: corrige somente documentos realmente sem
