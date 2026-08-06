@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-04-calcinha-planejamento-opcional-129",
-  "updatedAt": "2026-08-04T19:42:00-03:00",
-  "notes": "Torna serviço/processo e facção opcionais ao cadastrar manualmente ou importar por PDF uma ordem de produção de calcinha. Quando esses campos não forem informados, a OP é salva normalmente e o sistema solicita serviço e facção somente no momento do envio para a facção. O fluxo de sutiã, os pagamentos, ALÇA e LATERAL permanecem inalterados."
+  "version": "2026-08-06-aviso-chegada-admin-130",
+  "updatedAt": "2026-08-06T08:42:00-03:00",
+  "notes": "Separa o retorno operacional da confirmação financeira nas movimentações de facção. Usuários comuns passam a usar Avisar que chegou, sem gerar pagamento, e podem reenviar imediatamente para outra facção; cada reenvio é uma nova movimentação com pagamento isolado. Somente o administrador confirma oficialmente a chegada e autoriza a geração do pagamento, inclusive no fim do mês. ALÇA, LATERAL e os cálculos atuais permanecem preservados."
 }
