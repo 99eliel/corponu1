@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-06-chegada-estabilidade-132",
-  "updatedAt": "2026-08-06T09:24:00-03:00",
-  "notes": "Elimina o efeito de tela piscando causado pelo ciclo do observer da proteção de chegada. A rotina deixa de reagir a todas as mudanças de classe da página e não reescreve textos que já estão corretos. Avisar que chegou, reenvio antes da confirmação, confirmação exclusiva do administrador, ALÇA, LATERAL e pagamentos isolados permanecem preservados."
+  "version": "2026-08-06-duplicidade-sem-data-133",
+  "updatedAt": "2026-08-06T10:24:00-03:00",
+  "notes": "Corrige a conferência de pagamentos duplicados para não usar a data da chegada como parte obrigatória da identidade do lançamento. Pagamentos com mesma OP, referência, cor, facção, processo, quantidade e falta passam a ser avisados mesmo em dias diferentes. Reenvios identificados por origens diferentes permanecem separados, e nenhuma exclusão ou alteração é feita automaticamente."
 }
