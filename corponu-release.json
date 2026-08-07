@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-07-chegada-badge-unico-152",
-  "updatedAt": "2026-08-07T10:02:00-03:00",
-  "notes": "Corrige a aba Facções quando o aviso amarelo de chegada era duplicado repetidamente dentro da mesma célula de Ações, fazendo a tabela crescer/expandir. Cada célula passa a manter no máximo um aviso correspondente à movimentação, e duplicatas antigas já presentes na tela são removidas automaticamente. Nenhuma informação de chegada salva no Firebase, pagamento, cálculo, facção ou movimentação foi alterada."
+  "version": "2026-08-07-chegada-badge-compartilhado-153",
+  "updatedAt": "2026-08-07T10:05:00-03:00",
+  "notes": "Corrige definitivamente o crescimento infinito dos avisos amarelos de chegada na aba Facções. Os módulos 130 e 131 passam a compartilhar o mesmo badge visual em vez de criar e remover cópias alternadamente. A correção interrompe o ciclo de MutationObserver que fazia a coluna Ações crescer continuamente. Nenhum dado de chegada, pagamento, movimentação, facção ou OP foi alterado."
 }
