@@ -4,6 +4,7 @@
   const VERSION_DUPLICIDADE = "2026-08-06-duplicidade-tabela-135";
   const VERSION_RESTAURACAO_OPS = "2026-08-06-ops-excluidas-restauracao-139";
   const VERSION_NECESSIDADE_OPCIONAL = "2026-08-07-ordens-necessidade-opcional-142";
+  const VERSION_ATUALIZACAO_SAIDA_FACCOES = "2026-08-07-faccoes-saida-atualizacao-imediata-143";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -37,6 +38,15 @@
     "ordens-necessidade-opcional-142",
     VERSION_NECESSIDADE_OPCIONAL,
     "Não foi possível tornar a necessidade opcional nas OPs."
+  );
+
+  // 143 garante que, depois de uma saída registrada em Sutiã ou Calcinha,
+  // a tabela principal de Facções seja atualizada imediatamente, sem exigir F5.
+  carregarScript(
+    "corponu-faccoes-saida-atualizacao-imediata-143.js",
+    "faccoes-saida-atualizacao-imediata-143",
+    VERSION_ATUALIZACAO_SAIDA_FACCOES,
+    "Não foi possível atualizar a lista de Facções imediatamente após a saída."
   );
 
   if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION_DUPLICIDADE) return;
