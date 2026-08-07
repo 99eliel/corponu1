@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-07-informar-chegada-estavel-155",
-  "updatedAt": "2026-08-07T10:12:00-03:00",
-  "notes": "Restaura o rótulo 'Informar chegada' na aba Facções para usuários comuns sem reintroduzir loops visuais. A correção não usa MutationObserver, intervalo nem recriação contínua de elementos; apenas apresenta o botão existente com o rótulo correto e redireciona uma linha legada que ainda venha como 'Chegada' para o fluxo operacional de aviso. A confirmação financeira do administrador, avisos amarelos, pagamentos, movimentações e layout não foram alterados."
+  "version": "2026-08-07-faccoes-sem-bipar-156",
+  "updatedAt": "2026-08-07T10:17:00-03:00",
+  "notes": "Remove somente o botão Bipar da aba Facções. A alteração é visual e isolada, sem MutationObserver, sem intervalos e sem mexer na função de bipagem disponível em outras telas. Chegada, informar chegada, pagamentos, movimentações, OPs e layout permanecem inalterados."
 }
