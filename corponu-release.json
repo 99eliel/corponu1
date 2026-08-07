@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-07-calcinha-salvamento-rapido-147",
-  "updatedAt": "2026-08-07T09:25:00-03:00",
-  "notes": "Otimiza o salvamento de Ordens de Produção de Calcinha. As verificações de referência e OP duplicada continuam existindo, mas agora as leituras independentes do Firestore são executadas em paralelo em vez de sequencialmente. A OP é liberada assim que a gravação principal termina; o log e a atualização visual acontecem sem bloquear o botão. A necessidade continua opcional e nenhuma regra de Facções, pagamentos, chegada ou valores foi alterada."
+  "version": "2026-08-07-quantidade-sem-scroll-148",
+  "updatedAt": "2026-08-07T09:31:00-03:00",
+  "notes": "Evita alteração acidental da quantidade da Ordem de Produção pela rodinha do mouse. Quando o campo Quantidade estiver focado, o scroll não aumenta nem diminui o número; a página continua rolando normalmente e o valor digitado é preservado. Nenhuma validação, salvamento, pagamento, Facção ou dado existente foi alterado."
 }
