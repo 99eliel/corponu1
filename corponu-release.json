@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-06-calcinha-visibilidade-138",
-  "updatedAt": "2026-08-06T23:04:00-03:00",
-  "notes": "Corrige OPs de calcinha que existem no Firestore mas não aparecem na tabela Ordens cadastradas por estarem sem o campo criadoEm usado no orderBy da consulta principal. A OP 57864 recebe criadoEm sem duplicação ou exclusão e volta a participar da listagem. Futuras OPs corrigidas pelo reparo 137 também recebem a mesma proteção. Nenhum pagamento, chegada, ALÇA ou LATERAL é alterado."
+  "version": "2026-08-06-ops-excluidas-restauracao-139",
+  "updatedAt": "2026-08-06T23:27:00-03:00",
+  "notes": "Adiciona uma lixeira administrativa em Ordens de Produção para visualizar e restaurar OPs excluídas logicamente. A restauração reativa o mesmo documento, preserva excluidaPor/excluidaEm para auditoria, registra restauradaPor/restauradaEm e mantém a identidade Sutiã/Calcinha existente. A lista de excluídas só consulta o Firestore quando o administrador solicitar. Nenhum pagamento, chegada, ALÇA ou LATERAL é alterado."
 }
