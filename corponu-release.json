@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-06-faccoes-layout-141",
-  "updatedAt": "2026-08-06T23:50:00-03:00",
-  "notes": "Corrige a expansão horizontal da aba Facções após as mudanças de chegada. A página deixa de crescer para a direita, a rolagem horizontal fica contida dentro da tabela de movimentações, a coluna de ações passa a quebrar conteúdo corretamente e o aviso visual duplicado de chegada deixa de ocupar espaço duas vezes. Nenhuma regra de pagamento, Firestore, confirmação de chegada, aviso operacional ou reenvio de facção foi alterada."
+  "version": "2026-08-07-ordens-necessidade-opcional-142",
+  "updatedAt": "2026-08-07T00:08:00-03:00",
+  "notes": "Torna a necessidade opcional no cadastro de Ordens de Produção tanto para Sutiã quanto para Calcinha. As únicas informações obrigatórias passam a ser número da OP, referência, cor e quantidade. Na Calcinha, início/final da necessidade, serviço e facção podem ficar vazios; se a necessidade for informada por texto ou datas, ela continua sendo salva normalmente. Nenhum pagamento, chegada, movimentação, ALÇA ou LATERAL foi alterado."
 }
