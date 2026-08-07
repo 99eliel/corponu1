@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-06-faccoes-saida-identidade-140",
-  "updatedAt": "2026-08-06T23:40:00-03:00",
-  "notes": "Corrige o Registro de saída em Facções para reconhecer a identidade atual de Calcinha nas OPs, incluindo os marcadores de reparo/identidade usados pelas versões recentes. A busca deixa de retornar imediatamente um documento legado pelo ID e passa a comparar todos os registros ativos da mesma OP, priorizando o compatível com a aba Sutiã ou Calcinha. Documentos excluídos são ignorados. Nenhum pagamento, chegada ou movimentação existente é alterado automaticamente."
+  "version": "2026-08-06-faccoes-layout-141",
+  "updatedAt": "2026-08-06T23:50:00-03:00",
+  "notes": "Corrige a expansão horizontal da aba Facções após as mudanças de chegada. A página deixa de crescer para a direita, a rolagem horizontal fica contida dentro da tabela de movimentações, a coluna de ações passa a quebrar conteúdo corretamente e o aviso visual duplicado de chegada deixa de ocupar espaço duas vezes. Nenhuma regra de pagamento, Firestore, confirmação de chegada, aviso operacional ou reenvio de facção foi alterada."
 }
