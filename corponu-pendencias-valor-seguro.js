@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-07-chegada-badge-modulo-unico-154";
+  const VERSION = "2026-08-07-informar-chegada-estavel-155";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -27,16 +27,20 @@
     "faccoes-layout-141"
   );
 
-  // 154: um único responsável pela interface de aviso de chegada.
-  // O módulo 130 já atende usuário comum e administrador, então o antigo 131
-  // deixa de ser carregado para impedir que dois observers disputem a mesma
-  // célula e criem avisos amarelos indefinidamente.
+  // Um único responsável pela interface e dados do aviso de chegada.
+  // Depois dele, a 155 apenas restaura o rótulo "Informar chegada" e protege
+  // cliques em linhas que ainda tenham nascido com o botão legado "Chegada".
+  // A 155 não usa MutationObserver, intervalo nem recriação de elementos.
   carregarScript(
     "./corponu-chegada-estabilidade-132.js",
     "chegada-estabilidade-132",
     () => carregarScript(
       "./corponu-aviso-chegada-admin-130.js",
-      "aviso-chegada-admin-130"
+      "aviso-chegada-admin-130",
+      () => carregarScript(
+        "./corponu-chegada-informar-155.js",
+        "informar-chegada-estavel-155"
+      )
     )
   );
 
