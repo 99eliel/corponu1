@@ -3,9 +3,7 @@
 
   const VERSION_DUPLICIDADE = "2026-08-06-duplicidade-tabela-135";
   const VERSION_RESTAURACAO_OPS = "2026-08-06-ops-excluidas-restauracao-139";
-  const VERSION_REPARO_CALCINHA = "2026-08-06-calcinha-reparo-137";
-  const VERSION_VISIBILIDADE_CALCINHA = "2026-08-06-calcinha-visibilidade-138";
-  const VERSION_CALCINHA = "2026-08-06-calcinha-identidade-136";
+  const VERSION_NECESSIDADE_OPCIONAL = "2026-08-07-ordens-necessidade-opcional-142";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -31,29 +29,14 @@
     "Não foi possível carregar a lixeira/restauração de OPs excluídas."
   );
 
-  // 137 repara a identidade das OPs que ficaram gravadas como sutiã.
+  // 142 unifica a regra do cadastro de OP: em Sutiã e Calcinha, somente OP,
+  // referência, cor e quantidade são obrigatórios. A própria 142 carrega em
+  // sequência as proteções 137, 138 e 136 da Calcinha para preservar a identidade.
   carregarScript(
-    "corponu-calcinha-reparo-137.js",
-    "calcinha-reparo-137",
-    VERSION_REPARO_CALCINHA,
-    "Não foi possível carregar o reparo das OPs de calcinha."
-  );
-
-  // 138 completa o campo criadoEm quando um registro reparado não o possui.
-  // A lista principal usa orderBy(criadoEm), então esse campo é necessário para a OP aparecer.
-  carregarScript(
-    "corponu-calcinha-visibilidade-138.js",
-    "calcinha-visibilidade-138",
-    VERSION_VISIBILIDADE_CALCINHA,
-    "Não foi possível carregar o reparo de visibilidade das OPs de calcinha."
-  );
-
-  // Mantém a proteção 136 como camada de compatibilidade para os demais fluxos.
-  carregarScript(
-    "corponu-calcinha-identidade-136.js",
-    "calcinha-identidade-136",
-    VERSION_CALCINHA,
-    "Não foi possível carregar a proteção da identidade das OPs de calcinha."
+    "corponu-ordens-necessidade-opcional-142.js",
+    "ordens-necessidade-opcional-142",
+    VERSION_NECESSIDADE_OPCIONAL,
+    "Não foi possível tornar a necessidade opcional nas OPs."
   );
 
   if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION_DUPLICIDADE) return;
