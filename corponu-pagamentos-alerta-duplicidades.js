@@ -3,7 +3,7 @@
 
   const VERSION_DUPLICIDADE = "2026-08-06-duplicidade-tabela-135";
   const VERSION_RESTAURACAO_OPS = "2026-08-06-ops-excluidas-restauracao-139";
-  const VERSION_NECESSIDADE_OPCIONAL = "2026-08-07-ordens-necessidade-opcional-142";
+  const VERSION_NECESSIDADE_OPCIONAL = "2026-08-07-calcinha-aba-fix-144";
   const VERSION_ATUALIZACAO_SAIDA_FACCOES = "2026-08-07-faccoes-saida-atualizacao-imediata-143";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
@@ -30,14 +30,13 @@
     "Não foi possível carregar a lixeira/restauração de OPs excluídas."
   );
 
-  // 142 unifica a regra do cadastro de OP: em Sutiã e Calcinha, somente OP,
-  // referência, cor e quantidade são obrigatórios. A própria 142 carrega em
-  // sequência as proteções 137, 138 e 136 da Calcinha para preservar a identidade.
+  // 144 carrega a regra 142 de necessidade opcional com proteção contra o
+  // MutationObserver que entrava em ciclo ao abrir a aba Calcinha.
   carregarScript(
-    "corponu-ordens-necessidade-opcional-142.js",
-    "ordens-necessidade-opcional-142",
+    "corponu-ordens-necessidade-opcional-fix-144.js",
+    "ordens-necessidade-opcional-fix-144",
     VERSION_NECESSIDADE_OPCIONAL,
-    "Não foi possível tornar a necessidade opcional nas OPs."
+    "Não foi possível carregar a correção da aba Calcinha com necessidade opcional."
   );
 
   // 143 garante que, depois de uma saída registrada em Sutiã ou Calcinha,
