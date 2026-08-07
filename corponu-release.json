@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-07-quantidade-somente-op-151",
-  "updatedAt": "2026-08-07T09:52:00-03:00",
-  "notes": "Reverte a quantidade adicionada por engano ao cadastro de Produto/Referência de Calcinha. Quantidade volta a existir somente no cadastro da Ordem de Produção. A proteção contra alteração pela rodinha do mouse continua ativa no campo Quantidade da OP. Nenhuma OP, pagamento, Facção, chegada ou valor foi alterado."
+  "version": "2026-08-07-chegada-badge-unico-152",
+  "updatedAt": "2026-08-07T10:02:00-03:00",
+  "notes": "Corrige a aba Facções quando o aviso amarelo de chegada era duplicado repetidamente dentro da mesma célula de Ações, fazendo a tabela crescer/expandir. Cada célula passa a manter no máximo um aviso correspondente à movimentação, e duplicatas antigas já presentes na tela são removidas automaticamente. Nenhuma informação de chegada salva no Firebase, pagamento, cálculo, facção ou movimentação foi alterada."
 }
