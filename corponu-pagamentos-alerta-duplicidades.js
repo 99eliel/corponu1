@@ -6,7 +6,7 @@
   const VERSION_NECESSIDADE_OPCIONAL = "2026-08-07-calcinha-aba-fix-144";
   const VERSION_ATUALIZACAO_SAIDA_FACCOES = "2026-08-07-faccoes-saida-atualizacao-imediata-143";
   const VERSION_IDENTIDADE_FLOW = "2026-08-07-corpo-nu-flow-identidade-145";
-  const VERSION_CALCINHA_OP_ATUALIZACAO = "2026-08-07-calcinha-op-atualizacao-146";
+  const VERSION_CALCINHA_SALVAMENTO_RAPIDO = "2026-08-07-calcinha-salvamento-rapido-147";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -41,13 +41,14 @@
     "Não foi possível carregar a lixeira/restauração de OPs excluídas."
   );
 
-  // 146 precisa iniciar antes da 144/142 para envolver somente o salvamento
-  // específico da Calcinha e sincronizar a OP recém-gravada no estado Dual.
+  // 147 precisa iniciar antes da 144/142/137. Ela substitui somente o listener
+  // de salvamento da Calcinha por uma versão otimizada, mantendo as mesmas
+  // validações, mas executando as leituras independentes em paralelo.
   carregarScript(
-    "corponu-calcinha-op-atualizacao-146.js",
-    "calcinha-op-atualizacao-146",
-    VERSION_CALCINHA_OP_ATUALIZACAO,
-    "Não foi possível ativar a atualização imediata das OPs de Calcinha."
+    "corponu-calcinha-salvamento-rapido-147.js",
+    "calcinha-salvamento-rapido-147",
+    VERSION_CALCINHA_SALVAMENTO_RAPIDO,
+    "Não foi possível ativar o salvamento rápido das OPs de Calcinha."
   );
 
   // 144 carrega a regra 142 de necessidade opcional com proteção contra o
