@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-07-faccoes-saida-atualizacao-imediata-143",
-  "updatedAt": "2026-08-07T08:18:00-03:00",
-  "notes": "Corrige a atualização da tabela principal de Facções após registrar uma saída nas abas Sutiã ou Calcinha. Assim que a gravação da movimentação termina, o sistema força diretamente a renovação dos listeners da tela e a OP passa a aparecer para registrar/confirmar chegada sem precisar atualizar a página. Lateral e Alça continuam no fluxo próprio. Nenhuma lógica de pagamento, cálculo de chegada ou movimentação existente foi alterada."
+  "version": "2026-08-07-calcinha-aba-fix-144",
+  "updatedAt": "2026-08-07T08:32:00-03:00",
+  "notes": "Corrige o travamento ao abrir Ordens de Produção > Calcinha após a versão 142. A necessidade continua opcional em Sutiã e Calcinha. A correção impede o MutationObserver da interface de reagir às próprias alterações de texto do formulário, eliminando o ciclo que congelava a aba. Nenhuma lógica de pagamento, Facções, chegada ou dados existentes foi alterada."
 }
