@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-07-sutia-completo-envio-sem-componentes-150",
-  "updatedAt": "2026-08-07T09:46:00-03:00",
-  "notes": "Corrige o envio pelo Manejo para facção quando o processo é SUTIÃ COMPLETO. Lateral e Bojo deixam de ser obrigatórios no momento da saída/reenvio; se ainda não estiverem informados, o envio segue normalmente e a confirmação será feita no fluxo de chegada. Nenhum valor, cálculo de pagamento, facção cadastrada ou dado existente foi alterado."
+  "version": "2026-08-07-quantidade-somente-op-151",
+  "updatedAt": "2026-08-07T09:52:00-03:00",
+  "notes": "Reverte a quantidade adicionada por engano ao cadastro de Produto/Referência de Calcinha. Quantidade volta a existir somente no cadastro da Ordem de Produção. A proteção contra alteração pela rodinha do mouse continua ativa no campo Quantidade da OP. Nenhuma OP, pagamento, Facção, chegada ou valor foi alterado."
 }
