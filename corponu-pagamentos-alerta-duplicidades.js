@@ -7,6 +7,7 @@
   const VERSION_ATUALIZACAO_SAIDA_FACCOES = "2026-08-07-faccoes-saida-atualizacao-imediata-143";
   const VERSION_IDENTIDADE_FLOW = "2026-08-07-corpo-nu-flow-identidade-145";
   const VERSION_CALCINHA_SALVAMENTO_RAPIDO = "2026-08-07-calcinha-salvamento-rapido-147";
+  const VERSION_QUANTIDADE_SEM_SCROLL = "2026-08-07-quantidade-sem-scroll-148";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -30,6 +31,15 @@
     "identidade-corpo-nu-flow-145",
     VERSION_IDENTIDADE_FLOW,
     "Não foi possível carregar a identidade Corpo Nu Flow."
+  );
+
+  // 148 evita que a rodinha do mouse altere acidentalmente a quantidade da OP.
+  // A página continua rolando normalmente e o valor digitado é preservado.
+  carregarScript(
+    "corponu-quantidade-sem-scroll-148.js",
+    "quantidade-sem-scroll-148",
+    VERSION_QUANTIDADE_SEM_SCROLL,
+    "Não foi possível ativar a proteção da quantidade contra o scroll do mouse."
   );
 
   // 139 adiciona, somente para administradores, uma lixeira sob demanda para
