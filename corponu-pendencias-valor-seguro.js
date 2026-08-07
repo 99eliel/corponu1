@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-06-chegada-estabilidade-132";
+  const VERSION = "2026-08-06-faccoes-layout-141";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -20,6 +20,13 @@
     document.head.appendChild(script);
     return script;
   }
+
+  // Correção visual isolada da aba Facções: contém a largura da página,
+  // mantém o scroll horizontal dentro da tabela e evita badge duplicado.
+  carregarScript(
+    "./corponu-faccoes-layout-141.js",
+    "faccoes-layout-141"
+  );
 
   // Estabiliza o observer antes de iniciar as proteções 130 e 131.
   carregarScript(
