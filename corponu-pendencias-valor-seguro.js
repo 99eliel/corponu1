@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-07-informar-chegada-estavel-155";
+  const VERSION = "2026-08-07-faccoes-sem-bipar-156";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -25,6 +25,13 @@
   carregarScript(
     "./corponu-faccoes-layout-141.js",
     "faccoes-layout-141"
+  );
+
+  // 156 remove somente o botão Bipar da aba Facções por CSS. Não usa observer,
+  // não altera movimentações e não interfere na bipagem disponível em outras telas.
+  carregarScript(
+    "./corponu-faccoes-sem-bipar-156.js",
+    "faccoes-sem-bipar-156"
   );
 
   // Um único responsável pela interface e dados do aviso de chegada.
