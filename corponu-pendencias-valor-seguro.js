@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-07-chegada-badge-unico-152";
+  const VERSION = "2026-08-07-chegada-badge-compartilhado-153";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -28,11 +28,12 @@
     "faccoes-layout-141"
   );
 
-  // 152 garante no máximo um aviso amarelo de chegada por célula de Ações.
-  // Ele também limpa imediatamente duplicatas que já tenham sido criadas no DOM.
+  // 153 faz os módulos 130 e 131 compartilharem exatamente o mesmo badge
+  // amarelo. Isso corta o ciclo de criar/remover/recriar que fazia a coluna
+  // Ações crescer infinitamente.
   carregarScript(
-    "./corponu-chegada-badge-unico-152.js",
-    "chegada-badge-unico-152"
+    "./corponu-chegada-badge-compartilhado-153.js",
+    "chegada-badge-compartilhado-153"
   );
 
   // Estabiliza o observer antes de iniciar as proteções 130 e 131.
