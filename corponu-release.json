@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-06-ops-excluidas-restauracao-139",
-  "updatedAt": "2026-08-06T23:27:00-03:00",
-  "notes": "Adiciona uma lixeira administrativa em Ordens de Produção para visualizar e restaurar OPs excluídas logicamente. A restauração reativa o mesmo documento, preserva excluidaPor/excluidaEm para auditoria, registra restauradaPor/restauradaEm e mantém a identidade Sutiã/Calcinha existente. A lista de excluídas só consulta o Firestore quando o administrador solicitar. Nenhum pagamento, chegada, ALÇA ou LATERAL é alterado."
+  "version": "2026-08-06-faccoes-saida-identidade-140",
+  "updatedAt": "2026-08-06T23:40:00-03:00",
+  "notes": "Corrige o Registro de saída em Facções para reconhecer a identidade atual de Calcinha nas OPs, incluindo os marcadores de reparo/identidade usados pelas versões recentes. A busca deixa de retornar imediatamente um documento legado pelo ID e passa a comparar todos os registros ativos da mesma OP, priorizando o compatível com a aba Sutiã ou Calcinha. Documentos excluídos são ignorados. Nenhum pagamento, chegada ou movimentação existente é alterado automaticamente."
 }
