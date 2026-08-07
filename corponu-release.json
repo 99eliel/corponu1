@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-07-quantidade-sem-scroll-148",
-  "updatedAt": "2026-08-07T09:31:00-03:00",
-  "notes": "Evita alteração acidental da quantidade da Ordem de Produção pela rodinha do mouse. Quando o campo Quantidade estiver focado, o scroll não aumenta nem diminui o número; a página continua rolando normalmente e o valor digitado é preservado. Nenhuma validação, salvamento, pagamento, Facção ou dado existente foi alterado."
+  "version": "2026-08-07-produto-calcinha-quantidade-149",
+  "updatedAt": "2026-08-07T09:38:00-03:00",
+  "notes": "Adiciona o campo Quantidade ao cadastro de Produtos/Referências de Calcinha. A quantidade passa a ser obrigatória somente nesse cadastro, é salva junto ao produto e também recebe proteção contra alteração acidental pela rodinha do mouse. O cadastro de Sutiã permanece como estava. Nenhuma regra de OP, Facções, pagamentos, chegada ou valores foi alterada."
 }
