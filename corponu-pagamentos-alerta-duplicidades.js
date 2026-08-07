@@ -2,6 +2,7 @@
   "use strict";
 
   const VERSION_DUPLICIDADE = "2026-08-06-duplicidade-tabela-135";
+  const VERSION_RESTAURACAO_OPS = "2026-08-06-ops-excluidas-restauracao-139";
   const VERSION_REPARO_CALCINHA = "2026-08-06-calcinha-reparo-137";
   const VERSION_VISIBILIDADE_CALCINHA = "2026-08-06-calcinha-visibilidade-138";
   const VERSION_CALCINHA = "2026-08-06-calcinha-identidade-136";
@@ -20,6 +21,15 @@
     document.head.appendChild(script);
     return script;
   }
+
+  // 139 adiciona, somente para administradores, uma lixeira sob demanda para
+  // visualizar e restaurar OPs marcadas com excluida=true sem recriar documentos.
+  carregarScript(
+    "corponu-ops-excluidas-restauracao-139.js",
+    "ops-excluidas-restauracao-139",
+    VERSION_RESTAURACAO_OPS,
+    "Não foi possível carregar a lixeira/restauração de OPs excluídas."
+  );
 
   // 137 repara a identidade das OPs que ficaram gravadas como sutiã.
   carregarScript(
