@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-07-calcinha-op-atualizacao-146",
-  "updatedAt": "2026-08-07T09:22:00-03:00",
-  "notes": "Corrige a aba Ordens de Produção > Calcinha para que a OP recém-cadastrada apareça imediatamente sem atualizar a página. Após o salvamento, somente a OP criada é sincronizada no estado Sutiã/Calcinha e a lista principal já a classifica como Calcinha, evitando que o cache antigo esconda a nova linha. Necessidade continua opcional; nenhuma regra de Facções, pagamentos, chegada ou valores foi alterada."
+  "version": "2026-08-07-calcinha-salvamento-rapido-147",
+  "updatedAt": "2026-08-07T09:25:00-03:00",
+  "notes": "Otimiza o salvamento de Ordens de Produção de Calcinha. As verificações de referência e OP duplicada continuam existindo, mas agora as leituras independentes do Firestore são executadas em paralelo em vez de sequencialmente. A OP é liberada assim que a gravação principal termina; o log e a atualização visual acontecem sem bloquear o botão. A necessidade continua opcional e nenhuma regra de Facções, pagamentos, chegada ou valores foi alterada."
 }
