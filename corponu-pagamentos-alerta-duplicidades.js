@@ -8,6 +8,7 @@
   const VERSION_IDENTIDADE_FLOW = "2026-08-07-corpo-nu-flow-identidade-145";
   const VERSION_CALCINHA_SALVAMENTO_RAPIDO = "2026-08-07-calcinha-salvamento-rapido-147";
   const VERSION_QUANTIDADE_SEM_SCROLL = "2026-08-07-quantidade-sem-scroll-148";
+  const VERSION_PRODUTO_CALCINHA_QUANTIDADE = "2026-08-07-produto-calcinha-quantidade-149";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -40,6 +41,16 @@
     "quantidade-sem-scroll-148",
     VERSION_QUANTIDADE_SEM_SCROLL,
     "Não foi possível ativar a proteção da quantidade contra o scroll do mouse."
+  );
+
+  // 149 acrescenta a Quantidade no cadastro de Produto > Calcinha. O campo é
+  // obrigatório somente na Calcinha, é salvo junto à referência e também fica
+  // protegido contra alteração acidental pela rodinha do mouse.
+  carregarScript(
+    "corponu-produto-calcinha-quantidade-149.js",
+    "produto-calcinha-quantidade-149",
+    VERSION_PRODUTO_CALCINHA_QUANTIDADE,
+    "Não foi possível carregar a quantidade no cadastro de produto de Calcinha."
   );
 
   // 139 adiciona, somente para administradores, uma lixeira sob demanda para
