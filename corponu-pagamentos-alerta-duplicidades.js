@@ -3,6 +3,7 @@
 
   const VERSION_DUPLICIDADE = "2026-08-06-duplicidade-tabela-135";
   const VERSION_REPARO_CALCINHA = "2026-08-06-calcinha-reparo-137";
+  const VERSION_VISIBILIDADE_CALCINHA = "2026-08-06-calcinha-visibilidade-138";
   const VERSION_CALCINHA = "2026-08-06-calcinha-identidade-136";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
@@ -20,13 +21,21 @@
     return script;
   }
 
-  // 137 vem primeiro: repara OPs que ficaram gravadas como sutiã e captura
-  // o cadastro pela aba Calcinha antes das proteções/handlers mais antigos.
+  // 137 repara a identidade das OPs que ficaram gravadas como sutiã.
   carregarScript(
     "corponu-calcinha-reparo-137.js",
     "calcinha-reparo-137",
     VERSION_REPARO_CALCINHA,
     "Não foi possível carregar o reparo das OPs de calcinha."
+  );
+
+  // 138 completa o campo criadoEm quando um registro reparado não o possui.
+  // A lista principal usa orderBy(criadoEm), então esse campo é necessário para a OP aparecer.
+  carregarScript(
+    "corponu-calcinha-visibilidade-138.js",
+    "calcinha-visibilidade-138",
+    VERSION_VISIBILIDADE_CALCINHA,
+    "Não foi possível carregar o reparo de visibilidade das OPs de calcinha."
   );
 
   // Mantém a proteção 136 como camada de compatibilidade para os demais fluxos.
@@ -40,8 +49,6 @@
   if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION_DUPLICIDADE) return;
   window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ = VERSION_DUPLICIDADE;
 
-  // Garante que qualquer alteração global instalada pela tentativa 133 seja
-  // desfeita antes de carregar a conferência visual da tabela.
   try {
     const restaurar = window.__restaurarMutationObserverDuplicidade133;
     if (typeof restaurar === "function") restaurar();
