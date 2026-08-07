@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-07-chegada-badge-modulo-unico-154",
-  "updatedAt": "2026-08-07T10:08:00-03:00",
-  "notes": "Remove a disputa entre dois módulos que renderizavam o aviso amarelo de chegada na aba Facções. A partir desta versão, somente o módulo 130 cuida do aviso visual, do fluxo Avisar que chegou para usuário comum e da confirmação para administrador. O antigo módulo 131 e a camada de compartilhamento 153 deixam de ser carregados nessa cadeia, eliminando o ciclo que fazia o texto 'Chegada avisada por...' crescer infinitamente. Nenhum dado de chegada, pagamento, movimentação, facção ou OP foi alterado."
+  "version": "2026-08-07-informar-chegada-estavel-155",
+  "updatedAt": "2026-08-07T10:12:00-03:00",
+  "notes": "Restaura o rótulo 'Informar chegada' na aba Facções para usuários comuns sem reintroduzir loops visuais. A correção não usa MutationObserver, intervalo nem recriação contínua de elementos; apenas apresenta o botão existente com o rótulo correto e redireciona uma linha legada que ainda venha como 'Chegada' para o fluxo operacional de aviso. A confirmação financeira do administrador, avisos amarelos, pagamentos, movimentações e layout não foram alterados."
 }
