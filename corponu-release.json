@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-07-corpo-nu-flow-identidade-145",
-  "updatedAt": "2026-08-07T09:10:00-03:00",
-  "notes": "Aplica a nova identidade visual Corpo Nu Flow no sistema. O nome passa a ser Corpo Nu Flow, com o subtítulo Sistema Integrado de Gestão da Produção, e a nova logo da Corpo Nu enviada pelo Imgur é usada na tela de login, barra lateral e favicon. Nenhuma regra de OP, Calcinha, Sutiã, Facções, pagamentos, chegada ou banco de dados foi alterada."
+  "version": "2026-08-07-calcinha-op-atualizacao-146",
+  "updatedAt": "2026-08-07T09:22:00-03:00",
+  "notes": "Corrige a aba Ordens de Produção > Calcinha para que a OP recém-cadastrada apareça imediatamente sem atualizar a página. Após o salvamento, somente a OP criada é sincronizada no estado Sutiã/Calcinha e a lista principal já a classifica como Calcinha, evitando que o cache antigo esconda a nova linha. Necessidade continua opcional; nenhuma regra de Facções, pagamentos, chegada ou valores foi alterada."
 }
