@@ -5,6 +5,7 @@
   const VERSION_RESTAURACAO_OPS = "2026-08-06-ops-excluidas-restauracao-139";
   const VERSION_NECESSIDADE_OPCIONAL = "2026-08-07-calcinha-aba-fix-144";
   const VERSION_ATUALIZACAO_SAIDA_FACCOES = "2026-08-07-faccoes-saida-atualizacao-imediata-143";
+  const VERSION_IDENTIDADE_FLOW = "2026-08-07-corpo-nu-flow-identidade-145";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -20,6 +21,15 @@
     document.head.appendChild(script);
     return script;
   }
+
+  // 145 aplica a identidade oficial Corpo Nu Flow usando a nova logo enviada
+  // pela empresa, sem alterar qualquer regra operacional do sistema.
+  carregarScript(
+    "corponu-identidade-corpo-nu-flow-145.js",
+    "identidade-corpo-nu-flow-145",
+    VERSION_IDENTIDADE_FLOW,
+    "Não foi possível carregar a identidade Corpo Nu Flow."
+  );
 
   // 139 adiciona, somente para administradores, uma lixeira sob demanda para
   // visualizar e restaurar OPs marcadas com excluida=true sem recriar documentos.
