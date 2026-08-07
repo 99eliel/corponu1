@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-06-calcinha-identidade-136-deploy-4",
-  "updatedAt": "2026-08-06T22:31:00-03:00",
-  "notes": "Quarto disparo limpo de publicação da correção 136 no GitHub Pages. Mantém integralmente a correção da identidade das OPs de calcinha, com serviço e facção opcionais. Nenhum dado, pagamento, regra ou fluxo operacional foi alterado neste deploy."
+  "version": "2026-08-06-calcinha-reparo-137",
+  "updatedAt": "2026-08-06T22:40:00-03:00",
+  "notes": "Corrige definitivamente OPs cadastradas pela aba Calcinha que ficaram gravadas como Sutiã. Ao encontrar um número de OP existente classificado incorretamente, o cadastro de Calcinha permite corrigir o próprio documento em vez de bloquear como duplicado. A OP 57864 recebe reparo idempotente para voltar a aparecer em Calcinha e ter serviço/facção definidos somente no envio. Nenhum pagamento, chegada, ALÇA ou LATERAL é alterado."
 }

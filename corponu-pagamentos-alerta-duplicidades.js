@@ -2,6 +2,7 @@
   "use strict";
 
   const VERSION_DUPLICIDADE = "2026-08-06-duplicidade-tabela-135";
+  const VERSION_REPARO_CALCINHA = "2026-08-06-calcinha-reparo-137";
   const VERSION_CALCINHA = "2026-08-06-calcinha-identidade-136";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
@@ -19,8 +20,16 @@
     return script;
   }
 
-  // Proteção global da OP de calcinha. É carregada antes da conferência visual
-  // porque precisa capturar o formulário antes dos listeners legados.
+  // 137 vem primeiro: repara OPs que ficaram gravadas como sutiã e captura
+  // o cadastro pela aba Calcinha antes das proteções/handlers mais antigos.
+  carregarScript(
+    "corponu-calcinha-reparo-137.js",
+    "calcinha-reparo-137",
+    VERSION_REPARO_CALCINHA,
+    "Não foi possível carregar o reparo das OPs de calcinha."
+  );
+
+  // Mantém a proteção 136 como camada de compatibilidade para os demais fluxos.
   carregarScript(
     "corponu-calcinha-identidade-136.js",
     "calcinha-identidade-136",
