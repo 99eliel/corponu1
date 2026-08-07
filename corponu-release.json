@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-07-chegada-badge-compartilhado-153",
-  "updatedAt": "2026-08-07T10:05:00-03:00",
-  "notes": "Corrige definitivamente o crescimento infinito dos avisos amarelos de chegada na aba Facções. Os módulos 130 e 131 passam a compartilhar o mesmo badge visual em vez de criar e remover cópias alternadamente. A correção interrompe o ciclo de MutationObserver que fazia a coluna Ações crescer continuamente. Nenhum dado de chegada, pagamento, movimentação, facção ou OP foi alterado."
+  "version": "2026-08-07-chegada-badge-modulo-unico-154",
+  "updatedAt": "2026-08-07T10:08:00-03:00",
+  "notes": "Remove a disputa entre dois módulos que renderizavam o aviso amarelo de chegada na aba Facções. A partir desta versão, somente o módulo 130 cuida do aviso visual, do fluxo Avisar que chegou para usuário comum e da confirmação para administrador. O antigo módulo 131 e a camada de compartilhamento 153 deixam de ser carregados nessa cadeia, eliminando o ciclo que fazia o texto 'Chegada avisada por...' crescer infinitamente. Nenhum dado de chegada, pagamento, movimentação, facção ou OP foi alterado."
 }
