@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-07-chegada-badge-compartilhado-153";
+  const VERSION = "2026-08-07-chegada-badge-modulo-unico-154";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -21,32 +21,22 @@
     return script;
   }
 
-  // Correção visual isolada da aba Facções: contém a largura da página
-  // e mantém o scroll horizontal dentro da tabela.
+  // Mantém somente a contenção visual da tabela de Facções.
   carregarScript(
     "./corponu-faccoes-layout-141.js",
     "faccoes-layout-141"
   );
 
-  // 153 faz os módulos 130 e 131 compartilharem exatamente o mesmo badge
-  // amarelo. Isso corta o ciclo de criar/remover/recriar que fazia a coluna
-  // Ações crescer infinitamente.
-  carregarScript(
-    "./corponu-chegada-badge-compartilhado-153.js",
-    "chegada-badge-compartilhado-153"
-  );
-
-  // Estabiliza o observer antes de iniciar as proteções 130 e 131.
+  // 154: um único responsável pela interface de aviso de chegada.
+  // O módulo 130 já atende usuário comum e administrador, então o antigo 131
+  // deixa de ser carregado para impedir que dois observers disputem a mesma
+  // célula e criem avisos amarelos indefinidamente.
   carregarScript(
     "./corponu-chegada-estabilidade-132.js",
     "chegada-estabilidade-132",
     () => carregarScript(
       "./corponu-aviso-chegada-admin-130.js",
-      "aviso-chegada-admin-130",
-      () => carregarScript(
-        "./corponu-chegada-usuario-guard-131.js",
-        "chegada-usuario-guard-131"
-      )
+      "aviso-chegada-admin-130"
     )
   );
 
