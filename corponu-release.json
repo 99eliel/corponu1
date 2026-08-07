@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-07-produto-calcinha-quantidade-149",
-  "updatedAt": "2026-08-07T09:38:00-03:00",
-  "notes": "Adiciona o campo Quantidade ao cadastro de Produtos/Referências de Calcinha. A quantidade passa a ser obrigatória somente nesse cadastro, é salva junto ao produto e também recebe proteção contra alteração acidental pela rodinha do mouse. O cadastro de Sutiã permanece como estava. Nenhuma regra de OP, Facções, pagamentos, chegada ou valores foi alterada."
+  "version": "2026-08-07-sutia-completo-envio-sem-componentes-150",
+  "updatedAt": "2026-08-07T09:46:00-03:00",
+  "notes": "Corrige o envio pelo Manejo para facção quando o processo é SUTIÃ COMPLETO. Lateral e Bojo deixam de ser obrigatórios no momento da saída/reenvio; se ainda não estiverem informados, o envio segue normalmente e a confirmação será feita no fluxo de chegada. Nenhum valor, cálculo de pagamento, facção cadastrada ou dado existente foi alterado."
 }
