@@ -26,15 +26,16 @@ test("hotfix intercepta o filtro antigo sem observer, polling ou realtime", () =
   assert.doesNotMatch(hotfix, /onSnapshot\s*\(/);
 });
 
-test("updater carrega o hotfix 157 antes do filtro legado", () => {
-  const novo = updater.indexOf("corponu-pagamentos-filtro-op-performance-157.js");
+test("updater mantém o motor 157 antes do filtro legado", () => {
+  const motor = updater.indexOf("corponu-pagamentos-filtro-op-performance-157.js");
   const antigo = updater.indexOf("corponu-pagamentos-filtro-op.js");
-  assert.ok(novo >= 0, "hotfix 157 precisa estar no atualizador");
+  assert.ok(motor >= 0, "motor 157 precisa estar no atualizador");
   assert.ok(antigo >= 0, "filtro legado precisa continuar presente por compatibilidade");
-  assert.ok(novo < antigo, "hotfix 157 precisa carregar antes do filtro legado");
+  assert.ok(motor < antigo, "motor 157 precisa carregar antes do filtro legado");
 });
 
-test("release e atualizador usam a versão 157", () => {
-  assert.equal(release.version, "2026-08-08-pagamentos-filtro-op-performance-157");
-  assert.match(updater, /LOCAL_RELEASE = "2026-08-08-pagamentos-filtro-op-performance-157"/);
+test("release atual é 158 sem remover o motor de consulta 157", () => {
+  assert.equal(release.version, "2026-08-08-pagamentos-filtro-op-v2-compat-158");
+  assert.match(updater, /LOCAL_RELEASE = "2026-08-08-pagamentos-filtro-op-v2-compat-158"/);
+  assert.match(updater, /corponu-pagamentos-filtro-op-performance-157\.js/);
 });
