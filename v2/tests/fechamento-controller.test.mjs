@@ -27,6 +27,15 @@ function ambiente() {
         ? { ok: true, erros: [], op: { ...op } }
         : { ok: false, erros: ["OP_NAO_ENCONTRADA"], op: null };
     },
+    async diagnosticarComponentes({ op, processo }) {
+      chamadas.push(["diagnosticar", op?.numeroOP, processo]);
+      return {
+        exigeConferencia: true,
+        especial: false,
+        faltantes: ["fecho", "pontoLuz"],
+        conhecidos: { lateral: true, bojo: false }
+      };
+    },
     async prepararLancamento(entrada) {
       chamadas.push(["preparar", entrada.op?.numeroOP]);
       return {
@@ -85,6 +94,30 @@ test("listarResponsaveis usa facções já carregadas no store", () => {
 
   const completas = controller.listarResponsaveis("sutia completo");
   assert.deepEqual(completas.map(item => item.nome), ["DANUBIA"]);
+  assert.equal(chamadas.length, 0);
+});
+
+test("diagnosticarComponentes usa a OP selecionada e delega ao motor financeiro", async () => {
+  const { controller, chamadas } = ambiente();
+  await controller.buscarOP("58193");
+
+  const resultado = await controller.diagnosticarComponentes("SUTIÃ COMPLETO");
+
+  assert.equal(resultado.ok, true);
+  assert.deepEqual(resultado.diagnostico.faltantes, ["fecho", "pontoLuz"]);
+  assert.deepEqual(resultado.diagnostico.conhecidos, { lateral: true, bojo: false });
+  assert.ok(chamadas.some(chamada =>
+    chamada[0] === "diagnosticar" && chamada[1] === "58193" && chamada[2] === "SUTIÃ COMPLETO"
+  ));
+});
+
+test("diagnosticarComponentes sem OP selecionada não consulta serviço financeiro", async () => {
+  const { controller, chamadas } = ambiente();
+
+  const resultado = await controller.diagnosticarComponentes("SUTIÃ COMPLETO");
+
+  assert.equal(resultado.ok, false);
+  assert.deepEqual(resultado.erros, ["OP_NAO_INFORMADA"]);
   assert.equal(chamadas.length, 0);
 });
 
