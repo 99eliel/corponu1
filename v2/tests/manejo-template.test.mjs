@@ -18,7 +18,8 @@ test("Manejo mantém necessidade livre e campos operacionais principais", () => 
     "Data Silk",
     "Tecido",
     "Data Tecido",
-    "Fase",
+    "Fase Bojo",
+    "Fase Lateral",
     "Facção",
     "Chegada",
     "Falta",
@@ -28,24 +29,30 @@ test("Manejo mantém necessidade livre e campos operacionais principais", () => 
   }
 });
 
-test("campo Fase da linha mantém digitação livre com sugestões", () => {
+test("linha possui Fase Bojo e Fase Lateral com digitação livre e sugestões", () => {
   const linha = htmlLinhaManejo({
     id: "op-1",
     numeroOP: "1",
     referencia: "414",
     cor: "PRETO",
     quantidade: 100,
-    tipoPeca: "sutia"
+    tipoPeca: "sutia",
+    manejosSetores: {
+      sutia: { fase: "SEPARAÇÃO" }
+    }
   }, "sutia");
 
-  assert.match(linha, /data-campo="fase"/);
-  assert.match(linha, /list="v2ManejoFasesSugestoes"/);
-  assert.match(linha, /placeholder="Digite ou escolha"/);
+  assert.match(linha, /data-campo="faseBojo"/);
+  assert.match(linha, /data-campo="faseLateral"/);
+  assert.equal((linha.match(/list="v2ManejoFasesSugestoes"/g) || []).length, 2);
+  assert.equal((linha.match(/placeholder="Digite ou escolha"/g) || []).length, 2);
+  assert.match(linha, /data-campo="faseBojo"[^>]*value="SEPARAÇÃO"/);
+  assert.match(linha, /data-campo="faseLateral"[^>]*value=""/);
 });
 
-test("filtros estruturados existem e podem acumular", () => {
+test("filtros estruturados incluem Fase Bojo e Fase Lateral separadas", () => {
   const html = templateManejoV2();
-  for (const campo of ["busca", "status", "referencia", "cor", "fase", "faccao", "necessidade"]) {
+  for (const campo of ["busca", "status", "referencia", "cor", "faseBojo", "faseLateral", "faccao", "necessidade"]) {
     assert.match(html, new RegExp(`name="${campo}"`));
   }
   assert.match(html, /data-v2-limpar-filtros/);
