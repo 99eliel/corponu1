@@ -24,6 +24,8 @@ test("escrita real permanece bloqueada por padrão", () => {
   assert.match(bridge, /setDoc: escritaLiberada \? firestoreSdk\.setDoc : somenteLeitura/);
   assert.match(bridge, /writeBatch: escritaLiberada \? firestoreSdk\.writeBatch : somenteLeitura/);
   assert.match(bridge, /runTransaction: escritaLiberada \? firestoreSdk\.runTransaction : somenteLeitura/);
+  assert.match(bridge, /addEventListener\("submit"/);
+  assert.match(bridge, /ehBotaoDeEscrita/);
 });
 
 test("ponte mantém a V2 isolada das páginas legadas", () => {
@@ -36,11 +38,20 @@ test("ponte mantém a V2 isolada das páginas legadas", () => {
 
 test("ponte usa carregamento paginado de OPs e um único fluxo compartilhado", () => {
   assert.match(bridge, /criarCorpoNuFlowFirebaseV2/);
-  assert.match(bridge, /tamanhoPaginaOrdens: 150/);
+  assert.match(bridge, /tamanhoPaginaOrdens: escritaLiberada \? 150 : 40/);
   assert.match(bridge, /carregarMaisOrdens\(\)/);
   assert.match(bridge, /flow\.montarOrdens/);
   assert.match(bridge, /flow\.montarManejo/);
   assert.match(bridge, /flow\.montarFaccoes/);
   assert.match(bridge, /flow\.montarFechamento/);
   assert.match(bridge, /flow\.montarPagamentos/);
+});
+
+test("modo leitura executa diagnóstico real antes de abrir módulos", () => {
+  assert.match(bridge, /firebase-readonly\.mjs/);
+  assert.match(bridge, /executarDiagnosticoFirebaseSomenteLeitura/);
+  assert.match(bridge, /await montar\("diagnostico"\)/);
+  assert.match(bridge, /getDocMetricado/);
+  assert.match(bridge, /getDocsMetricado/);
+  assert.match(bridge, /documentos lidos/);
 });
