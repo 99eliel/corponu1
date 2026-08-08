@@ -11,6 +11,7 @@ export function criarCorpoNuFlowFirebaseV2({
   store,
   fallbackFaccoesPorProcesso = {},
   referenciaEspecial = "912",
+  tamanhoPaginaOrdens = 150,
   tamanhoPaginaFaccoes = 80,
   obterUsuario = () => null,
   obterPerfil = () => ({}),
@@ -20,6 +21,7 @@ export function criarCorpoNuFlowFirebaseV2({
     db,
     fs,
     store,
+    tamanhoPaginaOrdens,
     tamanhoPaginaFaccoes
   });
 
