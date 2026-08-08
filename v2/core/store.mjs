@@ -65,6 +65,19 @@ export class CorpoNuStore {
     return this.listar(dominio);
   }
 
+  substituirItem(dominio, item) {
+    validarDominio(dominio);
+    if (!item || item.id == null || texto(item.id) === "") {
+      throw new Error(`Item sem id para ${dominio}.`);
+    }
+
+    const id = String(item.id);
+    const proximo = { ...copiar(item), id };
+    this.mapas[dominio].set(id, proximo);
+    this.#notificar(dominio, "substituir_item", id);
+    return copiar(proximo);
+  }
+
   upsert(dominio, item) {
     validarDominio(dominio);
     if (!item || item.id == null || texto(item.id) === "") {
