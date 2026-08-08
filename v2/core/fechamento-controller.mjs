@@ -69,23 +69,19 @@ export class FechamentoController {
 
   async diagnosticarComponentes(processo, op = this.opAtual) {
     if (!op?.id) {
-      return {
-        ok: false,
-        erros: ["OP_NAO_INFORMADA"],
-        diagnostico: null
-      };
+      return { ok: false, erros: ["OP_NAO_INFORMADA"], diagnostico: null };
     }
 
-    const diagnostico = await this.financeiroService.diagnosticarComponentes({
-      op,
-      processo
-    });
+    const diagnostico = await this.financeiroService.diagnosticarComponentes({ op, processo });
+    return { ok: true, erros: [], diagnostico };
+  }
 
-    return {
-      ok: true,
-      erros: [],
-      diagnostico
-    };
+  async consultarSaldo(processo, op = this.opAtual) {
+    if (!op?.id) {
+      return { ok: false, erros: ["OP_NAO_INFORMADA"], saldo: null };
+    }
+    const saldo = await this.financeiroService.consultarSaldo({ op, processo });
+    return { ok: true, erros: [], saldo };
   }
 
   async resolverOP(entrada = {}) {
