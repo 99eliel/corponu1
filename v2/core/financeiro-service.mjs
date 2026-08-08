@@ -21,8 +21,7 @@ export class FechamentoFinanceiroService {
     exigirMetodo(valoresRepo, "buscarValorUnitario", "valoresRepo");
     exigirMetodo(valoresRepo, "buscarConfiguracaoSutiaCompleto", "valoresRepo");
     exigirMetodo(valoresRepo, "buscarValoresComponentes", "valoresRepo");
-    exigirMetodo(pagamentosRepo, "buscarPorChave", "pagamentosRepo");
-    exigirMetodo(pagamentosRepo, "salvar", "pagamentosRepo");
+    exigirMetodo(pagamentosRepo, "salvarSeAusente", "pagamentosRepo");
 
     this.ordensRepo = ordensRepo;
     this.valoresRepo = valoresRepo;
@@ -120,24 +119,25 @@ export class FechamentoFinanceiroService {
     if (!preparado.ok) return preparado;
 
     const chave = preparado.documento.chaveFechamento;
-    const existente = await this.pagamentosRepo.buscarPorChave(chave);
+    const persistencia = await this.pagamentosRepo.salvarSeAusente(
+      chave,
+      preparado.documento
+    );
 
-    if (existente) {
+    if (!persistencia?.ok) {
       return {
         ...preparado,
         ok: false,
-        erros: ["LANCAMENTO_DUPLICADO"],
-        existente
+        erros: [persistencia?.motivo || "FALHA_AO_SALVAR_LANCAMENTO"],
+        existente: persistencia?.existente || null
       };
     }
-
-    const salvo = await this.pagamentosRepo.salvar(chave, preparado.documento);
 
     return {
       ...preparado,
       ok: true,
       erros: [],
-      salvo: salvo || preparado.documento
+      salvo: persistencia.documento || preparado.documento
     };
   }
 }
