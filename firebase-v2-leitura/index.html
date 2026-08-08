@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Corpo Nu Flow V2 · Firebase Somente Leitura</title>
+  <link rel="stylesheet" href="../style.css" />
+  <style>
+    body{margin:0;background:#f5f7fb;color:#172033;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .readonly-login{min-height:100vh;display:grid;place-items:center;padding:24px}
+    .readonly-card{width:min(440px,100%);background:#fff;border:1px solid #dfe4ec;border-radius:18px;padding:24px;box-shadow:0 18px 55px rgba(15,23,42,.10)}
+    .readonly-card h1{font-size:23px;margin:0 0 6px}.readonly-card p{margin:0 0 18px;color:#64748b;line-height:1.45}
+    .readonly-badge{display:inline-flex;margin-bottom:16px;padding:6px 10px;border-radius:999px;background:#dcfce7;color:#166534;font-size:12px;font-weight:800}
+    .readonly-card label{display:grid;gap:6px;margin:12px 0;font-weight:700;font-size:13px}.readonly-card input{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:11px 12px;font:inherit}
+    .readonly-card button{width:100%;border:0;border-radius:10px;padding:12px 14px;background:#172033;color:#fff;font-weight:800;cursor:pointer;margin-top:8px}.readonly-card button:disabled{opacity:.6;cursor:wait}
+    .readonly-status{min-height:20px;margin-top:12px;font-size:13px;color:#475569}.readonly-status.erro{color:#b91c1c}.readonly-notice{margin-top:16px;padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;color:#166534;font-size:12px;line-height:1.45}
+  </style>
+</head>
+<body>
+  <main class="readonly-login" id="firebaseReadonlyLogin">
+    <section class="readonly-card">
+      <span class="readonly-badge">FIREBASE REAL · SOMENTE LEITURA</span>
+      <h1>Corpo Nu Flow V2</h1>
+      <p>Entre com o mesmo usuário do sistema para executar a conferência da V2 diretamente nos dados reais.</p>
+      <form id="firebaseReadonlyForm">
+        <label>
+          E-mail
+          <input id="firebaseReadonlyEmail" type="email" autocomplete="username" required />
+        </label>
+        <label>
+          Senha
+          <input id="firebaseReadonlySenha" type="password" autocomplete="current-password" required />
+        </label>
+        <button id="firebaseReadonlyEntrar" type="submit">Entrar e executar diagnóstico</button>
+        <div class="readonly-status" id="firebaseReadonlyStatus" aria-live="polite"></div>
+      </form>
+      <div class="readonly-notice">
+        Este ambiente não carrega o sistema legado, não usa listeners em tempo real e não libera métodos de gravação da V2. O objetivo é medir e validar somente as leituras necessárias.
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./firebase-readonly-login.mjs"></script>
+</body>
+</html>

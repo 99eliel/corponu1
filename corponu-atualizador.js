@@ -84,6 +84,15 @@
       ["corponu-verificacao-sutia-completo.js", "verificacao-sutia-completo-segura", "Não foi possível carregar a verificação segura do Sutiã Completo."]
     ];
     modulos.forEach(([arquivo, marcador, erro]) => carregarScript(arquivo, marcador, erro));
+
+    const parametros = new URLSearchParams(window.location.search);
+    if (parametros.get("v2firebase") === "1") {
+      carregarScript(
+        "corponu-v2-firebase-bridge.js",
+        "v2-firebase-bridge",
+        "Não foi possível carregar a ponte isolada do Corpo Nu Flow V2."
+      );
+    }
   }
 
   function removerAvisosAntigos() {
