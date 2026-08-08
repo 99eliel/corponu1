@@ -1,7 +1,7 @@
-import { criarDocumentoFechamento } from "./financeiro-regras.mjs";
+import { criarDocumentoFechamento, validarSaldoProcesso } from "./financeiro-regras.mjs";
 import { MotorValoresV2 } from "./motor-valores.mjs";
 import { normalizarOPLegada } from "./op-normalizador.mjs";
-import { texto } from "./normalizacao.mjs";
+import { processoCanonico, texto } from "./normalizacao.mjs";
 
 function exigirMetodo(objeto, nome, grupo) {
   if (!objeto || typeof objeto[nome] !== "function") {
@@ -12,7 +12,8 @@ function exigirMetodo(objeto, nome, grupo) {
 export class FechamentoFinanceiroService {
   constructor({ ordensRepo, valoresRepo, pagamentosRepo }) {
     exigirMetodo(ordensRepo, "buscarPorNumero", "ordensRepo");
-    exigirMetodo(pagamentosRepo, "salvarSeAusente", "pagamentosRepo");
+    exigirMetodo(pagamentosRepo, "obterSaldoProcesso", "pagamentosRepo");
+    exigirMetodo(pagamentosRepo, "salvarComSaldo", "pagamentosRepo");
 
     this.ordensRepo = ordensRepo;
     this.valoresRepo = valoresRepo;
@@ -41,6 +42,16 @@ export class FechamentoFinanceiroService {
     });
   }
 
+  async consultarSaldo({ op, processo } = {}) {
+    const ordem = this.normalizarOP(op);
+    return this.pagamentosRepo.obterSaldoProcesso({
+      opId: ordem.id,
+      numeroOP: ordem.numeroOP,
+      processo: processoCanonico(processo),
+      quantidadeOP: ordem.quantidade
+    });
+  }
+
   async calcular({ op, processo, quantidade, componentes = {} }) {
     return this.motorValores.calcular({
       op: this.normalizarOP(op),
@@ -60,12 +71,31 @@ export class FechamentoFinanceiroService {
         ok: false,
         erros: opCarregada.erros,
         op: null,
+        saldo: null,
         calculo: null,
         documento: null
       };
     }
 
     const op = opCarregada.op;
+    const saldo = await this.consultarSaldo({ op, processo: entrada.processo });
+    const validacaoSaldo = validarSaldoProcesso({
+      quantidadeOP: op.quantidade,
+      quantidadeFechada: saldo.quantidadeFechada,
+      quantidadeNova: entrada.quantidade
+    });
+
+    if (!validacaoSaldo.ok) {
+      return {
+        ok: false,
+        erros: validacaoSaldo.erros,
+        op,
+        saldo: { ...saldo, ...validacaoSaldo },
+        calculo: null,
+        documento: null
+      };
+    }
+
     const calculo = await this.calcular({
       op,
       processo: entrada.processo,
@@ -79,7 +109,6 @@ export class FechamentoFinanceiroService {
       responsavel: entrada.responsavel,
       competencia: entrada.competencia,
       quantidade: entrada.quantidade,
-      ocorrencia: entrada.ocorrencia,
       calculo,
       observacoes: entrada.observacoes
     });
@@ -88,6 +117,7 @@ export class FechamentoFinanceiroService {
       ok: documento.ok,
       erros: documento.erros,
       op,
+      saldo: { ...saldo, ...validacaoSaldo },
       calculo,
       documento: documento.documento
     };
@@ -97,10 +127,9 @@ export class FechamentoFinanceiroService {
     const preparado = await this.prepararLancamento(entrada);
     if (!preparado.ok) return preparado;
 
-    const chave = preparado.documento.chaveFechamento;
-    const persistencia = await this.pagamentosRepo.salvarSeAusente(
-      chave,
-      preparado.documento
+    const persistencia = await this.pagamentosRepo.salvarComSaldo(
+      preparado.documento,
+      { saldoInicial: preparado.saldo }
     );
 
     if (!persistencia?.ok) {
@@ -108,6 +137,7 @@ export class FechamentoFinanceiroService {
         ...preparado,
         ok: false,
         erros: [persistencia?.motivo || "FALHA_AO_SALVAR_LANCAMENTO"],
+        saldo: persistencia?.saldo || preparado.saldo,
         existente: persistencia?.existente || null
       };
     }
@@ -116,7 +146,8 @@ export class FechamentoFinanceiroService {
       ...preparado,
       ok: true,
       erros: [],
-      salvo: persistencia.documento || preparado.documento
+      saldo: persistencia.saldo || preparado.saldo,
+      salvo: persistencia.documento
     };
   }
 }
