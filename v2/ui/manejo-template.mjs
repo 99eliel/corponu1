@@ -15,7 +15,7 @@ export function templateManejoV2() {
       <div class="v2-manejo__filtros" data-v2-manejo-filtros>
         <label>
           Buscar
-          <input type="search" name="busca" placeholder="OP, ref., cor, fase, facção..." />
+          <input type="search" name="busca" placeholder="OP, ref., cor, fase bojo, fase lateral, facção..." />
         </label>
         <label>
           Status
@@ -30,8 +30,12 @@ export function templateManejoV2() {
           <select name="cor"><option value="">Todas</option></select>
         </label>
         <label>
-          Fase
-          <select name="fase"><option value="">Todas</option></select>
+          Fase Bojo
+          <select name="faseBojo"><option value="">Todas</option></select>
+        </label>
+        <label>
+          Fase Lateral
+          <select name="faseLateral"><option value="">Todas</option></select>
         </label>
         <label>
           Facção
@@ -67,7 +71,8 @@ export function templateManejoV2() {
               <th>Data Silk</th>
               <th>Tecido</th>
               <th>Data Tecido</th>
-              <th>Fase</th>
+              <th>Fase Bojo</th>
+              <th>Fase Lateral</th>
               <th>Facção</th>
               <th>Chegada</th>
               <th>Falta</th>
