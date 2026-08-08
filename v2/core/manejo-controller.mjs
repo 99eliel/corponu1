@@ -1,7 +1,6 @@
 import { listarFaccoesPorProcesso } from "./faccoes-regras.mjs";
 import { filtrarOrdensManejo, opcoesFiltrosManejo } from "./manejo-filtros.mjs";
 import {
-  DESTINO_CELULA,
   DESTINO_FACCAO,
   PROCESSOS_FACCAO_POR_SETOR,
   getManejoDaOrdemV2,
@@ -53,9 +52,6 @@ export class ManejoController {
   }
 
   listarDestinos({ tipoDestino, processo = "" } = {}) {
-    if (tipoDestino === DESTINO_CELULA) {
-      return this.store.listar("celulas");
-    }
     if (tipoDestino !== DESTINO_FACCAO) return [];
 
     const canonico = processoCanonico(processo);
