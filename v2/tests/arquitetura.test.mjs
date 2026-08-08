@@ -13,7 +13,9 @@ test("core V2 permanece independente de DOM", async () => {
     "../core/faccoes-regras.mjs",
     "../core/financeiro-regras.mjs",
     "../core/financeiro-service.mjs",
-    "../core/fechamento-controller.mjs"
+    "../core/fechamento-controller.mjs",
+    "../core/ordens-regras.mjs",
+    "../core/ordens-service.mjs"
   ];
 
   for (const arquivo of arquivos) {
@@ -21,6 +23,8 @@ test("core V2 permanece independente de DOM", async () => {
     assert.doesNotMatch(codigo, /\bdocument\./, `${arquivo} acessou document`);
     assert.doesNotMatch(codigo, /\bwindow\./, `${arquivo} acessou window`);
     assert.doesNotMatch(codigo, /MutationObserver/, `${arquivo} criou MutationObserver`);
+    assert.doesNotMatch(codigo, /new Blob\s*\(/, `${arquivo} executou código por Blob`);
+    assert.doesNotMatch(codigo, /URL\.createObjectURL/, `${arquivo} executou código por URL temporária`);
   }
 });
 
@@ -59,13 +63,28 @@ test("repositório de Facções não cria listener em tempo real", async () => {
   assert.match(codigo, /getDocs\s*\(/);
 });
 
-test("nenhum módulo V2 financeiro importa patches legados", async () => {
+test("repositórios de Ordens e Produtos reutilizam Firebase existente", async () => {
+  for (const arquivo of ["../adapters/ordens-repo.mjs", "../adapters/produtos-repo.mjs"]) {
+    const codigo = await fonte(arquivo);
+    assert.doesNotMatch(codigo, /initializeApp\s*\(/);
+    assert.doesNotMatch(codigo, /getFirestore\s*\(/);
+    assert.doesNotMatch(codigo, /firebase-app\.js/);
+    assert.doesNotMatch(codigo, /firebase-firestore\.js/);
+    assert.doesNotMatch(codigo, /onSnapshot\s*\(/);
+  }
+});
+
+test("nenhum módulo V2 importa patches legados", async () => {
   const arquivos = [
     "../core/financeiro-regras.mjs",
     "../core/financeiro-service.mjs",
     "../core/fechamento-controller.mjs",
+    "../core/ordens-regras.mjs",
+    "../core/ordens-service.mjs",
     "../adapters/firestore-repos.mjs",
     "../adapters/faccoes-repo.mjs",
+    "../adapters/ordens-repo.mjs",
+    "../adapters/produtos-repo.mjs",
     "../bootstrap/fechamento-app.mjs",
     "../ui/fechamento-page.mjs"
   ];
