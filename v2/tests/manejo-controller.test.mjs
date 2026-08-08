@@ -16,7 +16,7 @@ function ambiente() {
       tipoPeca: "sutia",
       necessidade: "URGENTE",
       manejosSetores: {
-        sutia: { fase: "SEPARAÇÃO", faccao: "DANUBIA", silkNome: "SILK A", dataTecido: "2026-08-08" }
+        sutia: { fase: "SEPARAÇÃO", silkNome: "SILK A", dataTecido: "2026-08-08" }
       }
     },
     {
@@ -28,7 +28,7 @@ function ambiente() {
       tipoPeca: "sutia",
       necessidade: "NORMAL",
       manejosSetores: {
-        sutia: { fase: "CORTE", faccao: "LIVIA", silkNome: "SILK B", dataTecido: "2026-08-09" }
+        sutia: { fase: "CORTE", silkNome: "SILK B", dataTecido: "2026-08-09" }
       }
     },
     {
@@ -39,7 +39,7 @@ function ambiente() {
       quantidade: 400,
       tipoPeca: "calcinha",
       manejosSetores: {
-        calcinha: { fase: "SEPARAÇÃO", faccao: "LORENA" }
+        calcinha: { fase: "SEPARAÇÃO" }
       }
     }
   ]);
@@ -47,10 +47,6 @@ function ambiente() {
     { id: "f1", nome: "DANUBIA", processosPermitidos: ["SUTIÃ COMPLETO"] },
     { id: "f2", nome: "LIVIA", processosPermitidos: ["SUTIÃ MONTAGEM"] },
     { id: "f3", nome: "LORENA", processosPermitidos: ["CALCINHA COMPLETA"] }
-  ]);
-  store.substituir("celulas", [
-    { id: "c-a", nome: "CELULA A" },
-    { id: "c-b", nome: "CELULA B" }
   ]);
 
   const chamadas = [];
@@ -83,7 +79,7 @@ test("filtros acumulativos passam pelo controller sem consulta externa", () => {
   const resultado = controller.listar("sutia", {
     cor: "PRETO",
     referencia: "414",
-    fase: "SEPARAÇÃO"
+    faseBojo: "SEPARAÇÃO"
   });
 
   assert.deepEqual(resultado.map(item => item.id), ["s1"]);
@@ -113,12 +109,9 @@ test("facções são filtradas pelo processo usando o store", () => {
   assert.equal(chamadas.length, 0);
 });
 
-test("células são retornadas diretamente do store", () => {
+test("controller não oferece Célula como destino do Manejo", () => {
   const { controller } = ambiente();
-  assert.deepEqual(
-    controller.listarDestinos({ tipoDestino: "celula" }).map(item => item.nome),
-    ["CELULA A", "CELULA B"]
-  );
+  assert.deepEqual(controller.listarDestinos({ tipoDestino: "celula", processo: "CÉLULA INTERNA" }), []);
 });
 
 test("salvar e movimentar encaminham a própria OP carregada no store", async () => {
@@ -127,12 +120,12 @@ test("salvar e movimentar encaminham a própria OP carregada no store", async ()
   await controller.salvar({
     ordemId: "s1",
     setor: "sutia",
-    entrada: { fase: "CORTE" }
+    entrada: { faseBojo: "CORTE" }
   });
   await controller.movimentar({
     ordemId: "s1",
     setor: "sutia",
-    entradaManejo: { fase: "CORTE", silkNome: "SILK A", dataTecido: "2026-08-08" },
+    entradaManejo: { faseBojo: "CORTE", silkNome: "SILK A", dataTecido: "2026-08-08" },
     tipoDestino: "faccao",
     processo: "SUTIÃ COMPLETO",
     destino: "DANUBIA",
