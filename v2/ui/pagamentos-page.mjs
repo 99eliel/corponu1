@@ -20,8 +20,8 @@ function renderLista(tbody, itens) {
   </tr>`).join("") : `<tr><td colspan="9"><div class="empty">Nenhum pagamento encontrado com estes filtros.</div></td></tr>`;
 }
 
-function renderResumo(el, r) {
-  el.innerHTML = `<strong>${r.quantidadeLancamentos}</strong> lançamentos <span>•</span> <strong>${Number(r.quantidadePecas || 0).toLocaleString("pt-BR")}</strong> peças <span>•</span> Total <strong>${moeda(r.total)}</strong> <span>•</span> Pendente <strong>${moeda(r.totalPendente)}</strong> <span>•</span> Pago <strong>${moeda(r.totalPago)}</strong>`;
+function renderResumo(el, r, completo) {
+  el.innerHTML = `<strong>${r.quantidadeLancamentos}</strong> lançamentos <span>•</span> <strong>${Number(r.quantidadePecas || 0).toLocaleString("pt-BR")}</strong> peças <span>•</span> Total <strong>${moeda(r.total)}</strong> <span>•</span> Pendente <strong>${moeda(r.totalPendente)}</strong> <span>•</span> Pago <strong>${moeda(r.totalPago)}</strong>${completo ? "" : " <span>•</span> <small>totais dos registros carregados</small>"}`;
 }
 
 function abrirRelatorio({ titulo, subtitulo, cabecalho, linhas }) {
@@ -49,7 +49,7 @@ export function montarTelaPagamentos({ container, controller, store, obterUsuari
   function render() {
     const resultado = controller.listar(lerFiltros(container));
     renderLista(tbody, resultado.itens);
-    renderResumo(resumoEl, resultado.resumo);
+    renderResumo(resumoEl, resultado.resumo, controller.acabou());
     mais.disabled = carregando || controller.acabou();
     statusEl.textContent = controller.acabou() ? "Fim dos registros carregados." : "Há mais registros disponíveis.";
     return resultado;
@@ -94,15 +94,23 @@ export function montarTelaPagamentos({ container, controller, store, obterUsuari
     finally { botao.disabled = false; botao.textContent = anterior; }
   }, { signal });
 
-  container.querySelector("[data-v2-relatorio-completo]").addEventListener("click", () => {
-    const filtros = lerFiltros(container); const { itens, resumo } = controller.listar(filtros);
-    const pix = new Map(store.listar("faccoes").map(f => [String(f.nome || "").toUpperCase(), f.chavePix || f.pix || ""]));
-    abrirRelatorio({ titulo: "Relatório de Pagamentos", subtitulo: `Competência ${filtros.competencia || "todas"} • Total ${moeda(resumo.total)}`, cabecalho: ["OP", "Responsável", "PIX", "Referência", "Processo", "Qtd.", "Unitário", "Total", "Status"], linhas: itens.map(i => `<tr><td>${escapar(i.numeroOP)}</td><td>${escapar(i.responsavel)}</td><td>${escapar(pix.get(String(i.responsavel).toUpperCase()) || "-")}</td><td>${escapar(i.referencia)}</td><td>${escapar(i.processo)}</td><td>${i.quantidade}</td><td class="valor">${moeda(i.valorUnitario)}</td><td class="valor">${moeda(i.total)}</td><td>${escapar(i.statusPagamento)}</td></tr>`).join("") });
+  container.querySelector("[data-v2-relatorio-completo]").addEventListener("click", async event => {
+    const botao = event.currentTarget; const anterior = botao.textContent; botao.disabled = true; botao.textContent = "Preparando relatório...";
+    try {
+      const filtros = lerFiltros(container); const { itens, resumo } = await controller.buscarFiltradosCompletos(filtros);
+      const pix = new Map(store.listar("faccoes").map(f => [String(f.nome || "").toUpperCase(), f.chavePix || f.pix || ""]));
+      abrirRelatorio({ titulo: "Relatório de Pagamentos", subtitulo: `Competência ${filtros.competencia || "todas"} • Total ${moeda(resumo.total)}`, cabecalho: ["OP", "Responsável", "PIX", "Referência", "Processo", "Qtd.", "Unitário", "Total", "Status"], linhas: itens.map(i => `<tr><td>${escapar(i.numeroOP)}</td><td>${escapar(i.responsavel)}</td><td>${escapar(pix.get(String(i.responsavel).toUpperCase()) || "-")}</td><td>${escapar(i.referencia)}</td><td>${escapar(i.processo)}</td><td>${i.quantidade}</td><td class="valor">${moeda(i.valorUnitario)}</td><td class="valor">${moeda(i.total)}</td><td>${escapar(i.statusPagamento)}</td></tr>`).join("") });
+    } catch (error) { console.error("[V2] Erro no relatório completo.", error); statusEl.textContent = "Não foi possível preparar o relatório completo."; }
+    finally { botao.disabled = false; botao.textContent = anterior; }
   }, { signal });
 
-  container.querySelector("[data-v2-relatorio-simples]").addEventListener("click", () => {
-    const filtros = lerFiltros(container); const linhas = controller.relatorioSimplificado(filtros);
-    abrirRelatorio({ titulo: "Relatório Simplificado de Pagamentos", subtitulo: `Competência ${filtros.competencia || "todas"}`, cabecalho: ["Nome", "PIX", "Valor"], linhas: linhas.map(i => `<tr><td>${escapar(i.nome)}</td><td>${escapar(i.pix || "-")}</td><td class="valor"><strong>${moeda(i.valor)}</strong></td></tr>`).join("") });
+  container.querySelector("[data-v2-relatorio-simples]").addEventListener("click", async event => {
+    const botao = event.currentTarget; const anterior = botao.textContent; botao.disabled = true; botao.textContent = "Preparando relatório...";
+    try {
+      const filtros = lerFiltros(container); const { simplificado } = await controller.buscarFiltradosCompletos(filtros);
+      abrirRelatorio({ titulo: "Relatório Simplificado de Pagamentos", subtitulo: `Competência ${filtros.competencia || "todas"}`, cabecalho: ["Nome", "PIX", "Valor"], linhas: simplificado.map(i => `<tr><td>${escapar(i.nome)}</td><td>${escapar(i.pix || "-")}</td><td class="valor"><strong>${moeda(i.valor)}</strong></td></tr>`).join("") });
+    } catch (error) { console.error("[V2] Erro no relatório simplificado.", error); statusEl.textContent = "Não foi possível preparar o relatório simplificado."; }
+    finally { botao.disabled = false; botao.textContent = anterior; }
   }, { signal });
 
   const parar = store.assinar("pagamentos", render);
