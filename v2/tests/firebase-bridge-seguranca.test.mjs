@@ -18,12 +18,15 @@ test("ponte só é carregada quando v2firebase=1 estiver explicitamente na URL",
   assert.match(bridge, /parametros\.get\("v2firebase"\) !== "1"/);
 });
 
-test("escrita real permanece bloqueada por padrão", () => {
-  assert.match(bridge, /parametros\.get\("v2write"\) === "1"/);
-  assert.match(bridge, /HOMOLOGACAO_V2_SOMENTE_LEITURA/);
-  assert.match(bridge, /setDoc: escritaLiberada \? firestoreSdk\.setDoc : somenteLeitura/);
-  assert.match(bridge, /writeBatch: escritaLiberada \? firestoreSdk\.writeBatch : somenteLeitura/);
-  assert.match(bridge, /runTransaction: escritaLiberada \? firestoreSdk\.runTransaction : somenteLeitura/);
+test("escrita real permanece bloqueada por padrão e modos de escrita são explícitos", () => {
+  assert.match(bridge, /parametros\.get\("v2write"\)/);
+  assert.match(bridge, /const escritaCompleta = modoEscrita === "1"/);
+  assert.match(bridge, /const escritaOrdensManejo = modoEscrita === "ordens-manejo"/);
+  assert.match(bridge, /const escritaLiberada = escritaCompleta \|\| escritaOrdensManejo/);
+  assert.match(bridge, /ESCRITA_V2_BLOQUEADA_NESTA_ETAPA/);
+  assert.match(bridge, /setDoc: escritaCompleta \? firestoreSdk\.setDoc : \(escritaOrdensManejo \? setDocControlado : bloqueada\)/);
+  assert.match(bridge, /writeBatch: escritaCompleta \? firestoreSdk\.writeBatch : \(escritaOrdensManejo \? writeBatchControlado : bloqueada\)/);
+  assert.match(bridge, /runTransaction: escritaCompleta \? firestoreSdk\.runTransaction : bloqueada/);
   assert.match(bridge, /addEventListener\("submit"/);
   assert.match(bridge, /ehBotaoDeEscrita/);
 });
