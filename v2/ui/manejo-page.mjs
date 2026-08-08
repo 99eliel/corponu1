@@ -1,8 +1,4 @@
-import {
-  DESTINO_CELULA,
-  DESTINO_FACCAO,
-  PROCESSO_CELULA
-} from "../core/manejo-regras.mjs";
+import { DESTINO_FACCAO } from "../core/manejo-regras.mjs";
 import { processoCanonico, texto } from "../core/normalizacao.mjs";
 import { templateManejoV2 } from "./manejo-template.mjs";
 import {
@@ -17,11 +13,10 @@ const ERROS = Object.freeze({
   OP_NAO_ENCONTRADA: "OP não encontrada.",
   OP_NAO_PERTENCE_AO_SETOR: "Esta OP não pertence a este Manejo.",
   FASE_NAO_INFORMADA: "Informe a Fase Bojo da OP.",
-  FALTA_MAIOR_QUE_OP: "A falta não pode ultrapassar a quantidade da OP.",
   SILK_NAO_INFORMADO: "Informe o Silk ou a Data Silk antes do envio.",
   DATA_TECIDO_NAO_INFORMADA: "Informe a Data Tecido antes do envio.",
-  TIPO_DESTINO_INVALIDO: "Destino de movimentação inválido.",
-  DESTINO_NAO_INFORMADO: "Escolha o destino.",
+  TIPO_DESTINO_INVALIDO: "O Manejo envia somente para Facção.",
+  DESTINO_NAO_INFORMADO: "Escolha a facção.",
   PROCESSO_NAO_PERMITIDO: "Escolha um processo permitido para este Manejo.",
   QUANTIDADE_INVALIDA: "Informe uma quantidade válida.",
   QUANTIDADE_MAIOR_QUE_DISPONIVEL: "A quantidade é maior que a quantidade disponível.",
@@ -66,12 +61,10 @@ export function montarTelaManejo({
     movForm: container.querySelector("[data-v2-movimentacao-form]"),
     movTitulo: container.querySelector("[data-v2-movimentacao-titulo]"),
     movResumo: container.querySelector("[data-v2-movimentacao-resumo]"),
-    movStatus: container.querySelector("[data-v2-movimentacao-status]"),
-    processoWrapper: container.querySelector("[data-v2-processo-wrapper]")
+    movStatus: container.querySelector("[data-v2-movimentacao-status]")
   };
   const mov = {
     ordemId: refs.movForm.querySelector('[name="ordemId"]'),
-    tipoDestino: refs.movForm.querySelector('[name="tipoDestino"]'),
     processo: refs.movForm.querySelector('[name="processo"]'),
     destino: refs.movForm.querySelector('[name="destino"]'),
     quantidade: refs.movForm.querySelector('[name="quantidade"]'),
@@ -92,7 +85,6 @@ export function montarTelaManejo({
     opcaoFiltros(refs.filtros.querySelector('[name="cor"]'), opcoes.cor, "Todas");
     opcaoFiltros(refs.filtros.querySelector('[name="faseBojo"]'), opcoes.faseBojo, "Todas");
     opcaoFiltros(refs.filtros.querySelector('[name="faseLateral"]'), opcoes.faseLateral, "Todas");
-    opcaoFiltros(refs.filtros.querySelector('[name="faccao"]'), opcoes.faccao, "Todas");
     opcaoFiltros(refs.filtros.querySelector('[name="necessidade"]'), opcoes.necessidade, "Todas");
   }
 
@@ -101,7 +93,7 @@ export function montarTelaManejo({
     const ordens = controller.listar(setor, filtros());
     refs.lista.innerHTML = ordens.length
       ? ordens.map(ordem => htmlLinhaManejo(ordem, setor)).join("")
-      : '<tr><td colspan="16">Nenhuma OP encontrada com os filtros atuais.</td></tr>';
+      : '<tr><td colspan="12">Nenhuma OP encontrada com os filtros atuais.</td></tr>';
   }
 
   function aplicarSetor(novoSetor) {
@@ -156,17 +148,17 @@ export function montarTelaManejo({
   }
 
   function carregarDestinos() {
-    const tipo = mov.tipoDestino.value;
-    const processo = tipo === DESTINO_CELULA ? PROCESSO_CELULA : mov.processo.value;
-    const itens = controller.listarDestinos({ tipoDestino: tipo, processo });
-    const planejada = contextoMovimento?.destinoPlanejado || "";
+    const itens = controller.listarDestinos({
+      tipoDestino: DESTINO_FACCAO,
+      processo: mov.processo.value
+    });
     preencherSelect(mov.destino, itens, {
-      placeholder: itens.length ? "Selecione" : "Nenhum destino habilitado",
-      valor: planejada
+      placeholder: itens.length ? "Selecione a facção" : "Nenhuma facção habilitada",
+      valor: contextoMovimento?.destinoPlanejado || ""
     });
   }
 
-  function abrirModal(id, tipoDestino) {
+  function abrirModal(id) {
     const ordem = controller.obterOrdem(id);
     const linha = linhaDaOrdem(id);
     if (!ordem || !linha) return;
@@ -174,31 +166,20 @@ export function montarTelaManejo({
     contextoMovimento = {
       ordem,
       entradaManejo: entradaManejoDaLinha(linha),
-      destinoPlanejado: tipoDestino === DESTINO_FACCAO ? texto(ordem.faccaoPlanejada) : ""
+      destinoPlanejado: texto(ordem.faccaoPlanejada)
     };
     mov.ordemId.value = id;
-    mov.tipoDestino.value = tipoDestino;
     mov.quantidade.value = Number(ordem.quantidade || 0) || "";
     mov.quantidade.max = String(Math.max(1, Number(ordem.quantidade || 0)));
     mov.dataEnvio.value = hojeISO();
-    refs.movTitulo.textContent = tipoDestino === DESTINO_FACCAO ? "Enviar para Facção" : "Enviar para Célula";
+    refs.movTitulo.textContent = "Enviar para Facção";
     refs.movResumo.textContent = `OP ${ordem.numeroOP || "-"} • Ref. ${ordem.referencia || "-"} • ${Number(ordem.quantidade || 0).toLocaleString("pt-BR")} peças`;
 
-    if (tipoDestino === DESTINO_FACCAO) {
-      refs.processoWrapper.classList.remove("hidden");
-      mov.processo.disabled = false;
-      preencherSelect(mov.processo, controller.processosFaccoes(setor), {
-        placeholder: "Selecione o processo",
-        valor: setor === "calcinha" ? processoCanonico(ordem.processoPlanejado) : ""
-      });
-      carregarDestinos();
-    } else {
-      refs.processoWrapper.classList.add("hidden");
-      preencherSelect(mov.processo, [PROCESSO_CELULA], { valor: PROCESSO_CELULA });
-      mov.processo.value = PROCESSO_CELULA;
-      mov.processo.disabled = false;
-      carregarDestinos();
-    }
+    preencherSelect(mov.processo, controller.processosFaccoes(setor), {
+      placeholder: "Selecione o processo",
+      valor: setor === "calcinha" ? processoCanonico(ordem.processoPlanejado) : ""
+    });
+    carregarDestinos();
 
     refs.modal.classList.remove("hidden");
     definirStatusManejo(refs.movStatus, "");
@@ -218,10 +199,8 @@ export function montarTelaManejo({
     const alvo = event.target instanceof Element ? event.target : null;
     const salvar = alvo?.closest("[data-v2-salvar-manejo]");
     const faccao = alvo?.closest("[data-v2-enviar-faccao]");
-    const celula = alvo?.closest("[data-v2-enviar-celula]");
     if (salvar) salvarLinha(salvar.dataset.v2SalvarManejo);
-    else if (faccao) abrirModal(faccao.dataset.v2EnviarFaccao, DESTINO_FACCAO);
-    else if (celula) abrirModal(celula.dataset.v2EnviarCelula, DESTINO_CELULA);
+    else if (faccao) abrirModal(faccao.dataset.v2EnviarFaccao);
   }, { signal });
 
   mov.processo.addEventListener("change", carregarDestinos, { signal });
@@ -232,7 +211,6 @@ export function montarTelaManejo({
     event.preventDefault();
     if (!contextoMovimento || !refs.movForm.reportValidity()) return;
     const option = mov.destino.selectedOptions?.[0];
-    const processo = mov.tipoDestino.value === DESTINO_CELULA ? PROCESSO_CELULA : mov.processo.value;
     mov.submit.disabled = true;
     const anterior = mov.submit.textContent;
     mov.submit.textContent = "Enviando...";
@@ -242,10 +220,10 @@ export function montarTelaManejo({
         ordemId: mov.ordemId.value,
         setor,
         entradaManejo: contextoMovimento.entradaManejo,
-        tipoDestino: mov.tipoDestino.value,
+        tipoDestino: DESTINO_FACCAO,
         destino: mov.destino.value,
         destinoId: option?.dataset?.id || "",
-        processo,
+        processo: mov.processo.value,
         quantidade: Number(mov.quantidade.value || 0),
         quantidadeMaxima: Number(contextoMovimento.ordem.quantidade || 0),
         dataEnvio: mov.dataEnvio.value,
