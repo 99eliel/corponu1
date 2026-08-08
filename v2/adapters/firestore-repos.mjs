@@ -258,14 +258,14 @@ export function criarPagamentosRepoFirestore({
       snap.docs.forEach(item => mapa.set(item.id, { id: item.id, ...item.data() }));
     }
 
-    if (!mapa.size) {
-      for (const valor of valoresConsulta(numeroOP)) {
-        const snap = await fs.getDocs(fs.query(
-          fs.collection(db, colecao),
-          fs.where("numeroOP", "==", valor)
-        ));
-        snap.docs.forEach(item => mapa.set(item.id, { id: item.id, ...item.data() }));
-      }
+    // Compatibilidade: documentos antigos da mesma OP podem coexistir, alguns
+    // com opId e outros somente com numeroOP. Consultamos ambos e deduplicamos por ID.
+    for (const valor of valoresConsulta(numeroOP)) {
+      const snap = await fs.getDocs(fs.query(
+        fs.collection(db, colecao),
+        fs.where("numeroOP", "==", valor)
+      ));
+      snap.docs.forEach(item => mapa.set(item.id, { id: item.id, ...item.data() }));
     }
 
     const alvo = processoCanonico(processo);
