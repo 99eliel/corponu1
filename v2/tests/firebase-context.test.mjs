@@ -25,6 +25,7 @@ function criarFirestoreFake() {
     query(referencia, ...restricoes) { return { tipo: "query", referencia, restricoes }; },
     where(campo, operador, valor) { return { tipo: "where", campo, operador, valor }; },
     orderBy(campo, direcao) { return { tipo: "orderBy", campo, direcao }; },
+    documentId() { return "__name__"; },
     limit(valor) { return { tipo: "limit", valor }; },
     startAfter(cursor) { return { tipo: "startAfter", cursor }; },
     doc(base, colecao, id) {
@@ -84,6 +85,7 @@ test("um único contexto compartilha store e repositórios entre todos os módul
   assert.ok(contexto.store);
   assert.ok(contexto.faccoesRepo);
   assert.ok(contexto.produtosRepo);
+  assert.ok(contexto.ordensConsultaRepo);
   assert.ok(contexto.ordensGravacaoRepo);
   assert.ok(contexto.manejoRepo);
   assert.ok(contexto.movimentacoesFaccoesRepo);
@@ -110,6 +112,16 @@ test("catálogo de facções é lido uma vez e reaproveitado até por outro repo
 
   assert.equal(ambiente.metricas.getDocs.filter(nome => nome === "faccoes").length, 1);
   assert.equal(outroRepo.listar().length, 2);
+});
+
+test("primeira página de OPs do contexto não é relida ao trocar de módulo", async () => {
+  const ambiente = criarFirestoreFake();
+  const contexto = criarContextoFirebaseV2({ db: ambiente.db, fs: ambiente.fs });
+
+  await contexto.carregarPrimeiraPaginaOrdens();
+  await contexto.carregarPrimeiraPaginaOrdens();
+
+  assert.equal(ambiente.metricas.getDocs.filter(nome => nome === "ordensProducao").length, 1);
 });
 
 test("contexto e ponto de integração não inicializam um segundo Firebase", async () => {
