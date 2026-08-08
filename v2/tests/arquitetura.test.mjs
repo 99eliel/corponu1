@@ -16,7 +16,9 @@ test("core V2 permanece independente de DOM", async () => {
     "../core/fechamento-controller.mjs",
     "../core/ordens-regras.mjs",
     "../core/ordens-service.mjs",
-    "../core/ordens-controller.mjs"
+    "../core/ordens-controller.mjs",
+    "../core/manejo-regras.mjs",
+    "../core/manejo-service.mjs"
   ];
 
   for (const arquivo of arquivos) {
@@ -50,6 +52,23 @@ test("adaptador financeiro não conhece movimentacoesProducao", async () => {
   assert.match(codigo, /entregasPagamento/);
 });
 
+test("Manejo V2 não conhece nem grava coleção financeira", async () => {
+  for (const arquivo of [
+    "../core/manejo-regras.mjs",
+    "../core/manejo-service.mjs",
+    "../adapters/manejo-repo.mjs"
+  ]) {
+    const codigo = await fonte(arquivo);
+    assert.doesNotMatch(codigo, /entregasPagamento/, arquivo);
+    assert.doesNotMatch(codigo, /statusPagamento/, arquivo);
+    assert.doesNotMatch(codigo, /valorUnitario/, arquivo);
+  }
+
+  const repo = await fonte("../adapters/manejo-repo.mjs");
+  assert.match(repo, /ordensProducao/);
+  assert.match(repo, /movimentacoesProducao/);
+});
+
 test("bootstraps V2 reutilizam Firebase existente", async () => {
   for (const arquivo of [
     "../bootstrap/fechamento-app.mjs",
@@ -73,8 +92,12 @@ test("repositório de Facções não cria listener em tempo real", async () => {
   assert.match(codigo, /getDocs\s*\(/);
 });
 
-test("repositórios de Ordens e Produtos reutilizam Firebase existente", async () => {
-  for (const arquivo of ["../adapters/ordens-repo.mjs", "../adapters/produtos-repo.mjs"]) {
+test("repositórios V2 reutilizam Firebase existente", async () => {
+  for (const arquivo of [
+    "../adapters/ordens-repo.mjs",
+    "../adapters/produtos-repo.mjs",
+    "../adapters/manejo-repo.mjs"
+  ]) {
     const codigo = await fonte(arquivo);
     assert.doesNotMatch(codigo, /initializeApp\s*\(/);
     assert.doesNotMatch(codigo, /getFirestore\s*\(/);
@@ -92,10 +115,13 @@ test("nenhum módulo V2 importa patches legados", async () => {
     "../core/ordens-regras.mjs",
     "../core/ordens-service.mjs",
     "../core/ordens-controller.mjs",
+    "../core/manejo-regras.mjs",
+    "../core/manejo-service.mjs",
     "../adapters/firestore-repos.mjs",
     "../adapters/faccoes-repo.mjs",
     "../adapters/ordens-repo.mjs",
     "../adapters/produtos-repo.mjs",
+    "../adapters/manejo-repo.mjs",
     "../bootstrap/fechamento-app.mjs",
     "../bootstrap/ordens-app.mjs",
     "../ui/fechamento-page.mjs",
