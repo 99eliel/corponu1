@@ -15,7 +15,7 @@ export function templateManejoV2() {
       <div class="v2-manejo__filtros" data-v2-manejo-filtros>
         <label>
           Buscar
-          <input type="search" name="busca" placeholder="OP, ref., cor, fase bojo, fase lateral, facção..." />
+          <input type="search" name="busca" placeholder="OP, ref., cor, fase bojo, fase lateral..." />
         </label>
         <label>
           Status
@@ -36,10 +36,6 @@ export function templateManejoV2() {
         <label>
           Fase Lateral
           <select name="faseLateral"><option value="">Todas</option></select>
-        </label>
-        <label>
-          Facção
-          <select name="faccao"><option value="">Todas</option></select>
         </label>
         <label>
           Necessidade
@@ -73,10 +69,6 @@ export function templateManejoV2() {
               <th>Data Tecido</th>
               <th>Fase Bojo</th>
               <th>Fase Lateral</th>
-              <th>Facção</th>
-              <th>Chegada</th>
-              <th>Falta</th>
-              <th>CELU</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -88,7 +80,7 @@ export function templateManejoV2() {
         <div class="modal-card">
           <div class="modal-header">
             <div>
-              <h3 data-v2-movimentacao-titulo>Enviar OP</h3>
+              <h3 data-v2-movimentacao-titulo>Enviar para Facção</h3>
               <p data-v2-movimentacao-resumo></p>
             </div>
             <button class="modal-close" type="button" data-v2-fechar-movimentacao>×</button>
@@ -96,15 +88,14 @@ export function templateManejoV2() {
 
           <form class="form" data-v2-movimentacao-form>
             <input type="hidden" name="ordemId" />
-            <input type="hidden" name="tipoDestino" />
 
-            <label data-v2-processo-wrapper>
+            <label>
               Processo
               <select name="processo" required></select>
             </label>
 
             <label>
-              Destino
+              Facção
               <select name="destino" required disabled>
                 <option value="">Escolha o processo primeiro</option>
               </select>
