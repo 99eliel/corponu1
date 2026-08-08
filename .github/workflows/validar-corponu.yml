@@ -56,3 +56,14 @@ jobs:
             throw new Error('corponu-release.json está sem versão.');
           }
           NODE
+
+      - name: Gerar pacote da homologação V2
+        uses: actions/upload-artifact@v4
+        with:
+          name: corpo-nu-flow-homologacao-v2
+          path: |
+            homologacao-v2
+            v2
+            style.css
+          if-no-files-found: error
+          retention-days: 7
