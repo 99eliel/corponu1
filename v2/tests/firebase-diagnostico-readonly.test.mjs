@@ -49,7 +49,12 @@ function criarContexto({ configInvalida = false } = {}) {
     },
     movimentacoesFaccoesRepo: {
       async carregarPrimeiraPagina() {
-        return [{ id: "m1", numeroOP: "70001", processo: "SUTIÃ MONTAGEM" }];
+        return {
+          itens: [{ id: "m1", numeroOP: "70001", processo: "SUTIÃ MONTAGEM" }],
+          lidos: 1,
+          acabou: true,
+          totalNoStore: 1
+        };
       }
     },
     repositoriosFinanceiro: {
@@ -103,6 +108,53 @@ test("diagnóstico read-only percorre todas as áreas críticas e não encontra 
   ]);
   assert.equal(resultado.resumo.erro, 0);
   assert.equal(resultado.resumo.documentosLidos, 7);
+  assert.match(resultado.etapas.find(item => item.id === "ordens").mensagem, /1 OPs avaliadas/);
+  assert.match(resultado.etapas.find(item => item.id === "movimentacoes").mensagem, /1 movimentações de Facção reconhecidas/);
+});
+
+test("diagnóstico reaproveita OPs já carregadas no store sem pedir a primeira página novamente", async () => {
+  const contexto = criarContexto();
+  contexto.store.mesclar("ordens", [{
+    id: "op-cache",
+    numeroOP: "71000",
+    referencia: "414",
+    cor: "AZUL",
+    quantidade: 100,
+    tipoPeca: "sutia",
+    status: "aberta"
+  }]);
+
+  let chamadasOrdens = 0;
+  contexto.carregarPrimeiraPaginaOrdens = async () => {
+    chamadasOrdens += 1;
+    return [];
+  };
+
+  const resultado = await executarDiagnosticoFirebaseSomenteLeitura({ contexto, medir });
+  const etapa = resultado.etapas.find(item => item.id === "ordens");
+
+  assert.equal(chamadasOrdens, 0);
+  assert.match(etapa.mensagem, /1 OPs avaliadas/);
+  assert.doesNotMatch(etapa.mensagem, /0 OPs/);
+});
+
+test("diagnóstico entende o objeto paginado de movimentações e nunca exibe undefined", async () => {
+  const contexto = criarContexto();
+  contexto.movimentacoesFaccoesRepo.carregarPrimeiraPagina = async () => ({
+    itens: [],
+    lidos: 30,
+    acabou: true,
+    totalNoStore: 0
+  });
+
+  const resultado = await executarDiagnosticoFirebaseSomenteLeitura({ contexto, medir });
+  const etapa = resultado.etapas.find(item => item.id === "movimentacoes");
+
+  assert.equal(etapa.nivel, "aviso");
+  assert.match(etapa.mensagem, /30 documentos operacionais examinados/);
+  assert.match(etapa.mensagem, /0 movimentações de Facção reconhecidas/);
+  assert.doesNotMatch(etapa.mensagem, /undefined/);
+  assert.ok(etapa.detalhes.some(item => item.includes("formato legado")));
 });
 
 test("configuração incompatível do Sutiã Completo bloqueia liberação de escrita", async () => {
