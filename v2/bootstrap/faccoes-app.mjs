@@ -1,16 +1,14 @@
-import { criarFaccoesRepoFirestore } from "../adapters/faccoes-repo.mjs";
-import { criarFaccoesOperacionalRepoFirestore } from "../adapters/faccoes-operacional-repo.mjs";
-import { criarMovimentacoesFaccoesRepoFirestore } from "../adapters/movimentacoes-faccoes-repo.mjs";
 import { FaccoesController } from "../core/faccoes-controller.mjs";
 import { FaccoesOperacionalService } from "../core/faccoes-operacional-service.mjs";
-import { criarStoreCorpoNu } from "../core/store.mjs";
+import { criarContextoFirebaseV2 } from "./firebase-context.mjs";
 import { montarTelaFaccoes } from "../ui/faccoes-page.mjs";
 
 export async function criarFaccoesAppV2({
   container,
   db,
   fs,
-  store = criarStoreCorpoNu(),
+  store,
+  contexto = null,
   fallbackFaccoesPorProcesso = {},
   referenciaEspecial = "912",
   tamanhoPagina = 80,
@@ -19,21 +17,20 @@ export async function criarFaccoesAppV2({
   confirmarAviso = null,
   auditoriaRepo = null
 }) {
-  if (!db) throw new Error("Firestore db não configurado.");
-  if (!fs) throw new Error("Firestore API não configurada.");
-
-  const faccoesRepo = criarFaccoesRepoFirestore({ db, fs, store });
-  const movimentosRepo = criarMovimentacoesFaccoesRepoFirestore({
+  const ctx = contexto || criarContextoFirebaseV2({
     db,
     fs,
     store,
-    tamanhoPagina
+    tamanhoPaginaFaccoes: tamanhoPagina
   });
-  const operacionalRepo = criarFaccoesOperacionalRepoFirestore({ db, fs, store });
+  const storeV2 = ctx.store;
+  const faccoesRepo = ctx.faccoesRepo;
+  const movimentosRepo = ctx.movimentacoesFaccoesRepo;
+  const operacionalRepo = ctx.faccoesOperacionalRepo;
 
   await Promise.all([
-    faccoesRepo.garantirCarregadas(),
-    movimentosRepo.carregarPrimeiraPagina()
+    ctx.garantirFaccoes(),
+    ctx.carregarPrimeiraPaginaFaccoes()
   ]);
 
   const operacionalService = new FaccoesOperacionalService({
@@ -41,7 +38,7 @@ export async function criarFaccoesAppV2({
     auditoriaRepo
   });
   const controller = new FaccoesController({
-    store,
+    store: storeV2,
     movimentosRepo,
     operacionalService,
     fallbackFaccoesPorProcesso,
@@ -50,14 +47,15 @@ export async function criarFaccoesAppV2({
   const tela = montarTelaFaccoes({
     container,
     controller,
-    store,
+    store: storeV2,
     obterPerfil,
     obterUsuario,
     confirmarAviso
   });
 
   return {
-    store,
+    contexto: ctx,
+    store: storeV2,
     faccoesRepo,
     movimentosRepo,
     operacionalRepo,
