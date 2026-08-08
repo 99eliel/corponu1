@@ -15,7 +15,8 @@ test("core V2 permanece independente de DOM", async () => {
     "../core/financeiro-service.mjs",
     "../core/fechamento-controller.mjs",
     "../core/ordens-regras.mjs",
-    "../core/ordens-service.mjs"
+    "../core/ordens-service.mjs",
+    "../core/ordens-controller.mjs"
   ];
 
   for (const arquivo of arquivos) {
@@ -28,36 +29,45 @@ test("core V2 permanece independente de DOM", async () => {
   }
 });
 
-test("tela de fechamento não usa observer, polling ou listener Firestore", async () => {
-  const codigo = await fonte("../ui/fechamento-page.mjs");
-
-  assert.doesNotMatch(codigo, /MutationObserver/);
-  assert.doesNotMatch(codigo, /setInterval\s*\(/);
-  assert.doesNotMatch(codigo, /onSnapshot\s*\(/);
+test("telas V2 não usam observer, polling ou listener Firestore", async () => {
+  for (const arquivo of [
+    "../ui/fechamento-page.mjs",
+    "../ui/ordens-page.mjs",
+    "../ui/ordens-ui-utils.mjs"
+  ]) {
+    const codigo = await fonte(arquivo);
+    assert.doesNotMatch(codigo, /MutationObserver/, arquivo);
+    assert.doesNotMatch(codigo, /setInterval\s*\(/, arquivo);
+    assert.doesNotMatch(codigo, /onSnapshot\s*\(/, arquivo);
+    assert.doesNotMatch(codigo, /new Blob\s*\(/, arquivo);
+    assert.doesNotMatch(codigo, /URL\.createObjectURL/, arquivo);
+  }
 });
 
 test("adaptador financeiro não conhece movimentacoesProducao", async () => {
   const codigo = await fonte("../adapters/firestore-repos.mjs");
-
   assert.doesNotMatch(codigo, /movimentacoesProducao/);
   assert.match(codigo, /entregasPagamento/);
 });
 
-test("bootstrap de fechamento reutiliza Firebase existente", async () => {
-  const codigo = await fonte("../bootstrap/fechamento-app.mjs");
-
-  assert.doesNotMatch(codigo, /initializeApp\s*\(/);
-  assert.doesNotMatch(codigo, /getFirestore\s*\(/);
-  assert.doesNotMatch(codigo, /onSnapshot\s*\(/);
-  assert.doesNotMatch(codigo, /firebase-app\.js/);
-  assert.doesNotMatch(codigo, /firebase-firestore\.js/);
-  assert.match(codigo, /\bdb\b/);
-  assert.match(codigo, /\bfs\b/);
+test("bootstraps V2 reutilizam Firebase existente", async () => {
+  for (const arquivo of [
+    "../bootstrap/fechamento-app.mjs",
+    "../bootstrap/ordens-app.mjs"
+  ]) {
+    const codigo = await fonte(arquivo);
+    assert.doesNotMatch(codigo, /initializeApp\s*\(/, arquivo);
+    assert.doesNotMatch(codigo, /getFirestore\s*\(/, arquivo);
+    assert.doesNotMatch(codigo, /onSnapshot\s*\(/, arquivo);
+    assert.doesNotMatch(codigo, /firebase-app\.js/, arquivo);
+    assert.doesNotMatch(codigo, /firebase-firestore\.js/, arquivo);
+    assert.match(codigo, /\bdb\b/);
+    assert.match(codigo, /\bfs\b/);
+  }
 });
 
 test("repositório de Facções não cria listener em tempo real", async () => {
   const codigo = await fonte("../adapters/faccoes-repo.mjs");
-
   assert.doesNotMatch(codigo, /onSnapshot\s*\(/);
   assert.doesNotMatch(codigo, /setInterval\s*\(/);
   assert.match(codigo, /getDocs\s*\(/);
@@ -81,12 +91,16 @@ test("nenhum módulo V2 importa patches legados", async () => {
     "../core/fechamento-controller.mjs",
     "../core/ordens-regras.mjs",
     "../core/ordens-service.mjs",
+    "../core/ordens-controller.mjs",
     "../adapters/firestore-repos.mjs",
     "../adapters/faccoes-repo.mjs",
     "../adapters/ordens-repo.mjs",
     "../adapters/produtos-repo.mjs",
     "../bootstrap/fechamento-app.mjs",
-    "../ui/fechamento-page.mjs"
+    "../bootstrap/ordens-app.mjs",
+    "../ui/fechamento-page.mjs",
+    "../ui/ordens-page.mjs",
+    "../ui/ordens-ui-utils.mjs"
   ];
 
   for (const arquivo of arquivos) {
