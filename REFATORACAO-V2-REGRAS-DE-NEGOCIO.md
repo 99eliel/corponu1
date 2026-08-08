@@ -44,9 +44,28 @@ O fechamento mensal será realizado em uma área própria.
 4. Usuário escolhe o **serviço/processo realizado**.
 5. O sistema mostra somente os responsáveis/facções habilitados para aquele processo.
 6. Usuário informa **quem realizou o serviço**.
-7. O sistema determina o valor aplicável usando a tabela de processos/valores e as regras específicas do processo.
-8. O lançamento é adicionado ao fechamento financeiro.
-9. O pagamento fica disponível para filtro, conferência, relatório e quitação.
+7. Usuário confirma a **competência do fechamento** (ex.: `08/2026`).
+8. O sistema determina o valor aplicável usando a tabela de processos/valores e as regras específicas do processo.
+9. O lançamento é adicionado ao fechamento financeiro.
+10. O pagamento fica disponível para filtro, conferência, relatório e quitação.
+
+### Competência financeira
+
+Cada lançamento financeiro novo deverá possuir uma competência própria, preferencialmente armazenada em formato normalizado como `YYYY-MM`.
+
+Exemplo:
+
+- fechamento visual: `08/2026`;
+- valor persistido: `2026-08`.
+
+A competência é definida no momento do fechamento financeiro e **não é herdada automaticamente da data de chegada**.
+
+Consequências:
+
+- uma OP pode chegar hoje e ser incluída em outro fechamento conforme a rotina financeira;
+- registrar chegada não altera o conjunto de pagamentos do mês;
+- abrir ou confirmar Facções não muda filtros financeiros;
+- o financeiro poderá filtrar diretamente por competência, sem depender de datas operacionais.
 
 A data de chegada da OP não define automaticamente em qual fechamento mensal ela deverá entrar.
 
@@ -68,6 +87,8 @@ Ao localizar uma OP, o fechamento poderá utilizar:
 - tabela de valores já carregada em memória/cache.
 
 A quantidade da OP continua pertencendo à **OP**, e não ao cadastro de Produto/Referência.
+
+O fechamento financeiro deve funcionar mesmo que não exista chegada de Facções vinculada à OP, desde que os dados necessários ao pagamento possam ser conferidos no próprio fechamento.
 
 ---
 
@@ -112,7 +133,7 @@ A arquitetura deverá possuir responsáveis únicos por domínio:
 - **Manejo**: preparação interna e encaminhamento;
 - **Facções**: movimentação operacional externa;
 - **Chegadas**: registro operacional de retorno;
-- **Fechamento de Pagamentos**: criação dos lançamentos financeiros;
+- **Fechamento de Pagamentos**: criação dos lançamentos financeiros e definição da competência;
 - **Pagamentos**: conferência, filtros, relatórios e quitação;
 - **Relatórios**: leitura e apresentação de dados consolidados.
 
