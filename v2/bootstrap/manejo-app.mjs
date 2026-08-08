@@ -18,7 +18,10 @@ export async function criarManejoAppV2({
   const faccoesRepo = ctx.faccoesRepo;
   const manejoRepo = ctx.manejoRepo;
 
-  await ctx.garantirFaccoes();
+  await Promise.all([
+    ctx.garantirFaccoes(),
+    ctx.carregarPrimeiraPaginaOrdens()
+  ]);
 
   const manejoService = new ManejoService({ manejoRepo, auditoriaRepo });
   const controller = new ManejoController({
@@ -38,9 +41,13 @@ export async function criarManejoAppV2({
     store: storeV2,
     faccoesRepo,
     manejoRepo,
+    ordensConsultaRepo: ctx.ordensConsultaRepo,
     manejoService,
     controller,
     tela,
+    carregarMaisOrdens(opcoes) {
+      return ctx.carregarMaisOrdens(opcoes);
+    },
     desmontar() {
       tela.desmontar();
     }
