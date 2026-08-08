@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-07-faccoes-sem-bipar-156",
-  "updatedAt": "2026-08-07T10:17:00-03:00",
-  "notes": "Remove somente o botão Bipar da aba Facções. A alteração é visual e isolada, sem MutationObserver, sem intervalos e sem mexer na função de bipagem disponível em outras telas. Chegada, informar chegada, pagamentos, movimentações, OPs e layout permanecem inalterados."
+  "version": "2026-08-08-manejo-fases-sutia-161",
+  "updatedAt": "2026-08-08T20:51:00-03:00",
+  "notes": "No Manejo Sutiã, a coluna Fase existente passa a se chamar Fase Bojo e mantém exatamente a lógica e os dados atuais. Ao lado é adicionada a nova coluna Fase Lateral, inicialmente em branco e sem interferir em filtros, salvamento ou movimentações. A mudança é exclusiva do Sutiã; o Manejo Calcinha permanece como estava."
 }
