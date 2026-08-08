@@ -12,14 +12,39 @@ import { nomeFaccaoCanonico } from "./faccoes-regras.mjs";
 export const STATUS_PAGAMENTO = Object.freeze({
   PENDENTE: "pendente",
   PAGO: "pago",
+  SEM_VALOR: "sem_valor",
   CANCELADO: "cancelado"
 });
 
-function statusCanonico(valor) {
+function statusCanonico(valor, item = {}) {
   const chave = normalizar(valor);
+  if (item?.valorPendente === true || ["SEM VALOR", "SEM_VALOR", "AGUARDANDO VALOR"].includes(chave)) {
+    return STATUS_PAGAMENTO.SEM_VALOR;
+  }
   if (["PAGO", "PAGA", "QUITADO", "QUITADA"].includes(chave)) return STATUS_PAGAMENTO.PAGO;
-  if (["CANCELADO", "CANCELADA", "EXCLUIDO", "EXCLUIDA"].includes(chave)) return STATUS_PAGAMENTO.CANCELADO;
+  if (["CANCELADO", "CANCELADA", "EXCLUIDO", "EXCLUIDA", "ESTORNADO", "ESTORNADA"].includes(chave)) {
+    return STATUS_PAGAMENTO.CANCELADO;
+  }
   return STATUS_PAGAMENTO.PENDENTE;
+}
+
+function competenciaDaData(valor) {
+  const bruto = texto(valor);
+  const match = bruto.match(/^(\d{4})-(0[1-9]|1[0-2])-\d{2}/);
+  return match ? `${match[1]}-${match[2]}` : "";
+}
+
+export function competenciaDoPagamento(item = {}) {
+  return normalizarCompetencia(item.competencia)
+    || competenciaDaData(item.dataEntrega)
+    || competenciaDaData(item.dataChegada)
+    || competenciaDaData(item.dataPagamento);
+}
+
+export function tipoRegistroFinanceiro(item = {}) {
+  return item?.tipoDocumento === "lancamento_financeiro_v2" || item?.origem === "fechamento_financeiro_v2"
+    ? "v2"
+    : "historico";
 }
 
 export function normalizarPagamento(item = {}) {
@@ -28,23 +53,28 @@ export function normalizarPagamento(item = {}) {
   const valorUnitario = Math.max(0, numero(item.valorUnitario ?? item.valor ?? item.precoUnitario, 0));
   const totalInformado = Math.max(0, numero(item.total ?? item.valorTotal ?? item.subtotal, 0));
   const total = totalInformado > 0 ? arredondar2(totalInformado) : arredondar2(quantidade * valorUnitario);
+  const statusPagamento = statusCanonico(item.statusPagamento || item.status, item);
+  const tipoRegistro = tipoRegistroFinanceiro(item);
 
   return {
     ...item,
     id: texto(item.id || item.chaveFechamento),
-    numeroOP: texto(item.numeroOP || item.numeroOPExterno || item.op),
+    numeroOP: texto(item.numeroOP || item.numeroOPExterno || item.op || item.numeroOrdem),
     referencia: texto(item.referencia),
     cor: texto(item.cor),
-    competencia: normalizarCompetencia(item.competencia),
-    processo: processoCanonico(item.processo || item.servicoNome || item.servico),
+    competencia: competenciaDoPagamento(item),
+    processo: processoCanonico(item.processo || item.servicoNome || item.servico || item.processoMovimentacao),
     responsavel,
     faccao: responsavel,
     quantidade,
     quantidadeOP: inteiro(item.quantidadeOP),
     valorUnitario,
     total,
-    statusPagamento: statusCanonico(item.statusPagamento || item.status),
+    statusPagamento,
+    tipoRegistroFinanceiro: tipoRegistro,
+    historico: tipoRegistro === "historico",
     origem: texto(item.origem),
+    dataReferencia: texto(item.dataEntrega || item.dataChegada || item.dataPagamento),
     criadoEm: item.criadoEm || "",
     pagoEm: item.pagoEm || item.dataPagamento || ""
   };
@@ -57,25 +87,34 @@ function contem(valor, busca) {
 export function filtrarPagamentos(pagamentos = [], filtros = {}) {
   const competencia = normalizarCompetencia(filtros.competencia);
   const status = texto(filtros.status).toLowerCase();
+  const origem = texto(filtros.origem).toLowerCase();
 
   return (pagamentos || [])
     .map(normalizarPagamento)
     .filter(item => {
       if (competencia && item.competencia !== competencia) return false;
       if (status && status !== "todos" && item.statusPagamento !== status) return false;
+      if (origem && origem !== "todos" && item.tipoRegistroFinanceiro !== origem) return false;
       if (!contem(item.responsavel, filtros.responsavel)) return false;
       if (!contem(item.referencia, filtros.referencia)) return false;
       if (!contem(item.processo, filtros.processo)) return false;
       if (!contem(item.numeroOP, filtros.numeroOP)) return false;
       return true;
     })
-    .sort((a, b) => String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")));
+    .sort((a, b) => {
+      const dataA = texto(a.dataReferencia || a.competencia || a.criadoEm);
+      const dataB = texto(b.dataReferencia || b.competencia || b.criadoEm);
+      return dataB.localeCompare(dataA);
+    });
 }
 
 export function resumirPagamentos(pagamentos = []) {
   const itens = (pagamentos || []).map(normalizarPagamento);
   const pendentes = itens.filter(item => item.statusPagamento === STATUS_PAGAMENTO.PENDENTE);
   const pagos = itens.filter(item => item.statusPagamento === STATUS_PAGAMENTO.PAGO);
+  const semValor = itens.filter(item => item.statusPagamento === STATUS_PAGAMENTO.SEM_VALOR);
+  const historicos = itens.filter(item => item.tipoRegistroFinanceiro === "historico");
+  const v2 = itens.filter(item => item.tipoRegistroFinanceiro === "v2");
   return {
     quantidadeLancamentos: itens.length,
     quantidadePecas: itens.reduce((soma, item) => soma + item.quantidade, 0),
@@ -83,7 +122,10 @@ export function resumirPagamentos(pagamentos = []) {
     totalPendente: arredondar2(pendentes.reduce((soma, item) => soma + item.total, 0)),
     totalPago: arredondar2(pagos.reduce((soma, item) => soma + item.total, 0)),
     pendentes: pendentes.length,
-    pagos: pagos.length
+    pagos: pagos.length,
+    semValor: semValor.length,
+    historicos: historicos.length,
+    v2: v2.length
   };
 }
 
@@ -127,7 +169,7 @@ export function relatorioSimplificadoPix(pagamentos = [], faccoes = []) {
   const pix = indicePixFaccoes(faccoes);
   const grupos = new Map();
   for (const item of (pagamentos || []).map(normalizarPagamento)) {
-    if (item.statusPagamento === STATUS_PAGAMENTO.CANCELADO) continue;
+    if ([STATUS_PAGAMENTO.CANCELADO, STATUS_PAGAMENTO.SEM_VALOR].includes(item.statusPagamento)) continue;
     const chave = normalizar(item.responsavel);
     if (!chave) continue;
     const atual = grupos.get(chave) || {
@@ -147,7 +189,7 @@ export function relatorioSimplificadoPix(pagamentos = [], faccoes = []) {
 export function pagamentosPendentesParaQuitacao(pagamentos = []) {
   return (pagamentos || [])
     .map(normalizarPagamento)
-    .filter(item => item.id && item.statusPagamento === STATUS_PAGAMENTO.PENDENTE);
+    .filter(item => item.id && item.statusPagamento === STATUS_PAGAMENTO.PENDENTE && item.total > 0);
 }
 
 export function resumoQuitacao(pagamentos = []) {
