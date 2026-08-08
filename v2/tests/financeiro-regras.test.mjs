@@ -7,6 +7,8 @@ import {
   criarChaveControleProcesso,
   criarChaveLancamento,
   criarDocumentoFechamento,
+  processoFinanceiroPermitidoNaOP,
+  processosFinanceirosDaOP,
   validarLancamentoFinanceiro,
   validarSaldoProcesso
 } from "../core/financeiro-regras.mjs";
@@ -39,6 +41,37 @@ test("normaliza aliases de processo para um único nome canônico", () => {
   assert.equal(processoCanonico("sutia completo"), "SUTIÃ COMPLETO");
   assert.equal(processoCanonico("alca"), "ALÇA");
   assert.equal(processoCanonico("montagem calcinha"), "CALCINHA MONTAGEM");
+});
+
+test("processos financeiros são separados pelo tipo da OP", () => {
+  assert.deepEqual(processosFinanceirosDaOP(OP_BASE), [
+    "ENCAPAR BOJO",
+    "ALÇA",
+    "LATERAL",
+    "SUTIÃ MONTAGEM",
+    "SUTIÃ COMPLETO"
+  ]);
+  assert.deepEqual(processosFinanceirosDaOP({ ...OP_BASE, tipoPeca: "calcinha" }), [
+    "CALCINHA MONTAGEM",
+    "CALCINHA COMPLETA"
+  ]);
+});
+
+test("núcleo bloqueia processo de Calcinha em OP de Sutiã e vice-versa", () => {
+  assert.equal(processoFinanceiroPermitidoNaOP(OP_BASE, "CALCINHA COMPLETA"), false);
+  assert.equal(processoFinanceiroPermitidoNaOP({ ...OP_BASE, tipoPeca: "calcinha" }, "ALÇA"), false);
+
+  const sutiaComCalcinha = validarLancamentoFinanceiro({
+    op: OP_BASE, processo: "CALCINHA COMPLETA", responsavel: "LORENA", competencia: "2026-08", quantidade: 100
+  });
+  assert.equal(sutiaComCalcinha.ok, false);
+  assert.ok(sutiaComCalcinha.erros.includes("PROCESSO_INCOMPATIVEL_COM_TIPO_PECA"));
+
+  const calcinhaComSutia = validarLancamentoFinanceiro({
+    op: { ...OP_BASE, tipoPeca: "calcinha" }, processo: "ALÇA", responsavel: "JANAINA", competencia: "2026-08", quantidade: 100
+  });
+  assert.equal(calcinhaComSutia.ok, false);
+  assert.ok(calcinhaComSutia.erros.includes("PROCESSO_INCOMPATIVEL_COM_TIPO_PECA"));
 });
 
 test("valida fechamento mesmo sem chegada registrada", () => {
