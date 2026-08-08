@@ -44,7 +44,8 @@ test("bootstrap de Facções reutiliza Firebase existente", async () => {
   assert.doesNotMatch(codigo, /firebase-app\.js/);
   assert.doesNotMatch(codigo, /firebase-firestore\.js/);
   assert.doesNotMatch(codigo, /onSnapshot\s*\(/);
-  assert.match(codigo, /movimentosRepo\.carregarPrimeiraPagina\(\)/);
+  assert.match(codigo, /criarContextoFirebaseV2/);
+  assert.match(codigo, /ctx\.carregarPrimeiraPaginaFaccoes\(\)/);
 });
 
 test("UI de Facções não contém legado do badge ou botão Bipar", async () => {
