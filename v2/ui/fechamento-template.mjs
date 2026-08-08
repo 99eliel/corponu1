@@ -112,11 +112,12 @@ export function templateFechamentoPagamento({ competenciaPadrao = "" } = {}) {
           <textarea id="v2FechamentoObservacoes" name="observacoes" rows="3" placeholder="Opcional"></textarea>
         </label>
 
-        <div class="v2-fechamento__preview" data-v2-preview>
+        <div class="v2-fechamento__preview" data-v2-preview aria-live="polite">
           Busque uma OP para iniciar o fechamento.
         </div>
 
         <div class="v2-fechamento__acoes">
+          <button class="btn" type="button" data-v2-conferir-valor>Conferir valor</button>
           <button class="btn btn-success" type="submit">Adicionar ao fechamento</button>
           <button class="btn" type="reset">Limpar</button>
         </div>
