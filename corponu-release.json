@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-08-pagamentos-filtro-op-v2-compat-158",
-  "updatedAt": "2026-08-08T19:08:00-03:00",
-  "notes": "Estabiliza o filtro por Nº OP em Pagamentos. A versão 158 passa a ser dona do campo de OP, impede o filtro legado de registrar eventos concorrentes, mantém a busca direta somente da OP informada e preserva a proteção para ignorar controle_processo_v2. Nenhum pagamento é criado, alterado ou excluído por esta atualização."
+  "version": "2026-08-08-pagamentos-historico-seguro-159",
+  "updatedAt": "2026-08-08T20:12:00-03:00",
+  "notes": "Protege os pagamentos já existentes sem recalcular valores nem alterar status. A primeira execução por administrador marca o histórico preservado, grava chaves de identidade financeira e passa a bloquear automaticamente novos pagamentos que repetirem o mesmo serviço histórico. Reenvios e complementos usam chave mais específica para não bloquear pagamentos legítimos. Duplicidades novas são excluídas logicamente e auditadas; o registro histórico original é mantido."
 }
