@@ -67,6 +67,27 @@ export class FechamentoController {
     );
   }
 
+  async diagnosticarComponentes(processo, op = this.opAtual) {
+    if (!op?.id) {
+      return {
+        ok: false,
+        erros: ["OP_NAO_INFORMADA"],
+        diagnostico: null
+      };
+    }
+
+    const diagnostico = await this.financeiroService.diagnosticarComponentes({
+      op,
+      processo
+    });
+
+    return {
+      ok: true,
+      erros: [],
+      diagnostico
+    };
+  }
+
   async resolverOP(entrada = {}) {
     if (entrada.op) return { ok: true, erros: [], op: entrada.op, origem: "entrada" };
 
