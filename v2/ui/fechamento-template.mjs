@@ -1,5 +1,3 @@
-import { PROCESSOS_FINANCEIROS } from "../core/financeiro-regras.mjs";
-
 function escapar(valor) {
   return String(valor ?? "")
     .replaceAll("&", "&amp;")
@@ -10,10 +8,6 @@ function escapar(valor) {
 }
 
 export function templateFechamentoPagamento({ competenciaPadrao = "" } = {}) {
-  const opcoesProcesso = PROCESSOS_FINANCEIROS
-    .map(processo => `<option value="${escapar(processo)}">${escapar(processo)}</option>`)
-    .join("");
-
   return `
     <section class="v2-fechamento" data-v2-fechamento>
       <header class="v2-fechamento__header">
@@ -37,9 +31,8 @@ export function templateFechamentoPagamento({ competenciaPadrao = "" } = {}) {
         <div class="v2-fechamento__grid">
           <label>
             Serviço feito
-            <select id="v2FechamentoProcesso" name="processo" required>
-              <option value="">Selecione</option>
-              ${opcoesProcesso}
+            <select id="v2FechamentoProcesso" name="processo" required disabled>
+              <option value="">Busque uma OP primeiro</option>
             </select>
           </label>
 
