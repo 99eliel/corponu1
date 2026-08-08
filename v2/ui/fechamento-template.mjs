@@ -69,8 +69,9 @@ export function templateFechamentoPagamento({ competenciaPadrao = "" } = {}) {
 
         <fieldset class="v2-fechamento__componentes hidden" data-v2-componentes>
           <legend>Conferência do Sutiã Completo</legend>
+          <div class="v2-fechamento__componentes-conhecidos hidden" data-v2-componentes-conhecidos aria-live="polite"></div>
 
-          <label>
+          <label data-v2-componente-campo="lateral">
             Lateral já foi feita?
             <select name="lateral">
               <option value="">Selecione</option>
@@ -79,7 +80,7 @@ export function templateFechamentoPagamento({ competenciaPadrao = "" } = {}) {
             </select>
           </label>
 
-          <label>
+          <label data-v2-componente-campo="bojo">
             Bojo já foi feito?
             <select name="bojo">
               <option value="">Selecione</option>
@@ -88,7 +89,7 @@ export function templateFechamentoPagamento({ competenciaPadrao = "" } = {}) {
             </select>
           </label>
 
-          <label>
+          <label data-v2-componente-campo="fecho">
             Fecho foi feito?
             <select name="fecho">
               <option value="">Selecione</option>
@@ -97,7 +98,7 @@ export function templateFechamentoPagamento({ competenciaPadrao = "" } = {}) {
             </select>
           </label>
 
-          <label>
+          <label data-v2-componente-campo="pontoLuz">
             Ponto de luz foi feito?
             <select name="pontoLuz">
               <option value="">Selecione</option>
