@@ -18,7 +18,9 @@ test("core V2 permanece independente de DOM", async () => {
     "../core/ordens-service.mjs",
     "../core/ordens-controller.mjs",
     "../core/manejo-regras.mjs",
-    "../core/manejo-service.mjs"
+    "../core/manejo-service.mjs",
+    "../core/manejo-filtros.mjs",
+    "../core/manejo-controller.mjs"
   ];
 
   for (const arquivo of arquivos) {
@@ -56,6 +58,8 @@ test("Manejo V2 não conhece nem grava coleção financeira", async () => {
   for (const arquivo of [
     "../core/manejo-regras.mjs",
     "../core/manejo-service.mjs",
+    "../core/manejo-filtros.mjs",
+    "../core/manejo-controller.mjs",
     "../adapters/manejo-repo.mjs"
   ]) {
     const codigo = await fonte(arquivo);
@@ -85,18 +89,21 @@ test("bootstraps V2 reutilizam Firebase existente", async () => {
   }
 });
 
-test("repositório de Facções não cria listener em tempo real", async () => {
-  const codigo = await fonte("../adapters/faccoes-repo.mjs");
-  assert.doesNotMatch(codigo, /onSnapshot\s*\(/);
-  assert.doesNotMatch(codigo, /setInterval\s*\(/);
-  assert.match(codigo, /getDocs\s*\(/);
+test("repositórios de catálogos não criam listener em tempo real", async () => {
+  for (const arquivo of ["../adapters/faccoes-repo.mjs", "../adapters/celulas-repo.mjs"]) {
+    const codigo = await fonte(arquivo);
+    assert.doesNotMatch(codigo, /onSnapshot\s*\(/);
+    assert.doesNotMatch(codigo, /setInterval\s*\(/);
+    assert.match(codigo, /getDocs\s*\(/);
+  }
 });
 
 test("repositórios V2 reutilizam Firebase existente", async () => {
   for (const arquivo of [
     "../adapters/ordens-repo.mjs",
     "../adapters/produtos-repo.mjs",
-    "../adapters/manejo-repo.mjs"
+    "../adapters/manejo-repo.mjs",
+    "../adapters/celulas-repo.mjs"
   ]) {
     const codigo = await fonte(arquivo);
     assert.doesNotMatch(codigo, /initializeApp\s*\(/);
@@ -117,8 +124,11 @@ test("nenhum módulo V2 importa patches legados", async () => {
     "../core/ordens-controller.mjs",
     "../core/manejo-regras.mjs",
     "../core/manejo-service.mjs",
+    "../core/manejo-filtros.mjs",
+    "../core/manejo-controller.mjs",
     "../adapters/firestore-repos.mjs",
     "../adapters/faccoes-repo.mjs",
+    "../adapters/celulas-repo.mjs",
     "../adapters/ordens-repo.mjs",
     "../adapters/produtos-repo.mjs",
     "../adapters/manejo-repo.mjs",
