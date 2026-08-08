@@ -48,6 +48,16 @@ service cloud.firestore {
       );
     }
 
+    function podeMarcarPagamento() {
+      return admin() || (
+        ativo()
+        && meuPerfil().data.keys().hasAny(["permissoes"])
+        && meuPerfil().data.permissoes.keys().hasAny(["recursos"])
+        && meuPerfil().data.permissoes.recursos.keys().hasAny(["marcarPagamentos"])
+        && meuPerfil().data.permissoes.recursos.marcarPagamentos == true
+      );
+    }
+
     function alteracaoValorTotalManualPermitida() {
       return financeiroPodeDefinirValor()
         && resource.data.statusPagamento != "pago"
@@ -247,6 +257,56 @@ service cloud.firestore {
         && request.resource.data.atualizadoPor == request.auth.uid;
     }
 
+    function documentoFinanceiroV2() {
+      return request.resource.data.keys().hasAll([
+          "schemaVersion",
+          "tipoDocumento",
+          "origem",
+          "numeroOP",
+          "processo"
+        ])
+        && request.resource.data.schemaVersion == 2
+        && request.resource.data.origem == "fechamento_financeiro_v2"
+        && request.resource.data.tipoDocumento in [
+          "lancamento_financeiro_v2",
+          "controle_processo_v2"
+        ];
+    }
+
+    function novoDocumentoFinanceiroV2Permitido() {
+      return financeiroPodeDefinirValor()
+        && documentoFinanceiroV2();
+    }
+
+    function alteracaoControleFinanceiroV2Permitida() {
+      return financeiroPodeDefinirValor()
+        && resource.data.tipoDocumento == "controle_processo_v2"
+        && request.resource.data.tipoDocumento == "controle_processo_v2"
+        && documentoFinanceiroV2()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "quantidadeOP",
+          "quantidadeFechada",
+          "quantidadeRestante",
+          "ultimaParcela",
+          "atualizadoEm"
+        ]);
+    }
+
+    function quitacaoPagamentoV2Permitida() {
+      return podeMarcarPagamento()
+        && resource.data.tipoDocumento == "lancamento_financeiro_v2"
+        && resource.data.origem == "fechamento_financeiro_v2"
+        && resource.data.statusPagamento == "pendente"
+        && request.resource.data.statusPagamento == "pago"
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "statusPagamento",
+          "pagoEm",
+          "pagoPor",
+          "pagoPorNome",
+          "atualizadoEm"
+        ]);
+    }
+
     function novoLogDoUsuario() {
       return usuarioComum() && (
         (
@@ -330,11 +390,15 @@ service cloud.firestore {
 
     match /entregasPagamento/{entregaId} {
       allow read: if usuarioComum();
-      allow create: if admin() || novoPagamentoDoUsuario();
+      allow create: if admin()
+        || novoPagamentoDoUsuario()
+        || novoDocumentoFinanceiroV2Permitido();
       allow update: if admin()
         || alteracaoValorTotalManualPermitida()
         || alteracaoPagamentoAlcaPermitida()
         || alteracaoRevisaoComponentesPermitida()
+        || alteracaoControleFinanceiroV2Permitida()
+        || quitacaoPagamentoV2Permitida()
         || (
           pagamentoDoUsuario()
           && resource.data.statusPagamento != "pago"
