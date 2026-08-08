@@ -55,14 +55,19 @@ function criarAmbiente() {
   };
 
   const pagamentosRepo = {
-    async buscarPorChave(chave) {
-      chamadas.push(["buscarPagamento", chave]);
-      return pagamentos.get(chave) || null;
-    },
-    async salvar(chave, documento) {
-      chamadas.push(["salvarPagamento", chave]);
-      pagamentos.set(chave, structuredClone(documento));
-      return structuredClone(documento);
+    async salvarSeAusente(chave, documento) {
+      chamadas.push(["salvarSeAusente", chave]);
+      if (pagamentos.has(chave)) {
+        return {
+          ok: false,
+          motivo: "LANCAMENTO_DUPLICADO",
+          existente: structuredClone(pagamentos.get(chave))
+        };
+      }
+
+      const salvo = structuredClone(documento);
+      pagamentos.set(chave, salvo);
+      return { ok: true, documento: structuredClone(salvo) };
     }
   };
 
@@ -104,8 +109,8 @@ test("cria fechamento de processo comum sem usar data de chegada", async () => {
   assert.equal(pagamentos.size, 1);
 });
 
-test("bloqueia repetição exata do mesmo fechamento", async () => {
-  const { service, pagamentos } = criarAmbiente();
+test("bloqueia repetição exata do mesmo fechamento na mesma operação de persistência", async () => {
+  const { service, pagamentos, chamadas } = criarAmbiente();
   const entrada = {
     numeroOP: "58193",
     processo: "SUTIÃ MONTAGEM",
@@ -122,6 +127,13 @@ test("bloqueia repetição exata do mesmo fechamento", async () => {
   assert.equal(segundo.ok, false);
   assert.deepEqual(segundo.erros, ["LANCAMENTO_DUPLICADO"]);
   assert.equal(pagamentos.size, 1);
+
+  const operacoesPersistencia = chamadas.filter(([nome]) => nome === "salvarSeAusente");
+  assert.equal(operacoesPersistencia.length, 2);
+  assert.equal(
+    chamadas.some(([nome]) => nome === "buscarPagamento"),
+    false
+  );
 });
 
 test("permite ocorrência 2 para retrabalho legítimo", async () => {
