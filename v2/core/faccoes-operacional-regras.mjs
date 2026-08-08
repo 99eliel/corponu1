@@ -166,7 +166,7 @@ export function validarReenvioOperacional({
   const disponivel = quantidadeDisponivelReenvio(movimentacao);
   const qtd = inteiro(quantidade);
   if (qtd <= 0) erros.push("QUANTIDADE_INVALIDA");
-  if (disponivel > 0 && qtd > disponivel) erros.push("QUANTIDADE_MAIOR_QUE_DISPONIVEL");
+  if (qtd > disponivel) erros.push("QUANTIDADE_MAIOR_QUE_DISPONIVEL");
 
   return {
     ok: erros.length === 0,
