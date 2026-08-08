@@ -22,7 +22,6 @@ export function definirStatusManejo(elemento, mensagem, tipo = "normal") {
 
 export function manejoVisualDaOrdem(ordem, setor) {
   const manejo = getManejoDaOrdemV2(ordem, setor) || {};
-  const calcinha = setor === "calcinha";
   return {
     necessidade: texto(ordem.necessidadeTexto ?? ordem.necessidade ?? manejo.necessidade),
     silkNome: texto(manejo.silkNome || manejo.silk),
@@ -31,10 +30,6 @@ export function manejoVisualDaOrdem(ordem, setor) {
     dataTecido: texto(manejo.dataTecido),
     faseBojo: texto(manejo.faseBojo ?? manejo.fase),
     faseLateral: texto(manejo.faseLateral),
-    faccao: texto(manejo.faccao || (calcinha ? ordem.faccaoPlanejada : "")),
-    chegada: texto(manejo.chegada),
-    falta: Number(manejo.falta || 0),
-    celu: texto(manejo.celu),
     observacoes: texto(manejo.observacoes)
   };
 }
@@ -55,14 +50,9 @@ export function htmlLinhaManejo(ordem, setor) {
       <td><input data-campo="dataTecido" type="date" value="${attr(m.dataTecido)}" /></td>
       <td><input data-campo="faseBojo" list="v2ManejoFasesSugestoes" value="${attr(m.faseBojo)}" placeholder="Digite ou escolha" /></td>
       <td><input data-campo="faseLateral" list="v2ManejoFasesSugestoes" value="${attr(m.faseLateral)}" placeholder="Digite ou escolha" /></td>
-      <td><input data-campo="faccao" value="${attr(m.faccao)}" /></td>
-      <td><input data-campo="chegada" type="date" value="${attr(m.chegada)}" /></td>
-      <td><input data-campo="falta" type="number" min="0" step="1" value="${Math.max(0, Number(m.falta || 0))}" /></td>
-      <td><input data-campo="celu" value="${attr(m.celu)}" /></td>
       <td class="v2-manejo__acoes-row">
         <button class="btn btn-sm" type="button" data-v2-salvar-manejo="${id}">Salvar</button>
         <button class="btn btn-sm" type="button" data-v2-enviar-faccao="${id}">Enviar facção</button>
-        <button class="btn btn-sm" type="button" data-v2-enviar-celula="${id}">Enviar célula</button>
       </td>
     </tr>
   `;
@@ -77,14 +67,9 @@ export function entradaManejoDaLinha(linha) {
     silkData: valor("silkData"),
     tecidoNome: valor("tecidoNome"),
     dataTecido: valor("dataTecido"),
-    // Alias fase mantido durante a transição para leitores antigos da V2.
     fase: faseBojo,
     faseBojo,
     faseLateral: valor("faseLateral"),
-    faccao: valor("faccao"),
-    chegada: valor("chegada"),
-    falta: Number(valor("falta") || 0),
-    celu: valor("celu"),
     observacoes: ""
   };
 }
