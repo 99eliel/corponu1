@@ -41,6 +41,13 @@ test("interface libera chegada e mantém reenvio bloqueado", () => {
   assert.match(bridge, /Reenvio e financeiro continuam bloqueados/);
 });
 
+test("clique no submit do modal de chegada não é bloqueado antes do submit", () => {
+  const trecho = bridge.match(/instalarBloqueioInterface\(conteudo, aviso, \(\{ event, botao, submit \}\) => \{([\s\S]*?)\n      \}\);/)?.[1] || "";
+  assert.match(trecho, /String\(botao\?\.type \|\| ""\)\.toLowerCase\(\) === "submit"/);
+  assert.match(trecho, /botao\?\.closest\?\.\("\[data-v2-chegada-form\]"\) != null/);
+  assert.doesNotMatch(trecho, /data-v2-reenvio-form/);
+});
+
 test("cada transação real exige confirmação GRAVAR", () => {
   assert.match(bridge, /Digite GRAVAR para confirmar/);
   assert.match(bridge, /Transação operacional de Facções\/Chegada/);
