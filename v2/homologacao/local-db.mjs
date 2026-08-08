@@ -1,5 +1,9 @@
 import { normalizar, normalizarReferencia, processoCanonico, texto } from "../core/normalizacao.mjs";
 import { criarChaveLancamento, validarSaldoProcesso } from "../core/financeiro-regras.mjs";
+import {
+  CONFIG_SUTIA_COMPLETO_REAL_HOMOLOGACAO,
+  VALORES_REAIS_HOMOLOGACAO
+} from "./valores-reais.mjs";
 
 const STORAGE_KEY = "corponu-flow-v2-homologacao-local";
 
@@ -15,14 +19,14 @@ function idNovo(prefixo) {
 export function dadosIniciaisHomologacao() {
   return {
     produtos: [
-      { id: "prod-sutia-414", referencia: "414", nome: "Sutiã teste 414", tipoPeca: "sutia", tipoPecaLabel: "Sutiã", ativo: true },
+      { id: "prod-sutia-411", referencia: "411", nome: "Sutiã teste 411", tipoPeca: "sutia", tipoPecaLabel: "Sutiã", ativo: true },
       { id: "prod-sutia-912", referencia: "912", nome: "Sutiã especial 912", tipoPeca: "sutia", tipoPecaLabel: "Sutiã", ativo: true },
-      { id: "prod-calcinha-c100", referencia: "C100", nome: "Calcinha teste C100", tipoPeca: "calcinha", tipoPecaLabel: "Calcinha", ativo: true }
+      { id: "prod-calcinha-610", referencia: "610", nome: "Calcinha teste 610", tipoPeca: "calcinha", tipoPecaLabel: "Calcinha", ativo: true }
     ],
     ordens: [
-      { id: "op-sutia-70001", numeroOP: "70001", referencia: "414", cor: "PRETO", quantidade: 500, tipoPeca: "sutia", tipoPecaLabel: "Sutiã", necessidade: "URGENTE", necessidadeTexto: "URGENTE" },
+      { id: "op-sutia-70001", numeroOP: "70001", referencia: "411", cor: "PRETO", quantidade: 500, tipoPeca: "sutia", tipoPecaLabel: "Sutiã", necessidade: "URGENTE", necessidadeTexto: "URGENTE" },
       { id: "op-sutia-70002", numeroOP: "70002", referencia: "912", cor: "CHOCOLATE", quantidade: 300, tipoPeca: "sutia", tipoPecaLabel: "Sutiã", necessidade: "", necessidadeTexto: "" },
-      { id: "op-calcinha-80001", numeroOP: "80001", referencia: "C100", cor: "BRANCO", quantidade: 420, tipoPeca: "calcinha", tipoPecaLabel: "Calcinha", processoPlanejado: "CALCINHA COMPLETA", faccaoPlanejada: "LORENA" }
+      { id: "op-calcinha-80001", numeroOP: "80001", referencia: "610", cor: "BRANCO", quantidade: 420, tipoPeca: "calcinha", tipoPecaLabel: "Calcinha", processoPlanejado: "CALCINHA COMPLETA", faccaoPlanejada: "LORENA" }
     ],
     faccoes: [
       { id: "f-danubia", nome: "DANUBIA", ativo: true, processosPermitidos: ["SUTIÃ COMPLETO"] },
@@ -42,9 +46,9 @@ export function dadosIniciaisHomologacao() {
         origem: "manejo",
         opId: "op-sutia-70001",
         numeroOP: "70001",
-        referencia: "414",
+        referencia: "411",
         cor: "PRETO",
-        produtoNome: "Sutiã teste 414",
+        produtoNome: "Sutiã teste 411",
         tipoDestino: "faccao",
         tipoDestinoLabel: "Facção",
         destino: "DANUBIA",
@@ -66,9 +70,9 @@ export function dadosIniciaisHomologacao() {
         origem: "manejo",
         opId: "op-calcinha-80001",
         numeroOP: "80001",
-        referencia: "C100",
+        referencia: "610",
         cor: "BRANCO",
-        produtoNome: "Calcinha teste C100",
+        produtoNome: "Calcinha teste 610",
         tipoDestino: "faccao",
         tipoDestinoLabel: "Facção",
         destino: "LORENA",
@@ -86,7 +90,7 @@ export function dadosIniciaisHomologacao() {
         criadoEm: "2026-08-02T10:00:00-03:00"
       }
     ],
-    precos: [],
+    precos: VALORES_REAIS_HOMOLOGACAO.map((item, indice) => ({ id: `valor-real-${indice + 1}`, ...item })),
     pagamentos: [],
     usuarios: []
   };
@@ -226,30 +230,29 @@ export function criarRepositoriosLocais(store) {
     }
   };
 
-  const valoresPorProcesso = new Map([
-    ["ENCAPAR BOJO", 0.22],
-    ["ALÇA", 0.18],
-    ["LATERAL", 0.12],
-    ["SUTIÃ MONTAGEM", 0.55],
-    ["CALCINHA MONTAGEM", 0.42],
-    ["CALCINHA COMPLETA", 0.78]
-  ]);
+  function buscarValorLocal(referencia, processo, { permitirUniversal = true } = {}) {
+    const ref = normalizarReferencia(referencia);
+    const proc = processoCanonico(processo);
+    const precos = store.listar("precos").filter(item => item.ativo !== false && processoCanonico(item.processo) === proc);
+    const exato = precos.find(item => normalizarReferencia(item.referencia) === ref);
+    if (exato) return Number(exato.valor || 0);
+    if (!permitirUniversal) return 0;
+    const universal = precos.find(item => normalizarReferencia(item.referencia) === "TODAS");
+    return Number(universal?.valor || 0);
+  }
 
   const valoresRepo = {
-    async buscarValorUnitario(_referencia, processo) {
-      return valoresPorProcesso.get(processoCanonico(processo)) || 0;
+    async buscarValorUnitario(referencia, processo) {
+      return buscarValorLocal(referencia, processo, { permitirUniversal: true });
     },
     async buscarConfiguracaoSutiaCompleto() {
-      return {
-        referenciaEspecial: "912",
-        valorBaseGeral: 1.25,
-        valorBaseReferenciaEspecial: 1.05,
-        descontoFechoNaoFeito: 0.05,
-        descontoPontoLuzNaoFeito: 0.03
-      };
+      return { ...CONFIG_SUTIA_COMPLETO_REAL_HOMOLOGACAO };
     },
-    async buscarValoresComponentes(_referencia) {
-      return { lateral: 0.12, bojo: 0.22 };
+    async buscarValoresComponentes(referencia) {
+      return {
+        lateral: buscarValorLocal(referencia, "LATERAL", { permitirUniversal: false }),
+        bojo: buscarValorLocal(referencia, "ENCAPAR BOJO", { permitirUniversal: false })
+      };
     }
   };
 
