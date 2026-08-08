@@ -227,48 +227,96 @@ test("configuração de Sutiã Completo usa cache compartilhado", async () => {
   assert.equal(ambiente.metricas.getDoc.length, 1);
 });
 
-test("pagamentosRepo grava atomicamente somente em entregasPagamento", async () => {
-  const ambiente = criarFirestoreFake();
-  const repo = criarPagamentosRepoFirestore({ db: ambiente.db, fs: ambiente.fs });
-  const documento = {
+function documentoPagamento(quantidade) {
+  return {
     origem: "fechamento_financeiro_v2",
-    chaveFechamento: "fechamento-v2-op-1",
+    tipoDocumento: "lancamento_financeiro_v2",
+    opId: "op-58193",
     numeroOP: "58193",
+    referencia: "414",
     competencia: "2026-08",
     processo: "SUTIÃ MONTAGEM",
     responsavel: "LIVIA",
-    quantidade: 500,
-    total: 625
+    quantidade,
+    quantidadeOP: 500,
+    valorUnitario: 1.25,
+    total: quantidade * 1.25,
+    statusPagamento: "pendente"
   };
+}
 
-  const resultado = await repo.salvarSeAusente(documento.chaveFechamento, documento);
+test("pagamentosRepo grava lançamento e controle de saldo atomicamente somente em entregasPagamento", async () => {
+  const ambiente = criarFirestoreFake();
+  const repo = criarPagamentosRepoFirestore({ db: ambiente.db, fs: ambiente.fs });
+
+  const saldoInicial = await repo.obterSaldoProcesso({
+    opId: "op-58193",
+    numeroOP: "58193",
+    processo: "SUTIÃ MONTAGEM",
+    quantidadeOP: 500
+  });
+  assert.equal(saldoInicial.quantidadeFechada, 0);
+  assert.equal(saldoInicial.quantidadeRestante, 500);
+
+  const resultado = await repo.salvarComSaldo(documentoPagamento(200), { saldoInicial });
 
   assert.equal(resultado.ok, true);
-  assert.equal(ambiente.metricas.transactionGet.length, 1);
-  assert.equal(ambiente.metricas.transactionSet.length, 1);
-  assert.equal(ambiente.metricas.transactionSet[0].colecao, "entregasPagamento");
+  assert.equal(resultado.saldo.quantidadeFechada, 200);
+  assert.equal(resultado.saldo.quantidadeRestante, 300);
+  assert.equal(ambiente.metricas.transactionSet.length, 2);
+  assert.equal(
+    ambiente.metricas.transactionSet.every(item => item.colecao === "entregasPagamento"),
+    true
+  );
+  assert.equal(
+    ambiente.metricas.transactionSet.some(item => item.dados.tipoDocumento === "controle_processo_v2"),
+    true
+  );
   assert.equal(
     ambiente.metricas.transactionSet.some(item => item.colecao === "movimentacoesProducao"),
     false
   );
 });
 
-test("pagamentosRepo bloqueia duplicidade dentro da transação sem segundo set", async () => {
-  const documento = {
-    id: "fechamento-v2-op-1",
-    origem: "fechamento_financeiro_v2",
-    chaveFechamento: "fechamento-v2-op-1",
-    numeroOP: "58193"
-  };
-  const ambiente = criarFirestoreFake({ pagamentos: [documento] });
+test("pagamentosRepo permite parciais até a quantidade da OP e bloqueia qualquer excedente", async () => {
+  const ambiente = criarFirestoreFake();
   const repo = criarPagamentosRepoFirestore({ db: ambiente.db, fs: ambiente.fs });
 
-  const resultado = await repo.salvarSeAusente(documento.id, documento);
+  const inicial = await repo.obterSaldoProcesso({
+    opId: "op-58193",
+    numeroOP: "58193",
+    processo: "SUTIÃ MONTAGEM",
+    quantidadeOP: 500
+  });
+  const primeira = await repo.salvarComSaldo(documentoPagamento(200), { saldoInicial: inicial });
+  assert.equal(primeira.ok, true);
 
-  assert.equal(resultado.ok, false);
-  assert.equal(resultado.motivo, "LANCAMENTO_DUPLICADO");
-  assert.equal(ambiente.metricas.transactionGet.length, 1);
-  assert.equal(ambiente.metricas.transactionSet.length, 0);
+  const saldoDepois = await repo.obterSaldoProcesso({
+    opId: "op-58193",
+    numeroOP: "58193",
+    processo: "SUTIÃ MONTAGEM",
+    quantidadeOP: 500
+  });
+  assert.equal(saldoDepois.quantidadeFechada, 200);
+  assert.equal(saldoDepois.quantidadeRestante, 300);
+
+  const segunda = await repo.salvarComSaldo({
+    ...documentoPagamento(300),
+    responsavel: "OUTRA PESSOA",
+    competencia: "2026-09"
+  }, { saldoInicial: saldoDepois });
+  assert.equal(segunda.ok, true);
+  assert.equal(segunda.saldo.quantidadeRestante, 0);
+
+  const setsAntesExcedente = ambiente.metricas.transactionSet.length;
+  const excedente = await repo.salvarComSaldo({
+    ...documentoPagamento(1),
+    competencia: "2026-10"
+  });
+
+  assert.equal(excedente.ok, false);
+  assert.equal(excedente.motivo, "QUANTIDADE_MAIOR_QUE_RESTANTE");
+  assert.equal(ambiente.metricas.transactionSet.length, setsAntesExcedente);
 });
 
 test("pagamentosRepo recusa qualquer coleção financeira alternativa", () => {
