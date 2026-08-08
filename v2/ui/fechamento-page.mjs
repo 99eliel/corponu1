@@ -1,4 +1,7 @@
-import { PROCESSO_SUTIA_COMPLETO } from "../core/financeiro-regras.mjs";
+import {
+  PROCESSO_SUTIA_COMPLETO,
+  processosFinanceirosDaOP
+} from "../core/financeiro-regras.mjs";
 import { processoCanonico, texto } from "../core/normalizacao.mjs";
 import { templateFechamentoPagamento } from "./fechamento-template.mjs";
 
@@ -6,6 +9,7 @@ const MENSAGENS_ERRO = Object.freeze({
   OP_NAO_INFORMADA: "Informe o número da OP.",
   OP_NAO_ENCONTRADA: "OP não encontrada.",
   PROCESSO_INVALIDO: "Escolha um serviço válido.",
+  PROCESSO_INCOMPATIVEL_COM_TIPO_PECA: "Este serviço não pertence ao tipo desta OP.",
   RESPONSAVEL_NAO_INFORMADO: "Escolha quem fez o serviço.",
   COMPETENCIA_INVALIDA: "Informe a competência mensal.",
   QUANTIDADE_INVALIDA: "Informe uma quantidade válida.",
@@ -70,6 +74,25 @@ function renderResumo(elemento, op) {
 
   elemento.textContent = partes.join(" • ");
   elemento.classList.remove("hidden");
+}
+
+function preencherProcessos(select, op = null) {
+  const lista = op ? processosFinanceirosDaOP(op) : [];
+  select.innerHTML = "";
+  const inicial = document.createElement("option");
+  inicial.value = "";
+  inicial.textContent = op ? "Selecione" : "Busque uma OP primeiro";
+  select.appendChild(inicial);
+
+  lista.forEach(nome => {
+    const option = document.createElement("option");
+    option.value = nome;
+    option.textContent = nome;
+    select.appendChild(option);
+  });
+
+  select.disabled = lista.length === 0;
+  return lista;
 }
 
 function preencherResponsaveis(select, lista) {
@@ -191,6 +214,7 @@ export function montarTelaFechamento({
   const submit = form.querySelector('button[type="submit"]');
   let atualizacaoSeq = 0;
 
+  preencherProcessos(processo, null);
   limparConferenciaComponentes(componentes, componentesConhecidos);
   protegerNumeroContraWheel(quantidade, signal);
 
@@ -272,6 +296,8 @@ export function montarTelaFechamento({
       controller.limparOP();
       ++atualizacaoSeq;
       renderResumo(resumo, null);
+      preencherProcessos(processo, null);
+      preencherResponsaveis(responsavel, []);
       limparSaldo();
       limparConferenciaComponentes(componentes, componentesConhecidos);
       setStatus(preview, MENSAGENS_ERRO.OP_NAO_INFORMADA, "erro");
@@ -288,6 +314,8 @@ export function montarTelaFechamento({
       if (!resultado.ok) {
         ++atualizacaoSeq;
         renderResumo(resumo, null);
+        preencherProcessos(processo, null);
+        preencherResponsaveis(responsavel, []);
         limparSaldo();
         limparConferenciaComponentes(componentes, componentesConhecidos);
         setStatus(preview, mensagemErros(resultado.erros), "erro");
@@ -295,9 +323,12 @@ export function montarTelaFechamento({
       }
 
       renderResumo(resumo, resultado.op);
+      preencherProcessos(processo, resultado.op);
+      preencherResponsaveis(responsavel, []);
       quantidade.value = Number(resultado.op.quantidade || 0) || "";
-      if (processo.value) await atualizarProcesso();
-      setStatus(preview, "OP localizada. Escolha o serviço e quem fez para conferir o valor.", "ok");
+      limparSaldo();
+      limparConferenciaComponentes(componentes, componentesConhecidos);
+      setStatus(preview, "OP localizada. Escolha um serviço compatível e quem fez para conferir o valor.", "ok");
       return resultado.op;
     } catch (error) {
       console.error("[V2] Falha ao buscar OP no fechamento.", error);
@@ -388,6 +419,7 @@ export function montarTelaFechamento({
       ++atualizacaoSeq;
       controller.limparOP();
       renderResumo(resumo, null);
+      preencherProcessos(processo, null);
       preencherResponsaveis(responsavel, []);
       limparSaldo();
       limparConferenciaComponentes(componentes, componentesConhecidos);
