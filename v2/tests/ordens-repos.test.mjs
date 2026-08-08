@@ -5,10 +5,14 @@ import { criarOrdensGravacaoRepoFirestore } from "../adapters/ordens-repo.mjs";
 import { criarProdutosRepoFirestore } from "../adapters/produtos-repo.mjs";
 import { criarStoreCorpoNu } from "../core/store.mjs";
 
+function clonar(valor) {
+  return valor === undefined ? undefined : structuredClone(valor);
+}
+
 function criarFake({ produtos = [], ordens = [] } = {}) {
   const colecoes = new Map([
-    ["produtos", new Map(produtos.map(item => [item.id, structuredClone(item)]))],
-    ["ordensProducao", new Map(ordens.map(item => [item.id, structuredClone(item)]))]
+    ["produtos", new Map(produtos.map(item => [item.id, clonar(item)]))],
+    ["ordensProducao", new Map(ordens.map(item => [item.id, clonar(item)]))]
   ]);
   const metricas = { getDocs: [], getDoc: [], setDoc: [] };
   const db = { fake: true };
@@ -17,7 +21,7 @@ function criarFake({ produtos = [], ordens = [] } = {}) {
     const nome = consulta.ref.nome;
     const filtro = consulta.restricoes.find(item => item.tipo === "where");
     const limite = consulta.restricoes.find(item => item.tipo === "limit")?.valor;
-    let itens = [...(colecoes.get(nome)?.values() || [])].map(structuredClone);
+    let itens = [...(colecoes.get(nome)?.values() || [])].map(item => clonar(item));
     if (filtro) {
       itens = itens.filter(item => {
         const valor = item[filtro.campo];
@@ -42,7 +46,7 @@ function criarFake({ produtos = [], ordens = [] } = {}) {
       });
       const itens = filtrar(consulta);
       return {
-        docs: itens.map(item => ({ id: item.id, data: () => structuredClone(item) }))
+        docs: itens.map(item => ({ id: item.id, data: () => clonar(item) }))
       };
     },
     doc(_db, colecao, id) { return { colecao, id }; },
@@ -52,13 +56,13 @@ function criarFake({ produtos = [], ordens = [] } = {}) {
       return {
         id: ref.id,
         exists: () => Boolean(item),
-        data: () => structuredClone(item)
+        data: () => clonar(item)
       };
     },
     async setDoc(ref, dados, opcoes) {
-      metricas.setDoc.push({ colecao: ref.colecao, id: ref.id, opcoes: structuredClone(opcoes) });
+      metricas.setDoc.push({ colecao: ref.colecao, id: ref.id, opcoes: clonar(opcoes) });
       const atual = colecoes.get(ref.colecao)?.get(ref.id) || {};
-      const proximo = opcoes?.merge ? { ...atual, ...structuredClone(dados) } : structuredClone(dados);
+      const proximo = opcoes?.merge ? { ...atual, ...clonar(dados) } : clonar(dados);
       if (!colecoes.has(ref.colecao)) colecoes.set(ref.colecao, new Map());
       colecoes.get(ref.colecao).set(ref.id, proximo);
     },
