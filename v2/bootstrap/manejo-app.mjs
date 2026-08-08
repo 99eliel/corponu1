@@ -1,4 +1,3 @@
-import { criarCelulasRepoFirestore } from "../adapters/celulas-repo.mjs";
 import { criarFaccoesRepoFirestore } from "../adapters/faccoes-repo.mjs";
 import { criarManejoRepoFirestore } from "../adapters/manejo-repo.mjs";
 import { ManejoController } from "../core/manejo-controller.mjs";
@@ -19,13 +18,9 @@ export async function criarManejoAppV2({
   if (!fs) throw new Error("Firestore API não configurada.");
 
   const faccoesRepo = criarFaccoesRepoFirestore({ db, fs, store });
-  const celulasRepo = criarCelulasRepoFirestore({ db, fs, store });
   const manejoRepo = criarManejoRepoFirestore({ db, fs, store });
 
-  await Promise.all([
-    faccoesRepo.garantirCarregadas(),
-    celulasRepo.garantirCarregadas()
-  ]);
+  await faccoesRepo.garantirCarregadas();
 
   const manejoService = new ManejoService({ manejoRepo, auditoriaRepo });
   const controller = new ManejoController({
@@ -43,7 +38,6 @@ export async function criarManejoAppV2({
   return {
     store,
     faccoesRepo,
-    celulasRepo,
     manejoRepo,
     manejoService,
     controller,
