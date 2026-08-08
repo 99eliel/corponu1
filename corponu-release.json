@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-08-manejo-fases-sutia-161",
-  "updatedAt": "2026-08-08T20:51:00-03:00",
-  "notes": "No Manejo Sutiã, a coluna Fase existente passa a se chamar Fase Bojo e mantém exatamente a lógica e os dados atuais. Ao lado é adicionada a nova coluna Fase Lateral, inicialmente em branco e sem interferir em filtros, salvamento ou movimentações. A mudança é exclusiva do Sutiã; o Manejo Calcinha permanece como estava."
+  "version": "2026-08-08-manejo-fases-sutia-162",
+  "updatedAt": "2026-08-08T20:58:00-03:00",
+  "notes": "Corrige a separação das fases no Manejo Sutiã. A coluna TECIDO permanece intacta; a coluna FASE já existente passa somente a se chamar FASE BOJO, preservando seu campo, dados e lógica atuais. Logo depois é criado um novo campo vazio chamado FASE LATERAL, sem deslocar QTI, COR, NECESSIDADE, STATUS ou AÇÕES. O Manejo Calcinha permanece inalterado."
 }
