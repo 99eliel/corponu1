@@ -67,3 +67,27 @@ jobs:
             style.css
           if-no-files-found: error
           retention-days: 7
+
+      - name: Gerar pacote Firebase V2 somente leitura
+        uses: actions/upload-artifact@v4
+        with:
+          name: corpo-nu-flow-v2-firebase-readonly
+          path: |
+            firebase-v2-leitura
+            v2
+            index.html
+            app.js
+            login-core.js
+            update.js
+            sw.js
+            style.css
+            *.json
+            corponu-*.js
+            *.png
+            *.jpg
+            *.jpeg
+            *.webp
+            *.svg
+            *.ico
+          if-no-files-found: warn
+          retention-days: 7
