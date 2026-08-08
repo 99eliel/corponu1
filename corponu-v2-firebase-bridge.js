@@ -392,7 +392,11 @@
         if (escritaOrdensManejo) return ["ordens", "manejo"].includes(moduloAtual);
         if (!escritaFaccoesChegada || moduloAtual !== "faccoes") return false;
         if (submit) return event?.target?.matches?.("[data-v2-chegada-form]") === true;
-        return botao?.matches?.("[data-v2-informar-chegada],[data-v2-confirmar-chegada]") === true;
+        if (botao?.matches?.("[data-v2-informar-chegada],[data-v2-confirmar-chegada]")) return true;
+        if (String(botao?.type || "").toLowerCase() === "submit") {
+          return botao?.closest?.("[data-v2-chegada-form]") != null;
+        }
+        return false;
       });
 
       async function montarDiagnostico() {
