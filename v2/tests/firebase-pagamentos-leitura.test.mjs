@@ -29,7 +29,10 @@ test("quitacao fica desativada mas filtros e relatorios permanecem na tela V2", 
   assert.match(modulo, /quitar\.disabled = true/);
   assert.match(modulo, /Quitação bloqueada nesta etapa/);
   assert.match(html, /RELATÓRIOS LIBERADOS/);
-  assert.match(html, /Filtros e relatórios funcionam normalmente/);
+  assert.match(html, /filtrar por origem/i);
+  assert.match(html, /conferir PIX/i);
+  assert.match(html, /relatórios completo e simplificado/i);
+  assert.match(html, /Marcar como pago permanece bloqueado/i);
 });
 
 test("launcher abre somente em loopback e nao depende de Node ou Python", () => {
