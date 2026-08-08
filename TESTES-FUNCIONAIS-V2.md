@@ -120,23 +120,30 @@ Cobertura automatizada: regras, concorrência por transação, reenvio, componen
 - [ ] lançamento pode ser criado mesmo sem chegada registrada em Facções.
 - [ ] lançamento financeiro não cria movimentação operacional falsa.
 - [ ] lançamento aparece imediatamente na área financeira/store.
-- [ ] duplicidade acidental é bloqueada.
-- [ ] casos legítimos de segundo serviço/retrabalho não são bloqueados incorretamente.
+- [ ] não existe campo ou regra de ocorrência/retrabalho financeiro.
 - [ ] ALÇA pode ser fechada sem existir `possuiAlca` na OP.
 - [ ] ENCAPAR BOJO pode ser fechado sem existir `possuiBojo` na OP.
 - [ ] ausência de valor/configuração retorna erro e nunca usa preço monetário escondido no código.
 
-Cobertura automatizada: service, chave determinística, transação atômica e Motor de Valores central.
+Cobertura automatizada: service, controle determinístico por OP + processo, transação atômica e Motor de Valores central.
 
 ---
 
 # 8. Quantidade parcial/restante
 
 - [ ] quantidade da OP é carregada como referência inicial.
-- [ ] pagamento parcial continua possível quando necessário.
-- [ ] saldo/restante é calculado corretamente.
-- [ ] segundo fechamento do restante não duplica o primeiro.
-- [ ] total fechado nunca ultrapassa a quantidade permitida sem confirmação/regra explícita.
+- [ ] fechamento parcial é permitido quando necessário.
+- [ ] saldo/restante é calculado por OP + processo.
+- [ ] segundo fechamento usa somente o restante disponível.
+- [ ] trocar responsável não reinicia o saldo do processo.
+- [ ] trocar competência não reinicia o saldo do processo.
+- [ ] processos diferentes da mesma OP possuem saldos independentes.
+- [ ] soma financeira de uma OP + processo nunca ultrapassa a quantidade original da OP.
+- [ ] quando o restante chega a zero, qualquer novo lançamento daquele processo é bloqueado.
+
+Regra de negócio definitiva: não existe cenário de retrabalho financeiro. Exemplo: OP 500 → fecha 200 → restam 300 → fecha 300 → restam 0 → qualquer novo lançamento do mesmo processo é bloqueado.
+
+Cobertura automatizada: validação antes do cálculo e nova validação atômica dentro da transação Firestore para impedir ultrapassagem mesmo com ações concorrentes.
 
 ---
 
