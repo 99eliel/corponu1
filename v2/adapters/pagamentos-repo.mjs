@@ -42,6 +42,7 @@ export function criarPagamentosConsultaRepoFirestore({ db, fs, colecao = "entreg
     const docs = snapshot.docs || [];
     return {
       itens: ordenarPorCriacao(docs.map(documento).filter(ehLancamento)),
+      quantidadeDocumentos: docs.length,
       cursor: docs.at(-1) || null,
       acabou: docs.length < tamanho
     };
@@ -77,7 +78,7 @@ export function criarPagamentosConsultaRepoFirestore({ db, fs, colecao = "entreg
         const pagina = await carregarPaginaInterna({ competencia, limitePagina, cursor });
         itens.push(...pagina.itens);
         cursor = pagina.cursor;
-        documentosLidos += Math.max(pagina.itens.length, cursor ? 1 : 0);
+        documentosLidos += pagina.quantidadeDocumentos;
         acabou = pagina.acabou || !cursor;
       }
       if (!acabou && documentosLidos >= maximo) {
