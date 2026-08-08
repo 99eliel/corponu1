@@ -15,6 +15,15 @@
     return new Promise(resolve => window.setTimeout(resolve, ms));
   }
 
+  function escapar(valor) {
+    return String(valor ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
   async function esperarAppFirebase(appSdk, tentativas = 120) {
     for (let i = 0; i < tentativas; i += 1) {
       const apps = appSdk.getApps();
@@ -25,11 +34,50 @@
   }
 
   function criarApiFirestore(firestoreSdk) {
+    const totais = { getDoc: 0, getDocs: 0, documentos: 0 };
+
     const somenteLeitura = () => {
       throw new Error("HOMOLOGACAO_V2_SOMENTE_LEITURA: use &v2write=1 somente quando quiser gravar de propósito.");
     };
 
-    return {
+    function snapshotMetricas() {
+      return { ...totais };
+    }
+
+    function diferenca(antes, depois) {
+      return {
+        getDoc: depois.getDoc - antes.getDoc,
+        getDocs: depois.getDocs - antes.getDocs,
+        documentos: depois.documentos - antes.documentos
+      };
+    }
+
+    async function getDocMetricado(ref) {
+      const snapshot = await firestoreSdk.getDoc(ref);
+      totais.getDoc += 1;
+      if (snapshot?.exists?.()) totais.documentos += 1;
+      return snapshot;
+    }
+
+    async function getDocsMetricado(ref) {
+      const snapshot = await firestoreSdk.getDocs(ref);
+      totais.getDocs += 1;
+      totais.documentos += Number(snapshot?.size ?? snapshot?.docs?.length ?? 0) || 0;
+      return snapshot;
+    }
+
+    async function medir(_etapa, acao) {
+      const antes = snapshotMetricas();
+      try {
+        const resultado = await acao();
+        return { resultado, leituras: diferenca(antes, snapshotMetricas()) };
+      } catch (error) {
+        error.leituras = diferenca(antes, snapshotMetricas());
+        throw error;
+      }
+    }
+
+    const fs = {
       collection: firestoreSdk.collection,
       query: firestoreSdk.query,
       where: firestoreSdk.where,
@@ -38,8 +86,8 @@
       limit: firestoreSdk.limit,
       startAfter: firestoreSdk.startAfter,
       doc: firestoreSdk.doc,
-      getDoc: firestoreSdk.getDoc,
-      getDocs: firestoreSdk.getDocs,
+      getDoc: getDocMetricado,
+      getDocs: getDocsMetricado,
       serverTimestamp: firestoreSdk.serverTimestamp,
       deleteField: firestoreSdk.deleteField,
       setDoc: escritaLiberada ? firestoreSdk.setDoc : somenteLeitura,
@@ -48,6 +96,8 @@
       writeBatch: escritaLiberada ? firestoreSdk.writeBatch : somenteLeitura,
       runTransaction: escritaLiberada ? firestoreSdk.runTransaction : somenteLeitura
     };
+
+    return { fs, medir, totais: snapshotMetricas };
   }
 
   function instalarEstilo() {
@@ -65,7 +115,11 @@
       .v2fb-tabs button.ativo{background:#172033;color:#fff;border-color:#172033}.v2fb-acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
       .v2fb-corpo{max-width:1500px;margin:0 auto;padding:18px}.v2fb-aviso{padding:11px 13px;border-radius:10px;margin-bottom:14px;background:${escritaLiberada ? "#fff1f2;color:#9f1239;border:1px solid #fecdd3" : "#ecfdf5;color:#166534;border:1px solid #bbf7d0"};font-size:13px;font-weight:700}
       .v2fb-loading{padding:38px;text-align:center;color:#64748b}.v2fb-erro{padding:16px;border-radius:10px;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;white-space:pre-wrap}
+      .v2fb-diag-resumo{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px;margin:0 0 14px}.v2fb-diag-num{background:#fff;border:1px solid #dfe4ec;border-radius:12px;padding:12px}.v2fb-diag-num strong{display:block;font-size:22px}.v2fb-diag-num span{font-size:12px;color:#64748b}
+      .v2fb-diag-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.v2fb-diag-card{background:#fff;border:1px solid #dfe4ec;border-radius:12px;padding:14px}.v2fb-diag-card[data-nivel="ok"]{border-left:5px solid #16a34a}.v2fb-diag-card[data-nivel="aviso"]{border-left:5px solid #d97706}.v2fb-diag-card[data-nivel="erro"]{border-left:5px solid #dc2626}.v2fb-diag-card h4{margin:0 0 7px}.v2fb-diag-card p{margin:0 0 8px;color:#475569}.v2fb-diag-card small{color:#64748b}.v2fb-diag-card ul{margin:8px 0 0;padding-left:18px;color:#7f1d1d}.v2fb-diag-final{padding:12px 14px;border-radius:10px;margin-bottom:12px;font-weight:800}.v2fb-diag-final.ok{background:#dcfce7;color:#166534}.v2fb-diag-final.erro{background:#fee2e2;color:#991b1b}
       #corponuV2FirebaseConteudo .hidden{display:none!important}
+      #corponuV2FirebaseLab.v2fb-readonly button[data-v2fb-bloqueado="1"]{opacity:.45;cursor:not-allowed!important}
+      @media(max-width:900px){.v2fb-diag-resumo{grid-template-columns:repeat(2,minmax(120px,1fr))}}
       @media(max-width:700px){.v2fb-corpo{padding:10px}.v2fb-topo{padding:10px}.v2fb-tabs button{flex:1 1 calc(50% - 8px)}}
     `;
     document.head.appendChild(style);
@@ -77,12 +131,13 @@
 
     const raiz = document.createElement("div");
     raiz.id = "corponuV2FirebaseLab";
+    if (!escritaLiberada) raiz.classList.add("v2fb-readonly");
     raiz.innerHTML = `
       <header class="v2fb-topo">
         <div class="v2fb-linha">
           <div>
             <h2 class="v2fb-titulo">Corpo Nu Flow V2 · Firebase real</h2>
-            <p class="v2fb-sub">${String(perfil?.nome || usuario?.email || usuario?.uid || "Usuário")}</p>
+            <p class="v2fb-sub">${escapar(perfil?.nome || usuario?.email || usuario?.uid || "Usuário")}</p>
           </div>
           <div class="v2fb-acoes">
             <span class="v2fb-badge">${escritaLiberada ? "ESCRITA REAL LIBERADA" : "SOMENTE LEITURA"}</span>
@@ -91,6 +146,7 @@
           </div>
         </div>
         <nav class="v2fb-tabs" aria-label="Módulos V2 Firebase">
+          <button type="button" data-v2fb-modulo="diagnostico">Diagnóstico</button>
           <button type="button" data-v2fb-modulo="ordens">Ordens</button>
           <button type="button" data-v2fb-modulo="manejo">Manejo</button>
           <button type="button" data-v2fb-modulo="faccoes">Facções</button>
@@ -99,10 +155,10 @@
         </nav>
       </header>
       <main class="v2fb-corpo">
-        <div class="v2fb-aviso">
+        <div class="v2fb-aviso" data-v2fb-aviso>
           ${escritaLiberada
             ? "ATENÇÃO: este modo grava no Firestore real. Use somente em validação intencional."
-            : "Modo seguro: consultas usam o Firestore real, mas qualquer tentativa de gravação é bloqueada no navegador."}
+            : "Modo seguro: consultas usam o Firestore real. Escritas são bloqueadas no adapter e também nos eventos da interface."}
         </div>
         <div id="corponuV2FirebaseConteudo"><div class="v2fb-loading">Preparando V2…</div></div>
       </main>
@@ -122,13 +178,69 @@
     };
   }
 
+  function ehBotaoDeEscrita(botao) {
+    if (!botao) return false;
+    if (String(botao.type || "").toLowerCase() === "submit") return true;
+    const textoBotao = String(botao.textContent || "").trim();
+    return /^(salvar|enviar|confirmar envio|confirmar chegada|informar chegada|reenviar|quitar|confirmar pagamentos|marcar.*pago)/i.test(textoBotao);
+  }
+
+  function instalarBloqueioInterfaceSomenteLeitura(conteudo, aviso) {
+    if (escritaLiberada) return;
+
+    conteudo.addEventListener("submit", event => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      aviso.textContent = "Modo somente leitura: a ação de gravação foi bloqueada antes de chegar ao Firebase.";
+    }, true);
+
+    conteudo.addEventListener("click", event => {
+      const botao = event.target.closest?.("button");
+      if (!ehBotaoDeEscrita(botao)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      botao.dataset.v2fbBloqueado = "1";
+      aviso.textContent = "Modo somente leitura: este botão altera dados e está bloqueado nesta validação.";
+    }, true);
+  }
+
+  function renderizarDiagnostico(conteudo, diagnostico, totalMetricas, perfilLido = 1) {
+    const resumo = diagnostico.resumo || {};
+    const totalDocumentos = Number(resumo.documentosLidos || 0) + perfilLido;
+    const totalChamadas = Number(resumo.chamadas || 0) + perfilLido;
+    const cards = (diagnostico.etapas || []).map(etapa => `
+      <article class="v2fb-diag-card" data-nivel="${escapar(etapa.nivel)}">
+        <h4>${etapa.nivel === "ok" ? "✅" : etapa.nivel === "aviso" ? "⚠️" : "❌"} ${escapar(etapa.titulo)}</h4>
+        <p>${escapar(etapa.mensagem)}</p>
+        <small>${etapa.leituras.documentos} documentos · ${etapa.leituras.getDoc} getDoc · ${etapa.leituras.getDocs} getDocs</small>
+        ${etapa.detalhes?.length ? `<ul>${etapa.detalhes.map(item => `<li>${escapar(item)}</li>`).join("")}</ul>` : ""}
+      </article>
+    `).join("");
+
+    conteudo.innerHTML = `
+      <div class="v2fb-diag-final ${diagnostico.ok ? "ok" : "erro"}">
+        ${diagnostico.ok ? "✅ Leitura real concluída sem erro crítico." : "❌ A leitura real encontrou incompatibilidade crítica. Não liberar escrita ainda."}
+      </div>
+      <div class="v2fb-diag-resumo">
+        <div class="v2fb-diag-num"><strong>${Number(resumo.ok || 0)}</strong><span>etapas OK</span></div>
+        <div class="v2fb-diag-num"><strong>${Number(resumo.aviso || 0)}</strong><span>avisos</span></div>
+        <div class="v2fb-diag-num"><strong>${Number(resumo.erro || 0)}</strong><span>erros críticos</span></div>
+        <div class="v2fb-diag-num"><strong>${totalDocumentos}</strong><span>documentos lidos*</span></div>
+        <div class="v2fb-diag-num"><strong>${totalChamadas}</strong><span>chamadas de leitura*</span></div>
+      </div>
+      <div class="v2fb-diag-grid">${cards}</div>
+      <p class="v2fb-sub" style="margin-top:12px">* Inclui 1 leitura do perfil autenticado. Total acumulado da sessão: ${Number(totalMetricas.documentos || 0) + perfilLido} documentos em ${Number(totalMetricas.getDoc || 0) + Number(totalMetricas.getDocs || 0) + perfilLido} chamadas.</p>
+    `;
+  }
+
   async function iniciar() {
     try {
-      const [appSdk, authSdk, firestoreSdk, integracao] = await Promise.all([
+      const [appSdk, authSdk, firestoreSdk, integracao, diagnosticoSdk] = await Promise.all([
         import(`${FIREBASE_BASE}/firebase-app.js`),
         import(`${FIREBASE_BASE}/firebase-auth.js`),
         import(`${FIREBASE_BASE}/firebase-firestore.js`),
-        import("./v2/bootstrap/corpo-nu-flow-firebase.mjs")
+        import("./v2/bootstrap/corpo-nu-flow-firebase.mjs"),
+        import("./v2/diagnostico/firebase-readonly.mjs")
       ]);
 
       const app = await esperarAppFirebase(appSdk);
@@ -149,25 +261,54 @@
       if (perfil.ativo !== true) throw new Error("O perfil do usuário está inativo.");
 
       const usuarioV2 = usuarioParaV2(usuario, perfil);
-      const fs = criarApiFirestore(firestoreSdk);
+      const firestore = criarApiFirestore(firestoreSdk);
       const flow = integracao.criarCorpoNuFlowFirebaseV2({
         db,
-        fs,
-        tamanhoPaginaOrdens: 150,
-        tamanhoPaginaFaccoes: 80,
+        fs: firestore.fs,
+        tamanhoPaginaOrdens: escritaLiberada ? 150 : 40,
+        tamanhoPaginaFaccoes: escritaLiberada ? 80 : 30,
         obterUsuario: () => usuarioV2,
         obterPerfil: () => perfil
       });
 
       const shell = criarShell({ usuario, perfil });
       const conteudo = shell.querySelector("#corponuV2FirebaseConteudo");
+      const aviso = shell.querySelector("[data-v2fb-aviso]");
       const botoesModulo = [...shell.querySelectorAll("[data-v2fb-modulo]")];
       const botaoMais = shell.querySelector("[data-v2fb-mais-ops]");
       let moduloAtual = "";
+      let ultimoDiagnostico = null;
+
+      instalarBloqueioInterfaceSomenteLeitura(conteudo, aviso);
+
+      async function montarDiagnostico() {
+        moduloAtual = "diagnostico";
+        flow.desmontar();
+        botaoMais.hidden = true;
+        conteudo.innerHTML = '<div class="v2fb-loading">Lendo uma amostra controlada do Firebase real…</div>';
+        ultimoDiagnostico = await diagnosticoSdk.executarDiagnosticoFirebaseSomenteLeitura({
+          contexto: flow.contexto,
+          medir: firestore.medir,
+          limiteOrdens: 40,
+          limitePrecos: 20,
+          limitePagamentos: 20
+        });
+        renderizarDiagnostico(conteudo, ultimoDiagnostico, firestore.totais());
+      }
 
       async function montar(modulo) {
-        moduloAtual = modulo;
         botoesModulo.forEach(botao => botao.classList.toggle("ativo", botao.dataset.v2fbModulo === modulo));
+        if (modulo === "diagnostico") {
+          try {
+            await montarDiagnostico();
+          } catch (error) {
+            console.error("[V2 Firebase] Falha no diagnóstico.", error);
+            conteudo.innerHTML = `<div class="v2fb-erro">${escapar(error?.message || error)}</div>`;
+          }
+          return;
+        }
+
+        moduloAtual = modulo;
         botaoMais.hidden = !["ordens", "manejo"].includes(modulo);
         flow.desmontar();
         conteudo.innerHTML = '<div class="v2fb-loading">Carregando módulo…</div>';
@@ -192,7 +333,7 @@
           }
         } catch (error) {
           console.error("[V2 Firebase] Falha ao montar módulo.", error);
-          conteudo.innerHTML = `<div class="v2fb-erro">${String(error?.message || error)}</div>`;
+          conteudo.innerHTML = `<div class="v2fb-erro">${escapar(error?.message || error)}</div>`;
         }
       }
 
@@ -224,13 +365,14 @@
         shell.remove();
       });
 
-      await montar("ordens");
+      await montar("diagnostico");
       window.__CORPONU_FLOW_V2_FIREBASE__ = flow;
+      window.__CORPONU_FLOW_V2_DIAGNOSTICO__ = () => ultimoDiagnostico;
     } catch (error) {
       console.error("[V2 Firebase] Não foi possível iniciar a ponte.", error);
       instalarEstilo();
       const shell = criarShell({ usuario: null, perfil: null });
-      shell.querySelector("#corponuV2FirebaseConteudo").innerHTML = `<div class="v2fb-erro">${String(error?.message || error)}</div>`;
+      shell.querySelector("#corponuV2FirebaseConteudo").innerHTML = `<div class="v2fb-erro">${escapar(error?.message || error)}</div>`;
     }
   }
 
