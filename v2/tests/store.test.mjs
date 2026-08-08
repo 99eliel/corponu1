@@ -37,6 +37,30 @@ test("upsert atualiza o mesmo item sem criar estado paralelo", () => {
   });
 });
 
+test("substituirItem troca um registro sem herdar campos antigos e notifica uma vez", () => {
+  const store = criarStoreCorpoNu();
+  store.upsert("ordens", {
+    id: "op-1",
+    numeroOP: "1",
+    quantidade: 100,
+    possuiBojo: true
+  });
+
+  const eventos = [];
+  const parar = store.assinar("ordens", evento => eventos.push(evento));
+  store.substituirItem("ordens", {
+    id: "op-1",
+    numeroOP: "1",
+    quantidade: 100
+  });
+  parar();
+
+  const ordem = store.obter("ordens", "op-1");
+  assert.equal("possuiBojo" in ordem, false);
+  assert.equal(eventos.length, 1);
+  assert.equal(eventos[0].tipo, "substituir_item");
+});
+
 test("assinantes recebem somente mudanças do domínio assinado", () => {
   const store = criarStoreCorpoNu();
   const eventos = [];
