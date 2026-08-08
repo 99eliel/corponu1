@@ -17,17 +17,19 @@ test("modo controlado é explicitamente ordens-manejo", () => {
 
 test("escrita controlada só admite coleções operacionais desta etapa", () => {
   assert.match(bridge, /new Set\(\["ordensProducao", "movimentacoesProducao"\]\)/);
-  const trecho = bridge.match(/const COLECOES_ORDENS_MANEJO = new Set\(([^;]+)\);/)?.[1] || "";
+  const trecho = bridge.match(/const COLECOES_OPERACIONAIS_CONTROLADAS = new Set\(([^;]+)\);/)?.[1] || "";
   assert.doesNotMatch(trecho, /entregasPagamento/);
   assert.doesNotMatch(trecho, /faccoes/);
   assert.doesNotMatch(trecho, /configuracoes/);
-  assert.match(bridge, /exigirColecaoPermitida\(ref\)/);
+  assert.match(bridge, /exigirColecaoOperacional\(ref\)/);
 });
 
-test("financeiro continua sem transação no modo controlado", () => {
-  assert.match(bridge, /runTransaction: escritaCompleta \? firestoreSdk\.runTransaction : bloqueada/);
+test("Ordens/Manejo não ganha transação financeira por existir modo separado de chegada", () => {
+  assert.match(bridge, /const escritaOrdensManejo = modoEscrita === "ordens-manejo"/);
+  assert.match(bridge, /runTransaction: escritaCompleta \? firestoreSdk\.runTransaction : \(escritaFaccoesChegada \? runTransactionChegadaControlada : bloqueada\)/);
   assert.match(bridge, /updateDoc: escritaCompleta \? firestoreSdk\.updateDoc : bloqueada/);
   assert.match(bridge, /deleteDoc: escritaCompleta \? firestoreSdk\.deleteDoc : bloqueada/);
+  assert.doesNotMatch(bridge, /escritaOrdensManejo \? runTransaction/);
 });
 
 test("cada commit real pede confirmação GRAVAR", () => {
