@@ -22,11 +22,12 @@ test("escrita real permanece bloqueada por padrão e modos de escrita são expl�
   assert.match(bridge, /parametros\.get\("v2write"\)/);
   assert.match(bridge, /const escritaCompleta = modoEscrita === "1"/);
   assert.match(bridge, /const escritaOrdensManejo = modoEscrita === "ordens-manejo"/);
-  assert.match(bridge, /const escritaLiberada = escritaCompleta \|\| escritaOrdensManejo/);
+  assert.match(bridge, /const escritaFaccoesChegada = modoEscrita === "faccoes-chegada"/);
+  assert.match(bridge, /const escritaLiberada = escritaCompleta \|\| escritaOrdensManejo \|\| escritaFaccoesChegada/);
   assert.match(bridge, /ESCRITA_V2_BLOQUEADA_NESTA_ETAPA/);
   assert.match(bridge, /setDoc: escritaCompleta \? firestoreSdk\.setDoc : \(escritaOrdensManejo \? setDocControlado : bloqueada\)/);
   assert.match(bridge, /writeBatch: escritaCompleta \? firestoreSdk\.writeBatch : \(escritaOrdensManejo \? writeBatchControlado : bloqueada\)/);
-  assert.match(bridge, /runTransaction: escritaCompleta \? firestoreSdk\.runTransaction : bloqueada/);
+  assert.match(bridge, /runTransaction: escritaCompleta \? firestoreSdk\.runTransaction : \(escritaFaccoesChegada \? runTransactionChegadaControlada : bloqueada\)/);
   assert.match(bridge, /addEventListener\("submit"/);
   assert.match(bridge, /ehBotaoDeEscrita/);
 });
