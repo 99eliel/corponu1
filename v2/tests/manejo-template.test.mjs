@@ -10,7 +10,7 @@ test("Manejo possui abas explícitas de Sutiã e Calcinha", () => {
   assert.match(html, /data-v2-manejo-setor="calcinha"/);
 });
 
-test("Manejo mantém necessidade livre e campos operacionais principais", () => {
+test("Manejo mantém somente os campos operacionais corretos", () => {
   const html = templateManejoV2();
   for (const textoEsperado of [
     "Necessidade",
@@ -19,49 +19,71 @@ test("Manejo mantém necessidade livre e campos operacionais principais", () => 
     "Tecido",
     "Data Tecido",
     "Fase Bojo",
-    "Fase Lateral",
-    "Facção",
-    "Chegada",
-    "Falta",
-    "CELU"
+    "Fase Lateral"
   ]) {
     assert.match(html, new RegExp(textoEsperado, "i"));
   }
 });
 
-test("linha possui Fase Bojo e Fase Lateral com digitação livre e sugestões", () => {
+test("linha do Manejo não possui Facção, Chegada, Falta ou CELU como campos", () => {
   const linha = htmlLinhaManejo({
     id: "op-1",
     numeroOP: "1",
     referencia: "414",
     cor: "PRETO",
     quantidade: 100,
-    tipoPeca: "sutia",
-    manejosSetores: {
-      sutia: { fase: "SEPARAÇÃO" }
-    }
+    tipoPeca: "sutia"
+  }, "sutia");
+
+  for (const campo of ["faccao", "chegada", "falta", "celu"]) {
+    assert.doesNotMatch(linha, new RegExp(`data-campo="${campo}"`, "i"));
+  }
+});
+
+test("Fase Bojo e Fase Lateral mantêm digitação livre com sugestões", () => {
+  const linha = htmlLinhaManejo({
+    id: "op-1",
+    numeroOP: "1",
+    referencia: "414",
+    cor: "PRETO",
+    quantidade: 100,
+    tipoPeca: "sutia"
   }, "sutia");
 
   assert.match(linha, /data-campo="faseBojo"/);
   assert.match(linha, /data-campo="faseLateral"/);
   assert.equal((linha.match(/list="v2ManejoFasesSugestoes"/g) || []).length, 2);
-  assert.equal((linha.match(/placeholder="Digite ou escolha"/g) || []).length, 2);
-  assert.match(linha, /data-campo="faseBojo"[^>]*value="SEPARAÇÃO"/);
-  assert.match(linha, /data-campo="faseLateral"[^>]*value=""/);
 });
 
-test("filtros estruturados incluem Fase Bojo e Fase Lateral separadas", () => {
+test("filtros estruturados existem e podem acumular", () => {
   const html = templateManejoV2();
-  for (const campo of ["busca", "status", "referencia", "cor", "faseBojo", "faseLateral", "faccao", "necessidade"]) {
+  for (const campo of ["busca", "status", "referencia", "cor", "faseBojo", "faseLateral", "necessidade"]) {
     assert.match(html, new RegExp(`name="${campo}"`));
   }
+  assert.doesNotMatch(html, /name="faccao"/);
   assert.match(html, /data-v2-limpar-filtros/);
 });
 
-test("ações da linha são Salvar, Enviar facção e Enviar célula", () => {
+test("ações da linha são somente Salvar e Enviar facção", () => {
+  const linha = htmlLinhaManejo({
+    id: "op-1",
+    numeroOP: "1",
+    referencia: "414",
+    cor: "PRETO",
+    quantidade: 100,
+    tipoPeca: "sutia"
+  }, "sutia");
+  assert.match(linha, /data-v2-salvar-manejo/);
+  assert.match(linha, /data-v2-enviar-faccao/);
+  assert.doesNotMatch(linha, /data-v2-enviar-celula/);
+  assert.doesNotMatch(linha, /Enviar célula/i);
+});
+
+test("modal de envio é exclusivo para Facção", () => {
   const html = templateManejoV2();
-  assert.match(html, /data-v2-manejo-lista/);
-  assert.match(html, /Nenhuma ação desta tela gera pagamento/);
+  assert.match(html, /Enviar para Facção/);
+  assert.doesNotMatch(html, /Enviar para Célula/i);
+  assert.doesNotMatch(html, /name="tipoDestino"/);
 });
 
 test("modal de envio não pergunta Lateral ou Bojo", () => {
