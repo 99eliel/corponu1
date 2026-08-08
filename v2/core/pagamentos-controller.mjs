@@ -21,9 +21,7 @@ export class PagamentosController {
     return itens;
   }
 
-  acabou() {
-    return this.pagamentosRepo.acabou();
-  }
+  acabou() { return this.pagamentosRepo.acabou(); }
 
   listar(filtros = {}) {
     const itens = filtrarPagamentos(this.store.listar("pagamentos"), filtros);
@@ -35,10 +33,19 @@ export class PagamentosController {
     return relatorioSimplificadoPix(itens, this.store.listar("faccoes"));
   }
 
-  async prepararQuitacao(filtros = {}) {
+  async buscarFiltradosCompletos(filtros = {}) {
     const todos = await this.pagamentosRepo.buscarTodos({ competencia: filtros.competencia });
-    const filtrados = filtrarPagamentos(todos, filtros);
-    const resumo = resumoQuitacao(filtrados);
+    const itens = filtrarPagamentos(todos, filtros);
+    return {
+      itens,
+      resumo: resumirPagamentos(itens),
+      simplificado: relatorioSimplificadoPix(itens, this.store.listar("faccoes"))
+    };
+  }
+
+  async prepararQuitacao(filtros = {}) {
+    const { itens } = await this.buscarFiltradosCompletos(filtros);
+    const resumo = resumoQuitacao(itens);
     return {
       ok: resumo.quantidade > 0,
       erros: resumo.quantidade ? [] : ["NENHUM_PAGAMENTO_PENDENTE"],
@@ -49,9 +56,7 @@ export class PagamentosController {
 
   async quitarPreparados(preparado, { usuario = null } = {}) {
     const ids = preparado?.ids || preparado?.resumo?.ids || [];
-    if (!ids.length) {
-      return { ok: false, erros: ["NENHUM_PAGAMENTO_PENDENTE"], resumo: preparado?.resumo || null };
-    }
+    if (!ids.length) return { ok: false, erros: ["NENHUM_PAGAMENTO_PENDENTE"], resumo: preparado?.resumo || null };
 
     const resultado = await this.pagamentosRepo.quitarEmLote(ids, { usuario });
     if (!resultado.ok) return { ...resultado, resumo: preparado?.resumo || null };
@@ -60,7 +65,6 @@ export class PagamentosController {
       const atual = this.store.obter("pagamentos", id);
       if (atual) this.store.upsert("pagamentos", { ...atual, statusPagamento: "pago" });
     });
-
     return { ok: true, erros: [], resumo: preparado?.resumo || null, ids: resultado.ids };
   }
 
