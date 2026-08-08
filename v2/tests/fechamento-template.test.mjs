@@ -20,6 +20,23 @@ test("tela possui OP, serviço, responsável e quantidade sem ocorrência", () =
   assert.match(html, /data-v2-saldo-processo/);
 });
 
+test("serviço fica bloqueado até localizar a OP e não traz opções incompatíveis hard-coded", () => {
+  const html = templateFechamentoPagamento();
+  assert.match(html, /name="processo" required disabled/);
+  assert.match(html, />Busque uma OP primeiro</);
+  for (const processo of [
+    "ENCAPAR BOJO",
+    "ALÇA",
+    "LATERAL",
+    "SUTIÃ MONTAGEM",
+    "SUTIÃ COMPLETO",
+    "CALCINHA MONTAGEM",
+    "CALCINHA COMPLETA"
+  ]) {
+    assert.doesNotMatch(html, new RegExp(`<option[^>]*>${processo}</option>`));
+  }
+});
+
 test("tela não possui campo operacional de chegada ou movimentação", () => {
   const html = templateFechamentoPagamento();
   assert.doesNotMatch(html, /name="dataChegada"/i);
