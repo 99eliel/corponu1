@@ -65,6 +65,22 @@ export class CorpoNuStore {
     return this.listar(dominio);
   }
 
+  mesclar(dominio, itens = []) {
+    validarDominio(dominio);
+    let alterados = 0;
+
+    for (const item of itens || []) {
+      if (!item || item.id == null || texto(item.id) === "") continue;
+      const id = String(item.id);
+      const anterior = this.mapas[dominio].get(id) || {};
+      this.mapas[dominio].set(id, { ...anterior, ...copiar(item), id });
+      alterados += 1;
+    }
+
+    if (alterados) this.#notificar(dominio, "mesclar");
+    return this.listar(dominio);
+  }
+
   substituirItem(dominio, item) {
     validarDominio(dominio);
     if (!item || item.id == null || texto(item.id) === "") {
