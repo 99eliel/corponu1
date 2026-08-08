@@ -10,8 +10,9 @@
   const modoEscrita = String(parametros.get("v2write") || "").trim().toLowerCase();
   const escritaCompleta = modoEscrita === "1";
   const escritaOrdensManejo = modoEscrita === "ordens-manejo";
-  const escritaLiberada = escritaCompleta || escritaOrdensManejo;
-  const COLECOES_ORDENS_MANEJO = new Set(["ordensProducao", "movimentacoesProducao"]);
+  const escritaFaccoesChegada = modoEscrita === "faccoes-chegada";
+  const escritaLiberada = escritaCompleta || escritaOrdensManejo || escritaFaccoesChegada;
+  const COLECOES_OPERACIONAIS_CONTROLADAS = new Set(["ordensProducao", "movimentacoesProducao"]);
   const FIREBASE_VERSION = "10.12.5";
   const FIREBASE_BASE = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
 
@@ -45,17 +46,17 @@
     const caminhoRef = ref => String(ref?.path || ref?._key?.path?.canonicalString?.() || "");
     const colecaoRaiz = ref => caminhoRef(ref).split("/").filter(Boolean)[0] || "";
 
-    function exigirColecaoPermitida(ref) {
+    function exigirColecaoOperacional(ref) {
       if (escritaCompleta) return;
       const colecao = colecaoRaiz(ref);
-      if (!escritaOrdensManejo || !COLECOES_ORDENS_MANEJO.has(colecao)) {
+      if (!COLECOES_OPERACIONAIS_CONTROLADAS.has(colecao)) {
         throw new Error(`ESCRITA_V2_BLOQUEADA_NESTA_ETAPA: ${colecao || "coleção desconhecida"}`);
       }
     }
 
     function confirmarGravacao(descricao) {
       if (escritaCompleta) return;
-      if (!escritaOrdensManejo) return bloqueada();
+      if (!escritaOrdensManejo && !escritaFaccoesChegada) return bloqueada();
       const resposta = window.prompt(
         `ATENÇÃO: esta ação vai gravar no Firebase REAL.\n\n${descricao}\n\nDigite GRAVAR para confirmar:`,
         ""
@@ -63,6 +64,33 @@
       if (String(resposta || "").trim().toUpperCase() !== "GRAVAR") {
         throw new Error("GRAVACAO_REAL_CANCELADA_PELO_USUARIO");
       }
+    }
+
+    function validarPatchChegada(ref, dados, opcoes = {}) {
+      exigirColecaoOperacional(ref);
+      if (!escritaFaccoesChegada || escritaCompleta) return;
+      if (opcoes?.merge !== true) throw new Error("CHEGADA_V2_EXIGE_MERGE");
+
+      const colecao = colecaoRaiz(ref);
+      if (colecao === "movimentacoesProducao") {
+        const chegadaValida = dados?.chegadaInformada === true || dados?.confirmacaoChegadaOperacional === true;
+        if (!chegadaValida) throw new Error("FACCOES_V2_APENAS_CHEGADA_NESTA_ETAPA");
+        if (dados?.reenvioCriadoId || dados?.encaminhadoMovimentacaoId) {
+          throw new Error("REENVIO_V2_BLOQUEADO_NESTA_ETAPA");
+        }
+        return;
+      }
+
+      if (colecao === "ordensProducao") {
+        const chaves = Object.keys(dados || {});
+        const permitidas = new Set(["componentesConsolidados", "atualizadoEm", "atualizadoPor"]);
+        if (!chaves.length || chaves.some(chave => !permitidas.has(chave)) || !dados?.componentesConsolidados) {
+          throw new Error("OP_V2_APENAS_COMPONENTES_DA_CHEGADA_NESTA_ETAPA");
+        }
+        return;
+      }
+
+      bloqueada();
     }
 
     async function getDocMetricado(ref) {
@@ -106,7 +134,8 @@
     }
 
     async function setDocControlado(ref, dados, opcoes) {
-      exigirColecaoPermitida(ref);
+      if (!escritaOrdensManejo) return bloqueada();
+      exigirColecaoOperacional(ref);
       confirmarGravacao(`Destino: ${caminhoRef(ref)}`);
       return firestoreSdk.setDoc(ref, dados, opcoes);
     }
@@ -118,19 +147,19 @@
       const destinos = [];
       const proxy = {
         set(ref, dados, opcoes) {
-          exigirColecaoPermitida(ref);
+          exigirColecaoOperacional(ref);
           destinos.push(caminhoRef(ref));
           real.set(ref, dados, opcoes);
           return proxy;
         },
         update(ref, ...args) {
-          exigirColecaoPermitida(ref);
+          exigirColecaoOperacional(ref);
           destinos.push(caminhoRef(ref));
           real.update(ref, ...args);
           return proxy;
         },
         delete(ref) {
-          exigirColecaoPermitida(ref);
+          exigirColecaoOperacional(ref);
           destinos.push(caminhoRef(ref));
           real.delete(ref);
           return proxy;
@@ -141,6 +170,32 @@
         }
       };
       return proxy;
+    }
+
+    async function runTransactionChegadaControlada(db, executor, ...resto) {
+      if (!escritaFaccoesChegada) return bloqueada();
+      confirmarGravacao("Transação operacional de Facções/Chegada. Nenhum pagamento será criado.");
+
+      return firestoreSdk.runTransaction(db, async real => {
+        const proxy = {
+          get(ref) {
+            exigirColecaoOperacional(ref);
+            return real.get(ref);
+          },
+          set(ref, dados, opcoes) {
+            validarPatchChegada(ref, dados, opcoes);
+            real.set(ref, dados, opcoes);
+            return proxy;
+          },
+          update() {
+            throw new Error("CHEGADA_V2_UPDATE_DIRETO_BLOQUEADO");
+          },
+          delete() {
+            throw new Error("CHEGADA_V2_DELETE_BLOQUEADO");
+          }
+        };
+        return executor(proxy);
+      }, ...resto);
     }
 
     return {
@@ -161,7 +216,7 @@
         updateDoc: escritaCompleta ? firestoreSdk.updateDoc : bloqueada,
         deleteDoc: escritaCompleta ? firestoreSdk.deleteDoc : bloqueada,
         writeBatch: escritaCompleta ? firestoreSdk.writeBatch : (escritaOrdensManejo ? writeBatchControlado : bloqueada),
-        runTransaction: escritaCompleta ? firestoreSdk.runTransaction : bloqueada
+        runTransaction: escritaCompleta ? firestoreSdk.runTransaction : (escritaFaccoesChegada ? runTransactionChegadaControlada : bloqueada)
       },
       medir,
       totais: snapshotMetricas
@@ -185,6 +240,21 @@
 
     const raiz = document.createElement("div");
     raiz.id = "corponuV2FirebaseLab";
+    const badge = escritaCompleta
+      ? "ESCRITA REAL LIBERADA"
+      : escritaOrdensManejo
+        ? "ESCRITA CONTROLADA · ORDENS + MANEJO"
+        : escritaFaccoesChegada
+          ? "ESCRITA CONTROLADA · FACÇÕES + CHEGADA"
+          : "SOMENTE LEITURA";
+    const avisoModo = escritaCompleta
+      ? "ATENÇÃO: escrita real completa liberada."
+      : escritaOrdensManejo
+        ? "ESCRITA CONTROLADA: somente Ordens e Manejo podem gravar. Cada commit exige digitar GRAVAR. Facções, Chegada e Financeiro continuam bloqueados."
+        : escritaFaccoesChegada
+          ? "ESCRITA CONTROLADA: somente Informar chegada e Confirmar chegada podem gravar. Reenvio, Ordens, Manejo e Financeiro estão bloqueados. Cada transação exige digitar GRAVAR."
+          : "Modo seguro: consultas usam o Firestore real e toda escrita está bloqueada.";
+
     raiz.innerHTML = `
       <style>
         #corponuV2FirebaseLab{position:fixed;inset:0;z-index:2147483000;background:#f5f7fb;color:#172033;overflow:auto;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -194,7 +264,7 @@
         <div class="v2fb-linha">
           <div><h2 class="v2fb-titulo">Corpo Nu Flow V2 · Firebase real</h2><p class="v2fb-sub">${escapar(perfil?.nome || usuario?.email || usuario?.uid || "Usuário")}</p></div>
           <div class="v2fb-acoes">
-            <span class="v2fb-badge">${escritaCompleta ? "ESCRITA REAL LIBERADA" : escritaOrdensManejo ? "ESCRITA CONTROLADA · ORDENS + MANEJO" : "SOMENTE LEITURA"}</span>
+            <span class="v2fb-badge">${badge}</span>
             <button type="button" data-v2fb-mais-ops>Carregar mais OPs</button>
             <button type="button" data-v2fb-fechar>Fechar V2</button>
           </div>
@@ -209,7 +279,7 @@
         </nav>
       </header>
       <main class="v2fb-corpo">
-        <div class="v2fb-aviso" data-v2fb-aviso>${escritaCompleta ? "ATENÇÃO: escrita real completa liberada." : escritaOrdensManejo ? "ESCRITA CONTROLADA: somente Ordens e Manejo podem gravar. Cada commit exige digitar GRAVAR. Facções, Chegada e Financeiro continuam bloqueados." : "Modo seguro: consultas usam o Firestore real e toda escrita está bloqueada."}</div>
+        <div class="v2fb-aviso" data-v2fb-aviso>${avisoModo}</div>
         <div id="corponuV2FirebaseConteudo"><div class="v2fb-loading">Preparando V2…</div></div>
       </main>`;
     document.body.appendChild(raiz);
@@ -222,14 +292,16 @@
     return /^(salvar|enviar|confirmar envio|confirmar chegada|informar chegada|reenviar|quitar|confirmar pagamentos|marcar.*pago)/i.test(String(botao.textContent || "").trim());
   }
 
-  function instalarBloqueioInterface(conteudo, aviso, podeEscreverModulo) {
+  function instalarBloqueioInterface(conteudo, aviso, podeEscreverAcao) {
     if (escritaCompleta) return;
     const mensagem = () => escritaOrdensManejo
       ? "Escrita controlada: somente Ordens e Manejo podem gravar nesta etapa."
-      : "Modo somente leitura: esta gravação está bloqueada.";
+      : escritaFaccoesChegada
+        ? "Escrita controlada: somente Informar chegada e Confirmar chegada podem gravar. Reenvio e financeiro continuam bloqueados."
+        : "Modo somente leitura: esta gravação está bloqueada.";
 
     conteudo.addEventListener("submit", event => {
-      if (podeEscreverModulo()) return;
+      if (podeEscreverAcao({ event, submit: true })) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       aviso.textContent = mensagem();
@@ -237,7 +309,7 @@
 
     conteudo.addEventListener("click", event => {
       const botao = event.target.closest?.("button");
-      if (!ehBotaoDeEscrita(botao) || podeEscreverModulo()) return;
+      if (!ehBotaoDeEscrita(botao) || podeEscreverAcao({ event, botao, submit: false })) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       aviso.textContent = mensagem();
@@ -315,11 +387,13 @@
       let moduloAtual = "";
       let ultimoDiagnostico = null;
 
-      instalarBloqueioInterface(
-        conteudo,
-        aviso,
-        () => escritaCompleta || (escritaOrdensManejo && ["ordens", "manejo"].includes(moduloAtual))
-      );
+      instalarBloqueioInterface(conteudo, aviso, ({ event, botao, submit }) => {
+        if (escritaCompleta) return true;
+        if (escritaOrdensManejo) return ["ordens", "manejo"].includes(moduloAtual);
+        if (!escritaFaccoesChegada || moduloAtual !== "faccoes") return false;
+        if (submit) return event?.target?.matches?.("[data-v2-chegada-form]") === true;
+        return botao?.matches?.("[data-v2-informar-chegada],[data-v2-confirmar-chegada]") === true;
+      });
 
       async function montarDiagnostico() {
         moduloAtual = "diagnostico";
