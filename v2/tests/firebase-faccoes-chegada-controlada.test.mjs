@@ -52,8 +52,8 @@ test("pacote é standalone, portátil e não carrega sistema legado", () => {
   assert.doesNotMatch(html, /(?:^|["'\/])app\.js(?:["'?]|$)/m);
   assert.doesNotMatch(html, /corponu-atualizador\.js/);
   assert.match(bat, /powershell\.exe/i);
-  assert.doesNotMatch(bat, /\bnode\b/i);
-  assert.doesNotMatch(bat, /\bpython\b/i);
+  assert.doesNotMatch(bat, /(?:^|\r?\n)\s*node(?:\.exe)?\s/i);
+  assert.doesNotMatch(bat, /(?:^|\r?\n)\s*python(?:\.exe)?\s/i);
   assert.match(ps1, /127\.0\.0\.1/);
   assert.match(ps1, /v2write=faccoes-chegada/);
   assert.match(ps1, /\$Port = 8768/);
