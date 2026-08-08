@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Corpo Nu Flow V2 · Pagamentos Somente Leitura</title>
+  <link rel="stylesheet" href="../style.css" />
+  <style>
+    body{margin:0;background:#f5f7fb;color:#172033;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.login-pag{min-height:100vh;display:grid;place-items:center;padding:24px}.card-pag{width:min(500px,100%);background:#fff;border:1px solid #dfe4ec;border-radius:18px;padding:24px;box-shadow:0 18px 55px rgba(15,23,42,.10)}.card-pag h1{font-size:23px;margin:0 0 6px}.card-pag p{margin:0 0 18px;color:#64748b;line-height:1.45}.badge-pag{display:inline-flex;margin-bottom:16px;padding:6px 10px;border-radius:999px;background:#dcfce7;color:#166534;font-size:12px;font-weight:800}.card-pag label{display:grid;gap:6px;margin:12px 0;font-weight:700;font-size:13px}.card-pag input{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:11px 12px;font:inherit}.card-pag button{width:100%;border:0;border-radius:10px;padding:12px 14px;background:#172033;color:#fff;font-weight:800;cursor:pointer;margin-top:8px}.card-pag button:disabled{opacity:.6;cursor:wait}.status-pag{min-height:20px;margin-top:12px;font-size:13px;color:#475569}.status-pag.erro{color:#b91c1c}.notice-pag{margin-top:16px;padding:11px 12px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;color:#166534;font-size:12px;line-height:1.5}.pag-shell{min-height:100vh}.pag-topo{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid #dfe4ec;padding:14px 18px}.pag-topo-linha{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}.pag-topo h1{font-size:20px;margin:0}.pag-topo p{margin:4px 0 0;color:#64748b;font-size:13px}.pag-badge{display:inline-flex;padding:7px 10px;border-radius:999px;background:#dcfce7;color:#166534;font-size:12px;font-weight:800}.pag-aviso{max-width:1500px;margin:16px auto 0;padding:12px 14px;border:1px solid #a7f3d0;background:#ecfdf5;color:#166534;border-radius:11px;font-size:13px;font-weight:700}.pag-conteudo{max-width:1500px;margin:0 auto;padding:18px}
+  </style>
+</head>
+<body>
+  <main class="login-pag" id="firebasePagamentosLogin">
+    <section class="card-pag">
+      <span class="badge-pag">FIREBASE REAL · SOMENTE LEITURA</span>
+      <h1>Corpo Nu Flow V2</h1>
+      <p>Validação real da nova tela de Pagamentos. Filtros e relatórios funcionam normalmente, mas nenhum lançamento pode ser quitado ou alterado.</p>
+      <form id="firebasePagamentosForm">
+        <label>E-mail<input id="firebasePagamentosEmail" type="email" autocomplete="username" required /></label>
+        <label>Senha<input id="firebasePagamentosSenha" type="password" autocomplete="current-password" required /></label>
+        <button id="firebasePagamentosEntrar" type="submit">Entrar em Pagamentos V2</button>
+        <div class="status-pag" id="firebasePagamentosStatus" aria-live="polite"></div>
+      </form>
+      <div class="notice-pag"><strong>Nenhuma escrita é permitida.</strong> O botão de quitação fica desativado e o Firestore usado por esta tela bloqueia qualquer lote de escrita.</div>
+    </section>
+  </main>
+
+  <section class="pag-shell" id="firebasePagamentosApp" hidden>
+    <header class="pag-topo">
+      <div class="pag-topo-linha">
+        <div><h1>Corpo Nu Flow V2 · Pagamentos</h1><p id="firebasePagamentosUsuario"></p></div>
+        <span class="pag-badge">SOMENTE LEITURA · RELATÓRIOS LIBERADOS</span>
+      </div>
+    </header>
+    <div class="pag-aviso">Firebase real. Você pode filtrar, carregar mais e gerar os relatórios completo e simplificado. Marcar como pago permanece bloqueado nesta etapa.</div>
+    <main class="pag-conteudo" id="firebasePagamentosConteudo"></main>
+  </section>
+
+  <script type="module" src="./firebase-pagamentos-leitura.mjs"></script>
+</body>
+</html>
