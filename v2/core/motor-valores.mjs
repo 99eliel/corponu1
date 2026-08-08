@@ -51,6 +51,52 @@ export class MotorValoresV2 {
     this.valoresRepo = valoresRepo;
   }
 
+  async diagnosticarComponentes({ op, processo } = {}) {
+    const ordem = normalizarOPLegada(op || {});
+    const processoNormalizado = processoCanonico(processo);
+
+    if (processoNormalizado !== PROCESSO_SUTIA_COMPLETO) {
+      return {
+        exigeConferencia: false,
+        especial: false,
+        faltantes: [],
+        conhecidos: {},
+        componentes: {}
+      };
+    }
+
+    const configuracao = await this.valoresRepo.buscarConfiguracaoSutiaCompleto();
+    const referencia = normalizarReferencia(ordem.referencia);
+    const referenciaEspecial = normalizarReferencia(configuracao?.referenciaEspecial || "912");
+    const especial = Boolean(referencia && referenciaEspecial && referencia === referenciaEspecial);
+    const componentes = componentesFinanceirosDaOP(ordem);
+
+    if (especial) {
+      return {
+        exigeConferencia: false,
+        especial: true,
+        faltantes: [],
+        conhecidos: {},
+        componentes
+      };
+    }
+
+    const faltantes = NOMES_COMPONENTES.filter(nome => componentes[nome] === null);
+    const conhecidos = Object.fromEntries(
+      NOMES_COMPONENTES
+        .filter(nome => componentes[nome] !== null)
+        .map(nome => [nome, componentes[nome]])
+    );
+
+    return {
+      exigeConferencia: faltantes.length > 0,
+      especial: false,
+      faltantes,
+      conhecidos,
+      componentes
+    };
+  }
+
   async calcular({ op, processo, quantidade, componentes = {} } = {}) {
     const ordem = normalizarOPLegada(op || {});
     const processoNormalizado = processoCanonico(processo);
