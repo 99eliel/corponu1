@@ -46,7 +46,7 @@ function Send-Response {
 
 try {
   $listener.Start()
-  $url = "http://127.0.0.1:$Port/?v2firebase=1"
+  $url = "http://127.0.0.1:$Port/firebase-v2-leitura/?v2firebase=1"
 
   Write-Host ""
   Write-Host "============================================================"
@@ -55,7 +55,8 @@ try {
   Write-Host "============================================================"
   Write-Host ""
   Write-Host "Servidor local iniciado em: $url"
-  Write-Host "O painel V2 vai usar o Firebase real apenas para leitura."
+  Write-Host "O painel V2 usa um login isolado e o Firebase real apenas para leitura."
+  Write-Host "O sistema legado e seus listeners nao sao carregados."
   Write-Host "Nao precisa de Node.js nem Python."
   Write-Host ""
   Write-Host "Mantenha esta janela aberta enquanto estiver validando."
@@ -97,7 +98,7 @@ try {
 
       $rawPath = $parts[1].Split("?")[0]
       $requestPath = [System.Uri]::UnescapeDataString($rawPath)
-      if ($requestPath -eq "/") { $requestPath = "/index.html" }
+      if ($requestPath -eq "/") { $requestPath = "/firebase-v2-leitura/" }
 
       $relative = $requestPath.TrimStart("/").Replace("/", [System.IO.Path]::DirectorySeparatorChar)
       $candidate = [System.IO.Path]::GetFullPath((Join-Path $root $relative))
