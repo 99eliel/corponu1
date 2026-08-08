@@ -1,28 +1,26 @@
-import { criarFaccoesRepoFirestore } from "../adapters/faccoes-repo.mjs";
-import { criarOrdensGravacaoRepoFirestore } from "../adapters/ordens-repo.mjs";
-import { criarProdutosRepoFirestore } from "../adapters/produtos-repo.mjs";
 import { OrdensController } from "../core/ordens-controller.mjs";
 import { OrdensService } from "../core/ordens-service.mjs";
-import { criarStoreCorpoNu } from "../core/store.mjs";
+import { criarContextoFirebaseV2 } from "./firebase-context.mjs";
 import { montarTelaOrdens } from "../ui/ordens-page.mjs";
 
 export async function criarOrdensAppV2({
   container,
   db,
   fs,
-  store = criarStoreCorpoNu(),
+  store,
+  contexto = null,
   fallbackFaccoesPorProcesso = {},
   obterUsuario = () => null,
   confirmarConversao = null,
   auditoriaRepo = null
 }) {
-  if (!db) throw new Error("Firestore db não configurado.");
-  if (!fs) throw new Error("Firestore API não configurada.");
+  const ctx = contexto || criarContextoFirebaseV2({ db, fs, store });
+  const storeV2 = ctx.store;
+  const produtosRepo = ctx.produtosRepo;
+  const ordensRepo = ctx.ordensGravacaoRepo;
+  const faccoesRepo = ctx.faccoesRepo;
 
-  const produtosRepo = criarProdutosRepoFirestore({ db, fs, store });
-  const ordensRepo = criarOrdensGravacaoRepoFirestore({ db, fs, store });
-  const faccoesRepo = criarFaccoesRepoFirestore({ db, fs, store });
-  await faccoesRepo.garantirCarregadas();
+  await ctx.garantirFaccoes();
 
   const ordensService = new OrdensService({
     produtosRepo,
@@ -30,20 +28,21 @@ export async function criarOrdensAppV2({
     auditoriaRepo
   });
   const controller = new OrdensController({
-    store,
+    store: storeV2,
     ordensService,
     fallbackFaccoesPorProcesso
   });
   const tela = montarTelaOrdens({
     container,
     controller,
-    store,
+    store: storeV2,
     obterUsuario,
     confirmarConversao
   });
 
   return {
-    store,
+    contexto: ctx,
+    store: storeV2,
     produtosRepo,
     ordensRepo,
     faccoesRepo,
