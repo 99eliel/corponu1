@@ -1,42 +1,41 @@
-import { criarFaccoesRepoFirestore } from "../adapters/faccoes-repo.mjs";
-import { criarManejoRepoFirestore } from "../adapters/manejo-repo.mjs";
 import { ManejoController } from "../core/manejo-controller.mjs";
 import { ManejoService } from "../core/manejo-service.mjs";
-import { criarStoreCorpoNu } from "../core/store.mjs";
+import { criarContextoFirebaseV2 } from "./firebase-context.mjs";
 import { montarTelaManejo } from "../ui/manejo-page.mjs";
 
 export async function criarManejoAppV2({
   container,
   db,
   fs,
-  store = criarStoreCorpoNu(),
+  store,
+  contexto = null,
   fallbackFaccoesPorProcesso = {},
   obterUsuario = () => null,
   auditoriaRepo = null
 }) {
-  if (!db) throw new Error("Firestore db não configurado.");
-  if (!fs) throw new Error("Firestore API não configurada.");
+  const ctx = contexto || criarContextoFirebaseV2({ db, fs, store });
+  const storeV2 = ctx.store;
+  const faccoesRepo = ctx.faccoesRepo;
+  const manejoRepo = ctx.manejoRepo;
 
-  const faccoesRepo = criarFaccoesRepoFirestore({ db, fs, store });
-  const manejoRepo = criarManejoRepoFirestore({ db, fs, store });
-
-  await faccoesRepo.garantirCarregadas();
+  await ctx.garantirFaccoes();
 
   const manejoService = new ManejoService({ manejoRepo, auditoriaRepo });
   const controller = new ManejoController({
-    store,
+    store: storeV2,
     manejoService,
     fallbackFaccoesPorProcesso
   });
   const tela = montarTelaManejo({
     container,
     controller,
-    store,
+    store: storeV2,
     obterUsuario
   });
 
   return {
-    store,
+    contexto: ctx,
+    store: storeV2,
     faccoesRepo,
     manejoRepo,
     manejoService,
