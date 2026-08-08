@@ -10,15 +10,13 @@ function documento(snapshot) {
   return { id: snapshot.id, ...snapshot.data() };
 }
 
-export function criarPagamentosConsultaRepoFirestore({ db, fs, colecao = "entregasPagamento" }) {
-  exigirApi(fs, [
-    "collection", "query", "where", "orderBy", "limit", "getDocs", "startAfter",
-    "doc", "writeBatch", "serverTimestamp"
-  ]);
+function ordenarPorCriacao(itens = []) {
+  return [...itens].sort((a, b) => String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")));
+}
 
-  if (colecao !== "entregasPagamento") {
-    throw new Error("Pagamentos V2 consulta somente entregasPagamento.");
-  }
+export function criarPagamentosConsultaRepoFirestore({ db, fs, colecao = "entregasPagamento" }) {
+  exigirApi(fs, ["collection", "query", "where", "orderBy", "limit", "getDocs", "startAfter", "doc", "writeBatch", "serverTimestamp"]);
+  if (colecao !== "entregasPagamento") throw new Error("Pagamentos V2 consulta somente entregasPagamento.");
 
   let cursorAtual = null;
   let filtrosAtuais = {};
@@ -27,20 +25,23 @@ export function criarPagamentosConsultaRepoFirestore({ db, fs, colecao = "entreg
   function consultaPagina({ competencia = "", limitePagina = 50, cursor = null } = {}) {
     const restricoes = [];
     const comp = normalizarCompetencia(competencia);
+    // Com competência definida, uma única igualdade já restringe o mês e evita
+    // depender de índice composto apenas para ordenar. A página é ordenada localmente.
     if (comp) restricoes.push(fs.where("competencia", "==", comp));
-    restricoes.push(fs.orderBy("criadoEm", "desc"));
+    else restricoes.push(fs.orderBy("criadoEm", "desc"));
     if (cursor) restricoes.push(fs.startAfter(cursor));
     restricoes.push(fs.limit(Math.max(1, Math.min(200, Number(limitePagina) || 50))));
     return fs.query(fs.collection(db, colecao), ...restricoes);
   }
 
   async function carregarPaginaInterna({ competencia = "", limitePagina = 50, cursor = null } = {}) {
-    const snapshot = await fs.getDocs(consultaPagina({ competencia, limitePagina, cursor }));
+    const tamanho = Math.max(1, Math.min(200, Number(limitePagina) || 50));
+    const snapshot = await fs.getDocs(consultaPagina({ competencia, limitePagina: tamanho, cursor }));
     const docs = snapshot.docs || [];
     return {
-      itens: docs.map(documento),
+      itens: ordenarPorCriacao(docs.map(documento)),
       cursor: docs.at(-1) || null,
-      acabou: docs.length < Math.max(1, Math.min(200, Number(limitePagina) || 50))
+      acabou: docs.length < tamanho
     };
   }
 
@@ -63,11 +64,9 @@ export function criarPagamentosConsultaRepoFirestore({ db, fs, colecao = "entreg
       return resultado.itens;
     },
 
-    acabou() {
-      return acabouAtual;
-    },
+    acabou() { return acabouAtual; },
 
-    async buscarTodos({ competencia = "", limitePagina = 200, maximo = 5000 } = {}) {
+    async buscarTodos({ competencia = "", limitePagina = 200, maximo = 10000 } = {}) {
       const itens = [];
       let cursor = null;
       let acabou = false;
@@ -77,29 +76,28 @@ export function criarPagamentosConsultaRepoFirestore({ db, fs, colecao = "entreg
         cursor = pagina.cursor;
         acabou = pagina.acabou || !cursor;
       }
-      return itens.slice(0, maximo);
+      if (!acabou && itens.length >= maximo) {
+        throw new Error("LIMITE_SEGURANCA_PAGAMENTOS_ATINGIDO");
+      }
+      return ordenarPorCriacao(itens);
     },
 
     async quitarEmLote(ids = [], { usuario = null } = {}) {
       const unicos = [...new Set((ids || []).map(texto).filter(Boolean))];
       if (!unicos.length) return { ok: false, erros: ["NENHUM_PAGAMENTO_PENDENTE"], ids: [] };
-
       const agora = fs.serverTimestamp();
       for (let inicio = 0; inicio < unicos.length; inicio += 400) {
         const lote = unicos.slice(inicio, inicio + 400);
         const batch = fs.writeBatch(db);
-        lote.forEach(id => {
-          batch.update(fs.doc(db, colecao, id), {
-            statusPagamento: "pago",
-            pagoEm: agora,
-            pagoPor: texto(usuario?.uid || usuario?.id),
-            pagoPorNome: texto(usuario?.nome || usuario?.displayName || usuario?.email),
-            atualizadoEm: agora
-          });
-        });
+        lote.forEach(id => batch.update(fs.doc(db, colecao, id), {
+          statusPagamento: "pago",
+          pagoEm: agora,
+          pagoPor: texto(usuario?.uid || usuario?.id),
+          pagoPorNome: texto(usuario?.nome || usuario?.displayName || usuario?.email),
+          atualizadoEm: agora
+        }));
         await batch.commit();
       }
-
       return { ok: true, erros: [], ids: unicos };
     }
   };
