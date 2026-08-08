@@ -27,8 +27,18 @@ jobs:
           set -euo pipefail
           while IFS= read -r -d '' arquivo; do
             echo "Validando $arquivo"
-            node --input-type=module --check < "$arquivo"
-          done < <(find . -maxdepth 1 -type f -name '*.js' -print0)
+            if [[ "$arquivo" == *.mjs ]]; then
+              node --check "$arquivo"
+            else
+              node --input-type=module --check < "$arquivo"
+            fi
+          done < <(find . -type f \( -name '*.js' -o -name '*.mjs' \) -not -path './.git/*' -print0)
+
+      - name: Executar testes automatizados V2
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test v2/tests/*.test.mjs
 
       - name: Validar JSON
         shell: bash
