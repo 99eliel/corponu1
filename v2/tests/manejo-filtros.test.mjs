@@ -19,6 +19,7 @@ const ORDENS = [
     manejosSetores: {
       sutia: {
         fase: "SEPARAÇÃO",
+        faseLateral: "PREPARAÇÃO",
         silkNome: "SILK A",
         tecidoNome: "TECIDO X",
         dataTecido: "2026-08-08",
@@ -40,7 +41,8 @@ const ORDENS = [
     necessidade: "NORMAL",
     manejosSetores: {
       sutia: {
-        fase: "CORTE",
+        faseBojo: "CORTE",
+        faseLateral: "",
         silkNome: "SILK B",
         tecidoNome: "TECIDO X",
         dataTecido: "2026-08-09",
@@ -63,6 +65,7 @@ const ORDENS = [
     manejosSetores: {
       sutia: {
         fase: "SEPARAÇÃO",
+        faseLateral: "CORTE",
         silkNome: "SILK A",
         tecidoNome: "TECIDO Y",
         dataTecido: "2026-08-08",
@@ -85,12 +88,35 @@ test("filtros acumulativos aplicam interseção estilo Excel", () => {
   const resultado = filtrarOrdensManejo(ORDENS, "sutia", {
     cor: "PRETO",
     referencia: "414",
-    fase: "SEPARAÇÃO",
+    faseBojo: "SEPARAÇÃO",
+    faseLateral: "PREPARAÇÃO",
     faccao: "DANUBIA",
     necessidade: "URGENTE"
   });
 
   assert.deepEqual(resultado.map(item => item.id), ["1"]);
+});
+
+test("Fase Bojo lê dados antigos de fase e Fase Lateral é independente", () => {
+  assert.deepEqual(
+    filtrarOrdensManejo(ORDENS, "sutia", { faseBojo: "SEPARAÇÃO" }).map(item => item.id),
+    ["1", "3"]
+  );
+  assert.deepEqual(
+    filtrarOrdensManejo(ORDENS, "sutia", { faseLateral: "PREPARAÇÃO" }).map(item => item.id),
+    ["1"]
+  );
+  assert.deepEqual(
+    filtrarOrdensManejo(ORDENS, "sutia", { faseBojo: "SEPARAÇÃO", faseLateral: "CORTE" }).map(item => item.id),
+    ["3"]
+  );
+});
+
+test("filtro legado fase continua apontando para Fase Bojo durante transição", () => {
+  assert.deepEqual(
+    filtrarOrdensManejo(ORDENS, "sutia", { fase: "CORTE" }).map(item => item.id),
+    ["2"]
+  );
 });
 
 test("adicionar outro filtro nunca reabre registros excluídos pelos anteriores", () => {
@@ -101,13 +127,13 @@ test("adicionar outro filtro nunca reabre registros excluídos pelos anteriores"
   assert.deepEqual(segundo.map(item => item.id), ["1"]);
 });
 
-test("busca livre acumula com filtros estruturados", () => {
+test("busca livre acumula com filtros estruturados e encontra as duas fases", () => {
   const resultado = filtrarOrdensManejo(ORDENS, "sutia", {
-    busca: "SILK A",
-    referencia: "500",
+    busca: "PREPARAÇÃO",
+    referencia: "414",
     cor: "PRETO"
   });
-  assert.deepEqual(resultado.map(item => item.id), ["3"]);
+  assert.deepEqual(resultado.map(item => item.id), ["1"]);
 });
 
 test("OP usa correspondência parcial para facilitar digitação", () => {
@@ -126,10 +152,12 @@ test("quantidade e falta são filtros numéricos exatos quando ativos", () => {
   );
 });
 
-test("opções dos filtros são derivadas dos dados sem duplicidade", () => {
+test("opções dos filtros derivam Fase Bojo e Fase Lateral sem duplicidade", () => {
   const opcoes = opcoesFiltrosManejo(ORDENS, "sutia");
   assert.deepEqual(opcoes.referencia, ["414", "500"]);
   assert.deepEqual(opcoes.cor, ["BLUSH", "PRETO"]);
-  assert.deepEqual(opcoes.fase, ["CORTE", "SEPARAÇÃO"]);
+  assert.deepEqual(opcoes.faseBojo, ["CORTE", "SEPARAÇÃO"]);
+  assert.deepEqual(opcoes.faseLateral, ["CORTE", "PREPARAÇÃO"]);
+  assert.deepEqual(opcoes.fase, opcoes.faseBojo);
   assert.deepEqual(opcoes.faccao, ["DANUBIA", "LIVIA"]);
 });
