@@ -5,23 +5,49 @@ const moeda = valor => Number(valor || 0).toLocaleString("pt-BR", { style: "curr
 const escapar = valor => String(valor ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 function competenciaAtual() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; }
 
+function rotuloStatus(status) {
+  if (status === "pago") return "Pago";
+  if (status === "sem_valor") return "Aguardando valor";
+  if (status === "cancelado") return "Cancelado";
+  return "Pendente";
+}
+
+function classeStatus(status) {
+  if (status === "pago") return "ok";
+  return "pending";
+}
+
+function rotuloOrigem(item) {
+  return item?.tipoRegistroFinanceiro === "v2" ? "Fechamento V2" : "Histórico";
+}
+
 function lerFiltros(container) {
   const raiz = container.querySelector("[data-v2-pagamentos-filtros]");
   const valor = nome => texto(raiz.querySelector(`[name="${nome}"]`)?.value);
-  return { competencia: valor("competencia"), responsavel: valor("responsavel"), referencia: valor("referencia"), processo: valor("processo"), numeroOP: valor("numeroOP"), status: valor("status") || "todos" };
+  return {
+    competencia: valor("competencia"),
+    responsavel: valor("responsavel"),
+    referencia: valor("referencia"),
+    processo: valor("processo"),
+    numeroOP: valor("numeroOP"),
+    origem: valor("origem") || "todos",
+    status: valor("status") || "todos"
+  };
 }
 
 function renderLista(tbody, itens) {
   tbody.innerHTML = itens.length ? itens.map(item => `<tr>
     <td><strong>${escapar(item.numeroOP || "-")}</strong></td><td>${escapar(item.competencia || "-")}</td>
+    <td><span class="badge">${escapar(rotuloOrigem(item))}</span></td>
     <td>${escapar(item.responsavel || "-")}</td><td>${escapar(item.referencia || "-")}</td><td>${escapar(item.processo || "-")}</td>
-    <td>${Number(item.quantidade || 0).toLocaleString("pt-BR")}</td><td>${escapar(moeda(item.valorUnitario))}</td>
-    <td><strong>${escapar(moeda(item.total))}</strong></td><td><span class="badge ${item.statusPagamento === "pago" ? "ok" : "pending"}">${item.statusPagamento === "pago" ? "Pago" : "Pendente"}</span></td>
-  </tr>`).join("") : `<tr><td colspan="9"><div class="empty">Nenhum pagamento encontrado com estes filtros.</div></td></tr>`;
+    <td>${Number(item.quantidade || 0).toLocaleString("pt-BR")}</td><td>${item.statusPagamento === "sem_valor" ? "-" : escapar(moeda(item.valorUnitario))}</td>
+    <td><strong>${item.statusPagamento === "sem_valor" ? "A definir" : escapar(moeda(item.total))}</strong></td>
+    <td><span class="badge ${classeStatus(item.statusPagamento)}">${escapar(rotuloStatus(item.statusPagamento))}</span></td>
+  </tr>`).join("") : `<tr><td colspan="10"><div class="empty">Nenhum pagamento encontrado com estes filtros.</div></td></tr>`;
 }
 
 function renderResumo(el, r, completo) {
-  el.innerHTML = `<strong>${r.quantidadeLancamentos}</strong> lançamentos <span>•</span> <strong>${Number(r.quantidadePecas || 0).toLocaleString("pt-BR")}</strong> peças <span>•</span> Total <strong>${moeda(r.total)}</strong> <span>•</span> Pendente <strong>${moeda(r.totalPendente)}</strong> <span>•</span> Pago <strong>${moeda(r.totalPago)}</strong>${completo ? "" : " <span>•</span> <small>totais dos registros carregados</small>"}`;
+  el.innerHTML = `<strong>${r.quantidadeLancamentos}</strong> lançamentos <span>•</span> <strong>${Number(r.quantidadePecas || 0).toLocaleString("pt-BR")}</strong> peças <span>•</span> Total <strong>${moeda(r.total)}</strong> <span>•</span> Pendente <strong>${moeda(r.totalPendente)}</strong> <span>•</span> Pago <strong>${moeda(r.totalPago)}</strong> <span>•</span> Histórico <strong>${r.historicos || 0}</strong> <span>•</span> V2 <strong>${r.v2 || 0}</strong>${r.semValor ? ` <span>•</span> Aguardando valor <strong>${r.semValor}</strong>` : ""}${completo ? "" : " <span>•</span> <small>totais dos registros carregados</small>"}`;
 }
 
 function abrirRelatorio({ titulo, subtitulo, cabecalho, linhas }) {
@@ -58,7 +84,7 @@ export function montarTelaPagamentos({ container, controller, store, obterUsuari
   async function aplicar() {
     const filtros = lerFiltros(container);
     if (competenciaCarregada !== filtros.competencia) {
-      carregando = true; statusEl.textContent = "Carregando pagamentos...";
+      carregando = true; statusEl.textContent = "Carregando pagamentos V2 e histórico...";
       try { await controller.carregar({ competencia: filtros.competencia }); competenciaCarregada = filtros.competencia; }
       finally { carregando = false; }
     }
@@ -69,7 +95,9 @@ export function montarTelaPagamentos({ container, controller, store, obterUsuari
   container.querySelector("[data-v2-limpar-filtros]").addEventListener("click", () => {
     const raiz = container.querySelector("[data-v2-pagamentos-filtros]");
     raiz.querySelectorAll('input:not([name="competencia"])').forEach(input => { input.value = ""; });
-    raiz.querySelector('[name="status"]').value = "todos"; render();
+    raiz.querySelector('[name="status"]').value = "todos";
+    raiz.querySelector('[name="origem"]').value = "todos";
+    render();
   }, { signal });
 
   mais.addEventListener("click", async () => {
@@ -83,7 +111,7 @@ export function montarTelaPagamentos({ container, controller, store, obterUsuari
     botao.disabled = true; botao.textContent = "Conferindo filtrados...";
     try {
       const preparado = await controller.prepararQuitacao(filtros);
-      if (!preparado.ok) { statusEl.textContent = "Não há pagamentos pendentes nesses filtros."; return; }
+      if (!preparado.ok) { statusEl.textContent = "Não há pagamentos pendentes com valor nesses filtros."; return; }
       if (!confirmarQuitacao(preparado.resumo)) { statusEl.textContent = "Quitação cancelada."; return; }
       botao.textContent = "Marcando como pagos...";
       const resultado = await controller.quitarPreparados(preparado, { usuario: obterUsuario() });
@@ -99,7 +127,7 @@ export function montarTelaPagamentos({ container, controller, store, obterUsuari
     try {
       const filtros = lerFiltros(container); const { itens, resumo } = await controller.buscarFiltradosCompletos(filtros);
       const pix = new Map(store.listar("faccoes").map(f => [String(f.nome || "").toUpperCase(), f.chavePix || f.pix || ""]));
-      abrirRelatorio({ titulo: "Relatório de Pagamentos", subtitulo: `Competência ${filtros.competencia || "todas"} • Total ${moeda(resumo.total)}`, cabecalho: ["OP", "Responsável", "PIX", "Referência", "Processo", "Qtd.", "Unitário", "Total", "Status"], linhas: itens.map(i => `<tr><td>${escapar(i.numeroOP)}</td><td>${escapar(i.responsavel)}</td><td>${escapar(pix.get(String(i.responsavel).toUpperCase()) || "-")}</td><td>${escapar(i.referencia)}</td><td>${escapar(i.processo)}</td><td>${i.quantidade}</td><td class="valor">${moeda(i.valorUnitario)}</td><td class="valor">${moeda(i.total)}</td><td>${escapar(i.statusPagamento)}</td></tr>`).join("") });
+      abrirRelatorio({ titulo: "Relatório de Pagamentos", subtitulo: `Competência ${filtros.competencia || "todas"} • Total ${moeda(resumo.total)}`, cabecalho: ["OP", "Origem", "Responsável", "PIX", "Referência", "Processo", "Qtd.", "Unitário", "Total", "Status"], linhas: itens.map(i => `<tr><td>${escapar(i.numeroOP)}</td><td>${escapar(rotuloOrigem(i))}</td><td>${escapar(i.responsavel)}</td><td>${escapar(pix.get(String(i.responsavel).toUpperCase()) || "-")}</td><td>${escapar(i.referencia)}</td><td>${escapar(i.processo)}</td><td>${i.quantidade}</td><td class="valor">${i.statusPagamento === "sem_valor" ? "-" : moeda(i.valorUnitario)}</td><td class="valor">${i.statusPagamento === "sem_valor" ? "A definir" : moeda(i.total)}</td><td>${escapar(rotuloStatus(i.statusPagamento))}</td></tr>`).join("") });
     } catch (error) { console.error("[V2] Erro no relatório completo.", error); statusEl.textContent = "Não foi possível preparar o relatório completo."; }
     finally { botao.disabled = false; botao.textContent = anterior; }
   }, { signal });
