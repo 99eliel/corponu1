@@ -34,6 +34,13 @@ export class FechamentoFinanceiroService {
     return { ok: true, erros: [], op: this.normalizarOP(op) };
   }
 
+  async diagnosticarComponentes({ op, processo } = {}) {
+    return this.motorValores.diagnosticarComponentes({
+      op: this.normalizarOP(op),
+      processo
+    });
+  }
+
   async calcular({ op, processo, quantidade, componentes = {} }) {
     return this.motorValores.calcular({
       op: this.normalizarOP(op),
