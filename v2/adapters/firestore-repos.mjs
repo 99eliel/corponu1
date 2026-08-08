@@ -200,7 +200,17 @@ export function criarValoresRepoFirestore({
   return {
     async buscarValorUnitario(referencia, processo) {
       const itens = await buscarPrecosReferencia(referencia);
-      return Math.max(0, numero(encontrarPreco(itens, processo)?.valor, 0));
+      let preco = encontrarPreco(itens, processo);
+
+      // Processos universais (ex.: ALÇA cadastrada como referência TODAS)
+      // usam primeiro um valor específico da referência, quando existir,
+      // e só então caem para a configuração universal.
+      if (numero(preco?.valor, 0) <= 0 && normalizarReferencia(referencia) !== "TODAS") {
+        const universais = await buscarPrecosReferencia("TODAS");
+        preco = encontrarPreco(universais, processo);
+      }
+
+      return Math.max(0, numero(preco?.valor, 0));
     },
 
     async buscarValoresComponentes(referencia) {
