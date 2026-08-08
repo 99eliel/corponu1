@@ -3,6 +3,7 @@ import { criarFaccoesRepoFirestore } from "../adapters/faccoes-repo.mjs";
 import { criarRepositoriosFirestoreV2 } from "../adapters/firestore-repos.mjs";
 import { criarManejoRepoFirestore } from "../adapters/manejo-repo.mjs";
 import { criarMovimentacoesFaccoesRepoFirestore } from "../adapters/movimentacoes-faccoes-repo.mjs";
+import { criarOrdensConsultaRepoFirestore } from "../adapters/ordens-consulta-repo.mjs";
 import { criarOrdensGravacaoRepoFirestore } from "../adapters/ordens-repo.mjs";
 import { criarPagamentosConsultaRepoFirestore } from "../adapters/pagamentos-repo.mjs";
 import { criarProdutosRepoFirestore } from "../adapters/produtos-repo.mjs";
@@ -27,6 +28,7 @@ export function criarContextoFirebaseV2({
   db,
   fs,
   store = criarStoreCorpoNu(),
+  tamanhoPaginaOrdens = 150,
   tamanhoPaginaFaccoes = 80,
   ttlPrecosMs = 120000,
   ttlSaldoMs = 30000
@@ -35,6 +37,12 @@ export function criarContextoFirebaseV2({
 
   const faccoesRepo = criarFaccoesRepoFirestore({ db, fs, store });
   const produtosRepo = criarProdutosRepoFirestore({ db, fs, store });
+  const ordensConsultaRepo = criarOrdensConsultaRepoFirestore({
+    db,
+    fs,
+    store,
+    tamanhoPagina: tamanhoPaginaOrdens
+  });
   const ordensGravacaoRepo = criarOrdensGravacaoRepoFirestore({ db, fs, store });
   const manejoRepo = criarManejoRepoFirestore({ db, fs, store });
   const movimentacoesFaccoesRepo = criarMovimentacoesFaccoesRepoFirestore({
@@ -62,6 +70,7 @@ export function criarContextoFirebaseV2({
     colecoes: COLECOES_FIREBASE_V2,
     faccoesRepo,
     produtosRepo,
+    ordensConsultaRepo,
     ordensGravacaoRepo,
     manejoRepo,
     movimentacoesFaccoesRepo,
@@ -71,6 +80,14 @@ export function criarContextoFirebaseV2({
 
     garantirFaccoes() {
       return faccoesRepo.garantirCarregadas();
+    },
+
+    carregarPrimeiraPaginaOrdens(opcoes) {
+      return ordensConsultaRepo.carregarPrimeiraPagina(opcoes);
+    },
+
+    carregarMaisOrdens(opcoes) {
+      return ordensConsultaRepo.carregarMais(opcoes);
     },
 
     carregarPrimeiraPaginaFaccoes() {
