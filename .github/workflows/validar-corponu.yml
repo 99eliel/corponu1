@@ -79,3 +79,15 @@ jobs:
             corponu-v2-firebase-bridge.js
           if-no-files-found: error
           retention-days: 7
+
+      - name: Gerar pacote Firebase V2 escrita controlada
+        uses: actions/upload-artifact@v4
+        with:
+          name: corpo-nu-flow-v2-escrita-controlada-ordens-manejo
+          path: |
+            firebase-v2-escrita-controlada
+            v2
+            style.css
+            corponu-v2-firebase-bridge.js
+          if-no-files-found: error
+          retention-days: 7
