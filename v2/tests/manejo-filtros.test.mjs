@@ -90,7 +90,6 @@ test("filtros acumulativos aplicam interseção estilo Excel", () => {
     referencia: "414",
     faseBojo: "SEPARAÇÃO",
     faseLateral: "PREPARAÇÃO",
-    faccao: "DANUBIA",
     necessidade: "URGENTE"
   });
 
@@ -136,28 +135,32 @@ test("busca livre acumula com filtros estruturados e encontra as duas fases", ()
   assert.deepEqual(resultado.map(item => item.id), ["1"]);
 });
 
+test("campos antigos Facção, Chegada, Falta e CELU não participam mais da busca", () => {
+  for (const busca of ["DANUBIA", "2026-08-10", "CELULA 2"]) {
+    assert.deepEqual(filtrarOrdensManejo(ORDENS, "sutia", { busca }).map(item => item.id), []);
+  }
+});
+
 test("OP usa correspondência parcial para facilitar digitação", () => {
   assert.equal(ordemPassaFiltrosManejo(ORDENS[0], "sutia", { op: "10" }), true);
   assert.equal(ordemPassaFiltrosManejo(ORDENS[1], "sutia", { op: "100" }), false);
 });
 
-test("quantidade e falta são filtros numéricos exatos quando ativos", () => {
+test("quantidade é filtro numérico exato quando ativo", () => {
   assert.deepEqual(
     filtrarOrdensManejo(ORDENS, "sutia", { quantidade: 500 }).map(item => item.id),
     ["1", "3"]
   );
-  assert.deepEqual(
-    filtrarOrdensManejo(ORDENS, "sutia", { falta: 10 }).map(item => item.id),
-    ["2"]
-  );
 });
 
-test("opções dos filtros derivam Fase Bojo e Fase Lateral sem duplicidade", () => {
+test("opções dos filtros derivam somente campos válidos do Manejo", () => {
   const opcoes = opcoesFiltrosManejo(ORDENS, "sutia");
   assert.deepEqual(opcoes.referencia, ["414", "500"]);
   assert.deepEqual(opcoes.cor, ["BLUSH", "PRETO"]);
   assert.deepEqual(opcoes.faseBojo, ["CORTE", "SEPARAÇÃO"]);
   assert.deepEqual(opcoes.faseLateral, ["CORTE", "PREPARAÇÃO"]);
   assert.deepEqual(opcoes.fase, opcoes.faseBojo);
-  assert.deepEqual(opcoes.faccao, ["DANUBIA", "LIVIA"]);
+  assert.equal("faccao" in opcoes, false);
+  assert.equal("chegada" in opcoes, false);
+  assert.equal("celu" in opcoes, false);
 });
