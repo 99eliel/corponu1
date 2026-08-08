@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Corpo Nu Flow V2 · Fechamento Controlado</title>
+  <link rel="stylesheet" href="../style.css" />
+  <style>
+    body{margin:0;background:#f5f7fb;color:#172033;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .login-fin{min-height:100vh;display:grid;place-items:center;padding:24px}.card-fin{width:min(500px,100%);background:#fff;border:1px solid #dfe4ec;border-radius:18px;padding:24px;box-shadow:0 18px 55px rgba(15,23,42,.10)}
+    .card-fin h1{font-size:23px;margin:0 0 6px}.card-fin p{margin:0 0 18px;color:#64748b;line-height:1.45}.badge-fin{display:inline-flex;margin-bottom:16px;padding:6px 10px;border-radius:999px;background:#fee2e2;color:#991b1b;font-size:12px;font-weight:800}
+    .card-fin label{display:grid;gap:6px;margin:12px 0;font-weight:700;font-size:13px}.card-fin input{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:11px 12px;font:inherit}.card-fin button{width:100%;border:0;border-radius:10px;padding:12px 14px;background:#172033;color:#fff;font-weight:800;cursor:pointer;margin-top:8px}.card-fin button:disabled{opacity:.6;cursor:wait}
+    .status-fin{min-height:20px;margin-top:12px;font-size:13px;color:#475569}.status-fin.erro{color:#b91c1c}.notice-fin{margin-top:16px;padding:11px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;color:#9a3412;font-size:12px;line-height:1.5}
+    .financeiro-shell{min-height:100vh}.financeiro-topo{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid #dfe4ec;padding:14px 18px}.financeiro-topo-linha{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}.financeiro-topo h1{font-size:20px;margin:0}.financeiro-topo p{margin:4px 0 0;color:#64748b;font-size:13px}.financeiro-badge{display:inline-flex;padding:7px 10px;border-radius:999px;background:#fee2e2;color:#991b1b;font-size:12px;font-weight:800}.financeiro-aviso{max-width:1500px;margin:16px auto 0;padding:12px 14px;border:1px solid #fecdd3;background:#fff1f2;color:#9f1239;border-radius:11px;font-size:13px;font-weight:700}.financeiro-conteudo{max-width:1500px;margin:0 auto;padding:18px}
+  </style>
+</head>
+<body>
+  <main class="login-fin" id="firebaseFinanceiroLogin">
+    <section class="card-fin">
+      <span class="badge-fin">FIREBASE REAL · FECHAMENTO CONTROLADO</span>
+      <h1>Corpo Nu Flow V2</h1>
+      <p>Validação real do novo Fechamento de Pagamentos. Nesta etapa, somente lançamentos V2 em <strong>entregasPagamento</strong> podem ser gravados.</p>
+      <form id="firebaseFinanceiroForm">
+        <label>E-mail<input id="firebaseFinanceiroEmail" type="email" autocomplete="username" required /></label>
+        <label>Senha<input id="firebaseFinanceiroSenha" type="password" autocomplete="current-password" required /></label>
+        <button id="firebaseFinanceiroEntrar" type="submit">Entrar no Fechamento controlado</button>
+        <div class="status-fin" id="firebaseFinanceiroStatus" aria-live="polite"></div>
+      </form>
+      <div class="notice-fin">Cada fechamento real exige digitar <strong>GRAVAR</strong>. A transação aceita somente um <strong>lancamento_financeiro_v2</strong> e seu <strong>controle_processo_v2</strong>. Movimentações, chegada, OPs, configurações e quitação permanecem bloqueadas para escrita.</div>
+    </section>
+  </main>
+
+  <section class="financeiro-shell" id="firebaseFinanceiroApp" hidden>
+    <header class="financeiro-topo">
+      <div class="financeiro-topo-linha">
+        <div>
+          <h1>Corpo Nu Flow V2 · Fechamento de Pagamentos</h1>
+          <p id="firebaseFinanceiroUsuario"></p>
+        </div>
+        <span class="financeiro-badge">ESCRITA CONTROLADA · SOMENTE FECHAMENTO</span>
+      </div>
+    </header>
+    <div class="financeiro-aviso">Firebase real. Conferir valor não grava nada. Somente o botão de adicionar ao fechamento pode iniciar a transação, e ainda exige digitar GRAVAR.</div>
+    <main class="financeiro-conteudo" id="firebaseFinanceiroConteudo"></main>
+  </section>
+
+  <script type="module" src="./firebase-fechamento-controlado.mjs"></script>
+</body>
+</html>
