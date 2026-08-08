@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-08-pagamentos-filtro-op-v2-compat-158";
+  const LOCAL_RELEASE = "2026-08-08-auditoria-pagamentos-160";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
