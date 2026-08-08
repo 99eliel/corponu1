@@ -88,7 +88,7 @@ test("salva Calcinha nova sem necessidade, serviço ou facção", async () => {
   assert.equal(salvos[0].novo, true);
 });
 
-test("salva Sutiã novo com necessidade vazia e componentes do produto", async () => {
+test("salva Sutiã novo com necessidade vazia sem copiar Alça, Bojo ou Renda do Produto", async () => {
   const { service } = criarAmbiente();
 
   const resultado = await service.salvar({ entrada: entradaSutia() });
@@ -97,8 +97,9 @@ test("salva Sutiã novo com necessidade vazia e componentes do produto", async (
   assert.equal(resultado.id, "op-58193");
   assert.equal(resultado.salvo.tipoPeca, "sutia");
   assert.equal(resultado.salvo.necessidade, "");
-  assert.equal(resultado.salvo.possuiAlca, true);
-  assert.equal(resultado.salvo.possuiBojo, true);
+  assert.equal("possuiAlca" in resultado.salvo, false);
+  assert.equal("possuiBojo" in resultado.salvo, false);
+  assert.equal("possuiRenda" in resultado.salvo, false);
 });
 
 test("produto e duplicidade são consultados em paralelo lógico antes do save", async () => {
