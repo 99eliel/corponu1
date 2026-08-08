@@ -59,10 +59,22 @@ function criarFake({ produtos = [], ordens = [] } = {}) {
         data: () => clonar(item)
       };
     },
+    deleteField() { return { __deleteField: true }; },
     async setDoc(ref, dados, opcoes) {
       metricas.setDoc.push({ colecao: ref.colecao, id: ref.id, opcoes: clonar(opcoes) });
       const atual = colecoes.get(ref.colecao)?.get(ref.id) || {};
-      const proximo = opcoes?.merge ? { ...atual, ...clonar(dados) } : clonar(dados);
+      let proximo;
+
+      if (opcoes?.merge) {
+        proximo = { ...clonar(atual) };
+        for (const [campo, valor] of Object.entries(dados)) {
+          if (valor?.__deleteField === true) delete proximo[campo];
+          else proximo[campo] = clonar(valor);
+        }
+      } else {
+        proximo = clonar(dados);
+      }
+
       if (!colecoes.has(ref.colecao)) colecoes.set(ref.colecao, new Map());
       colecoes.get(ref.colecao).set(ref.id, proximo);
     },
@@ -170,4 +182,55 @@ test("editar OP usa merge e mantém o mesmo documento", async () => {
   assert.equal(fake.metricas.setDoc[0].opcoes.merge, true);
   assert.equal(fake.colecoes.get("ordensProducao").get("calcinha-58193").quantidade, 480);
   assert.equal(fake.colecoes.get("ordensProducao").size, 1);
+});
+
+test("editar OP antiga remove Alça Bojo e Renda sem apagar Manejo ou outros dados", async () => {
+  const store = criarStoreCorpoNu();
+  const manejoExistente = {
+    sutia: {
+      faseBojo: "CORTE",
+      faseLateral: "",
+      silkNome: "SILK A"
+    }
+  };
+  const antiga = {
+    id: "op-58193",
+    numeroOP: "58193",
+    referencia: "414",
+    quantidade: 500,
+    tipoPeca: "sutia",
+    status: "aberta",
+    possuiAlca: true,
+    possuiBojo: true,
+    possuiRenda: true,
+    manejosSetores: manejoExistente
+  };
+
+  store.upsert("ordens", antiga);
+  const fake = criarFake({ ordens: [antiga] });
+  const repo = criarOrdensGravacaoRepoFirestore({ db: fake.db, fs: fake.fs, store });
+
+  const salvo = await repo.salvar({
+    id: "op-58193",
+    novo: false,
+    dados: {
+      numeroOP: "58193",
+      referencia: "414",
+      quantidade: 500,
+      tipoPeca: "sutia"
+    }
+  });
+
+  const firestore = fake.colecoes.get("ordensProducao").get("op-58193");
+  const local = store.obter("ordens", "op-58193");
+
+  for (const item of [firestore, local, salvo]) {
+    assert.equal("possuiAlca" in item, false);
+    assert.equal("possuiBojo" in item, false);
+    assert.equal("possuiRenda" in item, false);
+  }
+
+  assert.deepEqual(firestore.manejosSetores, manejoExistente);
+  assert.deepEqual(local.manejosSetores, manejoExistente);
+  assert.equal(firestore.status, "aberta");
 });
