@@ -2,9 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  DESTINO_CELULA,
   DESTINO_FACCAO,
-  PROCESSO_CELULA,
   criarDadosManejo,
   criarDadosMovimentacao,
   getManejoDaOrdemV2,
@@ -34,14 +32,12 @@ const CALCINHA = Object.freeze({
 
 function manejoBase(extra = {}) {
   return {
-    // Entrada legada mantida de propósito para garantir compatibilidade.
     fase: "SEPARAÇÃO",
     silkNome: "SILK A",
     silkData: "",
     tecidoNome: "FORNECEDOR X",
     dataTecido: "2026-08-08",
     necessidade: "URGENTE",
-    falta: 0,
     ...extra
   };
 }
@@ -113,14 +109,24 @@ test("necessidade do Manejo é texto livre e pode ser salva vazia", () => {
   assert.equal(vazia.dados.necessidade, "");
 });
 
-test("falta nunca pode ultrapassar a quantidade da OP", () => {
-  const resultado = validarEntradaManejo({
+test("Facção, Chegada, Falta e CELU não pertencem ao objeto novo de Manejo", () => {
+  const resultado = criarDadosManejo({
     ordem: SUTIA,
     setor: "sutia",
-    entrada: manejoBase({ falta: 501 })
+    anterior: {
+      fase: "CORTE",
+      faccao: "DANUBIA",
+      chegada: "2026-08-08",
+      falta: 10,
+      celu: "SIM"
+    },
+    entrada: manejoBase({ faseBojo: "CORTE" })
   });
-  assert.equal(resultado.ok, false);
-  assert.ok(resultado.erros.includes("FALTA_MAIOR_QUE_OP"));
+
+  assert.equal(resultado.ok, true);
+  for (const campo of ["faccao", "chegada", "falta", "celu"]) {
+    assert.equal(Object.hasOwn(resultado.dados, campo), false, campo);
+  }
 });
 
 test("antes de movimentar exige Silk por nome ou data e exige Data Tecido", () => {
@@ -153,9 +159,21 @@ test("Calcinha aceita somente processos de Calcinha na saída para facção", ()
   assert.equal(processoPermitidoNoManejo("SUTIÃ MONTAGEM", "calcinha", DESTINO_FACCAO), false);
 });
 
-test("envio para célula usa processo único CÉLULA INTERNA", () => {
-  assert.equal(processoPermitidoNoManejo(PROCESSO_CELULA, "sutia", DESTINO_CELULA), true);
-  assert.equal(processoPermitidoNoManejo(PROCESSO_CELULA, "calcinha", DESTINO_CELULA), true);
+test("Manejo rejeita qualquer destino diferente de Facção", () => {
+  assert.equal(processoPermitidoNoManejo("CÉLULA INTERNA", "sutia", "celula"), false);
+
+  const resultado = validarMovimentacaoManejo({
+    ordem: SUTIA,
+    setor: "sutia",
+    manejo: manejoBase(),
+    tipoDestino: "celula",
+    destino: "CELULA 1",
+    processo: "CÉLULA INTERNA",
+    quantidade: 100,
+    dataEnvio: "2026-08-08"
+  });
+  assert.equal(resultado.ok, false);
+  assert.ok(resultado.erros.includes("TIPO_DESTINO_INVALIDO"));
 });
 
 test("Sutiã Completo pode sair sem Lateral ou Bojo informados", () => {
@@ -209,6 +227,8 @@ test("movimentação criada é puramente operacional", () => {
   });
 
   assert.equal(resultado.ok, true);
+  assert.equal(resultado.dados.tipoDestino, "faccao");
+  assert.equal(resultado.dados.tipoDestinoLabel, "Facção");
   assert.equal(resultado.dados.status, "em_andamento");
   assert.equal(resultado.dados.dataChegada, "");
   assert.equal(resultado.dados.quantidadeRecebida, 0);
@@ -217,14 +237,14 @@ test("movimentação criada é puramente operacional", () => {
   assert.equal("statusPagamento" in resultado.dados, false);
 });
 
-test("reenvio guarda vínculo com movimento anterior sem mudar regra financeira", () => {
+test("reenvio para Facção guarda vínculo com movimento anterior", () => {
   const validacao = validarMovimentacaoManejo({
     ordem: SUTIA,
     setor: "sutia",
     manejo: manejoBase(),
-    tipoDestino: "celula",
-    destino: "CELULA 1",
-    processo: PROCESSO_CELULA,
+    tipoDestino: "faccao",
+    destino: "LIVIA",
+    processo: "SUTIÃ MONTAGEM",
     quantidade: 200,
     quantidadeMaxima: 200,
     dataEnvio: "2026-08-08"
@@ -239,7 +259,7 @@ test("reenvio guarda vínculo com movimento anterior sem mudar regra financeira"
   assert.equal(resultado.ok, true);
   assert.equal(resultado.dados.reenvio, true);
   assert.equal(resultado.dados.movimentacaoOrigemId, "mov-123");
-  assert.equal(resultado.dados.processo, PROCESSO_CELULA);
+  assert.equal(resultado.dados.processo, "SUTIÃ MONTAGEM");
 });
 
 test("lê manejo V2 por setor convertendo fase antiga em Fase Bojo", () => {
