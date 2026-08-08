@@ -154,15 +154,14 @@ export function criarDadosOrdem({ entrada, produto, anterior = {}, anoAtual = ne
     status: anterior.status || "aberta"
   };
 
+  // A OP não armazena mais Alça, Bojo ou Renda.
+  // Componentes/processos são resolvidos em seus próprios fluxos operacionais/financeiros.
   if (calcinha) {
     Object.assign(documento, {
       linhaCalcinha: anterior.linhaCalcinha || "",
       processoPlanejado: dados.processoPlanejado,
       faccaoPlanejada: dados.faccaoPlanejada,
       planejamentoCalcinhaPendente: !planejamentoCompleto,
-      possuiAlca: false,
-      possuiBojo: false,
-      possuiRenda: false,
       identidadeCalcinhaConfirmada: true,
       identidadeCalcinhaVersao: "v2"
     });
@@ -172,10 +171,7 @@ export function criarDadosOrdem({ entrada, produto, anterior = {}, anoAtual = ne
       mes: anterior.mes || "",
       processoPlanejado: "",
       faccaoPlanejada: "",
-      planejamentoCalcinhaPendente: false,
-      possuiAlca: Boolean(produto.possuiAlca),
-      possuiBojo: Boolean(produto.possuiBojo),
-      possuiRenda: Boolean(produto.possuiRenda)
+      planejamentoCalcinhaPendente: false
     });
   }
 
@@ -208,8 +204,6 @@ export function analisarDuplicidadeOrdem({
     };
   }
 
-  // Compatibilidade com a correção já existente: somente Calcinha pode corrigir
-  // exatamente um registro legado classificado como Sutiã, após confirmação explícita.
   if (tipo === TIPO_CALCINHA && outroTipo.length === 1 && atuais.length === 1) {
     return {
       ok: false,
