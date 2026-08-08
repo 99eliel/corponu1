@@ -68,6 +68,7 @@ export function montarTelaOrdens({
 
     [refs.necessidadeInicio, refs.necessidadeFim, refs.processo, refs.faccao]
       .forEach(campo => { campo.disabled = !calcinha; });
+    if (calcinha) refs.faccao.disabled = !refs.processo.value;
 
     if (!calcinha && limparExclusivos) {
       refs.necessidadeInicio.value = "";
