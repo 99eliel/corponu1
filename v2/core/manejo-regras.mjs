@@ -42,18 +42,33 @@ export function ordemPertenceAoManejo(ordem, setor) {
   return tipoPecaDoDocumento(ordem) === setorManejoCanonico(setor);
 }
 
+function normalizarFasesManejo(manejo = {}) {
+  const faseBojo = texto(manejo.faseBojo ?? manejo.fase).toUpperCase();
+  const faseLateral = texto(manejo.faseLateral).toUpperCase();
+  return {
+    ...manejo,
+    fase: faseBojo,
+    faseBojo,
+    faseLateral
+  };
+}
+
 export function getManejoDaOrdemV2(ordem, setor) {
   if (!ordem) return null;
   const setorCanonico = setorManejoCanonico(setor);
   if (!setorCanonico) return null;
 
   const atual = ordem.manejosSetores?.[setorCanonico];
-  if (atual) return { ...atual, setor: setorCanonico };
+  if (atual) return { ...normalizarFasesManejo(atual), setor: setorCanonico };
 
   // Compatibilidade temporária com documentos antigos cujo manejo principal
-  // ficou salvo no campo singular.
+  // ficou salvo no campo singular. A antiga "fase" passa a representar Fase Bojo.
   if (setorCanonico === SETOR_SUTIA && ordem.manejo) {
-    return { ...ordem.manejo, setor: setorCanonico, origemLegada: true };
+    return {
+      ...normalizarFasesManejo(ordem.manejo),
+      setor: setorCanonico,
+      origemLegada: true
+    };
   }
 
   return null;
@@ -92,8 +107,10 @@ export function validarEntradaManejo({ ordem, setor, entrada = {} } = {}) {
     erros.push("OP_NAO_PERTENCE_AO_SETOR");
   }
 
-  const fase = texto(entrada.fase).toUpperCase();
-  if (!fase) erros.push("FASE_NAO_INFORMADA");
+  // Compatibilidade: a antiga entrada.fase continua aceita e passa a ser Fase Bojo.
+  const faseBojo = texto(entrada.faseBojo ?? entrada.fase).toUpperCase();
+  const faseLateral = texto(entrada.faseLateral).toUpperCase();
+  if (!faseBojo) erros.push("FASE_NAO_INFORMADA");
 
   const falta = inteiro(entrada.falta);
   const quantidadeOP = inteiro(ordem?.quantidade);
@@ -104,7 +121,9 @@ export function validarEntradaManejo({ ordem, setor, entrada = {} } = {}) {
     erros,
     dados: {
       setor: setorCanonico,
-      fase,
+      fase: faseBojo,
+      faseBojo,
+      faseLateral,
       silkNome: texto(entrada.silkNome || entrada.silk).toUpperCase(),
       silkData: texto(entrada.silkData),
       tecidoNome: texto(entrada.tecidoNome || entrada.tecido).toUpperCase(),
@@ -137,7 +156,10 @@ export function criarDadosManejo({ ordem, setor, entrada = {}, anterior = {} } =
       dataTecido: d.dataTecido,
       setor: d.setor,
       setorLabel: d.setor === SETOR_CALCINHA ? "Calcinha" : "Sutiã",
-      fase: d.fase,
+      // Mantemos "fase" como alias de compatibilidade. O dado canônico novo é faseBojo.
+      fase: d.faseBojo,
+      faseBojo: d.faseBojo,
+      faseLateral: d.faseLateral,
       faccao: d.faccao,
       chegada: d.chegada,
       falta: d.falta,
