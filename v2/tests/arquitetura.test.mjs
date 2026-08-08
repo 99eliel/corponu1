@@ -39,12 +39,34 @@ test("adaptador financeiro não conhece movimentacoesProducao", async () => {
   assert.match(codigo, /entregasPagamento/);
 });
 
+test("bootstrap de fechamento reutiliza Firebase existente", async () => {
+  const codigo = await fonte("../bootstrap/fechamento-app.mjs");
+
+  assert.doesNotMatch(codigo, /initializeApp\s*\(/);
+  assert.doesNotMatch(codigo, /getFirestore\s*\(/);
+  assert.doesNotMatch(codigo, /onSnapshot\s*\(/);
+  assert.doesNotMatch(codigo, /firebase-app\.js/);
+  assert.doesNotMatch(codigo, /firebase-firestore\.js/);
+  assert.match(codigo, /\bdb\b/);
+  assert.match(codigo, /\bfs\b/);
+});
+
+test("repositório de Facções não cria listener em tempo real", async () => {
+  const codigo = await fonte("../adapters/faccoes-repo.mjs");
+
+  assert.doesNotMatch(codigo, /onSnapshot\s*\(/);
+  assert.doesNotMatch(codigo, /setInterval\s*\(/);
+  assert.match(codigo, /getDocs\s*\(/);
+});
+
 test("nenhum módulo V2 financeiro importa patches legados", async () => {
   const arquivos = [
     "../core/financeiro-regras.mjs",
     "../core/financeiro-service.mjs",
     "../core/fechamento-controller.mjs",
     "../adapters/firestore-repos.mjs",
+    "../adapters/faccoes-repo.mjs",
+    "../bootstrap/fechamento-app.mjs",
     "../ui/fechamento-page.mjs"
   ];
 
