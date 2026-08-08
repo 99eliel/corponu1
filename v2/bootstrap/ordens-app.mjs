@@ -20,7 +20,10 @@ export async function criarOrdensAppV2({
   const ordensRepo = ctx.ordensGravacaoRepo;
   const faccoesRepo = ctx.faccoesRepo;
 
-  await ctx.garantirFaccoes();
+  await Promise.all([
+    ctx.garantirFaccoes(),
+    ctx.carregarPrimeiraPaginaOrdens()
+  ]);
 
   const ordensService = new OrdensService({
     produtosRepo,
@@ -46,9 +49,13 @@ export async function criarOrdensAppV2({
     produtosRepo,
     ordensRepo,
     faccoesRepo,
+    ordensConsultaRepo: ctx.ordensConsultaRepo,
     ordensService,
     controller,
     tela,
+    carregarMaisOrdens(opcoes) {
+      return ctx.carregarMaisOrdens(opcoes);
+    },
     desmontar() {
       tela.desmontar();
     }
