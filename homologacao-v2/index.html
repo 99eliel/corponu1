@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Corpo Nu Flow — Homologação V2</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="stylesheet" href="./homologacao.css" />
+</head>
+<body class="homologacao-v2">
+  <header class="homologacao-topo">
+    <div>
+      <span class="homologacao-flag">AMBIENTE DE HOMOLOGAÇÃO — V2 — NÃO É PRODUÇÃO</span>
+      <h1>Corpo Nu Flow</h1>
+      <p>Sistema Integrado de Gestão da Produção • testes com dados locais</p>
+    </div>
+    <div class="homologacao-acoes">
+      <label>
+        Perfil para testar Facções
+        <select id="homologacaoPerfil">
+          <option value="ADMIN">Administrador</option>
+          <option value="USUARIO">Usuário comum</option>
+        </select>
+      </label>
+      <button id="btnRestaurarHomologacao" class="btn" type="button">Restaurar dados de teste</button>
+    </div>
+  </header>
+
+  <section class="homologacao-info panel">
+    <div>
+      <strong>Banco:</strong> local no navegador. Nenhuma OP, chegada ou pagamento desta página vai para o Firebase real.
+    </div>
+    <div id="homologacaoResumo" class="homologacao-resumo"></div>
+  </section>
+
+  <section class="homologacao-roteiro panel">
+    <details open>
+      <summary><strong>Roteiro rápido para seu primeiro teste</strong></summary>
+      <ol>
+        <li><strong>Ordens:</strong> use as OPs 70001, 70002 e 80001 ou crie uma nova. Referências disponíveis: 414, 912 e C100.</li>
+        <li><strong>Manejo:</strong> preencha Fase, Silk e Data Tecido; depois envie para uma Facção.</li>
+        <li><strong>Facções:</strong> teste como usuário comum em “Informar chegada”; depois troque o perfil para Administrador e confirme a chegada.</li>
+        <li><strong>Fechamento:</strong> lance a OP por competência mensal. Observe que o fechamento funciona independente da data de chegada.</li>
+        <li>Se quiser começar novamente, clique em <strong>Restaurar dados de teste</strong>.</li>
+      </ol>
+    </details>
+  </section>
+
+  <nav class="homologacao-nav" aria-label="Navegação da homologação">
+    <button type="button" data-homologacao-nav="ordens">Ordens</button>
+    <button type="button" data-homologacao-nav="manejo">Manejo</button>
+    <button type="button" data-homologacao-nav="faccoes">Facções</button>
+    <button type="button" data-homologacao-nav="fechamento">Fechamento de Pagamentos</button>
+  </nav>
+
+  <main class="homologacao-main">
+    <section data-homologacao-page="ordens"><div id="v2Ordens"></div></section>
+    <section data-homologacao-page="manejo" class="hidden"><div id="v2Manejo"></div></section>
+    <section data-homologacao-page="faccoes" class="hidden"><div id="v2Faccoes"></div></section>
+    <section data-homologacao-page="fechamento" class="hidden">
+      <div id="v2Fechamento"></div>
+      <section class="panel homologacao-pagamentos">
+        <h3>Lançamentos criados nesta homologação</h3>
+        <p class="muted">Esta lista é local e serve para você confirmar que o fechamento foi criado sem depender da chegada.</p>
+        <div id="homologacaoPagamentos"></div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="homologacao-rodape">
+    Homologação V2 isolada • não usa o banco de produção
+  </footer>
+
+  <script type="module" src="../v2/homologacao/app-local.mjs"></script>
+</body>
+</html>
