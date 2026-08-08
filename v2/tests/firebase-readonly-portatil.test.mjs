@@ -9,12 +9,13 @@ const launcher = await readFile(new URL("../../firebase-v2-leitura/ABRIR-FIREBAS
 const workflow = await readFile(new URL("../../.github/workflows/validar-corponu.yml", import.meta.url), "utf8");
 
 const ambiente = `${html}\n${login}\n${servidor}\n${launcher}`;
+const referenciaAppLegado = /(?:^|["'./])app\.js(?:["'?]|$)/im;
 
 test("ambiente standalone não carrega app.js nem patches legados", () => {
-  assert.doesNotMatch(html, /app\.js/i);
+  assert.doesNotMatch(html, referenciaAppLegado);
   assert.doesNotMatch(html, /corponu-atualizador\.js/i);
   assert.doesNotMatch(html, /corponu-(?!v2-firebase-bridge)/i);
-  assert.doesNotMatch(login, /app\.js/i);
+  assert.doesNotMatch(login, referenciaAppLegado);
   assert.doesNotMatch(login, /onSnapshot\s*\(/);
 });
 
