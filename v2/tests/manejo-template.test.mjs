@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { templateManejoV2 } from "../ui/manejo-template.mjs";
+import { htmlLinhaManejo } from "../ui/manejo-ui-utils.mjs";
 
 test("Manejo possui abas explícitas de Sutiã e Calcinha", () => {
   const html = templateManejoV2();
@@ -25,7 +26,21 @@ test("Manejo mantém necessidade livre e campos operacionais principais", () => 
   ]) {
     assert.match(html, new RegExp(textoEsperado, "i"));
   }
-  assert.match(html, /list="v2ManejoFasesSugestoes"/);
+});
+
+test("campo Fase da linha mantém digitação livre com sugestões", () => {
+  const linha = htmlLinhaManejo({
+    id: "op-1",
+    numeroOP: "1",
+    referencia: "414",
+    cor: "PRETO",
+    quantidade: 100,
+    tipoPeca: "sutia"
+  }, "sutia");
+
+  assert.match(linha, /data-campo="fase"/);
+  assert.match(linha, /list="v2ManejoFasesSugestoes"/);
+  assert.match(linha, /placeholder="Digite ou escolha"/);
 });
 
 test("filtros estruturados existem e podem acumular", () => {
