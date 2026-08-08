@@ -14,6 +14,7 @@ import { montarTelaFaccoes } from "../ui/faccoes-page.mjs";
 import { montarTelaFechamento } from "../ui/fechamento-page.mjs";
 import { montarTelaPagamentos } from "../ui/pagamentos-page.mjs";
 import { criarPagamentosRepoLocal } from "./pagamentos-local-repo.mjs";
+import { garantirCenarioPagamentosHomologacao } from "./seed-pagamentos-local.mjs";
 import {
   carregarDadosLocais,
   criarRepositoriosLocais,
@@ -24,6 +25,7 @@ import {
 
 const store = hidratarStoreLocal(criarStoreCorpoNu(), carregarDadosLocais());
 const pararPersistencia = instalarPersistenciaLocal(store);
+garantirCenarioPagamentosHomologacao(store);
 const repos = criarRepositoriosLocais(store);
 const pagamentosConsultaRepo = criarPagamentosRepoLocal(store);
 
@@ -120,59 +122,34 @@ function montarPagamentos() {
 }
 
 function navegar(chave) {
-  document.querySelectorAll("[data-homologacao-page]").forEach(secao => {
-    secao.classList.toggle("hidden", secao.dataset.homologacaoPage !== chave);
-  });
-  document.querySelectorAll("[data-homologacao-nav]").forEach(botao => {
-    botao.classList.toggle("active", botao.dataset.homologacaoNav === chave);
-  });
+  document.querySelectorAll("[data-homologacao-page]").forEach(secao => secao.classList.toggle("hidden", secao.dataset.homologacaoPage !== chave));
+  document.querySelectorAll("[data-homologacao-nav]").forEach(botao => botao.classList.toggle("active", botao.dataset.homologacaoNav === chave));
   location.hash = chave;
 }
 
 function configurarShell() {
-  document.querySelectorAll("[data-homologacao-nav]").forEach(botao => {
-    botao.addEventListener("click", () => navegar(botao.dataset.homologacaoNav));
-  });
-
+  document.querySelectorAll("[data-homologacao-nav]").forEach(botao => botao.addEventListener("click", () => navegar(botao.dataset.homologacaoNav)));
   el("homologacaoPerfil").value = "ADMIN";
   el("homologacaoPerfil").addEventListener("change", event => {
     const admin = event.target.value === "ADMIN";
     perfilAtual = { tipo: admin ? "ADMIN" : "USUARIO", nome: admin ? "Administrador de Homologação" : "Usuário Comum de Homologação" };
     montarFaccoes();
   });
-
   el("btnRestaurarHomologacao").addEventListener("click", () => {
     if (!confirm("Restaurar todos os dados locais da homologação para o cenário inicial?")) return;
-    pararPersistencia();
-    restaurarDadosLocais();
-    location.reload();
+    pararPersistencia(); restaurarDadosLocais(); location.reload();
   });
-
   const inicial = location.hash.replace("#", "") || "ordens";
   navegar(["ordens", "manejo", "faccoes", "fechamento", "pagamentos"].includes(inicial) ? inicial : "ordens");
 }
 
 for (const dominio of ["ordens", "movimentacoes", "pagamentos"]) {
-  store.assinar(dominio, () => {
-    renderResumoLocal();
-    if (dominio === "pagamentos") renderPagamentosLocais();
-  });
+  store.assinar(dominio, () => { renderResumoLocal(); if (dominio === "pagamentos") renderPagamentosLocais(); });
 }
 
-montarOrdens();
-montarManejo();
-montarFaccoes();
-montarFechamento();
-montarPagamentos();
-configurarShell();
-renderResumoLocal();
-renderPagamentosLocais();
+montarOrdens(); montarManejo(); montarFaccoes(); montarFechamento(); montarPagamentos(); configurarShell(); renderResumoLocal(); renderPagamentosLocais();
 
 window.__CORPONU_HOMOLOGACAO_V2__ = Object.freeze({
   store,
-  restaurar() {
-    pararPersistencia();
-    restaurarDadosLocais();
-    location.reload();
-  }
+  restaurar() { pararPersistencia(); restaurarDadosLocais(); location.reload(); }
 });
