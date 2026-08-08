@@ -13,8 +13,6 @@ import {
 export const SETOR_SUTIA = TIPO_SUTIA;
 export const SETOR_CALCINHA = TIPO_CALCINHA;
 export const DESTINO_FACCAO = "faccao";
-export const DESTINO_CELULA = "celula";
-export const PROCESSO_CELULA = "CÉLULA INTERNA";
 
 export const PROCESSOS_FACCAO_POR_SETOR = Object.freeze({
   [SETOR_SUTIA]: Object.freeze([
@@ -51,6 +49,17 @@ function normalizarFasesManejo(manejo = {}) {
     faseBojo,
     faseLateral
   };
+}
+
+function limparCamposObsoletosManejo(manejo = {}) {
+  const {
+    faccao: _faccao,
+    chegada: _chegada,
+    falta: _falta,
+    celu: _celu,
+    ...limpo
+  } = manejo || {};
+  return limpo;
 }
 
 export function getManejoDaOrdemV2(ordem, setor) {
@@ -107,14 +116,9 @@ export function validarEntradaManejo({ ordem, setor, entrada = {} } = {}) {
     erros.push("OP_NAO_PERTENCE_AO_SETOR");
   }
 
-  // Compatibilidade: a antiga entrada.fase continua aceita e passa a ser Fase Bojo.
   const faseBojo = texto(entrada.faseBojo ?? entrada.fase).toUpperCase();
   const faseLateral = texto(entrada.faseLateral).toUpperCase();
   if (!faseBojo) erros.push("FASE_NAO_INFORMADA");
-
-  const falta = inteiro(entrada.falta);
-  const quantidadeOP = inteiro(ordem?.quantidade);
-  if (quantidadeOP > 0 && falta > quantidadeOP) erros.push("FALTA_MAIOR_QUE_OP");
 
   return {
     ok: erros.length === 0,
@@ -128,10 +132,6 @@ export function validarEntradaManejo({ ordem, setor, entrada = {} } = {}) {
       silkData: texto(entrada.silkData),
       tecidoNome: texto(entrada.tecidoNome || entrada.tecido).toUpperCase(),
       dataTecido: texto(entrada.dataTecido),
-      faccao: texto(entrada.faccao).toUpperCase(),
-      chegada: texto(entrada.chegada),
-      falta,
-      celu: texto(entrada.celu).toUpperCase(),
       necessidade: texto(entrada.necessidade),
       observacoes: texto(entrada.observacoes)
     }
@@ -143,11 +143,12 @@ export function criarDadosManejo({ ordem, setor, entrada = {}, anterior = {} } =
   if (!validacao.ok) return { ok: false, erros: validacao.erros, dados: null };
 
   const d = validacao.dados;
+  const anteriorLimpo = limparCamposObsoletosManejo(anterior);
   return {
     ok: true,
     erros: [],
     dados: {
-      ...anterior,
+      ...anteriorLimpo,
       silk: d.silkNome,
       silkNome: d.silkNome,
       silkData: d.silkData,
@@ -156,27 +157,19 @@ export function criarDadosManejo({ ordem, setor, entrada = {}, anterior = {} } =
       dataTecido: d.dataTecido,
       setor: d.setor,
       setorLabel: d.setor === SETOR_CALCINHA ? "Calcinha" : "Sutiã",
-      // Mantemos "fase" como alias de compatibilidade. O dado canônico novo é faseBojo.
       fase: d.faseBojo,
       faseBojo: d.faseBojo,
       faseLateral: d.faseLateral,
-      faccao: d.faccao,
-      chegada: d.chegada,
-      falta: d.falta,
-      celu: d.celu,
       necessidade: d.necessidade,
       necessidadeTexto: d.necessidade,
       observacoes: d.observacoes,
       coluna: "",
-      status: anterior.status === "bipado" ? "bipado" : "organizada"
+      status: anteriorLimpo.status === "bipado" ? "bipado" : "organizada"
     }
   };
 }
 
 export function processoPermitidoNoManejo(processo, setor, tipoDestino) {
-  if (tipoDestino === DESTINO_CELULA) {
-    return processoCanonico(processo || PROCESSO_CELULA) === PROCESSO_CELULA;
-  }
   if (tipoDestino !== DESTINO_FACCAO) return false;
   const setorCanonico = setorManejoCanonico(setor);
   return (PROCESSOS_FACCAO_POR_SETOR[setorCanonico] || [])
@@ -197,9 +190,7 @@ export function validarMovimentacaoManejo({
   const erros = [];
   const setorCanonico = setorManejoCanonico(setor);
   const tipo = normalizar(tipoDestino).toLowerCase();
-  const processoFinal = tipo === DESTINO_CELULA
-    ? PROCESSO_CELULA
-    : processoCanonico(processo);
+  const processoFinal = processoCanonico(processo);
   const qtd = inteiro(quantidade);
   const maximo = inteiro(quantidadeMaxima || ordem?.quantidade);
 
@@ -207,7 +198,7 @@ export function validarMovimentacaoManejo({
   if (!setorCanonico || !ordemPertenceAoManejo(ordem, setorCanonico)) {
     erros.push("OP_NAO_PERTENCE_AO_SETOR");
   }
-  if (![DESTINO_FACCAO, DESTINO_CELULA].includes(tipo)) erros.push("TIPO_DESTINO_INVALIDO");
+  if (tipo !== DESTINO_FACCAO) erros.push("TIPO_DESTINO_INVALIDO");
   if (!texto(destino)) erros.push("DESTINO_NAO_INFORMADO");
   if (!processoPermitidoNoManejo(processoFinal, setorCanonico, tipo)) erros.push("PROCESSO_NAO_PERMITIDO");
   if (qtd <= 0) erros.push("QUANTIDADE_INVALIDA");
@@ -217,14 +208,13 @@ export function validarMovimentacaoManejo({
   const operacional = validarManejoParaMovimentacao(manejo);
   erros.push(...operacional.erros);
 
-  // Regra explícita: Lateral e Bojo NÃO fazem parte da validação de saída.
-  // Sutiã Completo pode sair com esses componentes ainda não informados.
+  // Lateral e Bojo não bloqueiam saída de Sutiã Completo.
   return {
     ok: erros.length === 0,
     erros: [...new Set(erros)],
     dados: {
       setor: setorCanonico,
-      tipoDestino: tipo,
+      tipoDestino: DESTINO_FACCAO,
       destino: texto(destino).toUpperCase(),
       processo: processoFinal,
       quantidade: qtd,
@@ -256,8 +246,8 @@ export function criarDadosMovimentacao({
       referencia: texto(ordem.referencia),
       cor: texto(ordem.cor),
       produtoNome: texto(ordem.produtoNome),
-      tipoDestino: d.tipoDestino,
-      tipoDestinoLabel: d.tipoDestino === DESTINO_FACCAO ? "Facção" : "Célula",
+      tipoDestino: DESTINO_FACCAO,
+      tipoDestinoLabel: "Facção",
       destino: d.destino,
       destinoId: texto(destinoId),
       processo: d.processo,
