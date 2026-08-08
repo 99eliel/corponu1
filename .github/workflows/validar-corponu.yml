@@ -91,3 +91,15 @@ jobs:
             corponu-v2-firebase-bridge.js
           if-no-files-found: error
           retention-days: 7
+
+      - name: Gerar pacote Firebase V2 Facções e Chegada
+        uses: actions/upload-artifact@v4
+        with:
+          name: corpo-nu-flow-v2-faccoes-chegada-controlada
+          path: |
+            firebase-v2-faccoes-chegada
+            v2
+            style.css
+            corponu-v2-firebase-bridge.js
+          if-no-files-found: error
+          retention-days: 7
