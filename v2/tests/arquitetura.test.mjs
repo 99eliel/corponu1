@@ -37,7 +37,9 @@ test("telas V2 não usam observer, polling ou listener Firestore", async () => {
   for (const arquivo of [
     "../ui/fechamento-page.mjs",
     "../ui/ordens-page.mjs",
-    "../ui/ordens-ui-utils.mjs"
+    "../ui/ordens-ui-utils.mjs",
+    "../ui/manejo-page.mjs",
+    "../ui/manejo-ui-utils.mjs"
   ]) {
     const codigo = await fonte(arquivo);
     assert.doesNotMatch(codigo, /MutationObserver/, arquivo);
@@ -73,10 +75,29 @@ test("Manejo V2 não conhece nem grava coleção financeira", async () => {
   assert.match(repo, /movimentacoesProducao/);
 });
 
+test("Manejo V2 não oferece Célula nem carrega catálogo de Células", async () => {
+  const arquivos = [
+    "../core/manejo-regras.mjs",
+    "../core/manejo-controller.mjs",
+    "../ui/manejo-page.mjs",
+    "../ui/manejo-template.mjs",
+    "../ui/manejo-ui-utils.mjs",
+    "../bootstrap/manejo-app.mjs"
+  ];
+  for (const arquivo of arquivos) {
+    const codigo = await fonte(arquivo);
+    assert.doesNotMatch(codigo, /DESTINO_CELULA|PROCESSO_CELULA|data-v2-enviar-celula/i, arquivo);
+  }
+
+  const bootstrap = await fonte("../bootstrap/manejo-app.mjs");
+  assert.doesNotMatch(bootstrap, /celulas-repo|celulasRepo|criarCelulasRepoFirestore/i);
+});
+
 test("bootstraps V2 reutilizam Firebase existente", async () => {
   for (const arquivo of [
     "../bootstrap/fechamento-app.mjs",
-    "../bootstrap/ordens-app.mjs"
+    "../bootstrap/ordens-app.mjs",
+    "../bootstrap/manejo-app.mjs"
   ]) {
     const codigo = await fonte(arquivo);
     assert.doesNotMatch(codigo, /initializeApp\s*\(/, arquivo);
@@ -134,9 +155,12 @@ test("nenhum módulo V2 importa patches legados", async () => {
     "../adapters/manejo-repo.mjs",
     "../bootstrap/fechamento-app.mjs",
     "../bootstrap/ordens-app.mjs",
+    "../bootstrap/manejo-app.mjs",
     "../ui/fechamento-page.mjs",
     "../ui/ordens-page.mjs",
-    "../ui/ordens-ui-utils.mjs"
+    "../ui/ordens-ui-utils.mjs",
+    "../ui/manejo-page.mjs",
+    "../ui/manejo-ui-utils.mjs"
   ];
 
   for (const arquivo of arquivos) {
