@@ -8,6 +8,7 @@
   const VERSION_IDENTIDADE_FLOW = "2026-08-07-corpo-nu-flow-identidade-145";
   const VERSION_CALCINHA_SALVAMENTO_RAPIDO = "2026-08-07-calcinha-salvamento-rapido-147";
   const VERSION_QUANTIDADE_SEM_SCROLL = "2026-08-07-quantidade-sem-scroll-148";
+  const VERSION_MANEJO_FASES_SUTIA = "2026-08-08-manejo-fases-sutia-161";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -77,6 +78,15 @@
     "faccoes-saida-atualizacao-imediata-143",
     VERSION_ATUALIZACAO_SAIDA_FACCOES,
     "Não foi possível atualizar a lista de Facções imediatamente após a saída."
+  );
+
+  // 161 separa visualmente as fases do Manejo Sutiã sem alterar a lógica existente:
+  // a fase atual passa a ser Fase Bojo e a nova Fase Lateral começa em branco.
+  carregarScript(
+    "corponu-manejo-fases-sutia-161.js",
+    "manejo-fases-sutia-161",
+    VERSION_MANEJO_FASES_SUTIA,
+    "Não foi possível carregar Fase Bojo e Fase Lateral no Manejo Sutiã."
   );
 
   if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION_DUPLICIDADE) return;
