@@ -16,33 +16,28 @@
       <p>Sistema Integrado de Gestão da Produção • testes com dados locais</p>
     </div>
     <div class="homologacao-acoes">
-      <label>
-        Perfil para testar Facções
-        <select id="homologacaoPerfil">
-          <option value="ADMIN">Administrador</option>
-          <option value="USUARIO">Usuário comum</option>
-        </select>
+      <label>Perfil para testar Facções
+        <select id="homologacaoPerfil"><option value="ADMIN">Administrador</option><option value="USUARIO">Usuário comum</option></select>
       </label>
       <button id="btnRestaurarHomologacao" class="btn" type="button">Restaurar dados de teste</button>
     </div>
   </header>
 
   <section class="homologacao-info panel">
-    <div>
-      <strong>Banco:</strong> local no navegador. Nenhuma OP, chegada ou pagamento desta página vai para o Firebase real.
-    </div>
+    <div><strong>Banco:</strong> local no navegador. Nenhuma OP, chegada ou pagamento desta página vai para o Firebase real.</div>
     <div id="homologacaoResumo" class="homologacao-resumo"></div>
   </section>
 
   <section class="homologacao-roteiro panel">
     <details open>
-      <summary><strong>Roteiro rápido para seu primeiro teste</strong></summary>
+      <summary><strong>Roteiro rápido para teste</strong></summary>
       <ol>
         <li><strong>Ordens:</strong> use as OPs 70001, 70002 e 80001 ou crie uma nova. Referências disponíveis: 414, 912 e C100.</li>
-        <li><strong>Manejo:</strong> preencha Fase, Silk e Data Tecido; depois envie para uma Facção.</li>
-        <li><strong>Facções:</strong> teste como usuário comum em “Informar chegada”; depois troque o perfil para Administrador e confirme a chegada.</li>
-        <li><strong>Fechamento:</strong> lance a OP por competência mensal. Observe que o fechamento funciona independente da data de chegada.</li>
-        <li>Se quiser começar novamente, clique em <strong>Restaurar dados de teste</strong>.</li>
+        <li><strong>Manejo:</strong> preencha Fase Bojo/Fase Lateral, Silk e Data Tecido; depois envie para uma Facção.</li>
+        <li><strong>Facções:</strong> informe e confirme a chegada. Isso continua sem gerar pagamento.</li>
+        <li><strong>Fechamento:</strong> lance a OP por competência mensal e confira Sutiã Completo/referência 912.</li>
+        <li><strong>Pagamentos:</strong> filtre a competência, confira totais, teste a confirmação em lote e os dois relatórios.</li>
+        <li>Para começar novamente, clique em <strong>Restaurar dados de teste</strong>.</li>
       </ol>
     </details>
   </section>
@@ -52,6 +47,7 @@
     <button type="button" data-homologacao-nav="manejo">Manejo</button>
     <button type="button" data-homologacao-nav="faccoes">Facções</button>
     <button type="button" data-homologacao-nav="fechamento">Fechamento de Pagamentos</button>
+    <button type="button" data-homologacao-nav="pagamentos">Pagamentos</button>
   </nav>
 
   <main class="homologacao-main">
@@ -62,16 +58,14 @@
       <div id="v2Fechamento"></div>
       <section class="panel homologacao-pagamentos">
         <h3>Lançamentos criados nesta homologação</h3>
-        <p class="muted">Esta lista é local e serve para você confirmar que o fechamento foi criado sem depender da chegada.</p>
+        <p class="muted">Esta lista é local e serve para confirmar que o fechamento foi criado sem depender da chegada.</p>
         <div id="homologacaoPagamentos"></div>
       </section>
     </section>
+    <section data-homologacao-page="pagamentos" class="hidden"><div id="v2Pagamentos"></div></section>
   </main>
 
-  <footer class="homologacao-rodape">
-    Homologação V2 isolada • não usa o banco de produção
-  </footer>
-
+  <footer class="homologacao-rodape">Homologação V2 isolada • não usa o banco de produção</footer>
   <script type="module" src="../v2/homologacao/app-local.mjs"></script>
 </body>
 </html>
