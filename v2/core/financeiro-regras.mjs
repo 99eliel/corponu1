@@ -79,29 +79,47 @@ export function validarLancamentoFinanceiro({
   };
 }
 
-export function criarChaveLancamento({
-  opId,
-  numeroOP,
-  processo,
-  responsavel,
-  competencia,
-  ocorrencia = 1
-} = {}) {
+export function criarChaveControleProcesso({ opId, numeroOP, processo } = {}) {
   const op = texto(opId || numeroOP);
   const processoNormalizado = processoCanonico(processo);
-  const competenciaNormalizada = normalizarCompetencia(competencia);
-  const ocorrenciaNormalizada = Math.max(1, inteiro(ocorrencia, 1));
+  if (!op || !processoNormalizado) return "";
+  return ["controle-fechamento-v2", slugSeguro(op), slugSeguro(processoNormalizado)].join("-");
+}
 
-  if (!op || !processoNormalizado || !texto(responsavel) || !competenciaNormalizada) return "";
-
+export function criarChaveLancamento({ opId, numeroOP, processo, parcela } = {}) {
+  const op = texto(opId || numeroOP);
+  const processoNormalizado = processoCanonico(processo);
+  const parcelaNormalizada = inteiro(parcela);
+  if (!op || !processoNormalizado || parcelaNormalizada <= 0) return "";
   return [
     "fechamento-v2",
     slugSeguro(op),
     slugSeguro(processoNormalizado),
-    slugSeguro(responsavel),
-    competenciaNormalizada,
-    `oc-${ocorrenciaNormalizada}`
+    `p-${String(parcelaNormalizada).padStart(4, "0")}`
   ].join("-");
+}
+
+export function validarSaldoProcesso({ quantidadeOP, quantidadeFechada = 0, quantidadeNova = 0 } = {}) {
+  const totalOP = inteiro(quantidadeOP);
+  const fechada = inteiro(quantidadeFechada);
+  const nova = inteiro(quantidadeNova);
+  const restante = Math.max(totalOP - fechada, 0);
+  const erros = [];
+
+  if (totalOP <= 0) erros.push("QUANTIDADE_OP_INVALIDA");
+  if (nova <= 0) erros.push("QUANTIDADE_INVALIDA");
+  if (nova > restante) erros.push("QUANTIDADE_MAIOR_QUE_RESTANTE");
+
+  return {
+    ok: erros.length === 0,
+    erros,
+    quantidadeOP: totalOP,
+    quantidadeFechada: fechada,
+    quantidadeRestante: restante,
+    quantidadeNova: nova,
+    quantidadeFechadaDepois: Math.min(totalOP, fechada + nova),
+    quantidadeRestanteDepois: Math.max(totalOP - fechada - nova, 0)
+  };
 }
 
 function validarQuantidadeCalculo(quantidade) {
@@ -131,34 +149,20 @@ export function calcularSutiaCompleto({
 } = {}) {
   const validacaoQuantidade = validarQuantidadeCalculo(quantidade);
   if (!validacaoQuantidade.ok) {
-    return {
-      ok: false,
-      erros: [validacaoQuantidade.erro],
-      valorUnitario: 0,
-      total: 0
-    };
+    return { ok: false, erros: [validacaoQuantidade.erro], valorUnitario: 0, total: 0 };
   }
 
   const qtd = validacaoQuantidade.quantidade;
   const config = configSutia(configuracao);
   const referenciaNormalizada = normalizarReferencia(referencia);
   const especial = Boolean(
-    referenciaNormalizada &&
-    config.referenciaEspecial &&
-    referenciaNormalizada === config.referenciaEspecial
+    referenciaNormalizada && config.referenciaEspecial && referenciaNormalizada === config.referenciaEspecial
   );
 
   if (especial) {
     if (config.valorBaseReferenciaEspecial <= 0) {
-      return {
-        ok: false,
-        erros: ["VALOR_REFERENCIA_ESPECIAL_NAO_CONFIGURADO"],
-        especial: true,
-        valorUnitario: 0,
-        total: 0
-      };
+      return { ok: false, erros: ["VALOR_REFERENCIA_ESPECIAL_NAO_CONFIGURADO"], especial: true, valorUnitario: 0, total: 0 };
     }
-
     const valorUnitario = arredondar4(config.valorBaseReferenciaEspecial);
     return {
       ok: true,
@@ -167,25 +171,14 @@ export function calcularSutiaCompleto({
       referencia: referenciaNormalizada,
       quantidade: qtd,
       base: valorUnitario,
-      descontos: {
-        lateral: 0,
-        bojo: 0,
-        fecho: 0,
-        pontoLuz: 0
-      },
+      descontos: { lateral: 0, bojo: 0, fecho: 0, pontoLuz: 0 },
       valorUnitario,
       total: arredondar2(qtd * valorUnitario)
     };
   }
 
   if (config.valorBaseGeral <= 0) {
-    return {
-      ok: false,
-      erros: ["VALOR_BASE_NAO_CONFIGURADO"],
-      especial: false,
-      valorUnitario: 0,
-      total: 0
-    };
+    return { ok: false, erros: ["VALOR_BASE_NAO_CONFIGURADO"], especial: false, valorUnitario: 0, total: 0 };
   }
 
   const lateral = estadoBinario(componentes.lateral);
@@ -201,20 +194,11 @@ export function calcularSutiaCompleto({
 
   const valorLateral = Math.max(0, numero(valoresComponentes.lateral, 0));
   const valorBojo = Math.max(0, numero(valoresComponentes.bojo, 0));
-
   if (lateral === true && valorLateral <= 0) erros.push("VALOR_LATERAL_NAO_CADASTRADO");
   if (bojo === true && valorBojo <= 0) erros.push("VALOR_BOJO_NAO_CADASTRADO");
 
   if (erros.length) {
-    return {
-      ok: false,
-      erros,
-      especial: false,
-      referencia: referenciaNormalizada,
-      quantidade: qtd,
-      valorUnitario: 0,
-      total: 0
-    };
+    return { ok: false, erros, especial: false, referencia: referenciaNormalizada, quantidade: qtd, valorUnitario: 0, total: 0 };
   }
 
   const descontos = {
@@ -225,11 +209,7 @@ export function calcularSutiaCompleto({
   };
 
   const valorUnitario = arredondar4(Math.max(
-    config.valorBaseGeral -
-    descontos.lateral -
-    descontos.bojo -
-    descontos.fecho -
-    descontos.pontoLuz,
+    config.valorBaseGeral - descontos.lateral - descontos.bojo - descontos.fecho - descontos.pontoLuz,
     0
   ));
 
@@ -257,15 +237,8 @@ export function calcularPagamentoProcesso({
   valoresComponentes
 } = {}) {
   const processoNormalizado = processoCanonico(processo);
-
   if (processoNormalizado === PROCESSO_SUTIA_COMPLETO) {
-    return calcularSutiaCompleto({
-      referencia,
-      quantidade,
-      componentes,
-      configuracao: configuracaoSutiaCompleto,
-      valoresComponentes
-    });
+    return calcularSutiaCompleto({ referencia, quantidade, componentes, configuracao: configuracaoSutiaCompleto, valoresComponentes });
   }
 
   const validacaoQuantidade = validarQuantidadeCalculo(quantidade);
@@ -294,44 +267,27 @@ export function criarDocumentoFechamento({
   responsavel,
   competencia,
   quantidade,
-  ocorrencia = 1,
   calculo,
   observacoes = ""
 } = {}) {
-  const validacao = validarLancamentoFinanceiro({
-    op,
-    processo,
-    responsavel,
-    competencia,
-    quantidade
-  });
-
+  const validacao = validarLancamentoFinanceiro({ op, processo, responsavel, competencia, quantidade });
   const erros = [...validacao.erros];
   if (!calculo?.ok) erros.push(...(calculo?.erros || ["CALCULO_INVALIDO"]));
-
-  if (erros.length) {
-    return { ok: false, erros: [...new Set(erros)], documento: null };
-  }
+  if (erros.length) return { ok: false, erros: [...new Set(erros)], documento: null };
 
   const dados = validacao.dados;
-  const chaveFechamento = criarChaveLancamento({
+  const chaveControle = criarChaveControleProcesso({
     opId: op?.id,
     numeroOP: dados.numeroOP,
-    processo: dados.processo,
-    responsavel: dados.responsavel,
-    competencia: dados.competencia,
-    ocorrencia
+    processo: dados.processo
   });
-
-  if (!chaveFechamento) {
-    return { ok: false, erros: ["CHAVE_FECHAMENTO_INVALIDA"], documento: null };
-  }
+  if (!chaveControle) return { ok: false, erros: ["CHAVE_FECHAMENTO_INVALIDA"], documento: null };
 
   const documento = {
     schemaVersion: 2,
+    tipoDocumento: "lancamento_financeiro_v2",
     origem: "fechamento_financeiro_v2",
-    chaveFechamento,
-    ocorrencia: Math.max(1, inteiro(ocorrencia, 1)),
+    chaveControle,
     opId: texto(op?.id),
     numeroOP: dados.numeroOP,
     referencia: texto(op?.referencia),
@@ -355,7 +311,5 @@ export function criarDocumentoFechamento({
     }
   };
 
-  // Regra arquitetural da V2: o fechamento financeiro é independente da chegada.
-  // Portanto este documento não possui dataChegada nem movimentacaoId obrigatórios.
   return { ok: true, erros: [], documento };
 }
