@@ -75,19 +75,7 @@ jobs:
           path: |
             firebase-v2-leitura
             v2
-            index.html
-            app.js
-            login-core.js
-            update.js
-            sw.js
             style.css
-            *.json
-            corponu-*.js
-            *.png
-            *.jpg
-            *.jpeg
-            *.webp
-            *.svg
-            *.ico
-          if-no-files-found: warn
+            corponu-v2-firebase-bridge.js
+          if-no-files-found: error
           retention-days: 7
