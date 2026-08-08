@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { FechamentoFinanceiroService } from "../core/financeiro-service.mjs";
+import { criarChaveLancamento, validarSaldoProcesso } from "../core/financeiro-regras.mjs";
+import { processoCanonico } from "../core/normalizacao.mjs";
 
 function criarAmbiente() {
   const chamadas = [];
@@ -39,7 +41,6 @@ function criarAmbiente() {
       return valores[processo] || 0;
     },
     async buscarConfiguracaoSutiaCompleto() {
-      chamadas.push(["buscarConfiguracaoSutiaCompleto"]);
       return {
         referenciaEspecial: "912",
         valorBaseGeral: 5.5,
@@ -48,42 +49,62 @@ function criarAmbiente() {
         descontoPontoLuzNaoFeito: 0.15
       };
     },
-    async buscarValoresComponentes(referencia) {
-      chamadas.push(["buscarValoresComponentes", referencia]);
+    async buscarValoresComponentes() {
       return { lateral: 0.35, bojo: 0.70 };
     }
   };
 
-  const pagamentosRepo = {
-    async salvarSeAusente(chave, documento) {
-      chamadas.push(["salvarSeAusente", chave]);
-      if (pagamentos.has(chave)) {
-        return {
-          ok: false,
-          motivo: "LANCAMENTO_DUPLICADO",
-          existente: structuredClone(pagamentos.get(chave))
-        };
-      }
+  function itensProcesso({ opId, processo }) {
+    return [...pagamentos.values()].filter(item =>
+      item.opId === opId && processoCanonico(item.processo) === processoCanonico(processo)
+    );
+  }
 
-      const salvo = structuredClone(documento);
-      pagamentos.set(chave, salvo);
-      return { ok: true, documento: structuredClone(salvo) };
+  const pagamentosRepo = {
+    async obterSaldoProcesso({ opId, processo, quantidadeOP }) {
+      const itens = itensProcesso({ opId, processo });
+      const quantidadeFechada = itens.reduce((soma, item) => soma + item.quantidade, 0);
+      chamadas.push(["obterSaldo", processoCanonico(processo), quantidadeFechada]);
+      return {
+        quantidadeOP,
+        quantidadeFechada,
+        quantidadeRestante: quantidadeOP - quantidadeFechada,
+        quantidadeLancamentos: itens.length
+      };
+    },
+    async salvarComSaldo(documento) {
+      const saldoAtual = await this.obterSaldoProcesso(documento);
+      const saldo = validarSaldoProcesso({
+        quantidadeOP: documento.quantidadeOP,
+        quantidadeFechada: saldoAtual.quantidadeFechada,
+        quantidadeNova: documento.quantidade
+      });
+      if (!saldo.ok) return { ok: false, motivo: saldo.erros[0], saldo };
+      const parcela = saldoAtual.quantidadeLancamentos + 1;
+      const id = criarChaveLancamento({ ...documento, parcela });
+      const salvo = { ...structuredClone(documento), id, chaveFechamento: id, parcela };
+      pagamentos.set(id, salvo);
+      chamadas.push(["salvarComSaldo", id]);
+      return {
+        ok: true,
+        documento: structuredClone(salvo),
+        saldo: {
+          ...saldo,
+          quantidadeFechada: saldo.quantidadeFechadaDepois,
+          quantidadeRestante: saldo.quantidadeRestanteDepois,
+          quantidadeLancamentos: parcela
+        }
+      };
     }
   };
 
-  const service = new FechamentoFinanceiroService({
-    ordensRepo,
-    valoresRepo,
-    pagamentosRepo
-  });
-
+  const service = new FechamentoFinanceiroService({ ordensRepo, valoresRepo, pagamentosRepo });
   return { service, chamadas, pagamentos, op };
 }
 
 test("busca OP sem consultar movimentações", async () => {
   const { service, chamadas } = criarAmbiente();
   const resultado = await service.carregarOP("58193");
-
   assert.equal(resultado.ok, true);
   assert.equal(resultado.op.numeroOP, "58193");
   assert.deepEqual(chamadas, [["buscarOP", "58193"]]);
@@ -91,110 +112,64 @@ test("busca OP sem consultar movimentações", async () => {
 
 test("cria fechamento de processo comum sem usar data de chegada", async () => {
   const { service, pagamentos } = criarAmbiente();
-
   const resultado = await service.salvarLancamento({
-    numeroOP: "58193",
-    processo: "SUTIÃ MONTAGEM",
-    responsavel: "LIVIA",
-    competencia: "2026-07",
-    quantidade: 500,
-    ocorrencia: 1
+    numeroOP: "58193", processo: "SUTIÃ MONTAGEM", responsavel: "LIVIA",
+    competencia: "2026-07", quantidade: 500
   });
-
   assert.equal(resultado.ok, true);
-  assert.equal(resultado.salvo.competencia, "2026-07");
   assert.equal(resultado.salvo.total, 625);
   assert.equal("dataChegada" in resultado.salvo, false);
   assert.equal("movimentacaoId" in resultado.salvo, false);
+  assert.equal("ocorrencia" in resultado.salvo, false);
+  assert.equal(resultado.saldo.quantidadeRestante, 0);
   assert.equal(pagamentos.size, 1);
 });
 
-test("bloqueia repetição exata do mesmo fechamento na mesma operação de persistência", async () => {
-  const { service, pagamentos, chamadas } = criarAmbiente();
-  const entrada = {
-    numeroOP: "58193",
-    processo: "SUTIÃ MONTAGEM",
-    responsavel: "LIVIA",
-    competencia: "2026-08",
-    quantidade: 250,
-    ocorrencia: 1
-  };
-
-  const primeiro = await service.salvarLancamento(entrada);
-  const segundo = await service.salvarLancamento(entrada);
-
-  assert.equal(primeiro.ok, true);
-  assert.equal(segundo.ok, false);
-  assert.deepEqual(segundo.erros, ["LANCAMENTO_DUPLICADO"]);
-  assert.equal(pagamentos.size, 1);
-
-  const operacoesPersistencia = chamadas.filter(([nome]) => nome === "salvarSeAusente");
-  assert.equal(operacoesPersistencia.length, 2);
-  assert.equal(
-    chamadas.some(([nome]) => nome === "buscarPagamento"),
-    false
-  );
-});
-
-test("permite ocorrência 2 para retrabalho legítimo", async () => {
+test("permite parcelas até completar a quantidade da OP e bloqueia qualquer excedente", async () => {
   const { service, pagamentos } = criarAmbiente();
-  const base = {
-    numeroOP: "58193",
-    processo: "SUTIÃ MONTAGEM",
-    responsavel: "LIVIA",
-    competencia: "2026-08",
-    quantidade: 100
-  };
 
-  const primeiro = await service.salvarLancamento({ ...base, ocorrencia: 1 });
-  const retrabalho = await service.salvarLancamento({ ...base, ocorrencia: 2 });
+  const primeira = await service.salvarLancamento({
+    numeroOP: "58193", processo: "SUTIÃ MONTAGEM", responsavel: "LIVIA",
+    competencia: "2026-08", quantidade: 200
+  });
+  const segunda = await service.salvarLancamento({
+    numeroOP: "58193", processo: "SUTIÃ MONTAGEM", responsavel: "OUTRA PESSOA",
+    competencia: "2026-09", quantidade: 300
+  });
+  const excedente = await service.salvarLancamento({
+    numeroOP: "58193", processo: "SUTIÃ MONTAGEM", responsavel: "LIVIA",
+    competencia: "2026-10", quantidade: 1
+  });
 
-  assert.equal(primeiro.ok, true);
-  assert.equal(retrabalho.ok, true);
-  assert.notEqual(
-    primeiro.salvo.chaveFechamento,
-    retrabalho.salvo.chaveFechamento
-  );
+  assert.equal(primeira.ok, true);
+  assert.equal(primeira.saldo.quantidadeRestante, 300);
+  assert.equal(segunda.ok, true);
+  assert.equal(segunda.saldo.quantidadeRestante, 0);
+  assert.equal(excedente.ok, false);
+  assert.ok(excedente.erros.includes("QUANTIDADE_MAIOR_QUE_RESTANTE"));
   assert.equal(pagamentos.size, 2);
 });
 
-test("fechamento parcial não cria saldo operacional nem movimentação", async () => {
-  const { service, chamadas } = criarAmbiente();
-
-  const resultado = await service.salvarLancamento({
-    numeroOP: "58193",
-    processo: "SUTIÃ MONTAGEM",
-    responsavel: "LIVIA",
-    competencia: "2026-08",
-    quantidade: 180
+test("saldo é separado por processo dentro da mesma OP", async () => {
+  const { service } = criarAmbiente();
+  await service.salvarLancamento({
+    numeroOP: "58193", processo: "ALÇA", responsavel: "JANAINA", competencia: "2026-08", quantidade: 500
   });
-
-  assert.equal(resultado.ok, true);
-  assert.equal(resultado.salvo.quantidade, 180);
-  assert.equal(resultado.salvo.quantidadeOP, 500);
-  assert.equal(
-    chamadas.some(chamada => String(chamada[0]).toLowerCase().includes("moviment")),
-    false
-  );
+  const montagem = await service.prepararLancamento({
+    numeroOP: "58193", processo: "SUTIÃ MONTAGEM", responsavel: "LIVIA", competencia: "2026-08", quantidade: 500
+  });
+  assert.equal(montagem.ok, true);
+  assert.equal(montagem.saldo.quantidadeFechada, 0);
+  assert.equal(montagem.saldo.quantidadeRestanteDepois, 0);
 });
 
 test("Sutiã Completo usa cálculo consolidado no serviço", async () => {
   const { service } = criarAmbiente();
-
   const resultado = await service.prepararLancamento({
-    numeroOP: "58193",
-    processo: "SUTIÃ COMPLETO",
-    responsavel: "DANUBIA",
-    competencia: "2026-08",
-    quantidade: 100,
-    componentes: {
-      lateral: true,
-      bojo: true,
-      fecho: true,
-      pontoLuz: true
-    }
+    numeroOP: "58193", processo: "SUTIÃ COMPLETO", responsavel: "DANUBIA",
+    competencia: "2026-08", quantidade: 100,
+    componentes: { lateral: true, bojo: true, fecho: true, pontoLuz: true }
   });
-
   assert.equal(resultado.ok, true);
   assert.equal(resultado.calculo.valorUnitario, 4.45);
   assert.equal(resultado.documento.total, 445);
@@ -202,36 +177,21 @@ test("Sutiã Completo usa cálculo consolidado no serviço", async () => {
 
 test("Sutiã Completo para se componente necessário estiver não informado", async () => {
   const { service } = criarAmbiente();
-
   const resultado = await service.prepararLancamento({
-    numeroOP: "58193",
-    processo: "SUTIÃ COMPLETO",
-    responsavel: "DANUBIA",
-    competencia: "2026-08",
-    quantidade: 100,
-    componentes: {
-      lateral: null,
-      bojo: true,
-      fecho: true,
-      pontoLuz: true
-    }
+    numeroOP: "58193", processo: "SUTIÃ COMPLETO", responsavel: "DANUBIA",
+    competencia: "2026-08", quantidade: 100,
+    componentes: { lateral: null, bojo: true, fecho: true, pontoLuz: true }
   });
-
   assert.equal(resultado.ok, false);
   assert.ok(resultado.erros.includes("LATERAL_NAO_INFORMADA"));
 });
 
 test("OP inexistente não produz lançamento", async () => {
   const { service, pagamentos } = criarAmbiente();
-
   const resultado = await service.salvarLancamento({
-    numeroOP: "99999",
-    processo: "CALCINHA COMPLETA",
-    responsavel: "LORENA",
-    competencia: "2026-08",
-    quantidade: 100
+    numeroOP: "99999", processo: "CALCINHA COMPLETA", responsavel: "LORENA",
+    competencia: "2026-08", quantidade: 100
   });
-
   assert.equal(resultado.ok, false);
   assert.deepEqual(resultado.erros, ["OP_NAO_ENCONTRADA"]);
   assert.equal(pagamentos.size, 0);
