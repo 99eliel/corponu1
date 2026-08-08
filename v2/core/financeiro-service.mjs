@@ -1,13 +1,7 @@
-import {
-  PROCESSO_SUTIA_COMPLETO,
-  calcularPagamentoProcesso,
-  criarDocumentoFechamento
-} from "./financeiro-regras.mjs";
-import {
-  inteiro,
-  processoCanonico,
-  texto
-} from "./normalizacao.mjs";
+import { criarDocumentoFechamento } from "./financeiro-regras.mjs";
+import { MotorValoresV2 } from "./motor-valores.mjs";
+import { normalizarOPLegada } from "./op-normalizador.mjs";
+import { texto } from "./normalizacao.mjs";
 
 function exigirMetodo(objeto, nome, grupo) {
   if (!objeto || typeof objeto[nome] !== "function") {
@@ -18,14 +12,16 @@ function exigirMetodo(objeto, nome, grupo) {
 export class FechamentoFinanceiroService {
   constructor({ ordensRepo, valoresRepo, pagamentosRepo }) {
     exigirMetodo(ordensRepo, "buscarPorNumero", "ordensRepo");
-    exigirMetodo(valoresRepo, "buscarValorUnitario", "valoresRepo");
-    exigirMetodo(valoresRepo, "buscarConfiguracaoSutiaCompleto", "valoresRepo");
-    exigirMetodo(valoresRepo, "buscarValoresComponentes", "valoresRepo");
     exigirMetodo(pagamentosRepo, "salvarSeAusente", "pagamentosRepo");
 
     this.ordensRepo = ordensRepo;
     this.valoresRepo = valoresRepo;
     this.pagamentosRepo = pagamentosRepo;
+    this.motorValores = new MotorValoresV2({ valoresRepo });
+  }
+
+  normalizarOP(op) {
+    return normalizarOPLegada(op || {});
   }
 
   async carregarOP(numeroOP) {
@@ -35,45 +31,21 @@ export class FechamentoFinanceiroService {
     const op = await this.ordensRepo.buscarPorNumero(numero);
     if (!op) return { ok: false, erros: ["OP_NAO_ENCONTRADA"], op: null };
 
-    return { ok: true, erros: [], op };
+    return { ok: true, erros: [], op: this.normalizarOP(op) };
   }
 
   async calcular({ op, processo, quantidade, componentes = {} }) {
-    const processoNormalizado = processoCanonico(processo);
-    const qtd = inteiro(quantidade);
-
-    if (processoNormalizado === PROCESSO_SUTIA_COMPLETO) {
-      const [configuracaoSutiaCompleto, valoresComponentes] = await Promise.all([
-        this.valoresRepo.buscarConfiguracaoSutiaCompleto(),
-        this.valoresRepo.buscarValoresComponentes(op?.referencia)
-      ]);
-
-      return calcularPagamentoProcesso({
-        processo: processoNormalizado,
-        referencia: op?.referencia,
-        quantidade: qtd,
-        componentes,
-        configuracaoSutiaCompleto,
-        valoresComponentes
-      });
-    }
-
-    const valorUnitario = await this.valoresRepo.buscarValorUnitario(
-      op?.referencia,
-      processoNormalizado
-    );
-
-    return calcularPagamentoProcesso({
-      processo: processoNormalizado,
-      referencia: op?.referencia,
-      quantidade: qtd,
-      valorUnitario
+    return this.motorValores.calcular({
+      op: this.normalizarOP(op),
+      processo,
+      quantidade,
+      componentes
     });
   }
 
   async prepararLancamento(entrada = {}) {
     const opCarregada = entrada.op
-      ? { ok: true, erros: [], op: entrada.op }
+      ? { ok: true, erros: [], op: this.normalizarOP(entrada.op) }
       : await this.carregarOP(entrada.numeroOP);
 
     if (!opCarregada.ok) {
