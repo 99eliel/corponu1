@@ -114,3 +114,14 @@ jobs:
             style.css
           if-no-files-found: error
           retention-days: 7
+
+      - name: Gerar pacote Firebase V2 Pagamentos somente leitura
+        uses: actions/upload-artifact@v4
+        with:
+          name: corpo-nu-flow-v2-pagamentos-leitura
+          path: |
+            firebase-v2-pagamentos-leitura
+            v2
+            style.css
+          if-no-files-found: error
+          retention-days: 7
