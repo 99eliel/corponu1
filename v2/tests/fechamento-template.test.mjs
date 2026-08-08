@@ -27,13 +27,15 @@ test("tela não possui campo operacional de chegada ou movimentação", () => {
   assert.doesNotMatch(html, /id="[^\"]*Chegada[^\"]*"/i);
 });
 
-test("Sutiã Completo possui quatro respostas binárias no fechamento", () => {
+test("Sutiã Completo possui quatro respostas binárias identificadas individualmente", () => {
   const html = templateFechamentoPagamento();
 
   for (const campo of ["lateral", "bojo", "fecho", "pontoLuz"]) {
+    assert.match(html, new RegExp(`data-v2-componente-campo="${campo}"`));
     assert.match(html, new RegExp(`name="${campo}"`));
   }
 
+  assert.match(html, /data-v2-componentes-conhecidos/);
   const quantidadeSim = (html.match(/<option value="sim">Sim<\/option>/g) || []).length;
   const quantidadeNao = (html.match(/<option value="nao">Não<\/option>/g) || []).length;
   assert.equal(quantidadeSim, 4);
