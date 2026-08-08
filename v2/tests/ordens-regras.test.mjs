@@ -16,6 +16,7 @@ const PRODUTO_SUTIA = Object.freeze({
   referencia: "414",
   nome: "Sutiã 414",
   tipoPeca: "sutia",
+  // Mantidos de propósito no Produto para provar que a OP V2 os ignora.
   possuiAlca: true,
   possuiBojo: true,
   possuiRenda: false
@@ -103,7 +104,7 @@ test("datas de necessidade são opcionais mas respeitam ordem cronológica", () 
   assert.ok(invalido.erros.includes("NECESSIDADE_DATAS_INVALIDAS"));
 });
 
-test("Sutiã copia Alça, Bojo e Renda do Produto e quantidade continua na OP", () => {
+test("Sutiã ignora Alça, Bojo e Renda do Produto e quantidade continua somente na OP", () => {
   const resultado = criarDadosOrdem({
     entrada: entradaBase(TIPO_SUTIA),
     produto: PRODUTO_SUTIA,
@@ -112,13 +113,13 @@ test("Sutiã copia Alça, Bojo e Renda do Produto e quantidade continua na OP", 
 
   assert.equal(resultado.ok, true);
   assert.equal(resultado.dados.quantidade, 500);
-  assert.equal(resultado.dados.possuiAlca, true);
-  assert.equal(resultado.dados.possuiBojo, true);
-  assert.equal(resultado.dados.possuiRenda, false);
+  assert.equal("possuiAlca" in resultado.dados, false);
+  assert.equal("possuiBojo" in resultado.dados, false);
+  assert.equal("possuiRenda" in resultado.dados, false);
   assert.equal("quantidade" in PRODUTO_SUTIA, false);
 });
 
-test("Calcinha não herda componentes e marca planejamento pendente quando vazio", () => {
+test("Calcinha não grava Alça, Bojo ou Renda e marca planejamento pendente quando vazio", () => {
   const resultado = criarDadosOrdem({
     entrada: entradaBase(TIPO_CALCINHA),
     produto: PRODUTO_CALCINHA,
@@ -127,9 +128,9 @@ test("Calcinha não herda componentes e marca planejamento pendente quando vazio
 
   assert.equal(resultado.ok, true);
   assert.equal(resultado.dados.tipoPeca, "calcinha");
-  assert.equal(resultado.dados.possuiAlca, false);
-  assert.equal(resultado.dados.possuiBojo, false);
-  assert.equal(resultado.dados.possuiRenda, false);
+  assert.equal("possuiAlca" in resultado.dados, false);
+  assert.equal("possuiBojo" in resultado.dados, false);
+  assert.equal("possuiRenda" in resultado.dados, false);
   assert.equal(resultado.dados.planejamentoCalcinhaPendente, true);
 });
 
