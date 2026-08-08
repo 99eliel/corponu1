@@ -15,14 +15,14 @@
     <section class="card-pag">
       <span class="badge-pag">FIREBASE REAL · SOMENTE LEITURA</span>
       <h1>Corpo Nu Flow V2</h1>
-      <p>Validação real da nova tela de Pagamentos. Filtros e relatórios funcionam normalmente, mas nenhum lançamento pode ser quitado ou alterado.</p>
+      <p>Validação real da nova tela de Pagamentos. Ela combina os novos Fechamentos V2 com os pagamentos históricos que já existem no Firebase, sem modificar os registros antigos.</p>
       <form id="firebasePagamentosForm">
         <label>E-mail<input id="firebasePagamentosEmail" type="email" autocomplete="username" required /></label>
         <label>Senha<input id="firebasePagamentosSenha" type="password" autocomplete="current-password" required /></label>
         <button id="firebasePagamentosEntrar" type="submit">Entrar em Pagamentos V2</button>
         <div class="status-pag" id="firebasePagamentosStatus" aria-live="polite"></div>
       </form>
-      <div class="notice-pag"><strong>Nenhuma escrita é permitida.</strong> O botão de quitação fica desativado e o Firestore usado por esta tela bloqueia qualquer lote de escrita.</div>
+      <div class="notice-pag"><strong>Nenhuma escrita é permitida.</strong> Histórico e V2 são apenas lidos. O botão de quitação fica desativado e o Firestore usado por esta tela bloqueia qualquer lote de escrita.</div>
     </section>
   </main>
 
@@ -33,7 +33,7 @@
         <span class="pag-badge">SOMENTE LEITURA · RELATÓRIOS LIBERADOS</span>
       </div>
     </header>
-    <div class="pag-aviso">Firebase real. Você pode filtrar, carregar mais e gerar os relatórios completo e simplificado. Marcar como pago permanece bloqueado nesta etapa.</div>
+    <div class="pag-aviso">Firebase real. A tela mostra Fechamentos V2 + histórico existente. Você pode filtrar por origem, conferir PIX e gerar os relatórios completo e simplificado. Marcar como pago permanece bloqueado nesta etapa.</div>
     <main class="pag-conteudo" id="firebasePagamentosConteudo"></main>
   </section>
 
