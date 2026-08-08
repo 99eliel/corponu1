@@ -1,37 +1,37 @@
-import { criarPagamentosConsultaRepoFirestore } from "../adapters/pagamentos-repo.mjs";
-import { criarFaccoesRepoFirestore } from "../adapters/faccoes-repo.mjs";
 import { PagamentosController } from "../core/pagamentos-controller.mjs";
-import { criarStoreCorpoNu } from "../core/store.mjs";
+import { criarContextoFirebaseV2 } from "./firebase-context.mjs";
 import { montarTelaPagamentos } from "../ui/pagamentos-page.mjs";
 
 export async function criarPagamentosAppV2({
   container,
   db,
   fs,
-  store = criarStoreCorpoNu(),
+  store,
+  contexto = null,
   obterUsuario = () => null,
   competenciaPadrao,
   confirmarQuitacao
 }) {
-  if (!db) throw new Error("Firestore db não configurado.");
-  if (!fs) throw new Error("Firestore API não configurada.");
+  const ctx = contexto || criarContextoFirebaseV2({ db, fs, store });
+  const storeV2 = ctx.store;
+  const pagamentosRepo = ctx.pagamentosConsultaRepo;
+  const faccoesRepo = ctx.faccoesRepo;
 
-  const pagamentosRepo = criarPagamentosConsultaRepoFirestore({ db, fs });
-  const faccoesRepo = criarFaccoesRepoFirestore({ db, fs, store });
-  await faccoesRepo.garantirCarregadas();
+  await ctx.garantirFaccoes();
 
-  const controller = new PagamentosController({ store, pagamentosRepo, faccoesRepo });
+  const controller = new PagamentosController({ store: storeV2, pagamentosRepo, faccoesRepo });
   const tela = montarTelaPagamentos({
     container,
     controller,
-    store,
+    store: storeV2,
     obterUsuario,
     competenciaPadrao,
     confirmarQuitacao
   });
 
   return {
-    store,
+    contexto: ctx,
+    store: storeV2,
     controller,
     pagamentosRepo,
     faccoesRepo,
