@@ -11,7 +11,7 @@ export class PagamentosController {
 
   async carregar({ competencia = "", limitePagina = 50 } = {}) {
     const itens = await this.pagamentosRepo.carregarPrimeiraPagina({ competencia, limitePagina });
-    this.store.substituir("pagamentos", itens);
+    itens.forEach(item => this.store.upsert("pagamentos", item));
     return this.listar({ competencia });
   }
 
@@ -35,20 +35,38 @@ export class PagamentosController {
     return relatorioSimplificadoPix(itens, this.store.listar("faccoes"));
   }
 
-  async quitarFiltrados(filtros = {}, { usuario = null } = {}) {
+  async prepararQuitacao(filtros = {}) {
     const todos = await this.pagamentosRepo.buscarTodos({ competencia: filtros.competencia });
     const filtrados = filtrarPagamentos(todos, filtros);
     const resumo = resumoQuitacao(filtrados);
-    if (!resumo.quantidade) return { ok: false, erros: ["NENHUM_PAGAMENTO_PENDENTE"], resumo };
+    return {
+      ok: resumo.quantidade > 0,
+      erros: resumo.quantidade ? [] : ["NENHUM_PAGAMENTO_PENDENTE"],
+      resumo,
+      ids: resumo.ids
+    };
+  }
 
-    const resultado = await this.pagamentosRepo.quitarEmLote(resumo.ids, { usuario });
-    if (!resultado.ok) return { ...resultado, resumo };
+  async quitarPreparados(preparado, { usuario = null } = {}) {
+    const ids = preparado?.ids || preparado?.resumo?.ids || [];
+    if (!ids.length) {
+      return { ok: false, erros: ["NENHUM_PAGAMENTO_PENDENTE"], resumo: preparado?.resumo || null };
+    }
+
+    const resultado = await this.pagamentosRepo.quitarEmLote(ids, { usuario });
+    if (!resultado.ok) return { ...resultado, resumo: preparado?.resumo || null };
 
     resultado.ids.forEach(id => {
       const atual = this.store.obter("pagamentos", id);
       if (atual) this.store.upsert("pagamentos", { ...atual, statusPagamento: "pago" });
     });
 
-    return { ok: true, erros: [], resumo, ids: resultado.ids };
+    return { ok: true, erros: [], resumo: preparado?.resumo || null, ids: resultado.ids };
+  }
+
+  async quitarFiltrados(filtros = {}, { usuario = null } = {}) {
+    const preparado = await this.prepararQuitacao(filtros);
+    if (!preparado.ok) return preparado;
+    return this.quitarPreparados(preparado, { usuario });
   }
 }
