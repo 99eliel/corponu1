@@ -104,3 +104,34 @@ test("Motor de Valores calcula ALÇA universal e Sutiã Completo 912 com valores
   assert.equal(especial.valorUnitario, 6.5);
   assert.equal(especial.total, 650);
 });
+
+test("Sutiã Completo 411 reproduz os descontos reais atuais", async () => {
+  const store = hidratarStoreLocal(criarStoreCorpoNu(), dadosIniciaisHomologacao());
+  const { valoresRepo } = criarRepositoriosLocais(store);
+  const motor = new MotorValoresV2({ valoresRepo });
+  const op = { id: "op-411", numeroOP: "41100", referencia: "411", quantidade: 100, tipoPeca: "sutia" };
+
+  const componentesFeitos = await motor.calcular({
+    op, processo: "SUTIÃ COMPLETO", quantidade: 100,
+    componentes: { lateral: true, bojo: true, fecho: true, pontoLuz: true }
+  });
+  assert.equal(componentesFeitos.ok, true);
+  assert.equal(componentesFeitos.valorUnitario, 4.8057);
+  assert.equal(componentesFeitos.total, 480.57);
+
+  const tudoDescontado = await motor.calcular({
+    op, processo: "SUTIÃ COMPLETO", quantidade: 100,
+    componentes: { lateral: true, bojo: true, fecho: false, pontoLuz: false }
+  });
+  assert.equal(tudoDescontado.ok, true);
+  assert.equal(tudoDescontado.valorUnitario, 4.4057);
+  assert.equal(tudoDescontado.total, 440.57);
+
+  const semBojoLateralFeitos = await motor.calcular({
+    op, processo: "SUTIÃ COMPLETO", quantidade: 100,
+    componentes: { lateral: false, bojo: false, fecho: true, pontoLuz: true }
+  });
+  assert.equal(semBojoLateralFeitos.ok, true);
+  assert.equal(semBojoLateralFeitos.valorUnitario, 5.5);
+  assert.equal(semBojoLateralFeitos.total, 550);
+});
