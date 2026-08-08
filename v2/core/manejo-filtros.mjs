@@ -22,6 +22,9 @@ export function statusManejoDaOrdem(ordem, setor) {
 
 export function valoresFiltroManejo(ordem, setor) {
   const manejo = getManejoDaOrdemV2(ordem, setor) || {};
+  const faseBojo = texto(manejo?.faseBojo ?? manejo?.fase);
+  const faseLateral = texto(manejo?.faseLateral);
+
   return {
     op: texto(ordem?.numeroOP || ordem?.numeroOPExterno || ordem?.op),
     referencia: texto(ordem?.referencia),
@@ -33,7 +36,10 @@ export function valoresFiltroManejo(ordem, setor) {
     silkData: texto(manejo?.silkData),
     tecido: texto(manejo?.tecidoNome || manejo?.tecido),
     dataTecido: texto(manejo?.dataTecido),
-    fase: texto(manejo?.fase),
+    // "fase" continua como alias temporário de Fase Bojo para filtros legados.
+    fase: faseBojo,
+    faseBojo,
+    faseLateral,
     faccao: texto(manejo?.faccao),
     chegada: texto(manejo?.chegada),
     falta: numero(manejo?.falta),
@@ -74,7 +80,8 @@ export function ordemPassaFiltrosManejo(ordem, setor, filtros = {}) {
       v.silkData,
       v.tecido,
       v.dataTecido,
-      v.fase,
+      v.faseBojo,
+      v.faseLateral,
       v.faccao,
       v.chegada,
       v.falta,
@@ -94,7 +101,8 @@ export function ordemPassaFiltrosManejo(ordem, setor, filtros = {}) {
   if (!igualSeAtivo(v.silkData, filtros.silkData)) return false;
   if (!igualSeAtivo(v.tecido, filtros.tecido)) return false;
   if (!igualSeAtivo(v.dataTecido, filtros.dataTecido)) return false;
-  if (!igualSeAtivo(v.fase, filtros.fase)) return false;
+  if (!igualSeAtivo(v.faseBojo, filtros.faseBojo ?? filtros.fase)) return false;
+  if (!igualSeAtivo(v.faseLateral, filtros.faseLateral)) return false;
   if (!igualSeAtivo(v.faccao, filtros.faccao)) return false;
   if (!igualSeAtivo(v.chegada, filtros.chegada)) return false;
   if (!numeroSeAtivo(v.falta, filtros.falta)) return false;
@@ -112,6 +120,7 @@ export function opcoesFiltrosManejo(ordens = [], setor) {
   const unicos = campo => [...new Set(registros.map(item => texto(item[campo])).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
 
+  const fasesBojo = unicos("faseBojo");
   return {
     status: unicos("status"),
     referencia: unicos("referencia"),
@@ -119,7 +128,10 @@ export function opcoesFiltrosManejo(ordens = [], setor) {
     necessidade: unicos("necessidade"),
     silk: unicos("silk"),
     dataTecido: unicos("dataTecido"),
-    fase: unicos("fase"),
+    // Alias temporário para chamadas antigas.
+    fase: fasesBojo,
+    faseBojo: fasesBojo,
+    faseLateral: unicos("faseLateral"),
     faccao: unicos("faccao"),
     chegada: unicos("chegada"),
     celu: unicos("celu")
