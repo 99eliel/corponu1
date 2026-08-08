@@ -56,7 +56,6 @@ export function criarOrdensGravacaoRepoFirestore({ db, fs, store }) {
     async buscarTodosPorNumero(numeroOP) {
       const encontrados = new Map();
 
-      // Consulta principal primeiro; compatibilidade legada só se necessário.
       const principais = await consultarCampo({ db, fs, campo: "numeroOP", numeroOP });
       principais.forEach(item => encontrados.set(item.id, item));
 
@@ -102,8 +101,6 @@ export function criarOrdensGravacaoRepoFirestore({ db, fs, store }) {
         payload.criadoPor = usuario?.uid || dadosLimpos.criadoPor || "";
         payload.criadoEm = fs.serverTimestamp();
       } else if (typeof fs.deleteField === "function") {
-        // Limpeza segura de OPs antigas: merge preserva Manejo e demais dados,
-        // enquanto apenas os três campos irrelevantes são removidos.
         for (const campo of CAMPOS_COMPONENTES_LEGADOS_OP) {
           payload[campo] = fs.deleteField();
         }
@@ -115,12 +112,9 @@ export function criarOrdensGravacaoRepoFirestore({ db, fs, store }) {
         novo ? undefined : { merge: true }
       );
 
-      // upsert() é intencionalmente merge no store. Para não manter os campos
-      // legados apenas em memória, substituímos este registro específico.
       const anteriorLocal = store.obter("ordens", documentoId) || {};
       const local = limparCamposLegadosLocal({ ...anteriorLocal, ...dadosLimpos, id: documentoId });
-      store.remover("ordens", documentoId);
-      store.upsert("ordens", local);
+      store.substituirItem("ordens", local);
       return local;
     }
   };
