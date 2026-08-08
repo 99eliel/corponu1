@@ -9,7 +9,9 @@ const MENSAGENS_ERRO = Object.freeze({
   RESPONSAVEL_NAO_INFORMADO: "Escolha quem fez o serviço.",
   COMPETENCIA_INVALIDA: "Informe a competência mensal.",
   QUANTIDADE_INVALIDA: "Informe uma quantidade válida.",
+  QUANTIDADE_OP_INVALIDA: "A quantidade da OP é inválida.",
   QUANTIDADE_MAIOR_QUE_OP: "A quantidade informada é maior que a quantidade da OP.",
+  QUANTIDADE_MAIOR_QUE_RESTANTE: "A quantidade informada é maior que o restante disponível para este processo.",
   LATERAL_NAO_INFORMADA: "Informe se a Lateral já foi feita.",
   BOJO_NAO_INFORMADO: "Informe se o Bojo já foi feito.",
   FECHO_NAO_INFORMADO: "Informe se o Fecho foi feito.",
@@ -19,7 +21,7 @@ const MENSAGENS_ERRO = Object.freeze({
   VALOR_UNITARIO_NAO_CADASTRADO: "Não existe valor cadastrado para este serviço e referência.",
   VALOR_BASE_NAO_CONFIGURADO: "O valor-base do Sutiã Completo não está configurado.",
   VALOR_REFERENCIA_ESPECIAL_NAO_CONFIGURADO: "O valor da referência especial não está configurado.",
-  LANCAMENTO_DUPLICADO: "Este lançamento já existe. Para retrabalho legítimo, use outra ocorrência."
+  LANCAMENTO_DUPLICADO: "Foi detectada uma tentativa duplicada de lançamento."
 });
 
 const ROTULOS_COMPONENTES = Object.freeze({
@@ -35,10 +37,7 @@ function competenciaAtual() {
 }
 
 function moeda(valor) {
-  return Number(valor || 0).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL"
-  });
+  return Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function mensagemErros(erros = []) {
@@ -75,7 +74,6 @@ function renderResumo(elemento, op) {
 
 function preencherResponsaveis(select, lista) {
   select.innerHTML = "";
-
   const inicial = document.createElement("option");
   inicial.value = "";
   inicial.textContent = lista.length ? "Selecione" : "Nenhum responsável cadastrado para este serviço";
@@ -153,7 +151,6 @@ function lerEntrada(form) {
     responsavel: texto(dados.get("responsavel")),
     competencia: texto(dados.get("competencia")),
     quantidade: Number(dados.get("quantidade") || 0),
-    ocorrencia: Number(dados.get("ocorrencia") || 1),
     componentes,
     observacoes: texto(dados.get("observacoes"))
   };
@@ -171,9 +168,7 @@ export function montarTelaFechamento({
   competenciaPadrao = competenciaAtual(),
   onSalvo = null
 }) {
-  if (!(container instanceof HTMLElement)) {
-    throw new Error("Container inválido para Fechamento de Pagamentos V2.");
-  }
+  if (!(container instanceof HTMLElement)) throw new Error("Container inválido para Fechamento de Pagamentos V2.");
   if (!controller) throw new Error("Controller de fechamento não configurado.");
 
   container.innerHTML = templateFechamentoPagamento({ competenciaPadrao });
@@ -189,19 +184,56 @@ export function montarTelaFechamento({
   const processo = form.querySelector('[name="processo"]');
   const responsavel = form.querySelector('[name="responsavel"]');
   const quantidade = form.querySelector('[name="quantidade"]');
-  const ocorrencia = form.querySelector('[name="ocorrencia"]');
+  const saldoProcesso = form.querySelector("[data-v2-saldo-processo]");
   const componentes = form.querySelector("[data-v2-componentes]");
   const componentesConhecidos = form.querySelector("[data-v2-componentes-conhecidos]");
   const competencia = form.querySelector('[name="competencia"]');
   const submit = form.querySelector('button[type="submit"]');
-  let diagnosticoSeq = 0;
+  let atualizacaoSeq = 0;
 
   limparConferenciaComponentes(componentes, componentesConhecidos);
   protegerNumeroContraWheel(quantidade, signal);
-  protegerNumeroContraWheel(ocorrencia, signal);
+
+  function limparSaldo() {
+    saldoProcesso.textContent = "Escolha a OP e o serviço para consultar o restante.";
+    quantidade.disabled = false;
+    quantidade.removeAttribute("max");
+  }
+
+  async function atualizarSaldo() {
+    const sequencia = ++atualizacaoSeq;
+    const processoAtual = processo.value;
+    if (!controller.opAtual?.id || !processoAtual) {
+      limparSaldo();
+      return null;
+    }
+
+    try {
+      const resultado = await controller.consultarSaldo(processoAtual);
+      if (sequencia !== atualizacaoSeq || processo.value !== processoAtual) return null;
+      if (!resultado.ok || !resultado.saldo) {
+        limparSaldo();
+        return null;
+      }
+
+      const saldo = resultado.saldo;
+      saldoProcesso.textContent = `Fechado neste processo: ${Number(saldo.quantidadeFechada || 0).toLocaleString("pt-BR")} de ${Number(saldo.quantidadeOP || 0).toLocaleString("pt-BR")} • Restam ${Number(saldo.quantidadeRestante || 0).toLocaleString("pt-BR")}.`;
+      const restante = Number(saldo.quantidadeRestante || 0);
+      quantidade.disabled = restante <= 0;
+      quantidade.max = String(Math.max(restante, 0));
+      if (restante <= 0) quantidade.value = "";
+      else if (!quantidade.value || Number(quantidade.value) > restante) quantidade.value = String(restante);
+      return saldo;
+    } catch (error) {
+      if (sequencia !== atualizacaoSeq) return null;
+      console.error("[V2] Falha ao consultar saldo do processo.", error);
+      limparSaldo();
+      return null;
+    }
+  }
 
   async function atualizarConferenciaComponentes() {
-    const sequencia = ++diagnosticoSeq;
+    const sequencia = ++atualizacaoSeq;
     const processoAtual = processo.value;
 
     if (processoCanonico(processoAtual) !== PROCESSO_SUTIA_COMPLETO) {
@@ -211,29 +243,36 @@ export function montarTelaFechamento({
 
     try {
       const resultado = await controller.diagnosticarComponentes(processoAtual);
-      if (sequencia !== diagnosticoSeq || processo.value !== processoAtual) return null;
-
+      if (sequencia !== atualizacaoSeq || processo.value !== processoAtual) return null;
       if (!resultado.ok) {
         limparConferenciaComponentes(componentes, componentesConhecidos);
         return null;
       }
-
       aplicarDiagnosticoComponentes(componentes, componentesConhecidos, resultado.diagnostico);
       return resultado.diagnostico;
     } catch (error) {
-      if (sequencia !== diagnosticoSeq) return null;
+      if (sequencia !== atualizacaoSeq) return null;
       console.error("[V2] Falha ao diagnosticar componentes do fechamento.", error);
       limparConferenciaComponentes(componentes, componentesConhecidos);
       return null;
     }
   }
 
+  async function atualizarProcesso() {
+    const lista = controller.listarResponsaveis(processo.value);
+    preencherResponsaveis(responsavel, lista);
+    await atualizarSaldo();
+    await atualizarConferenciaComponentes();
+    return lista;
+  }
+
   async function buscarOP() {
     const numeroOP = texto(opInput.value);
     if (!numeroOP) {
       controller.limparOP();
-      ++diagnosticoSeq;
+      ++atualizacaoSeq;
       renderResumo(resumo, null);
+      limparSaldo();
       limparConferenciaComponentes(componentes, componentesConhecidos);
       setStatus(preview, MENSAGENS_ERRO.OP_NAO_INFORMADA, "erro");
       opInput.focus();
@@ -247,8 +286,9 @@ export function montarTelaFechamento({
     try {
       const resultado = await controller.buscarOP(numeroOP);
       if (!resultado.ok) {
-        ++diagnosticoSeq;
+        ++atualizacaoSeq;
         renderResumo(resumo, null);
+        limparSaldo();
         limparConferenciaComponentes(componentes, componentesConhecidos);
         setStatus(preview, mensagemErros(resultado.erros), "erro");
         return null;
@@ -256,7 +296,7 @@ export function montarTelaFechamento({
 
       renderResumo(resumo, resultado.op);
       quantidade.value = Number(resultado.op.quantidade || 0) || "";
-      await atualizarConferenciaComponentes();
+      if (processo.value) await atualizarProcesso();
       setStatus(preview, "OP localizada. Escolha o serviço e quem fez para conferir o valor.", "ok");
       return resultado.op;
     } catch (error) {
@@ -270,17 +310,14 @@ export function montarTelaFechamento({
   }
 
   processo.addEventListener("change", async () => {
-    const lista = controller.listarResponsaveis(processo.value);
-    preencherResponsaveis(responsavel, lista);
-    await atualizarConferenciaComponentes();
+    const lista = await atualizarProcesso();
     setStatus(preview, lista.length
-      ? "Responsáveis carregados. Confira os dados antes de adicionar ao fechamento."
+      ? "Responsáveis carregados. Confira o restante do processo antes de adicionar ao fechamento."
       : "Nenhum responsável habilitado para este serviço.",
     lista.length ? "normal" : "erro");
   }, { signal });
 
   busca.addEventListener("click", buscarOP, { signal });
-
   opInput.addEventListener("keydown", event => {
     if (event.key !== "Enter") return;
     event.preventDefault();
@@ -302,7 +339,7 @@ export function montarTelaFechamento({
 
       setStatus(
         preview,
-        `Valor unitário: ${moeda(resultado.calculo.valorUnitario)} • Total: ${moeda(resultado.calculo.total)}`,
+        `Valor unitário: ${moeda(resultado.calculo.valorUnitario)} • Total: ${moeda(resultado.calculo.total)} • Restarão ${Number(resultado.saldo?.quantidadeRestanteDepois || 0).toLocaleString("pt-BR")} peça(s) neste processo.`,
         "ok"
       );
     } catch (error) {
@@ -326,15 +363,17 @@ export function montarTelaFechamento({
       const resultado = await controller.salvar(lerEntrada(form));
       if (!resultado.ok) {
         setStatus(preview, mensagemErros(resultado.erros), "erro");
+        await atualizarSaldo();
         return;
       }
 
       setStatus(
         preview,
-        `Lançamento adicionado: ${moeda(resultado.salvo.total)} • competência ${resultado.salvo.competencia}.`,
+        `Lançamento adicionado: ${moeda(resultado.salvo.total)} • competência ${resultado.salvo.competencia} • restam ${Number(resultado.saldo?.quantidadeRestante || 0).toLocaleString("pt-BR")} peça(s) neste processo.`,
         "ok"
       );
       onSalvo?.(resultado.salvo, resultado);
+      await atualizarSaldo();
     } catch (error) {
       console.error("[V2] Falha ao salvar fechamento.", error);
       setStatus(preview, "Não foi possível adicionar o lançamento.", "erro");
@@ -346,10 +385,11 @@ export function montarTelaFechamento({
 
   form.addEventListener("reset", () => {
     window.setTimeout(() => {
-      ++diagnosticoSeq;
+      ++atualizacaoSeq;
       controller.limparOP();
       renderResumo(resumo, null);
       preencherResponsaveis(responsavel, []);
+      limparSaldo();
       limparConferenciaComponentes(componentes, componentesConhecidos);
       competencia.value = competenciaPadrao;
       setStatus(preview, "Busque uma OP para iniciar o fechamento.", "normal");
@@ -358,7 +398,7 @@ export function montarTelaFechamento({
 
   return {
     desmontar() {
-      ++diagnosticoSeq;
+      ++atualizacaoSeq;
       abort.abort();
       controller.limparOP();
       container.innerHTML = "";
