@@ -58,12 +58,7 @@ export function templateFechamentoPagamento({ competenciaPadrao = "" } = {}) {
           <label>
             Quantidade a fechar
             <input id="v2FechamentoQuantidade" name="quantidade" type="number" min="1" step="1" required />
-          </label>
-
-          <label>
-            Ocorrência
-            <input id="v2FechamentoOcorrencia" name="ocorrencia" type="number" min="1" step="1" value="1" required />
-            <small>Use 2, 3... somente para retrabalho/novo serviço legítimo da mesma OP.</small>
+            <small data-v2-saldo-processo>Escolha a OP e o serviço para consultar o restante.</small>
           </label>
         </div>
 
