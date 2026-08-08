@@ -23,6 +23,11 @@ export class FechamentoController {
 
   async buscarOP(numeroOP) {
     const numero = texto(numeroOP);
+    if (!numero) {
+      this.opAtual = null;
+      return { ok: false, erros: ["OP_NAO_INFORMADA"], op: null, origem: "entrada" };
+    }
+
     const cacheada = this.store.buscarOrdemPorNumero(numero);
     if (cacheada) {
       this.opAtual = cacheada;
@@ -47,6 +52,10 @@ export class FechamentoController {
     return { ...op };
   }
 
+  limparOP() {
+    this.opAtual = null;
+  }
+
   listarResponsaveis(processo) {
     const processoNormalizado = processoCanonico(processo);
     const nomesFallback = this.fallbackFaccoesPorProcesso[processoNormalizado] || [];
@@ -58,41 +67,43 @@ export class FechamentoController {
     );
   }
 
-  async preparar(entrada = {}) {
-    const op = entrada.op ||
-      this.store.buscarOrdemPorNumero(entrada.numeroOP) ||
-      this.opAtual;
+  async resolverOP(entrada = {}) {
+    if (entrada.op) return { ok: true, erros: [], op: entrada.op, origem: "entrada" };
 
-    if (!op) {
-      const carregada = await this.buscarOP(entrada.numeroOP);
-      if (!carregada.ok) return carregada;
-      return this.financeiroService.prepararLancamento({
-        ...entrada,
-        op: carregada.op
-      });
+    const numero = texto(entrada.numeroOP);
+    if (numero) {
+      const cacheada = this.store.buscarOrdemPorNumero(numero);
+      if (cacheada) {
+        this.opAtual = cacheada;
+        return { ok: true, erros: [], op: cacheada, origem: "store" };
+      }
+      return this.buscarOP(numero);
     }
+
+    if (this.opAtual) {
+      return { ok: true, erros: [], op: this.opAtual, origem: "selecionada" };
+    }
+
+    return { ok: false, erros: ["OP_NAO_INFORMADA"], op: null, origem: "entrada" };
+  }
+
+  async preparar(entrada = {}) {
+    const resolvida = await this.resolverOP(entrada);
+    if (!resolvida.ok) return resolvida;
 
     return this.financeiroService.prepararLancamento({
       ...entrada,
-      op
+      op: resolvida.op
     });
   }
 
   async salvar(entrada = {}) {
-    const op = entrada.op ||
-      this.store.buscarOrdemPorNumero(entrada.numeroOP) ||
-      this.opAtual;
-
-    let opFinal = op;
-    if (!opFinal) {
-      const carregada = await this.buscarOP(entrada.numeroOP);
-      if (!carregada.ok) return carregada;
-      opFinal = carregada.op;
-    }
+    const resolvida = await this.resolverOP(entrada);
+    if (!resolvida.ok) return resolvida;
 
     const resultado = await this.financeiroService.salvarLancamento({
       ...entrada,
-      op: opFinal
+      op: resolvida.op
     });
 
     if (resultado.ok && resultado.salvo?.id) {
