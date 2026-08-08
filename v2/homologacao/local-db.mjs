@@ -1,4 +1,5 @@
 import { normalizar, normalizarReferencia, processoCanonico, texto } from "../core/normalizacao.mjs";
+import { criarChaveLancamento, validarSaldoProcesso } from "../core/financeiro-regras.mjs";
 
 const STORAGE_KEY = "corponu-flow-v2-homologacao-local";
 
@@ -252,13 +253,68 @@ export function criarRepositoriosLocais(store) {
     }
   };
 
+  function lancamentosProcesso({ opId, numeroOP, processo }) {
+    const alvoProcesso = processoCanonico(processo);
+    const alvoNumero = normalizar(numeroOP);
+    return store.listar("pagamentos").filter(item => {
+      if (item.tipoDocumento === "controle_processo_v2" || item.estornado === true || item.excluido === true) return false;
+      const mesmaOP = texto(opId) ? texto(item.opId) === texto(opId) : normalizar(item.numeroOP) === alvoNumero;
+      return mesmaOP && processoCanonico(item.processo) === alvoProcesso;
+    });
+  }
+
   const pagamentosRepo = {
-    async salvarSeAusente(chave, documento) {
-      const existente = store.obter("pagamentos", chave);
-      if (existente) return { ok: false, motivo: "LANCAMENTO_DUPLICADO", existente };
-      const salvo = { id: chave, ...copiar(documento), criadoEm: new Date().toISOString() };
+    async obterSaldoProcesso({ opId, numeroOP, processo, quantidadeOP }) {
+      const itens = lancamentosProcesso({ opId, numeroOP, processo });
+      const quantidadeFechada = itens.reduce((soma, item) => soma + Number(item.quantidade || 0), 0);
+      return {
+        quantidadeOP: Number(quantidadeOP || 0),
+        quantidadeFechada,
+        quantidadeRestante: Math.max(Number(quantidadeOP || 0) - quantidadeFechada, 0),
+        quantidadeLancamentos: itens.length
+      };
+    },
+
+    async salvarComSaldo(documento, { saldoInicial = null } = {}) {
+      const saldoAtual = await this.obterSaldoProcesso(documento);
+      const base = saldoAtual.quantidadeLancamentos || saldoInicial?.quantidadeLancamentos || 0;
+      const validacao = validarSaldoProcesso({
+        quantidadeOP: documento.quantidadeOP,
+        quantidadeFechada: saldoAtual.quantidadeFechada,
+        quantidadeNova: documento.quantidade
+      });
+      if (!validacao.ok) return { ok: false, motivo: validacao.erros[0], saldo: validacao };
+
+      const parcela = base + 1;
+      const id = criarChaveLancamento({
+        opId: documento.opId,
+        numeroOP: documento.numeroOP,
+        processo: documento.processo,
+        parcela
+      });
+      const existente = store.obter("pagamentos", id);
+      if (existente) return { ok: false, motivo: "LANCAMENTO_DUPLICADO", existente, saldo: validacao };
+
+      const salvo = {
+        id,
+        ...copiar(documento),
+        chaveFechamento: id,
+        parcela,
+        quantidadeFechadaProcesso: validacao.quantidadeFechadaDepois,
+        quantidadeRestanteProcesso: validacao.quantidadeRestanteDepois,
+        criadoEm: new Date().toISOString()
+      };
       store.upsert("pagamentos", salvo);
-      return { ok: true, documento: copiar(salvo) };
+      return {
+        ok: true,
+        documento: copiar(salvo),
+        saldo: {
+          ...validacao,
+          quantidadeFechada: validacao.quantidadeFechadaDepois,
+          quantidadeRestante: validacao.quantidadeRestanteDepois,
+          quantidadeLancamentos: parcela
+        }
+      };
     }
   };
 
