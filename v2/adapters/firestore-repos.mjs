@@ -1,10 +1,16 @@
 import {
+  inteiro,
   normalizar,
   normalizarReferencia,
   numero,
   processoCanonico,
   texto
 } from "../core/normalizacao.mjs";
+import {
+  criarChaveControleProcesso,
+  criarChaveLancamento,
+  validarSaldoProcesso
+} from "../core/financeiro-regras.mjs";
 
 function snapshotExiste(snapshot) {
   return Boolean(snapshot && typeof snapshot.exists === "function" && snapshot.exists());
@@ -17,9 +23,9 @@ function dadosSnapshot(snapshot) {
 
 function documentoValido(item) {
   if (!item) return false;
-  if (item.excluida === true || item.excluido === true) return false;
-  const status = normalizar(item.status);
-  return !["EXCLUIDA", "EXCLUIDO", "CANCELADA", "CANCELADO"].includes(status);
+  if (item.excluida === true || item.excluido === true || item.estornado === true) return false;
+  const status = normalizar(item.status || item.statusPagamento);
+  return !["EXCLUIDA", "EXCLUIDO", "CANCELADA", "CANCELADO", "ESTORNADO"].includes(status);
 }
 
 function valoresConsulta(valor) {
@@ -138,10 +144,7 @@ function criarCacheComTTL(ttlMs) {
       return item.valor;
     },
     salvar(chave, valor) {
-      dados.set(chave, {
-        valor,
-        expiraEm: Date.now() + ttlMs
-      });
+      dados.set(chave, { valor, expiraEm: Date.now() + ttlMs });
       return valor;
     },
     limpar() {
@@ -156,14 +159,7 @@ export function criarValoresRepoFirestore({
   cachePrecosExterno = null,
   ttlMs = 120000
 }) {
-  exigirApi(fs, [
-    "collection",
-    "query",
-    "where",
-    "getDocs",
-    "doc",
-    "getDoc"
-  ]);
+  exigirApi(fs, ["collection", "query", "where", "getDocs", "doc", "getDoc"]);
 
   const cachePrecos = cachePrecosExterno || criarCacheComTTL(ttlMs);
   const cacheConfig = criarCacheComTTL(ttlMs);
@@ -198,7 +194,6 @@ export function criarValoresRepoFirestore({
     const candidatos = itens.filter(item =>
       processoCanonico(item.processo || item.servicoNome || item.nome) === alvo
     );
-
     return candidatos.find(item => numero(item.valor) > 0) || candidatos[0] || null;
   }
 
@@ -246,42 +241,155 @@ export function criarPagamentosRepoFirestore({
   fs,
   colecao = "entregasPagamento"
 }) {
-  exigirApi(fs, ["doc", "runTransaction", "serverTimestamp"]);
+  exigirApi(fs, ["collection", "query", "where", "getDocs", "doc", "getDoc", "runTransaction", "serverTimestamp"]);
 
   if (colecao !== "entregasPagamento") {
     throw new Error("A V2 financeira deve gravar somente em entregasPagamento.");
   }
 
-  return {
-    async salvarSeAusente(chave, documento) {
-      const id = texto(chave);
-      if (!id) return { ok: false, motivo: "CHAVE_FECHAMENTO_INVALIDA" };
+  async function buscarLancamentosExistentes({ opId, numeroOP, processo }) {
+    const mapa = new Map();
 
-      const referencia = fs.doc(db, colecao, id);
+    if (texto(opId)) {
+      const snap = await fs.getDocs(fs.query(
+        fs.collection(db, colecao),
+        fs.where("opId", "==", texto(opId))
+      ));
+      snap.docs.forEach(item => mapa.set(item.id, { id: item.id, ...item.data() }));
+    }
+
+    if (!mapa.size) {
+      for (const valor of valoresConsulta(numeroOP)) {
+        const snap = await fs.getDocs(fs.query(
+          fs.collection(db, colecao),
+          fs.where("numeroOP", "==", valor)
+        ));
+        snap.docs.forEach(item => mapa.set(item.id, { id: item.id, ...item.data() }));
+      }
+    }
+
+    const alvo = processoCanonico(processo);
+    return [...mapa.values()].filter(item =>
+      item.tipoDocumento !== "controle_processo_v2" &&
+      documentoValido(item) &&
+      processoCanonico(item.processo) === alvo
+    );
+  }
+
+  async function obterSaldoProcesso({ opId, numeroOP, processo, quantidadeOP }) {
+    const chaveControle = criarChaveControleProcesso({ opId, numeroOP, processo });
+    if (!chaveControle) {
+      return { quantidadeOP: inteiro(quantidadeOP), quantidadeFechada: 0, quantidadeRestante: inteiro(quantidadeOP), quantidadeLancamentos: 0 };
+    }
+
+    const controleSnap = await fs.getDoc(fs.doc(db, colecao, chaveControle));
+    if (snapshotExiste(controleSnap)) {
+      const controle = controleSnap.data();
+      const totalOP = inteiro(controle.quantidadeOP || quantidadeOP);
+      const fechada = inteiro(controle.quantidadeFechada);
+      return {
+        chaveControle,
+        quantidadeOP: totalOP,
+        quantidadeFechada: fechada,
+        quantidadeRestante: Math.max(totalOP - fechada, 0),
+        quantidadeLancamentos: inteiro(controle.ultimaParcela)
+      };
+    }
+
+    const existentes = await buscarLancamentosExistentes({ opId, numeroOP, processo });
+    const fechada = existentes.reduce((soma, item) => soma + inteiro(item.quantidade), 0);
+    const totalOP = inteiro(quantidadeOP);
+    return {
+      chaveControle,
+      quantidadeOP: totalOP,
+      quantidadeFechada: fechada,
+      quantidadeRestante: Math.max(totalOP - fechada, 0),
+      quantidadeLancamentos: existentes.length
+    };
+  }
+
+  return {
+    obterSaldoProcesso,
+
+    async salvarComSaldo(documento, { saldoInicial = null } = {}) {
+      const chaveControle = texto(documento?.chaveControle) || criarChaveControleProcesso(documento || {});
+      if (!chaveControle) return { ok: false, motivo: "CHAVE_FECHAMENTO_INVALIDA" };
+
+      const controleRef = fs.doc(db, colecao, chaveControle);
 
       return fs.runTransaction(db, async transacao => {
-        const atual = await transacao.get(referencia);
-        if (snapshotExiste(atual)) {
-          return {
-            ok: false,
-            motivo: "LANCAMENTO_DUPLICADO",
-            existente: dadosSnapshot(atual)
-          };
+        const controleSnap = await transacao.get(controleRef);
+        const controleAtual = snapshotExiste(controleSnap) ? controleSnap.data() : null;
+        const quantidadeOP = inteiro(controleAtual?.quantidadeOP || documento.quantidadeOP || saldoInicial?.quantidadeOP);
+        const quantidadeFechada = controleAtual
+          ? inteiro(controleAtual.quantidadeFechada)
+          : inteiro(saldoInicial?.quantidadeFechada);
+
+        const saldo = validarSaldoProcesso({
+          quantidadeOP,
+          quantidadeFechada,
+          quantidadeNova: documento.quantidade
+        });
+
+        if (!saldo.ok) {
+          return { ok: false, motivo: saldo.erros[0], saldo };
         }
 
-        const agoraCriacao = fs.serverTimestamp();
-        const dados = {
+        const ultimaParcela = controleAtual
+          ? inteiro(controleAtual.ultimaParcela)
+          : inteiro(saldoInicial?.quantidadeLancamentos);
+        const parcela = ultimaParcela + 1;
+        const id = criarChaveLancamento({
+          opId: documento.opId,
+          numeroOP: documento.numeroOP,
+          processo: documento.processo,
+          parcela
+        });
+        if (!id) return { ok: false, motivo: "CHAVE_FECHAMENTO_INVALIDA", saldo };
+
+        const pagamentoRef = fs.doc(db, colecao, id);
+        const pagamentoAtual = await transacao.get(pagamentoRef);
+        if (snapshotExiste(pagamentoAtual)) {
+          return { ok: false, motivo: "LANCAMENTO_DUPLICADO", existente: dadosSnapshot(pagamentoAtual), saldo };
+        }
+
+        const agora = fs.serverTimestamp();
+        const dadosPagamento = {
           ...documento,
           id,
-          criadoEm: agoraCriacao,
-          atualizadoEm: agoraCriacao
+          chaveFechamento: id,
+          parcela,
+          quantidadeFechadaProcesso: saldo.quantidadeFechadaDepois,
+          quantidadeRestanteProcesso: saldo.quantidadeRestanteDepois,
+          criadoEm: agora,
+          atualizadoEm: agora
+        };
+        const dadosControle = {
+          schemaVersion: 2,
+          tipoDocumento: "controle_processo_v2",
+          origem: "fechamento_financeiro_v2",
+          opId: texto(documento.opId),
+          numeroOP: texto(documento.numeroOP),
+          processo: processoCanonico(documento.processo),
+          quantidadeOP,
+          quantidadeFechada: saldo.quantidadeFechadaDepois,
+          quantidadeRestante: saldo.quantidadeRestanteDepois,
+          ultimaParcela: parcela,
+          atualizadoEm: agora
         };
 
-        transacao.set(referencia, dados, { merge: false });
+        transacao.set(pagamentoRef, dadosPagamento, { merge: false });
+        transacao.set(controleRef, dadosControle, { merge: true });
 
         return {
           ok: true,
-          documento: { ...documento, id }
+          documento: { ...dadosPagamento, criadoEm: undefined, atualizadoEm: undefined },
+          saldo: {
+            ...saldo,
+            quantidadeFechada: saldo.quantidadeFechadaDepois,
+            quantidadeRestante: saldo.quantidadeRestanteDepois,
+            quantidadeLancamentos: parcela
+          }
         };
       });
     }
