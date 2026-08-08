@@ -22,6 +22,13 @@ const MENSAGENS_ERRO = Object.freeze({
   LANCAMENTO_DUPLICADO: "Este lançamento já existe. Para retrabalho legítimo, use outra ocorrência."
 });
 
+const ROTULOS_COMPONENTES = Object.freeze({
+  lateral: "Lateral",
+  bojo: "Bojo",
+  fecho: "Fecho",
+  pontoLuz: "Ponto de Luz"
+});
+
 function competenciaAtual() {
   const agora = new Date();
   return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}`;
@@ -84,21 +91,61 @@ function preencherResponsaveis(select, lista) {
   select.disabled = lista.length === 0;
 }
 
-function configurarComponentes(fieldset, processo) {
-  const completo = processoCanonico(processo) === PROCESSO_SUTIA_COMPLETO;
-  fieldset.classList.toggle("hidden", !completo);
+function limparConferenciaComponentes(fieldset, conhecidos) {
+  fieldset.classList.add("hidden");
+  conhecidos.textContent = "";
+  conhecidos.classList.add("hidden");
 
-  fieldset.querySelectorAll("select").forEach(select => {
-    select.disabled = !completo;
-    select.required = completo;
-    if (!completo) select.value = "";
+  fieldset.querySelectorAll("[data-v2-componente-campo]").forEach(label => {
+    label.classList.remove("hidden");
+    const select = label.querySelector("select");
+    if (!select) return;
+    select.value = "";
+    select.disabled = true;
+    select.required = false;
+  });
+}
+
+function aplicarDiagnosticoComponentes(fieldset, conhecidos, diagnostico) {
+  limparConferenciaComponentes(fieldset, conhecidos);
+  if (!diagnostico || diagnostico.especial === true) return;
+
+  fieldset.classList.remove("hidden");
+  const faltantes = new Set(diagnostico.faltantes || []);
+  const conhecidosLista = Object.entries(diagnostico.conhecidos || {})
+    .map(([nome, valor]) => `${ROTULOS_COMPONENTES[nome] || nome}: ${valor === true ? "Sim" : "Não"}`);
+
+  if (conhecidosLista.length) {
+    conhecidos.textContent = `Já informado na OP: ${conhecidosLista.join(" • ")}`;
+    conhecidos.classList.remove("hidden");
+  } else if (!faltantes.size) {
+    conhecidos.textContent = "Todos os componentes necessários já estão informados na OP.";
+    conhecidos.classList.remove("hidden");
+  }
+
+  fieldset.querySelectorAll("[data-v2-componente-campo]").forEach(label => {
+    const nome = label.dataset.v2ComponenteCampo;
+    const select = label.querySelector("select");
+    const precisaPerguntar = faltantes.has(nome);
+    label.classList.toggle("hidden", !precisaPerguntar);
+    if (!select) return;
+    select.value = "";
+    select.disabled = !precisaPerguntar;
+    select.required = precisaPerguntar;
   });
 }
 
 function lerEntrada(form) {
   const dados = new FormData(form);
   const processo = texto(dados.get("processo"));
-  const completo = processoCanonico(processo) === PROCESSO_SUTIA_COMPLETO;
+  const componentes = {};
+
+  if (processoCanonico(processo) === PROCESSO_SUTIA_COMPLETO) {
+    Object.keys(ROTULOS_COMPONENTES).forEach(nome => {
+      const valor = texto(dados.get(nome));
+      if (valor) componentes[nome] = valor;
+    });
+  }
 
   return {
     numeroOP: texto(dados.get("numeroOP")),
@@ -107,12 +154,7 @@ function lerEntrada(form) {
     competencia: texto(dados.get("competencia")),
     quantidade: Number(dados.get("quantidade") || 0),
     ocorrencia: Number(dados.get("ocorrencia") || 1),
-    componentes: completo ? {
-      lateral: texto(dados.get("lateral")) || null,
-      bojo: texto(dados.get("bojo")) || null,
-      fecho: texto(dados.get("fecho")) || null,
-      pontoLuz: texto(dados.get("pontoLuz")) || null
-    } : {},
+    componentes,
     observacoes: texto(dados.get("observacoes"))
   };
 }
@@ -149,18 +191,50 @@ export function montarTelaFechamento({
   const quantidade = form.querySelector('[name="quantidade"]');
   const ocorrencia = form.querySelector('[name="ocorrencia"]');
   const componentes = form.querySelector("[data-v2-componentes]");
+  const componentesConhecidos = form.querySelector("[data-v2-componentes-conhecidos]");
   const competencia = form.querySelector('[name="competencia"]');
   const submit = form.querySelector('button[type="submit"]');
+  let diagnosticoSeq = 0;
 
-  configurarComponentes(componentes, "");
+  limparConferenciaComponentes(componentes, componentesConhecidos);
   protegerNumeroContraWheel(quantidade, signal);
   protegerNumeroContraWheel(ocorrencia, signal);
+
+  async function atualizarConferenciaComponentes() {
+    const sequencia = ++diagnosticoSeq;
+    const processoAtual = processo.value;
+
+    if (processoCanonico(processoAtual) !== PROCESSO_SUTIA_COMPLETO) {
+      limparConferenciaComponentes(componentes, componentesConhecidos);
+      return null;
+    }
+
+    try {
+      const resultado = await controller.diagnosticarComponentes(processoAtual);
+      if (sequencia !== diagnosticoSeq || processo.value !== processoAtual) return null;
+
+      if (!resultado.ok) {
+        limparConferenciaComponentes(componentes, componentesConhecidos);
+        return null;
+      }
+
+      aplicarDiagnosticoComponentes(componentes, componentesConhecidos, resultado.diagnostico);
+      return resultado.diagnostico;
+    } catch (error) {
+      if (sequencia !== diagnosticoSeq) return null;
+      console.error("[V2] Falha ao diagnosticar componentes do fechamento.", error);
+      limparConferenciaComponentes(componentes, componentesConhecidos);
+      return null;
+    }
+  }
 
   async function buscarOP() {
     const numeroOP = texto(opInput.value);
     if (!numeroOP) {
       controller.limparOP();
+      ++diagnosticoSeq;
       renderResumo(resumo, null);
+      limparConferenciaComponentes(componentes, componentesConhecidos);
       setStatus(preview, MENSAGENS_ERRO.OP_NAO_INFORMADA, "erro");
       opInput.focus();
       return null;
@@ -173,13 +247,16 @@ export function montarTelaFechamento({
     try {
       const resultado = await controller.buscarOP(numeroOP);
       if (!resultado.ok) {
+        ++diagnosticoSeq;
         renderResumo(resumo, null);
+        limparConferenciaComponentes(componentes, componentesConhecidos);
         setStatus(preview, mensagemErros(resultado.erros), "erro");
         return null;
       }
 
       renderResumo(resumo, resultado.op);
       quantidade.value = Number(resultado.op.quantidade || 0) || "";
+      await atualizarConferenciaComponentes();
       setStatus(preview, "OP localizada. Escolha o serviço e quem fez para conferir o valor.", "ok");
       return resultado.op;
     } catch (error) {
@@ -192,10 +269,10 @@ export function montarTelaFechamento({
     }
   }
 
-  processo.addEventListener("change", () => {
+  processo.addEventListener("change", async () => {
     const lista = controller.listarResponsaveis(processo.value);
     preencherResponsaveis(responsavel, lista);
-    configurarComponentes(componentes, processo.value);
+    await atualizarConferenciaComponentes();
     setStatus(preview, lista.length
       ? "Responsáveis carregados. Confira os dados antes de adicionar ao fechamento."
       : "Nenhum responsável habilitado para este serviço.",
@@ -269,10 +346,11 @@ export function montarTelaFechamento({
 
   form.addEventListener("reset", () => {
     window.setTimeout(() => {
+      ++diagnosticoSeq;
       controller.limparOP();
       renderResumo(resumo, null);
       preencherResponsaveis(responsavel, []);
-      configurarComponentes(componentes, "");
+      limparConferenciaComponentes(componentes, componentesConhecidos);
       competencia.value = competenciaPadrao;
       setStatus(preview, "Busque uma OP para iniciar o fechamento.", "normal");
     }, 0);
@@ -280,6 +358,7 @@ export function montarTelaFechamento({
 
   return {
     desmontar() {
+      ++diagnosticoSeq;
       abort.abort();
       controller.limparOP();
       container.innerHTML = "";
