@@ -45,7 +45,7 @@ export function criarOrdensConsultaRepoFirestore({
     const snapshot = await fs.getDocs(montarConsulta(cursor, tamanho));
     const docs = snapshot.docs || [];
     const itens = docs.map(documento).filter(ordemAtiva);
-    itens.forEach(item => store.upsert("ordens", item));
+    store.mesclar("ordens", itens);
 
     return {
       itens,
