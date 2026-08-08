@@ -10,18 +10,43 @@ import {
   slugSeguro,
   texto
 } from "./normalizacao.mjs";
+import {
+  TIPO_CALCINHA,
+  TIPO_SUTIA,
+  tipoPecaDoDocumento
+} from "./ordens-regras.mjs";
 
-export const PROCESSOS_FINANCEIROS = Object.freeze([
+export const PROCESSOS_FINANCEIROS_SUTIA = Object.freeze([
   "ENCAPAR BOJO",
   "ALÇA",
   "LATERAL",
-  "CALCINHA MONTAGEM",
-  "CALCINHA COMPLETA",
   "SUTIÃ MONTAGEM",
   "SUTIÃ COMPLETO"
 ]);
 
+export const PROCESSOS_FINANCEIROS_CALCINHA = Object.freeze([
+  "CALCINHA MONTAGEM",
+  "CALCINHA COMPLETA"
+]);
+
+export const PROCESSOS_FINANCEIROS = Object.freeze([
+  ...PROCESSOS_FINANCEIROS_SUTIA,
+  ...PROCESSOS_FINANCEIROS_CALCINHA
+]);
+
 export const PROCESSO_SUTIA_COMPLETO = "SUTIÃ COMPLETO";
+
+export function processosFinanceirosDaOP(op = {}) {
+  const tipo = tipoPecaDoDocumento(op);
+  if (tipo === TIPO_CALCINHA) return [...PROCESSOS_FINANCEIROS_CALCINHA];
+  if (tipo === TIPO_SUTIA) return [...PROCESSOS_FINANCEIROS_SUTIA];
+  return [];
+}
+
+export function processoFinanceiroPermitidoNaOP(op = {}, processo = "") {
+  const alvo = processoCanonico(processo);
+  return Boolean(alvo && processosFinanceirosDaOP(op).includes(alvo));
+}
 
 export function estadoBinario(valor) {
   if (valor === true || valor === false) return valor;
@@ -57,6 +82,8 @@ export function validarLancamentoFinanceiro({
   if (!numeroOP) erros.push("OP_NAO_INFORMADA");
   if (!processoNormalizado || !PROCESSOS_FINANCEIROS.includes(processoNormalizado)) {
     erros.push("PROCESSO_INVALIDO");
+  } else if (!processoFinanceiroPermitidoNaOP(op, processoNormalizado)) {
+    erros.push("PROCESSO_INCOMPATIVEL_COM_TIPO_PECA");
   }
   if (!responsavelNormalizado) erros.push("RESPONSAVEL_NAO_INFORMADO");
   if (!competenciaNormalizada) erros.push("COMPETENCIA_INVALIDA");
