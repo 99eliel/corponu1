@@ -14,6 +14,13 @@ export function criarFaccoesRepoFirestore({ db, fs, store }) {
   let carregado = false;
   let carregando = null;
 
+  function usarStoreSeJaCarregado() {
+    const itens = store.listar("faccoes");
+    if (!itens.length) return null;
+    carregado = true;
+    return itens;
+  }
+
   async function carregarDoFirestore() {
     const snapshot = await fs.getDocs(fs.collection(db, "faccoes"));
     const itens = deduplicarFaccoes(
@@ -30,6 +37,11 @@ export function criarFaccoesRepoFirestore({ db, fs, store }) {
       if (!forcar && carregado) return store.listar("faccoes");
       if (!forcar && carregando) return carregando;
 
+      if (!forcar) {
+        const existentes = usarStoreSeJaCarregado();
+        if (existentes) return existentes;
+      }
+
       carregando = carregarDoFirestore();
       try {
         return await carregando;
@@ -43,7 +55,7 @@ export function criarFaccoesRepoFirestore({ db, fs, store }) {
     },
 
     estaCarregado() {
-      return carregado;
+      return carregado || store.listar("faccoes").length > 0;
     },
 
     listar() {
