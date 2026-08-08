@@ -8,6 +8,7 @@
   const VERSION_IDENTIDADE_FLOW = "2026-08-07-corpo-nu-flow-identidade-145";
   const VERSION_CALCINHA_SALVAMENTO_RAPIDO = "2026-08-07-calcinha-salvamento-rapido-147";
   const VERSION_QUANTIDADE_SEM_SCROLL = "2026-08-07-quantidade-sem-scroll-148";
+  const VERSION_AUDITORIA_PAGAMENTOS = "2026-08-08-auditoria-pagamentos-160";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -77,6 +78,15 @@
     "faccoes-saida-atualizacao-imediata-143",
     VERSION_ATUALIZACAO_SAIDA_FACCOES,
     "Não foi possível atualizar a lista de Facções imediatamente após a saída."
+  );
+
+  // 160 é uma auditoria estritamente somente leitura, iniciada manualmente pelo admin.
+  // Ela não roda consultas pesadas ao abrir Pagamentos e não altera nenhum documento.
+  carregarScript(
+    "corponu-pagamentos-auditoria-160.js",
+    "pagamentos-auditoria-160",
+    VERSION_AUDITORIA_PAGAMENTOS,
+    "Não foi possível carregar a auditoria somente leitura dos pagamentos."
   );
 
   if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION_DUPLICIDADE) return;
