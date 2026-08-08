@@ -34,6 +34,7 @@ const CALCINHA = Object.freeze({
 
 function manejoBase(extra = {}) {
   return {
+    // Entrada legada mantida de propósito para garantir compatibilidade.
     fase: "SEPARAÇÃO",
     silkNome: "SILK A",
     silkData: "",
@@ -45,21 +46,53 @@ function manejoBase(extra = {}) {
   };
 }
 
-test("salvar Manejo exige fase, mas não exige Silk nem Data Tecido", () => {
+test("salvar Manejo exige Fase Bojo, mas não exige Fase Lateral, Silk nem Data Tecido", () => {
   const valido = validarEntradaManejo({
     ordem: SUTIA,
     setor: "sutia",
-    entrada: { fase: "CORTE", necessidade: "" }
+    entrada: { faseBojo: "CORTE", faseLateral: "", necessidade: "" }
   });
   assert.equal(valido.ok, true);
+  assert.equal(valido.dados.faseBojo, "CORTE");
+  assert.equal(valido.dados.faseLateral, "");
 
   const invalido = validarEntradaManejo({
     ordem: SUTIA,
     setor: "sutia",
-    entrada: { fase: "" }
+    entrada: { faseBojo: "", faseLateral: "SEPARAÇÃO" }
   });
   assert.equal(invalido.ok, false);
   assert.ok(invalido.erros.includes("FASE_NAO_INFORMADA"));
+});
+
+test("fase antiga é preservada como Fase Bojo e Fase Lateral nasce vazia", () => {
+  const resultado = criarDadosManejo({
+    ordem: SUTIA,
+    setor: "sutia",
+    entrada: manejoBase()
+  });
+
+  assert.equal(resultado.ok, true);
+  assert.equal(resultado.dados.fase, "SEPARAÇÃO");
+  assert.equal(resultado.dados.faseBojo, "SEPARAÇÃO");
+  assert.equal(resultado.dados.faseLateral, "");
+});
+
+test("Fase Bojo e Fase Lateral são salvas independentemente", () => {
+  const resultado = criarDadosManejo({
+    ordem: SUTIA,
+    setor: "sutia",
+    entrada: manejoBase({
+      fase: undefined,
+      faseBojo: "CORTE",
+      faseLateral: "PREPARAÇÃO"
+    })
+  });
+
+  assert.equal(resultado.ok, true);
+  assert.equal(resultado.dados.fase, "CORTE");
+  assert.equal(resultado.dados.faseBojo, "CORTE");
+  assert.equal(resultado.dados.faseLateral, "PREPARAÇÃO");
 });
 
 test("necessidade do Manejo é texto livre e pode ser salva vazia", () => {
@@ -91,7 +124,7 @@ test("falta nunca pode ultrapassar a quantidade da OP", () => {
 });
 
 test("antes de movimentar exige Silk por nome ou data e exige Data Tecido", () => {
-  const vazio = validarManejoParaMovimentacao({ fase: "CORTE" });
+  const vazio = validarManejoParaMovimentacao({ faseBojo: "CORTE" });
   assert.equal(vazio.ok, false);
   assert.deepEqual(new Set(vazio.erros), new Set(["SILK_NAO_INFORMADO", "DATA_TECIDO_NAO_INFORMADA"]));
 
@@ -209,15 +242,19 @@ test("reenvio guarda vínculo com movimento anterior sem mudar regra financeira"
   assert.equal(resultado.dados.processo, PROCESSO_CELULA);
 });
 
-test("lê manejo V2 por setor e mantém compatibilidade do manejo singular de Sutiã", () => {
+test("lê manejo V2 por setor convertendo fase antiga em Fase Bojo", () => {
   const atual = getManejoDaOrdemV2({
     ...SUTIA,
     manejosSetores: { sutia: { fase: "CORTE" } }
   }, "sutia");
   assert.equal(atual.fase, "CORTE");
+  assert.equal(atual.faseBojo, "CORTE");
+  assert.equal(atual.faseLateral, "");
   assert.equal(atual.origemLegada, undefined);
 
   const legado = getManejoDaOrdemV2({ ...SUTIA, manejo: { fase: "SEPARAÇÃO" } }, "sutia");
   assert.equal(legado.fase, "SEPARAÇÃO");
+  assert.equal(legado.faseBojo, "SEPARAÇÃO");
+  assert.equal(legado.faseLateral, "");
   assert.equal(legado.origemLegada, true);
 });
