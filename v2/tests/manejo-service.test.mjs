@@ -21,7 +21,7 @@ function ambiente() {
       return id === "op-1" ? structuredClone(ordem) : null;
     },
     async salvarManejo(payload) {
-      chamadas.push(["salvarManejo", payload.setor, payload.manejo.fase]);
+      chamadas.push(["salvarManejo", payload.setor, payload.manejo.faseBojo]);
       return {
         ordem: { ...payload.ordem, manejosSetores: { [payload.setor]: payload.manejo } },
         manejo: structuredClone(payload.manejo)
@@ -47,7 +47,8 @@ function ambiente() {
 
 function entradaManejo(extra = {}) {
   return {
-    fase: "SEPARAÇÃO",
+    faseBojo: "SEPARAÇÃO",
+    faseLateral: "",
     silkNome: "SILK A",
     dataTecido: "2026-08-08",
     necessidade: "URGENTE",
@@ -65,7 +66,7 @@ test("salvar Manejo não exige dados financeiros", async () => {
   });
 
   assert.equal(resultado.ok, true);
-  assert.equal(resultado.salvo.manejo.fase, "SEPARAÇÃO");
+  assert.equal(resultado.salvo.manejo.faseBojo, "SEPARAÇÃO");
   assert.equal(chamadas.some(([nome]) => nome.toLowerCase().includes("pagamento")), false);
 });
 
@@ -151,8 +152,8 @@ test("Sutiã Completo sai sem consultar ou exigir Lateral/Bojo", async () => {
   ), false);
 });
 
-test("reenvio mantém vínculo de origem", async () => {
-  const { service } = ambiente();
+test("tentativa de envio para Célula é bloqueada antes de gravar movimentação", async () => {
+  const { service, chamadas } = ambiente();
   const resultado = await service.movimentar({
     ordemId: "op-1",
     setor: "sutia",
@@ -160,6 +161,24 @@ test("reenvio mantém vínculo de origem", async () => {
     tipoDestino: "celula",
     destino: "CELULA A",
     processo: "CÉLULA INTERNA",
+    quantidade: 200,
+    dataEnvio: "2026-08-08"
+  });
+
+  assert.equal(resultado.ok, false);
+  assert.ok(resultado.erros.includes("TIPO_DESTINO_INVALIDO"));
+  assert.equal(chamadas.some(([nome]) => nome === "criarMovimentacaoComManejo"), false);
+});
+
+test("reenvio para Facção mantém vínculo de origem", async () => {
+  const { service } = ambiente();
+  const resultado = await service.movimentar({
+    ordemId: "op-1",
+    setor: "sutia",
+    entradaManejo: entradaManejo(),
+    tipoDestino: "faccao",
+    destino: "LIVIA",
+    processo: "SUTIÃ MONTAGEM",
     quantidade: 200,
     quantidadeMaxima: 200,
     dataEnvio: "2026-08-08",
