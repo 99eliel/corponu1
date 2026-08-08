@@ -147,6 +147,9 @@ function criarCacheComTTL(ttlMs) {
       dados.set(chave, { valor, expiraEm: Date.now() + ttlMs });
       return valor;
     },
+    remover(chave) {
+      dados.delete(chave);
+    },
     limpar() {
       dados.clear();
     }
@@ -202,9 +205,6 @@ export function criarValoresRepoFirestore({
       const itens = await buscarPrecosReferencia(referencia);
       let preco = encontrarPreco(itens, processo);
 
-      // Processos universais (ex.: ALÇA cadastrada como referência TODAS)
-      // usam primeiro um valor específico da referência, quando existir,
-      // e só então caem para a configuração universal.
       if (numero(preco?.valor, 0) <= 0 && normalizarReferencia(referencia) !== "TODAS") {
         const universais = await buscarPrecosReferencia("TODAS");
         preco = encontrarPreco(universais, processo);
@@ -249,13 +249,16 @@ export function criarValoresRepoFirestore({
 export function criarPagamentosRepoFirestore({
   db,
   fs,
-  colecao = "entregasPagamento"
+  colecao = "entregasPagamento",
+  ttlSaldoMs = 30000
 }) {
   exigirApi(fs, ["collection", "query", "where", "getDocs", "doc", "getDoc", "runTransaction", "serverTimestamp"]);
 
   if (colecao !== "entregasPagamento") {
     throw new Error("A V2 financeira deve gravar somente em entregasPagamento.");
   }
+
+  const cacheSaldo = criarCacheComTTL(Math.max(1000, Number(ttlSaldoMs) || 30000));
 
   async function buscarLancamentosExistentes({ opId, numeroOP, processo }) {
     const mapa = new Map();
@@ -268,8 +271,6 @@ export function criarPagamentosRepoFirestore({
       snap.docs.forEach(item => mapa.set(item.id, { id: item.id, ...item.data() }));
     }
 
-    // Compatibilidade: documentos antigos da mesma OP podem coexistir, alguns
-    // com opId e outros somente com numeroOP. Consultamos ambos e deduplicamos por ID.
     for (const valor of valoresConsulta(numeroOP)) {
       const snap = await fs.getDocs(fs.query(
         fs.collection(db, colecao),
@@ -286,10 +287,15 @@ export function criarPagamentosRepoFirestore({
     );
   }
 
-  async function obterSaldoProcesso({ opId, numeroOP, processo, quantidadeOP }) {
+  async function obterSaldoProcesso({ opId, numeroOP, processo, quantidadeOP, forcar = false }) {
     const chaveControle = criarChaveControleProcesso({ opId, numeroOP, processo });
     if (!chaveControle) {
       return { quantidadeOP: inteiro(quantidadeOP), quantidadeFechada: 0, quantidadeRestante: inteiro(quantidadeOP), quantidadeLancamentos: 0 };
+    }
+
+    if (!forcar) {
+      const cacheado = cacheSaldo.obter(chaveControle);
+      if (cacheado) return { ...cacheado };
     }
 
     const controleSnap = await fs.getDoc(fs.doc(db, colecao, chaveControle));
@@ -297,29 +303,34 @@ export function criarPagamentosRepoFirestore({
       const controle = controleSnap.data();
       const totalOP = inteiro(controle.quantidadeOP || quantidadeOP);
       const fechada = inteiro(controle.quantidadeFechada);
-      return {
+      return cacheSaldo.salvar(chaveControle, {
         chaveControle,
         quantidadeOP: totalOP,
         quantidadeFechada: fechada,
         quantidadeRestante: Math.max(totalOP - fechada, 0),
         quantidadeLancamentos: inteiro(controle.ultimaParcela)
-      };
+      });
     }
 
     const existentes = await buscarLancamentosExistentes({ opId, numeroOP, processo });
     const fechada = existentes.reduce((soma, item) => soma + inteiro(item.quantidade), 0);
     const totalOP = inteiro(quantidadeOP);
-    return {
+    return cacheSaldo.salvar(chaveControle, {
       chaveControle,
       quantidadeOP: totalOP,
       quantidadeFechada: fechada,
       quantidadeRestante: Math.max(totalOP - fechada, 0),
       quantidadeLancamentos: existentes.length
-    };
+    });
   }
 
   return {
     obterSaldoProcesso,
+
+    limparCacheSaldo(chaveControle = "") {
+      if (texto(chaveControle)) cacheSaldo.remover(texto(chaveControle));
+      else cacheSaldo.limpar();
+    },
 
     async salvarComSaldo(documento, { saldoInicial = null } = {}) {
       const chaveControle = texto(documento?.chaveControle) || criarChaveControleProcesso(documento || {});
@@ -327,7 +338,7 @@ export function criarPagamentosRepoFirestore({
 
       const controleRef = fs.doc(db, colecao, chaveControle);
 
-      return fs.runTransaction(db, async transacao => {
+      const resultado = await fs.runTransaction(db, async transacao => {
         const controleSnap = await transacao.get(controleRef);
         const controleAtual = snapshotExiste(controleSnap) ? controleSnap.data() : null;
         const quantidadeOP = inteiro(controleAtual?.quantidadeOP || documento.quantidadeOP || saldoInicial?.quantidadeOP);
@@ -402,6 +413,18 @@ export function criarPagamentosRepoFirestore({
           }
         };
       });
+
+      if (resultado?.ok && resultado.saldo) {
+        cacheSaldo.salvar(chaveControle, {
+          chaveControle,
+          quantidadeOP: inteiro(resultado.saldo.quantidadeOP || documento.quantidadeOP),
+          quantidadeFechada: inteiro(resultado.saldo.quantidadeFechada),
+          quantidadeRestante: inteiro(resultado.saldo.quantidadeRestante),
+          quantidadeLancamentos: inteiro(resultado.saldo.quantidadeLancamentos)
+        });
+      }
+
+      return resultado;
     }
   };
 }
@@ -410,11 +433,18 @@ export function criarRepositoriosFirestoreV2({
   db,
   fs,
   cacheOrdens = null,
-  cachePrecos = null
+  cachePrecos = null,
+  ttlPrecosMs = 120000,
+  ttlSaldoMs = 30000
 }) {
   return {
     ordensRepo: criarOrdensRepoFirestore({ db, fs, cache: cacheOrdens }),
-    valoresRepo: criarValoresRepoFirestore({ db, fs, cachePrecosExterno: cachePrecos }),
-    pagamentosRepo: criarPagamentosRepoFirestore({ db, fs })
+    valoresRepo: criarValoresRepoFirestore({
+      db,
+      fs,
+      cachePrecosExterno: cachePrecos,
+      ttlMs: ttlPrecosMs
+    }),
+    pagamentosRepo: criarPagamentosRepoFirestore({ db, fs, ttlSaldoMs })
   };
 }
