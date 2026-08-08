@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-08-pagamentos-filtro-op-v2-compat-158",
-  "updatedAt": "2026-08-08T19:08:00-03:00",
-  "notes": "Estabiliza o filtro por Nº OP em Pagamentos. A versão 158 passa a ser dona do campo de OP, impede o filtro legado de registrar eventos concorrentes, mantém a busca direta somente da OP informada e preserva a proteção para ignorar controle_processo_v2. Nenhum pagamento é criado, alterado ou excluído por esta atualização."
+  "version": "2026-08-08-auditoria-pagamentos-160",
+  "updatedAt": "2026-08-08T20:24:00-03:00",
+  "notes": "Adiciona para administradores a auditoria manual e somente leitura dos pagamentos existentes. A ferramenta só executa quando o botão Auditar pagamentos é clicado, lê a coleção uma vez, separa status, origens, versões, controles V2, possíveis duplicidades e registros inconsistentes. Nenhum pagamento é criado, recalculado, pago, reaberto, excluído ou alterado por esta versão."
 }
