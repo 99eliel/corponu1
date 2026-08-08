@@ -36,7 +36,7 @@ test("resumo usa somente itens filtrados", () => {
   assert.equal(resumo.totalPago, 300);
 });
 
-test("saldo parcial/restante soma ocorrencias do mesmo OP e processo", () => {
+test("saldo parcial/restante soma lançamentos do mesmo OP e processo", () => {
   const saldo = calcularSaldoPorOPProcesso({ pagamentos, numeroOP: "70001", processo: "SUTIA COMPLETO", quantidadeOP: 500 });
   assert.equal(saldo.quantidadeFechada, 500);
   assert.equal(saldo.quantidadeRestante, 0);
