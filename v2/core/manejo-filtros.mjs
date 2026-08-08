@@ -36,14 +36,9 @@ export function valoresFiltroManejo(ordem, setor) {
     silkData: texto(manejo?.silkData),
     tecido: texto(manejo?.tecidoNome || manejo?.tecido),
     dataTecido: texto(manejo?.dataTecido),
-    // "fase" continua como alias temporário de Fase Bojo para filtros legados.
     fase: faseBojo,
     faseBojo,
     faseLateral,
-    faccao: texto(manejo?.faccao),
-    chegada: texto(manejo?.chegada),
-    falta: numero(manejo?.falta),
-    celu: texto(manejo?.celu),
     observacoes: texto(manejo?.observacoes)
   };
 }
@@ -82,10 +77,6 @@ export function ordemPassaFiltrosManejo(ordem, setor, filtros = {}) {
       v.dataTecido,
       v.faseBojo,
       v.faseLateral,
-      v.faccao,
-      v.chegada,
-      v.falta,
-      v.celu,
       v.observacoes
     ].join(" "));
     if (!textoBusca.includes(busca)) return false;
@@ -103,10 +94,6 @@ export function ordemPassaFiltrosManejo(ordem, setor, filtros = {}) {
   if (!igualSeAtivo(v.dataTecido, filtros.dataTecido)) return false;
   if (!igualSeAtivo(v.faseBojo, filtros.faseBojo ?? filtros.fase)) return false;
   if (!igualSeAtivo(v.faseLateral, filtros.faseLateral)) return false;
-  if (!igualSeAtivo(v.faccao, filtros.faccao)) return false;
-  if (!igualSeAtivo(v.chegada, filtros.chegada)) return false;
-  if (!numeroSeAtivo(v.falta, filtros.falta)) return false;
-  if (!igualSeAtivo(v.celu, filtros.celu)) return false;
 
   return true;
 }
@@ -128,12 +115,8 @@ export function opcoesFiltrosManejo(ordens = [], setor) {
     necessidade: unicos("necessidade"),
     silk: unicos("silk"),
     dataTecido: unicos("dataTecido"),
-    // Alias temporário para chamadas antigas.
     fase: fasesBojo,
     faseBojo: fasesBojo,
-    faseLateral: unicos("faseLateral"),
-    faccao: unicos("faccao"),
-    chegada: unicos("chegada"),
-    celu: unicos("celu")
+    faseLateral: unicos("faseLateral")
   };
 }
