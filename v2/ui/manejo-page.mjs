@@ -3,7 +3,7 @@ import {
   DESTINO_FACCAO,
   PROCESSO_CELULA
 } from "../core/manejo-regras.mjs";
-import { normalizar, processoCanonico, texto } from "../core/normalizacao.mjs";
+import { processoCanonico, texto } from "../core/normalizacao.mjs";
 import { templateManejoV2 } from "./manejo-template.mjs";
 import {
   definirStatusManejo,
@@ -16,7 +16,7 @@ import {
 const ERROS = Object.freeze({
   OP_NAO_ENCONTRADA: "OP não encontrada.",
   OP_NAO_PERTENCE_AO_SETOR: "Esta OP não pertence a este Manejo.",
-  FASE_NAO_INFORMADA: "Informe a fase da OP.",
+  FASE_NAO_INFORMADA: "Informe a Fase Bojo da OP.",
   FALTA_MAIOR_QUE_OP: "A falta não pode ultrapassar a quantidade da OP.",
   SILK_NAO_INFORMADO: "Informe o Silk ou a Data Silk antes do envio.",
   DATA_TECIDO_NAO_INFORMADA: "Informe a Data Tecido antes do envio.",
@@ -90,7 +90,8 @@ export function montarTelaManejo({
     opcaoFiltros(refs.filtros.querySelector('[name="status"]'), opcoes.status, "Todos");
     opcaoFiltros(refs.filtros.querySelector('[name="referencia"]'), opcoes.referencia, "Todas");
     opcaoFiltros(refs.filtros.querySelector('[name="cor"]'), opcoes.cor, "Todas");
-    opcaoFiltros(refs.filtros.querySelector('[name="fase"]'), opcoes.fase, "Todas");
+    opcaoFiltros(refs.filtros.querySelector('[name="faseBojo"]'), opcoes.faseBojo, "Todas");
+    opcaoFiltros(refs.filtros.querySelector('[name="faseLateral"]'), opcoes.faseLateral, "Todas");
     opcaoFiltros(refs.filtros.querySelector('[name="faccao"]'), opcoes.faccao, "Todas");
     opcaoFiltros(refs.filtros.querySelector('[name="necessidade"]'), opcoes.necessidade, "Todas");
   }
@@ -100,7 +101,7 @@ export function montarTelaManejo({
     const ordens = controller.listar(setor, filtros());
     refs.lista.innerHTML = ordens.length
       ? ordens.map(ordem => htmlLinhaManejo(ordem, setor)).join("")
-      : '<tr><td colspan="15">Nenhuma OP encontrada com os filtros atuais.</td></tr>';
+      : '<tr><td colspan="16">Nenhuma OP encontrada com os filtros atuais.</td></tr>';
   }
 
   function aplicarSetor(novoSetor) {
