@@ -6,6 +6,11 @@ function numeroSeguro(valor) {
   return Number.isFinite(numero) ? numero : 0;
 }
 
+function itensDaPagina(resultado) {
+  if (Array.isArray(resultado)) return resultado;
+  return Array.isArray(resultado?.itens) ? resultado.itens : [];
+}
+
 function resumoLeituras(leituras = {}) {
   return {
     getDoc: Math.max(0, Number(leituras.getDoc) || 0),
@@ -38,6 +43,20 @@ async function executarEtapa({ id, titulo, medir, acao }) {
   }
 }
 
+async function obterAmostraOrdens(contexto, limiteOrdens) {
+  const limite = Math.max(1, Math.min(300, Number(limiteOrdens) || 40));
+  let ordens = contexto.store.listar("ordens");
+
+  if (!ordens.length) {
+    const retorno = await contexto.carregarPrimeiraPaginaOrdens({ limitePagina: limite });
+    const retornadas = itensDaPagina(retorno);
+    ordens = contexto.store.listar("ordens");
+    if (!ordens.length && retornadas.length) ordens = retornadas;
+  }
+
+  return ordens.slice(0, limite);
+}
+
 function escolherOPParaSaldo(ordens = []) {
   return ordens.find(item => {
     const op = normalizarOPLegada(item);
@@ -64,7 +83,7 @@ export async function executarDiagnosticoFirebaseSomenteLeitura({
     titulo: "OPs reais + compatibilidade V2",
     medir,
     acao: async () => {
-      ordensCarregadas = await contexto.carregarPrimeiraPaginaOrdens({ limitePagina: limiteOrdens });
+      ordensCarregadas = await obterAmostraOrdens(contexto, limiteOrdens);
       const normalizadas = ordensCarregadas.map(normalizarOPLegada);
       const invalidas = normalizadas
         .map((op, indice) => ({ op, indice, validacao: contratoOPV2Valido(op) }))
@@ -72,7 +91,7 @@ export async function executarDiagnosticoFirebaseSomenteLeitura({
 
       return {
         nivel: invalidas.length ? "aviso" : "ok",
-        mensagem: `${ordensCarregadas.length} OPs lidas; ${invalidas.length} incompatíveis com o contrato mínimo V2.`,
+        mensagem: `${ordensCarregadas.length} OPs avaliadas na amostra; ${invalidas.length} incompatíveis com o contrato mínimo V2.`,
         detalhes: invalidas.slice(0, 5).map(item =>
           `OP ${item.op.numeroOP || item.op.id || `#${item.indice + 1}`}: ${item.validacao.erros.join(", ")}`
         )
@@ -100,11 +119,24 @@ export async function executarDiagnosticoFirebaseSomenteLeitura({
     titulo: "Movimentações operacionais / Facções",
     medir,
     acao: async () => {
-      const itens = await contexto.movimentacoesFaccoesRepo.carregarPrimeiraPagina();
+      const pagina = await contexto.movimentacoesFaccoesRepo.carregarPrimeiraPagina();
+      const itens = itensDaPagina(pagina);
+      const documentosExaminados = Math.max(0, numeroSeguro(pagina?.lidos ?? itens.length));
+
+      if (!itens.length) {
+        return {
+          nivel: "aviso",
+          mensagem: `${documentosExaminados} documentos operacionais examinados; 0 movimentações de Facção reconhecidas na primeira página.`,
+          detalhes: documentosExaminados
+            ? ["Há movimentações na coleção, mas nenhuma da primeira página foi reconhecida como destino Facção. Vamos validar o formato legado antes de liberar escrita."]
+            : ["Nenhuma movimentação apareceu na primeira página; isso pode ser normal se a coleção estiver vazia."]
+        };
+      }
+
       return {
-        nivel: itens.length ? "ok" : "aviso",
-        mensagem: `${itens.length} movimentações carregadas na primeira página.`,
-        detalhes: itens.length ? [] : ["Nenhuma movimentação apareceu na primeira página; isso pode ser normal se a coleção estiver vazia."]
+        nivel: "ok",
+        mensagem: `${itens.length} movimentações de Facção reconhecidas na primeira página (${documentosExaminados} documentos operacionais examinados).`,
+        detalhes: []
       };
     }
   }));
