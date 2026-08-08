@@ -21,6 +21,16 @@ function mesclarMovimentacao(atual = {}, patch = {}) {
   };
 }
 
+function mesclarOrdem(atual = {}, componentes = {}) {
+  return {
+    ...atual,
+    componentesConsolidados: {
+      ...(atual.componentesConsolidados || {}),
+      ...componentes
+    }
+  };
+}
+
 export function criarFaccoesOperacionalRepoFirestore({ db, fs, store }) {
   if (!store) throw new Error("Store V2 não configurado para Facções operacionais.");
   exigir(fs, ["doc", "collection", "getDoc", "runTransaction", "serverTimestamp"]);
@@ -57,15 +67,36 @@ export function criarFaccoesOperacionalRepoFirestore({ db, fs, store }) {
       if (resolvido.patch.chegadaInformada === true) patch.chegadaInformadaEm = agora;
       if (resolvido.patch.confirmacaoChegadaOperacional === true) patch.chegadaConfirmadaEm = agora;
 
+      let ordemAtualizada = null;
+      const componentesNovos = resolvido.patch.componentesConsolidados;
+      const opId = String(atual.opId || "").trim();
+
+      if (componentesNovos && opId) {
+        const ordemRef = fs.doc(db, "ordensProducao", opId);
+        const ordemSnap = await transacao.get(ordemRef);
+        if (ordemSnap.exists()) {
+          const ordemAtual = { id: ordemSnap.id, ...ordemSnap.data() };
+          ordemAtualizada = mesclarOrdem(ordemAtual, componentesNovos);
+          transacao.set(ordemRef, {
+            componentesConsolidados: ordemAtualizada.componentesConsolidados,
+            atualizadoEm: agora
+          }, { merge: true });
+        }
+      }
+
       transacao.set(ref, patch, { merge: true });
       return {
         ...resolvido,
-        movimentacao: mesclarMovimentacao(atual, resolvido.patch)
+        movimentacao: mesclarMovimentacao(atual, resolvido.patch),
+        ordem: ordemAtualizada
       };
     });
 
     if (resultado?.ok && resultado.movimentacao) {
       store.upsert("movimentacoes", resultado.movimentacao);
+    }
+    if (resultado?.ok && resultado.ordem) {
+      store.upsert("ordens", resultado.ordem);
     }
     return resultado;
   }
