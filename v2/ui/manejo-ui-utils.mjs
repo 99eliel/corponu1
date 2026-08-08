@@ -29,7 +29,8 @@ export function manejoVisualDaOrdem(ordem, setor) {
     silkData: texto(manejo.silkData),
     tecidoNome: texto(manejo.tecidoNome || manejo.tecido),
     dataTecido: texto(manejo.dataTecido),
-    fase: texto(manejo.fase),
+    faseBojo: texto(manejo.faseBojo ?? manejo.fase),
+    faseLateral: texto(manejo.faseLateral),
     faccao: texto(manejo.faccao || (calcinha ? ordem.faccaoPlanejada : "")),
     chegada: texto(manejo.chegada),
     falta: Number(manejo.falta || 0),
@@ -52,7 +53,8 @@ export function htmlLinhaManejo(ordem, setor) {
       <td><input data-campo="silkData" type="date" value="${attr(m.silkData)}" /></td>
       <td><input data-campo="tecidoNome" value="${attr(m.tecidoNome)}" /></td>
       <td><input data-campo="dataTecido" type="date" value="${attr(m.dataTecido)}" /></td>
-      <td><input data-campo="fase" list="v2ManejoFasesSugestoes" value="${attr(m.fase)}" placeholder="Digite ou escolha" /></td>
+      <td><input data-campo="faseBojo" list="v2ManejoFasesSugestoes" value="${attr(m.faseBojo)}" placeholder="Digite ou escolha" /></td>
+      <td><input data-campo="faseLateral" list="v2ManejoFasesSugestoes" value="${attr(m.faseLateral)}" placeholder="Digite ou escolha" /></td>
       <td><input data-campo="faccao" value="${attr(m.faccao)}" /></td>
       <td><input data-campo="chegada" type="date" value="${attr(m.chegada)}" /></td>
       <td><input data-campo="falta" type="number" min="0" step="1" value="${Math.max(0, Number(m.falta || 0))}" /></td>
@@ -68,13 +70,17 @@ export function htmlLinhaManejo(ordem, setor) {
 
 export function entradaManejoDaLinha(linha) {
   const valor = campo => texto(linha.querySelector(`[data-campo="${campo}"]`)?.value);
+  const faseBojo = valor("faseBojo");
   return {
     necessidade: valor("necessidade"),
     silkNome: valor("silkNome"),
     silkData: valor("silkData"),
     tecidoNome: valor("tecidoNome"),
     dataTecido: valor("dataTecido"),
-    fase: valor("fase"),
+    // Alias fase mantido durante a transição para leitores antigos da V2.
+    fase: faseBojo,
+    faseBojo,
+    faseLateral: valor("faseLateral"),
     faccao: valor("faccao"),
     chegada: valor("chegada"),
     falta: Number(valor("falta") || 0),
