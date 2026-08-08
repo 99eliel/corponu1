@@ -10,6 +10,10 @@ function documento(snapshot) {
   return { id: snapshot.id, ...snapshot.data() };
 }
 
+function ehLancamento(item) {
+  return item?.tipoDocumento !== "controle_processo_v2";
+}
+
 function ordenarPorCriacao(itens = []) {
   return [...itens].sort((a, b) => String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")));
 }
@@ -25,8 +29,6 @@ export function criarPagamentosConsultaRepoFirestore({ db, fs, colecao = "entreg
   function consultaPagina({ competencia = "", limitePagina = 50, cursor = null } = {}) {
     const restricoes = [];
     const comp = normalizarCompetencia(competencia);
-    // Com competência definida, uma única igualdade já restringe o mês e evita
-    // depender de índice composto apenas para ordenar. A página é ordenada localmente.
     if (comp) restricoes.push(fs.where("competencia", "==", comp));
     else restricoes.push(fs.orderBy("criadoEm", "desc"));
     if (cursor) restricoes.push(fs.startAfter(cursor));
@@ -39,7 +41,7 @@ export function criarPagamentosConsultaRepoFirestore({ db, fs, colecao = "entreg
     const snapshot = await fs.getDocs(consultaPagina({ competencia, limitePagina: tamanho, cursor }));
     const docs = snapshot.docs || [];
     return {
-      itens: ordenarPorCriacao(docs.map(documento)),
+      itens: ordenarPorCriacao(docs.map(documento).filter(ehLancamento)),
       cursor: docs.at(-1) || null,
       acabou: docs.length < tamanho
     };
@@ -70,13 +72,15 @@ export function criarPagamentosConsultaRepoFirestore({ db, fs, colecao = "entreg
       const itens = [];
       let cursor = null;
       let acabou = false;
-      while (!acabou && itens.length < maximo) {
+      let documentosLidos = 0;
+      while (!acabou && documentosLidos < maximo) {
         const pagina = await carregarPaginaInterna({ competencia, limitePagina, cursor });
         itens.push(...pagina.itens);
         cursor = pagina.cursor;
+        documentosLidos += Math.max(pagina.itens.length, cursor ? 1 : 0);
         acabou = pagina.acabou || !cursor;
       }
-      if (!acabou && itens.length >= maximo) {
+      if (!acabou && documentosLidos >= maximo) {
         throw new Error("LIMITE_SEGURANCA_PAGAMENTOS_ATINGIDO");
       }
       return ordenarPorCriacao(itens);
