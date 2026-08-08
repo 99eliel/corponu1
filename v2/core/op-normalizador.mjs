@@ -2,7 +2,7 @@ import { texto } from "./normalizacao.mjs";
 import { tipoPecaDoDocumento, TIPO_CALCINHA, TIPO_SUTIA } from "./ordens-regras.mjs";
 import { getManejoDaOrdemV2 } from "./manejo-regras.mjs";
 import { estadoComponentesOperacionais } from "./componentes-operacionais.mjs";
-import { criarContratoOPV2 } from "./op-contrato.mjs";
+import { criarContratoOPV2, VERSAO_CONTRATO_OP_V2 } from "./op-contrato.mjs";
 
 function numeroOPLegado(ordem = {}) {
   return texto(ordem.numeroOP || ordem.numeroOPExterno || ordem.op || ordem.codigoOP);
@@ -44,6 +44,10 @@ function planejamentoCalcinhaContrato(ordem = {}, tipoPeca = "") {
 }
 
 export function normalizarOPLegada(ordem = {}) {
+  if (ordem?.versaoContrato === VERSAO_CONTRATO_OP_V2) {
+    return criarContratoOPV2(ordem);
+  }
+
   const tipoPeca = tipoPecaDoDocumento(ordem);
   const numeroOP = numeroOPLegado(ordem);
   const componentes = tipoPeca === TIPO_SUTIA
