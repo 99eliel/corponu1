@@ -1,4 +1,4 @@
-import { normalizarReferencia, texto } from "./normalizacao.mjs";
+import { inteiro, normalizarReferencia, texto } from "./normalizacao.mjs";
 
 export const COMPONENTES_SUTIA_COMPLETO = Object.freeze([
   "lateral",
@@ -16,30 +16,73 @@ function booleanoExplicito(valor) {
   return null;
 }
 
+function estadoBase({ pronto, responsavel = "", origem = "", origemLabel = "", quantidadePronta = 0, quantidadeTotal = 0, status = "" } = {}) {
+  return {
+    informado: true,
+    pronto,
+    responsavel: texto(responsavel),
+    origem: texto(origem),
+    origemLabel: texto(origemLabel || origem),
+    quantidadePronta: inteiro(quantidadePronta),
+    quantidadeTotal: inteiro(quantidadeTotal),
+    status: texto(status) || (pronto ? "pronto" : "nao_pronto")
+  };
+}
+
 function itemConsolidado(fonte, nome) {
   const item = fonte?.componentesConsolidados?.[nome];
   if (!item || item.informado !== true) return null;
   const pronto = booleanoExplicito(item.pronto);
   if (pronto === null) return null;
-  return {
-    informado: true,
+  return estadoBase({
     pronto,
-    responsavel: texto(item.responsavel),
-    origem: texto(item.origem) || "componentesConsolidados"
-  };
+    responsavel: item.responsavel,
+    origem: item.origem || "componentesConsolidados",
+    origemLabel: item.origemLabel,
+    quantidadePronta: item.quantidadePronta,
+    quantidadeTotal: item.quantidadeTotal,
+    status: item.status
+  });
 }
 
-function itemRevisao(fonte, nome) {
+function itemRevisaoAninhada(fonte, nome) {
   const item = fonte?.revisaoComponentesConfeccao?.[nome];
   if (!item || item.informado !== true) return null;
   const pronto = booleanoExplicito(item.pronto ?? item.feito ?? item.valor);
   if (pronto === null) return null;
-  return {
-    informado: true,
+  return estadoBase({
     pronto,
-    responsavel: texto(item.responsavel || item.faccao || item.quemFez),
-    origem: texto(item.origem) || "revisaoComponentesConfeccao"
-  };
+    responsavel: item.responsavel || item.faccao || item.quemFez,
+    origem: item.origem || "revisaoComponentesConfeccao",
+    origemLabel: item.origemLabel,
+    quantidadePronta: item.quantidadePronta,
+    quantidadeTotal: item.quantidadeTotal,
+    status: item.status
+  });
+}
+
+function itemRevisaoLegada(fonte, nome) {
+  const revisao = fonte?.revisaoComponentesConfeccao;
+  if (!revisao || revisao.ativa !== true) return null;
+  if (!["lateral", "bojo"].includes(nome)) return null;
+
+  const prefixo = nome === "lateral" ? "lateral" : "bojo";
+  const pronto = booleanoExplicito(revisao[`${prefixo}Feita`] ?? revisao[`${prefixo}Feito`]);
+  if (pronto === null) return null;
+
+  return estadoBase({
+    pronto,
+    responsavel: revisao[`${prefixo}Responsavel`] || revisao[`${prefixo}FeitaPorNome`] || revisao[`${prefixo}FeitoPorNome`],
+    origem: "Revisão manual",
+    origemLabel: "Revisão manual",
+    quantidadePronta: pronto ? fonte?.quantidade : 0,
+    quantidadeTotal: fonte?.quantidade,
+    status: pronto ? "pronto" : "nao_pronto"
+  });
+}
+
+function itemRevisao(fonte, nome) {
+  return itemRevisaoAninhada(fonte, nome) || itemRevisaoLegada(fonte, nome);
 }
 
 const CAMPOS_DIRETOS = Object.freeze({
@@ -63,19 +106,15 @@ function itemDireto(fonte, nome) {
       `${prefixo}ProntaReenvioInformada`,
       `${prefixo}ProntoReenvioInformado`
     ];
-
     if (!flags.some(flag => fonte?.[flag] === true)) continue;
 
-    return {
-      informado: true,
+    return estadoBase({
       pronto: valor,
-      responsavel: texto(
-        fonte?.[`${prefixo}Responsavel`] ||
-        fonte?.[`${prefixo}Faccao`] ||
-        fonte?.[`${prefixo}QuemFez`]
-      ),
-      origem: `campo:${campo}`
-    };
+      responsavel: fonte?.[`${prefixo}Responsavel`] || fonte?.[`${prefixo}Faccao`] || fonte?.[`${prefixo}QuemFez`],
+      origem: `campo:${campo}`,
+      quantidadePronta: valor ? fonte?.quantidade : 0,
+      quantidadeTotal: fonte?.quantidade
+    });
   }
   return null;
 }
@@ -88,7 +127,16 @@ function encontrarEmFonte(fonte, nome) {
 export function estadoComponentesOperacionais({ movimentacao = null, ordem = null } = {}) {
   return Object.fromEntries(COMPONENTES_SUTIA_COMPLETO.map(nome => {
     const item = encontrarEmFonte(movimentacao, nome) || encontrarEmFonte(ordem, nome);
-    return [nome, item || { informado: false, pronto: null, responsavel: "", origem: "" }];
+    return [nome, item || {
+      informado: false,
+      pronto: null,
+      responsavel: "",
+      origem: "",
+      origemLabel: "",
+      quantidadePronta: 0,
+      quantidadeTotal: 0,
+      status: "nao_informado"
+    }];
   }));
 }
 
@@ -97,9 +145,7 @@ export function componentesFaltantesOperacionais({
   ordem = null,
   referenciaEspecial = "912"
 } = {}) {
-  const referencia = normalizarReferencia(
-    movimentacao?.referencia || ordem?.referencia
-  );
+  const referencia = normalizarReferencia(movimentacao?.referencia || ordem?.referencia);
   if (referencia && referencia === normalizarReferencia(referenciaEspecial)) return [];
 
   const estado = estadoComponentesOperacionais({ movimentacao, ordem });
@@ -113,16 +159,11 @@ export function componentesParaPatch({
   referenciaEspecial = "912"
 } = {}) {
   const estado = estadoComponentesOperacionais({ movimentacao, ordem });
-  const faltantes = componentesFaltantesOperacionais({
-    movimentacao,
-    ordem,
-    referenciaEspecial
-  });
+  const faltantes = componentesFaltantesOperacionais({ movimentacao, ordem, referenciaEspecial });
   const resultado = {};
 
   for (const nome of COMPONENTES_SUTIA_COMPLETO) {
-    if (estado[nome].informado === true) continue;
-    if (!faltantes.includes(nome)) continue;
+    if (estado[nome].informado === true || !faltantes.includes(nome)) continue;
     const valor = booleanoExplicito(respostas[nome]);
     if (valor === null) continue;
     resultado[nome] = valor;
