@@ -331,3 +331,24 @@ test("pagamentosRepo recusa qualquer coleção financeira alternativa", () => {
     /somente em entregasPagamento/
   );
 });
+
+test("valor universal TODAS é usado como fallback sem sobrescrever preço específico", async () => {
+  const ambiente = criarFirestoreFake({
+    precos: [
+      { id: "alca-todas", referencia: "TODAS", processo: "ALÇA", valor: 0.05, ativo: true },
+      { id: "alca-912", referencia: "912", processo: "ALÇA", valor: 0.06, ativo: true }
+    ]
+  });
+
+  const repo = criarValoresRepoFirestore({ db: ambiente.db, fs: ambiente.fs });
+
+  assert.equal(await repo.buscarValorUnitario("414", "ALÇA"), 0.05);
+  assert.equal(await repo.buscarValorUnitario("912", "ALÇA"), 0.06);
+
+  const consultasTodas = ambiente.metricas.getDocs.filter(chamada =>
+    chamada.restricoes.some(item => item.tipo === "where" &&
+      item.campo === "referencia" &&
+      (item.valor === "TODAS" || (Array.isArray(item.valor) && item.valor.includes("TODAS"))))
+  );
+  assert.equal(consultasTodas.length, 1);
+});
