@@ -100,7 +100,6 @@ export function criarOrdensRepoFirestore({ db, fs, cache = null }) {
       const cacheado = buscarOrdemNoCache(cache, numeroOP);
       if (cacheado) return cacheado;
 
-      // Caminho principal da V2 e da maior parte do legado: uma única consulta.
       const principal = await consultarPrimeiroPorCampo({
         fs,
         db,
@@ -110,7 +109,6 @@ export function criarOrdensRepoFirestore({ db, fs, cache = null }) {
       });
       if (principal) return principal;
 
-      // Compatibilidade legada apenas quando realmente necessário.
       for (const campo of ["numeroOPExterno", "op"]) {
         const legado = await consultarPrimeiroPorCampo({
           fs,
@@ -227,10 +225,10 @@ export function criarValoresRepoFirestore({
       const dados = snapshotExiste(snapshot) ? snapshot.data() : {};
       const config = {
         referenciaEspecial: texto(dados.referenciaEspecial || "912"),
-        valorBaseGeral: Math.max(0, numero(dados.valorBaseGeral, 5.5)),
-        valorBaseReferenciaEspecial: Math.max(0, numero(dados.valorBaseReferenciaEspecial, 6.5)),
-        descontoFechoNaoFeito: Math.max(0, numero(dados.descontoFechoNaoFeito, 0.25)),
-        descontoPontoLuzNaoFeito: Math.max(0, numero(dados.descontoPontoLuzNaoFeito, 0.15))
+        valorBaseGeral: Math.max(0, numero(dados.valorBaseGeral, 0)),
+        valorBaseReferenciaEspecial: Math.max(0, numero(dados.valorBaseReferenciaEspecial, 0)),
+        descontoFechoNaoFeito: Math.max(0, numero(dados.descontoFechoNaoFeito, 0)),
+        descontoPontoLuzNaoFeito: Math.max(0, numero(dados.descontoPontoLuzNaoFeito, 0))
       };
 
       return cacheConfig.salvar(chave, config);
