@@ -103,3 +103,14 @@ jobs:
             corponu-v2-firebase-bridge.js
           if-no-files-found: error
           retention-days: 7
+
+      - name: Gerar pacote Firebase V2 Fechamento controlado
+        uses: actions/upload-artifact@v4
+        with:
+          name: corpo-nu-flow-v2-fechamento-controlado
+          path: |
+            firebase-v2-fechamento-controlado
+            v2
+            style.css
+          if-no-files-found: error
+          retention-days: 7
