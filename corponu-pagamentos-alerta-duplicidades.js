@@ -14,6 +14,7 @@
   const VERSION_MANEJO_INTERFACE = "2026-08-08-manejo-interface-168";
   const VERSION_FILTRO_LATERAL_VISUAL = "2026-08-08-manejo-filtro-lateral-visual-169";
   const VERSION_FILTRO_LATERAL_POSICAO = "2026-08-08-manejo-filtro-lateral-posicao-170";
+  const VERSION_FILTRO_LATERAL_PADRAO = "2026-08-08-manejo-filtro-lateral-padrao-171";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -112,6 +113,13 @@
     "manejo-filtro-lateral-posicao-170",
     VERSION_FILTRO_LATERAL_POSICAO,
     "Não foi possível manter o filtro da Fase Lateral preso ao botão."
+  );
+
+  carregarScript(
+    "corponu-manejo-filtro-lateral-padrao-171.js",
+    "manejo-filtro-lateral-padrao-171",
+    VERSION_FILTRO_LATERAL_PADRAO,
+    "Não foi possível padronizar o filtro da Fase Lateral."
   );
 
   if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION_DUPLICIDADE) return;
