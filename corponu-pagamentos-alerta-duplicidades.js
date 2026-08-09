@@ -12,6 +12,7 @@
   const VERSION_MANEJO_LAYOUT_FASES = "2026-08-08-manejo-colunas-fixas-166";
   const VERSION_FASE_LATERAL_SETA = "2026-08-08-manejo-fase-lateral-seta-167";
   const VERSION_MANEJO_INTERFACE = "2026-08-08-manejo-interface-168";
+  const VERSION_FILTRO_LATERAL_VISUAL = "2026-08-08-manejo-filtro-lateral-visual-169";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -96,6 +97,13 @@
     "manejo-interface-168",
     VERSION_MANEJO_INTERFACE,
     "Não foi possível carregar a organização visual do Manejo."
+  );
+
+  carregarScript(
+    "corponu-manejo-filtro-lateral-visual-169.js",
+    "manejo-filtro-lateral-visual-169",
+    VERSION_FILTRO_LATERAL_VISUAL,
+    "Não foi possível organizar o filtro da Fase Lateral."
   );
 
   if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION_DUPLICIDADE) return;
