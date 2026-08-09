@@ -9,7 +9,7 @@
   const VERSION_CALCINHA_SALVAMENTO_RAPIDO = "2026-08-07-calcinha-salvamento-rapido-147";
   const VERSION_QUANTIDADE_SEM_SCROLL = "2026-08-07-quantidade-sem-scroll-148";
   const VERSION_MANEJO_FASES_SUTIA = "2026-08-08-manejo-fases-gerenciadas-163";
-  const VERSION_MANEJO_LAYOUT_FASES = "2026-08-08-manejo-layout-fases-164";
+  const VERSION_MANEJO_LAYOUT_FASES = "2026-08-08-manejo-colunas-fixas-166";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -26,8 +26,6 @@
     return script;
   }
 
-  // 145 aplica a identidade oficial Corpo Nu Flow usando a nova logo enviada
-  // pela empresa, sem alterar qualquer regra operacional do sistema.
   carregarScript(
     "corponu-identidade-corpo-nu-flow-145.js",
     "identidade-corpo-nu-flow-145",
@@ -35,8 +33,6 @@
     "Não foi possível carregar a identidade Corpo Nu Flow."
   );
 
-  // 148 protege SOMENTE a quantidade da OP contra alteração pela rodinha do mouse.
-  // Cadastro de Produto/Referência não possui campo de quantidade.
   carregarScript(
     "corponu-quantidade-sem-scroll-148.js",
     "quantidade-sem-scroll-148",
@@ -44,8 +40,6 @@
     "Não foi possível ativar a proteção da quantidade da OP contra o scroll do mouse."
   );
 
-  // 139 adiciona, somente para administradores, uma lixeira sob demanda para
-  // visualizar e restaurar OPs marcadas com excluida=true sem recriar documentos.
   carregarScript(
     "corponu-ops-excluidas-restauracao-139.js",
     "ops-excluidas-restauracao-139",
@@ -53,9 +47,6 @@
     "Não foi possível carregar a lixeira/restauração de OPs excluídas."
   );
 
-  // 147 precisa iniciar antes da 144/142/137. Ela substitui somente o listener
-  // de salvamento da Calcinha por uma versão otimizada, mantendo as mesmas
-  // validações, mas executando as leituras independentes em paralelo.
   carregarScript(
     "corponu-calcinha-salvamento-rapido-147.js",
     "calcinha-salvamento-rapido-147",
@@ -63,8 +54,6 @@
     "Não foi possível ativar o salvamento rápido das OPs de Calcinha."
   );
 
-  // 144 carrega a regra 142 de necessidade opcional com proteção contra o
-  // MutationObserver que entrava em ciclo ao abrir a aba Calcinha.
   carregarScript(
     "corponu-ordens-necessidade-opcional-fix-144.js",
     "ordens-necessidade-opcional-fix-144",
@@ -72,8 +61,6 @@
     "Não foi possível carregar a correção da aba Calcinha com necessidade opcional."
   );
 
-  // 143 garante que, depois de uma saída registrada em Sutiã ou Calcinha,
-  // a tabela principal de Facções seja atualizada imediatamente, sem exigir F5.
   carregarScript(
     "corponu-faccoes-saida-atualizacao-imediata-143.js",
     "faccoes-saida-atualizacao-imediata-143",
@@ -81,9 +68,6 @@
     "Não foi possível atualizar a lista de Facções imediatamente após a saída."
   );
 
-  // 163 mantém a Fase Bojo existente e adiciona a Fase Lateral dentro da mesma
-  // estrutura da coluna de fase, preservando os índices das colunas antigas.
-  // Também adiciona sugestões oficiais compartilhadas e filtro acumulativo lateral.
   carregarScript(
     "corponu-manejo-fases-sutia-163.js",
     "manejo-fases-sutia-163",
@@ -91,13 +75,11 @@
     "Não foi possível carregar o gerenciador de Fase Bojo e Fase Lateral no Manejo Sutiã."
   );
 
-  // 164 organiza visualmente a nova coluna dupla de fases: reserva espaço para
-  // Bojo/Lateral e permite rolagem horizontal quando a tela não comportar tudo.
   carregarScript(
     "corponu-manejo-layout-fases-164.js",
-    "manejo-layout-fases-164",
+    "manejo-layout-colunas-fixas-166",
     VERSION_MANEJO_LAYOUT_FASES,
-    "Não foi possível organizar o layout da Fase Bojo e Fase Lateral."
+    "Não foi possível organizar as colunas do Manejo Sutiã."
   );
 
   if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION_DUPLICIDADE) return;
