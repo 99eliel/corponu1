@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-08-manejo-filtro-lateral-visual-169",
-  "updatedAt": "2026-08-08T22:14:00-03:00",
-  "notes": "Melhora somente a aparência do popup de filtro da Fase Lateral no Manejo. Corrige o checkbox que herdava largura total dos inputs globais, aproxima cada checkbox do nome da opção, mantém Campo vazio em uma única linha, compacta a lista e alinha melhor busca e botões. A lógica do filtro, seleções, dados, Firebase, salvamento e demais áreas permanecem inalterados."
+  "version": "2026-08-08-manejo-filtro-lateral-posicao-170",
+  "updatedAt": "2026-08-08T22:22:00-03:00",
+  "notes": "Corrige somente o posicionamento do popup de filtro da Fase Lateral no Manejo. O popup passa a permanecer ancorado ao botão que o abriu durante rolagem da página ou da tabela, como os demais filtros; se o botão sair da área visível, o popup é fechado. Seleções, lógica do filtro, dados, Firebase e salvamento permanecem inalterados."
 }
