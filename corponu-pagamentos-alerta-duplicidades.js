@@ -13,6 +13,7 @@
   const VERSION_FASE_LATERAL_SETA = "2026-08-08-manejo-fase-lateral-seta-167";
   const VERSION_MANEJO_INTERFACE = "2026-08-08-manejo-interface-168";
   const VERSION_FILTRO_LATERAL_VISUAL = "2026-08-08-manejo-filtro-lateral-visual-169";
+  const VERSION_FILTRO_LATERAL_POSICAO = "2026-08-08-manejo-filtro-lateral-posicao-170";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -104,6 +105,13 @@
     "manejo-filtro-lateral-visual-169",
     VERSION_FILTRO_LATERAL_VISUAL,
     "Não foi possível organizar o filtro da Fase Lateral."
+  );
+
+  carregarScript(
+    "corponu-manejo-filtro-lateral-posicao-170.js",
+    "manejo-filtro-lateral-posicao-170",
+    VERSION_FILTRO_LATERAL_POSICAO,
+    "Não foi possível manter o filtro da Fase Lateral preso ao botão."
   );
 
   if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION_DUPLICIDADE) return;
