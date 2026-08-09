@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-08-manejo-fases-gerenciadas-163",
-  "updatedAt": "2026-08-08T21:08:00-03:00",
-  "notes": "No Manejo Sutiã, a Fase Bojo continua sendo o campo existente e a Fase Lateral passa a compartilhar a mesma estrutura visual sem deslocar as colunas antigas. A Fase Lateral recebe lista oficial de sugestões compartilhada pelo Firebase, gerenciador administrativo próprio e filtro acumulativo com múltiplas opções. O gerenciador existente do Sutiã passa a ser identificado como Fase Bojo. Nenhuma regra de pagamento, facção ou Calcinha é alterada."
+  "version": "2026-08-08-manejo-layout-fases-164",
+  "updatedAt": "2026-08-08T21:31:00-03:00",
+  "notes": "Organiza visualmente o Manejo Sutiã após a inclusão da Fase Lateral. A tabela passa a reservar largura própria para Fase Bojo e Fase Lateral, mantém QTI, COR, NECESSIDADE, STATUS e AÇÕES alinhados e usa rolagem horizontal quando a tela não comporta todas as colunas. O gerenciador e os filtros da versão 163 permanecem intactos; nenhuma lógica de pagamento, facção, Calcinha ou salvamento é alterada."
 }
