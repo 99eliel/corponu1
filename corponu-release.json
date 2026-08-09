@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-08-manejo-colunas-fixas-166",
-  "updatedAt": "2026-08-08T21:42:00-03:00",
-  "notes": "Corrige o encavalamento visual no Manejo Sutiã travando as larguras das 10 colunas com colgroup. OP, REF e QTI permanecem compactos; SILK, TECIDO e a área Fase Bojo/Fase Lateral recebem largura fixa e não podem mais roubar espaço umas das outras. Os campos internos passam a respeitar os limites da própria célula e a rolagem horizontal só é usada se a tela não comportar a tabela. Nenhuma lógica de salvamento, filtros, pagamentos, facções ou Firebase é alterada."
+  "version": "2026-08-08-manejo-fase-lateral-seta-167",
+  "updatedAt": "2026-08-08T21:48:00-03:00",
+  "notes": "Adiciona uma seta fixa no campo Fase Lateral do Manejo Sutiã. Ao clicar na seta, o sistema abre uma lista com as sugestões cadastradas no gerenciador de Fase Lateral e preenche o campo com a opção escolhida. O campo continua podendo ficar vazio e nenhuma regra de salvamento, filtros, layout, pagamentos, facções ou Firebase é alterada."
 }
