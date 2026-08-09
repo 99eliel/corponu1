@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-08-manejo-fase-lateral-seta-167",
-  "updatedAt": "2026-08-08T21:48:00-03:00",
-  "notes": "Adiciona uma seta fixa no campo Fase Lateral do Manejo Sutiã. Ao clicar na seta, o sistema abre uma lista com as sugestões cadastradas no gerenciador de Fase Lateral e preenche o campo com a opção escolhida. O campo continua podendo ficar vazio e nenhuma regra de salvamento, filtros, layout, pagamentos, facções ou Firebase é alterada."
+  "version": "2026-08-08-manejo-interface-168",
+  "updatedAt": "2026-08-08T21:55:00-03:00",
+  "notes": "Reorganiza somente a interface visual da tela Manejo, preservando integralmente os dados e o funcionamento já existente. Melhora cabeçalho, botões Sutiã/Calcinha, resumo, filtros, tabela, campos, Fase Bojo/Fase Lateral, status e ações. Não altera valores, documentos do Firebase, salvamento, cálculos, filtros, pagamentos ou facções."
 }
