@@ -8,7 +8,7 @@
   const VERSION_IDENTIDADE_FLOW = "2026-08-07-corpo-nu-flow-identidade-145";
   const VERSION_CALCINHA_SALVAMENTO_RAPIDO = "2026-08-07-calcinha-salvamento-rapido-147";
   const VERSION_QUANTIDADE_SEM_SCROLL = "2026-08-07-quantidade-sem-scroll-148";
-  const VERSION_MANEJO_FASES_SUTIA = "2026-08-08-manejo-fases-sutia-162";
+  const VERSION_MANEJO_FASES_SUTIA = "2026-08-08-manejo-fases-gerenciadas-163";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -80,14 +80,14 @@
     "Não foi possível atualizar a lista de Facções imediatamente após a saída."
   );
 
-  // 162 corrige a identificação da coluna real da Fase no Manejo Sutiã:
-  // TECIDO permanece TECIDO, a FASE existente vira somente FASE BOJO e
-  // um novo campo vazio FASE LATERAL é inserido logo depois, sem deslocar QTI/COR.
+  // 163 mantém a Fase Bojo existente e adiciona a Fase Lateral dentro da mesma
+  // estrutura da coluna de fase, preservando os índices das colunas antigas.
+  // Também adiciona sugestões oficiais compartilhadas e filtro acumulativo lateral.
   carregarScript(
-    "corponu-manejo-fases-sutia-162.js",
-    "manejo-fases-sutia-162",
+    "corponu-manejo-fases-sutia-163.js",
+    "manejo-fases-sutia-163",
     VERSION_MANEJO_FASES_SUTIA,
-    "Não foi possível carregar Fase Bojo e Fase Lateral no Manejo Sutiã."
+    "Não foi possível carregar o gerenciador de Fase Bojo e Fase Lateral no Manejo Sutiã."
   );
 
   if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION_DUPLICIDADE) return;
