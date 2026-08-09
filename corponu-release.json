@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-08-manejo-fases-sutia-162",
-  "updatedAt": "2026-08-08T20:58:00-03:00",
-  "notes": "Corrige a separação das fases no Manejo Sutiã. A coluna TECIDO permanece intacta; a coluna FASE já existente passa somente a se chamar FASE BOJO, preservando seu campo, dados e lógica atuais. Logo depois é criado um novo campo vazio chamado FASE LATERAL, sem deslocar QTI, COR, NECESSIDADE, STATUS ou AÇÕES. O Manejo Calcinha permanece inalterado."
+  "version": "2026-08-08-manejo-fases-gerenciadas-163",
+  "updatedAt": "2026-08-08T21:08:00-03:00",
+  "notes": "No Manejo Sutiã, a Fase Bojo continua sendo o campo existente e a Fase Lateral passa a compartilhar a mesma estrutura visual sem deslocar as colunas antigas. A Fase Lateral recebe lista oficial de sugestões compartilhada pelo Firebase, gerenciador administrativo próprio e filtro acumulativo com múltiplas opções. O gerenciador existente do Sutiã passa a ser identificado como Fase Bojo. Nenhuma regra de pagamento, facção ou Calcinha é alterada."
 }
