@@ -11,6 +11,7 @@
   const VERSION_MANEJO_FASES_SUTIA = "2026-08-08-manejo-fases-gerenciadas-163";
   const VERSION_MANEJO_LAYOUT_FASES = "2026-08-08-manejo-colunas-fixas-166";
   const VERSION_FASE_LATERAL_SETA = "2026-08-08-manejo-fase-lateral-seta-167";
+  const VERSION_MANEJO_INTERFACE = "2026-08-08-manejo-interface-168";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -88,6 +89,13 @@
     "manejo-fase-lateral-seta-167",
     VERSION_FASE_LATERAL_SETA,
     "Não foi possível carregar a seta de sugestões da Fase Lateral."
+  );
+
+  carregarScript(
+    "corponu-manejo-interface-168.js",
+    "manejo-interface-168",
+    VERSION_MANEJO_INTERFACE,
+    "Não foi possível carregar a organização visual do Manejo."
   );
 
   if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION_DUPLICIDADE) return;
