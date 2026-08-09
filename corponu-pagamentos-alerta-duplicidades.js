@@ -9,6 +9,7 @@
   const VERSION_CALCINHA_SALVAMENTO_RAPIDO = "2026-08-07-calcinha-salvamento-rapido-147";
   const VERSION_QUANTIDADE_SEM_SCROLL = "2026-08-07-quantidade-sem-scroll-148";
   const VERSION_MANEJO_FASES_SUTIA = "2026-08-08-manejo-fases-gerenciadas-163";
+  const VERSION_MANEJO_LAYOUT_FASES = "2026-08-08-manejo-layout-fases-164";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -88,6 +89,15 @@
     "manejo-fases-sutia-163",
     VERSION_MANEJO_FASES_SUTIA,
     "Não foi possível carregar o gerenciador de Fase Bojo e Fase Lateral no Manejo Sutiã."
+  );
+
+  // 164 organiza visualmente a nova coluna dupla de fases: reserva espaço para
+  // Bojo/Lateral e permite rolagem horizontal quando a tela não comportar tudo.
+  carregarScript(
+    "corponu-manejo-layout-fases-164.js",
+    "manejo-layout-fases-164",
+    VERSION_MANEJO_LAYOUT_FASES,
+    "Não foi possível organizar o layout da Fase Bojo e Fase Lateral."
   );
 
   if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION_DUPLICIDADE) return;
