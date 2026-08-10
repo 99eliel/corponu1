@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-10-alca-00540-valores-4casas-162";
+  const VERSION = "2026-08-10-alca-recalculo-pendentes-163";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -58,11 +58,16 @@
     )
   );
 
-  // 162 substitui a rotina pesada antiga da ALÇA: salva apenas o valor global,
-  // migra 0,0500 -> 0,0540 uma única vez e não recalcula pagamentos antigos.
+  // 162 mantém a edição do valor global da ALÇA leve e sem varredura automática.
+  // A 163 adiciona uma ação separada e explícita para recalcular SOMENTE os
+  // pagamentos de ALÇA ainda pendentes para R$ 0,0540; pagos ficam intocados.
   carregarScript(
     "./corponu-alca-pendencia-leve-126.js",
-    "alca-pendencia-leve-162"
+    "alca-pendencia-leve-162",
+    () => carregarScript(
+      "./corponu-alca-recalcular-pendentes-163.js",
+      "alca-recalcular-pendentes-163"
+    )
   );
 
   // LATERAL permanece com a rotina estável já validada.
