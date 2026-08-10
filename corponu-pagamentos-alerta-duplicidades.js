@@ -9,7 +9,7 @@
   const VERSION_CALCINHA_SALVAMENTO_RAPIDO = "2026-08-07-calcinha-salvamento-rapido-147";
   const VERSION_QUANTIDADE_SEM_SCROLL = "2026-08-07-quantidade-sem-scroll-148";
   const VERSION_MANEJO_FASES_SUTIA = "2026-08-08-manejo-fases-gerenciadas-163";
-  const VERSION_MANEJO_LAYOUT_FASES = "2026-08-09-manejo-padrao-calcinha-173";
+  const VERSION_MANEJO_LAYOUT_FASES = "2026-08-09-manejo-largura-total-174";
   const VERSION_FASE_LATERAL_SETA = "2026-08-08-manejo-fase-lateral-seta-167";
   const VERSION_MANEJO_INTERFACE = "2026-08-08-manejo-interface-168";
   const VERSION_FILTRO_LATERAL_VISUAL = "2026-08-08-manejo-filtro-lateral-visual-169";
@@ -82,9 +82,9 @@
 
   carregarScript(
     "corponu-manejo-layout-fases-164.js",
-    "manejo-padrao-calcinha-173",
+    "manejo-largura-total-174",
     VERSION_MANEJO_LAYOUT_FASES,
-    "Não foi possível aplicar ao Manejo Sutiã o mesmo padrão de largura usado no Manejo Calcinha."
+    "Não foi possível fazer o Manejo Sutiã ocupar toda a largura como o Manejo Calcinha."
   );
 
   carregarScript(
