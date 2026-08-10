@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-07-faccoes-sem-bipar-156";
+  const VERSION = "2026-08-10-alca-00540-valores-4casas-162";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -20,6 +20,13 @@
     document.head.appendChild(script);
     return script;
   }
+
+  // 162 padroniza a exibição de valores em 4 casas decimais e permite passo
+  // monetário de 0,0001 sem alterar cálculos ou documentos do Firebase.
+  carregarScript(
+    "./corponu-valores-4-casas-162.js",
+    "valores-4-casas-162"
+  );
 
   // Mantém somente a contenção visual da tabela de Facções.
   carregarScript(
@@ -51,11 +58,11 @@
     )
   );
 
-  // Única rotina financeira da ALÇA: corrige somente documentos realmente sem
-  // valor e não executa atualização geral de pagamentos.
+  // 162 substitui a rotina pesada antiga da ALÇA: salva apenas o valor global,
+  // migra 0,0500 -> 0,0540 uma única vez e não recalcula pagamentos antigos.
   carregarScript(
     "./corponu-alca-pendencia-leve-126.js",
-    "alca-pendencia-leve-126"
+    "alca-pendencia-leve-162"
   );
 
   // LATERAL permanece com a rotina estável já validada.
