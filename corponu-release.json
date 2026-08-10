@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-10-lateral-canceladas-dom-160",
-  "updatedAt": "2026-08-10T09:29:00-03:00",
-  "notes": "Corrige especificamente Facções > Lateral e Alça, que usa internamente o antigo módulo Corte. Um módulo dedicado acompanha somente a tabela listaFaccoesCorte e remove da listagem normal qualquer linha já marcada como Cancelada após cada render. O registro continua preservado no Firebase e pode reaparecer quando o filtro Status estiver explicitamente em Cancelada; nessas linhas o botão Cancelar é removido. Nenhuma regra de saída, chegada, pagamentos, busca de OP, Manejo, Sutiã ou Calcinha foi alterada."
+  "version": "2026-08-10-lateral-canceladas-direto-161",
+  "updatedAt": "2026-08-10T09:36:00-03:00",
+  "notes": "Corrige diretamente o módulo visual obrigatório da aba Facções > Lateral e Alça. Linhas da tabela que estejam marcadas como Cancelada são removidas imediatamente e novamente após qualquer redesenho da tela. O registro continua preservado no Firebase/logs, mas deixa de permanecer na listagem operacional. Nenhuma regra de saída, chegada, pagamentos, busca de OP, Manejo, Sutiã ou Calcinha foi alterada."
 }
