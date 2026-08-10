@@ -1,0 +1,54 @@
+name: Corrigir valor da ALCA 165
+
+on:
+  push:
+    branches: [main]
+    paths: ['.trigger-alca-0270-165']
+
+permissions:
+  contents: write
+
+jobs:
+  corrigir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Copiar regra validada da ALCA do teste
+        run: |
+          set -euo pipefail
+          BASE='https://raw.githubusercontent.com/99eliel/corpunuteste/main'
+          curl -fsSL "$BASE/corponu-alca-pendencia-leve-126.js" -o corponu-alca-pendencia-leve-126.js
+          curl -fsSL "$BASE/corponu-alca-recalcular-pendentes-163.js" -o corponu-alca-recalcular-pendentes-163.js
+
+      - name: Atualizar release
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          data = {
+            'version': '2026-08-10-alca-00270-165',
+            'updatedAt': '2026-08-10T16:02:00-03:00',
+            'notes': 'Corrige o valor unitário da ALÇA para R$ 0,0270. Cada sutiã utiliza 2 alças, totalizando R$ 0,0540 por sutiã. O cadastro incorreto de R$ 0,0540 unitário é migrado para R$ 0,0270. O recálculo administrativo passa a usar a regra correta e continua alterando somente pagamentos pendentes; pagos, quitados, confirmados, cancelados, excluídos e estornados permanecem intocados. Mantém Fase Lateral, valores com 4 casas e demais funções da release 164.'
+          }
+          Path('corponu-release.json').write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Validar
+        run: |
+          node --check corponu-alca-pendencia-leve-126.js
+          node --check corponu-alca-recalcular-pendentes-163.js
+          grep -q 'VALOR_MIGRACAO = 0.0270' corponu-alca-pendencia-leve-126.js
+          grep -q 'VALOR_ALCA = 0.0270' corponu-alca-recalcular-pendentes-163.js
+          grep -q 'VALOR_POR_SUTIA = 0.0540' corponu-alca-recalcular-pendentes-163.js
+
+      - name: Publicar
+        run: |
+          rm -f .trigger-alca-0270-165 .github/workflows/corrigir-valor-alca-165.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'release: corrigir ALÇA para 0,0270 por unidade 165 [skip ci]'
+          git push origin HEAD:main
