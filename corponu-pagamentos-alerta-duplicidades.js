@@ -15,6 +15,7 @@
   const VERSION_FILTRO_LATERAL_VISUAL = "2026-08-08-manejo-filtro-lateral-visual-169";
   const VERSION_FILTRO_LATERAL_POSICAO = "2026-08-08-manejo-filtro-lateral-posicao-170";
   const VERSION_FILTRO_LATERAL_PADRAO = "2026-08-08-manejo-filtro-lateral-padrao-171";
+  const VERSION_MANEJO_RESPONSIVO = "2026-08-09-manejo-responsivo-172";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -120,6 +121,13 @@
     "manejo-filtro-lateral-padrao-171",
     VERSION_FILTRO_LATERAL_PADRAO,
     "Não foi possível padronizar o filtro da Fase Lateral."
+  );
+
+  carregarScript(
+    "corponu-manejo-responsivo-172.js",
+    "manejo-responsivo-172",
+    VERSION_MANEJO_RESPONSIVO,
+    "Não foi possível adaptar o Manejo à largura da tela."
   );
 
   if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION_DUPLICIDADE) return;
