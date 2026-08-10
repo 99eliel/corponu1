@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-07-30-faccoes-sem-bloco-processos-29";
+  const VERSION = "2026-08-10-faccoes-canceladas-157";
   if (window.__CORPONU_FACCOES_SEM_RESUMO_PROCESSOS__ === VERSION) return;
   window.__CORPONU_FACCOES_SEM_RESUMO_PROCESSOS__ = VERSION;
 
@@ -76,13 +76,47 @@
     if (!removerEntreCardsETabela()) removerPorConteudoComoReserva();
   }
 
-  function iniciar() {
-    removerBloco();
-    setTimeout(removerBloco, 100);
-    setTimeout(removerBloco, 500);
+  function filtroMostraCanceladas() {
+    return String(document.getElementById("corteFiltroStatus")?.value || "") === "cancelado";
+  }
 
-    const observer = new MutationObserver(removerBloco);
+  function ocultarMovimentacoesCanceladasCorte() {
+    const tbody = document.getElementById("listaFaccoesCorte");
+    if (!tbody) return;
+
+    const mostrarCanceladas = filtroMostraCanceladas();
+
+    tbody.querySelectorAll(":scope > tr").forEach(linha => {
+      const cancelada = Boolean(linha.querySelector(".corte-pill.cancelado"));
+      if (!cancelada) {
+        linha.style.removeProperty("display");
+        return;
+      }
+
+      if (mostrarCanceladas) linha.style.removeProperty("display");
+      else linha.style.setProperty("display", "none", "important");
+    });
+  }
+
+  function aplicarAjustes() {
+    removerBloco();
+    ocultarMovimentacoesCanceladasCorte();
+  }
+
+  function iniciar() {
+    aplicarAjustes();
+    setTimeout(aplicarAjustes, 100);
+    setTimeout(aplicarAjustes, 500);
+
+    // Mantém o observer já existente desta rotina e restringe a nova correção
+    // apenas às linhas da tabela de movimentações da área Corte/Facções.
+    const observer = new MutationObserver(aplicarAjustes);
     observer.observe(document.body, { childList: true, subtree: true });
+
+    document.addEventListener("change", event => {
+      if (event.target?.id !== "corteFiltroStatus") return;
+      setTimeout(ocultarMovimentacoesCanceladasCorte, 0);
+    }, true);
   }
 
   if (document.readyState === "loading") {
