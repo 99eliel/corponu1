@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-08-manejo-filtro-lateral-padrao-171",
-  "updatedAt": "2026-08-08T22:30:00-03:00",
-  "notes": "Padroniza o popup do filtro da Fase Lateral para ficar visualmente igual ao filtro existente da Fase Bojo: título e subtítulo, busca, Selecionar tudo, Campo vazio, lista rolável e rodapé com Limpar, Cancelar e Aplicar. A seleção continua usando a lógica já existente da Fase Lateral; dados, Firebase, salvamento, cálculos e demais filtros permanecem inalterados."
+  "version": "2026-08-09-manejo-responsivo-172",
+  "updatedAt": "2026-08-09T21:03:00-03:00",
+  "notes": "Ajusta somente a responsividade do Manejo Sutiã para diferentes larguras de tela. A versão 172 respeita as 10 colunas reais existentes, mantém Fase Bojo e Fase Lateral dentro da coluna de fases, distribui dinamicamente o espaço entre OP, REF, SILK, TECIDO, fases, QTI, COR, NECESSIDADE, STATUS e AÇÕES e usa rolagem horizontal quando a tela fica abaixo da largura mínima segura. Nenhum dado, documento Firebase, salvamento, cálculo, pagamento, facção ou lógica de filtro é alterado."
 }
