@@ -48,6 +48,11 @@
     });
   }
 
+  function valorInput4(valor, campo) {
+    const base = Number(valor || 0).toFixed(4);
+    return campo?.type === "number" ? base : base.replace(".", ",");
+  }
+
   function moeda4(valor) {
     return `R$ ${valor4(valor)}`;
   }
@@ -114,7 +119,7 @@
 
     const input = document.getElementById("inputValorPadraoAlca");
     if (input instanceof HTMLInputElement && document.activeElement !== input) {
-      input.value = valor4(valorAtual);
+      input.value = valorInput4(valorAtual, input);
     }
     if (input instanceof HTMLInputElement) {
       input.readOnly = false;
@@ -140,7 +145,7 @@
       [...modal.querySelectorAll("input")].forEach(campo => {
         const rotulo = normalizar(campo.closest("label")?.textContent || "");
         if (!rotulo.includes("VALOR DE UMA ALCA")) return;
-        if (document.activeElement !== campo) campo.value = valor4(valorAtual);
+        if (document.activeElement !== campo) campo.value = valorInput4(valorAtual, campo);
         campo.readOnly = false;
         campo.inputMode = "decimal";
         campo.step = "0.0001";
