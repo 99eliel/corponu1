@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-10-faccoes-canceladas-157",
-  "updatedAt": "2026-08-10T08:55:00-03:00",
-  "notes": "Na aba Facções/Corte, movimentações marcadas como canceladas deixam de aparecer na listagem normal após o cancelamento. O registro continua preservado no Firebase e pode ser consultado selecionando o filtro de status Cancelada. A correção é visual e isolada à tabela de movimentações; chegada, pagamentos, busca de OP, saída manual, Manejo e demais fluxos não foram alterados."
+  "version": "2026-08-10-lateral-alca-carregamento-158",
+  "updatedAt": "2026-08-10T09:07:00-03:00",
+  "notes": "Otimiza somente o carregamento da aba Facções > Lateral e Alça. A tabela passa a priorizar movimentações, aproveita o cache persistente do Firestore quando disponível e completa perfil, processos, facções, preços e pagamentos em etapas posteriores. Trocas de aba reutilizam um cache curto de 45 segundos para evitar leituras repetidas; o botão Atualizar e operações que alteram dados continuam forçando consulta nova. Nenhuma regra de saída, chegada, cancelamento, pagamento, busca de OP, Manejo, Sutiã ou Calcinha foi alterada."
 }
