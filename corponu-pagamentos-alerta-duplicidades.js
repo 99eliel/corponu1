@@ -9,13 +9,12 @@
   const VERSION_CALCINHA_SALVAMENTO_RAPIDO = "2026-08-07-calcinha-salvamento-rapido-147";
   const VERSION_QUANTIDADE_SEM_SCROLL = "2026-08-07-quantidade-sem-scroll-148";
   const VERSION_MANEJO_FASES_SUTIA = "2026-08-08-manejo-fases-gerenciadas-163";
-  const VERSION_MANEJO_LAYOUT_FASES = "2026-08-08-manejo-colunas-fixas-166";
+  const VERSION_MANEJO_LAYOUT_FASES = "2026-08-09-manejo-padrao-calcinha-173";
   const VERSION_FASE_LATERAL_SETA = "2026-08-08-manejo-fase-lateral-seta-167";
   const VERSION_MANEJO_INTERFACE = "2026-08-08-manejo-interface-168";
   const VERSION_FILTRO_LATERAL_VISUAL = "2026-08-08-manejo-filtro-lateral-visual-169";
   const VERSION_FILTRO_LATERAL_POSICAO = "2026-08-08-manejo-filtro-lateral-posicao-170";
   const VERSION_FILTRO_LATERAL_PADRAO = "2026-08-08-manejo-filtro-lateral-padrao-171";
-  const VERSION_MANEJO_RESPONSIVO = "2026-08-09-manejo-responsivo-172";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -83,9 +82,9 @@
 
   carregarScript(
     "corponu-manejo-layout-fases-164.js",
-    "manejo-layout-colunas-fixas-166",
+    "manejo-padrao-calcinha-173",
     VERSION_MANEJO_LAYOUT_FASES,
-    "Não foi possível organizar as colunas do Manejo Sutiã."
+    "Não foi possível aplicar ao Manejo Sutiã o mesmo padrão de largura usado no Manejo Calcinha."
   );
 
   carregarScript(
@@ -121,13 +120,6 @@
     "manejo-filtro-lateral-padrao-171",
     VERSION_FILTRO_LATERAL_PADRAO,
     "Não foi possível padronizar o filtro da Fase Lateral."
-  );
-
-  carregarScript(
-    "corponu-manejo-responsivo-172.js",
-    "manejo-responsivo-172",
-    VERSION_MANEJO_RESPONSIVO,
-    "Não foi possível adaptar o Manejo à largura da tela."
   );
 
   if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION_DUPLICIDADE) return;
