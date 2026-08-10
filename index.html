@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="app-version" content="2026-07-30-rastreamento-enviar-manejo-17" />
-<link rel="stylesheet" href="style.css?v=2026-07-30-rastreamento-enviar-manejo-17" />
+<link rel="stylesheet" href="style.css?v=2026-08-10-fase-lateral-manejo-164" />
   <script data-corponu-sem-pwa="2026-07-30-rastreamento-enviar-manejo-17">
     (() => {
       const CACHE_PREFIX = "op-confeccao-";
@@ -481,7 +481,8 @@
                   <th>REF</th>
                   <th>SILK</th>
                   <th>TECIDO</th>
-                  <th>FASE</th>
+                  <th>FASE BOJO</th>
+                  <th class="manejo-head-fase-lateral">FASE LATERAL</th>
                   <th>QTI</th>
                   <th>COR</th>
                   <th>NECESSIDADE</th>
@@ -508,6 +509,10 @@
                   <th>
                     <input id="filtroManejoFase" class="filtro-digitavel" type="text" list="filtroManejoFaseList" placeholder="Todas" autocomplete="off" />
                     <datalist id="filtroManejoFaseList"></datalist>
+                  </th>
+                  <th class="manejo-filter-fase-lateral">
+                    <input id="filtroManejoFaseLateral" class="filtro-digitavel" type="text" list="filtroManejoFaseLateralList" placeholder="Todas" autocomplete="off" />
+                    <datalist id="filtroManejoFaseLateralList"></datalist>
                   </th>
                   <th>
                     <input id="filtroManejoQuantidade" class="filtro-digitavel" type="text" list="filtroManejoQuantidadeList" placeholder="Todas" autocomplete="off" />
@@ -538,6 +543,7 @@
           </div>
 
           <datalist id="manejoFasesList"></datalist>
+          <datalist id="manejoFasesLateraisList"></datalist>
           <datalist id="manejoFaccaoList"></datalist>
           <datalist id="manejoCeluList"></datalist>
           <datalist id="manejoSilkNomesList"></datalist>
@@ -1843,8 +1849,8 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-07-30-rastreamento-enviar-manejo-17"></script>
-  <script type="module" src="app.js?v=2026-07-30-rastreamento-enviar-manejo-17"></script>
+  <script src="update.js?v=2026-08-10-fase-lateral-manejo-164"></script>
+  <script type="module" src="app.js?v=2026-08-10-fase-lateral-manejo-164"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">

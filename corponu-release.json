@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-10-alca-recalculo-pendentes-163",
-  "updatedAt": "2026-08-10T13:32:00-03:00",
-  "notes": "Adiciona ação administrativa explícita para recalcular somente pagamentos de ALÇA ainda pendentes usando R$ 0,0540 por alça (R$ 0,1080 por sutiã). Pagamentos pagos, quitados, confirmados, cancelados, excluídos ou estornados permanecem intocados. O recalculo é executado em lotes pequenos, preserva descontos por defeito, marca a migração como concluída para não repetir e mantém a exibição de valores com 4 casas decimais."
+  "version": "2026-08-10-fase-lateral-manejo-164",
+  "updatedAt": "2026-08-10T14:32:00-03:00",
+  "notes": "Publica a Fase Lateral no Manejo Sutiã após validação no ambiente de teste. A fase antiga passa a ser identificada como Fase Bojo; a nova Fase Lateral possui campo e filtro independentes, salvamento junto ao manejo, preservação ao movimentar/bipar e gestão administrativa própria de sugestões, incluindo adicionar, remover e recuperar opções antigas. Mantém integralmente as atualizações da release 163: ALÇA em R$ 0,0540, valores monetários com 4 casas decimais e recálculo administrativo seguro somente de pagamentos pendentes de ALÇA."
 }
