@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-10-alca-00540-valores-4casas-162",
-  "updatedAt": "2026-08-10T13:19:00-03:00",
-  "notes": "Atualiza o valor global da ALÇA de 0,0500 para 0,0540 sem recalcular pagamentos antigos nem executar varreduras pesadas. O campo de valor da ALÇA volta a ser editável com passo de 0,0001 e futuras alterações salvam apenas o cadastro global, evitando travamentos. Novos lançamentos usam o valor vigente; pagamentos já gerados permanecem preservados. A interface passa a exibir valores monetários com 4 casas decimais e campos monetários passam a aceitar precisão de 0,0001, sem alterar a lógica dos cálculos."
+  "version": "2026-08-10-alca-recalculo-pendentes-163",
+  "updatedAt": "2026-08-10T13:32:00-03:00",
+  "notes": "Adiciona ação administrativa explícita para recalcular somente pagamentos de ALÇA ainda pendentes usando R$ 0,0540 por alça (R$ 0,1080 por sutiã). Pagamentos pagos, quitados, confirmados, cancelados, excluídos ou estornados permanecem intocados. O recalculo é executado em lotes pequenos, preserva descontos por defeito, marca a migração como concluída para não repetir e mantém a exibição de valores com 4 casas decimais."
 }
