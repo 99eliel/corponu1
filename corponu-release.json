@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-10-fase-lateral-manejo-164",
-  "updatedAt": "2026-08-10T14:32:00-03:00",
-  "notes": "Publica a Fase Lateral no Manejo Sutiã após validação no ambiente de teste. A fase antiga passa a ser identificada como Fase Bojo; a nova Fase Lateral possui campo e filtro independentes, salvamento junto ao manejo, preservação ao movimentar/bipar e gestão administrativa própria de sugestões, incluindo adicionar, remover e recuperar opções antigas. Mantém integralmente as atualizações da release 163: ALÇA em R$ 0,0540, valores monetários com 4 casas decimais e recálculo administrativo seguro somente de pagamentos pendentes de ALÇA."
+  "version": "2026-08-10-alca-00270-165",
+  "updatedAt": "2026-08-10T16:02:00-03:00",
+  "notes": "Corrige o valor unitário da ALÇA para R$ 0,0270. Cada sutiã utiliza 2 alças, totalizando R$ 0,0540 por sutiã. O cadastro incorreto de R$ 0,0540 unitário é migrado para R$ 0,0270. O recálculo administrativo passa a usar a regra correta e continua alterando somente pagamentos pendentes; pagos, quitados, confirmados, cancelados, excluídos e estornados permanecem intocados. Mantém Fase Lateral, valores com 4 casas e demais funções da release 164."
 }
