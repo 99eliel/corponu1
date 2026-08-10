@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-10-faccoes-canceladas-origem-159",
-  "updatedAt": "2026-08-10T09:18:00-03:00",
-  "notes": "Corrige a listagem da aba Facções > Lateral e Alça para que movimentações canceladas não apareçam no modo normal, mesmo após novos renders da tabela. Elas continuam preservadas para histórico e só ficam visíveis quando o filtro Status estiver em Cancelada. O botão Cancelar também deixa de aparecer nessas linhas históricas. Nenhuma regra de saída, chegada, pagamento, busca de OP, Manejo, Sutiã ou Calcinha foi alterada."
+  "version": "2026-08-10-lateral-canceladas-dom-160",
+  "updatedAt": "2026-08-10T09:29:00-03:00",
+  "notes": "Corrige especificamente Facções > Lateral e Alça, que usa internamente o antigo módulo Corte. Um módulo dedicado acompanha somente a tabela listaFaccoesCorte e remove da listagem normal qualquer linha já marcada como Cancelada após cada render. O registro continua preservado no Firebase e pode reaparecer quando o filtro Status estiver explicitamente em Cancelada; nessas linhas o botão Cancelar é removido. Nenhuma regra de saída, chegada, pagamentos, busca de OP, Manejo, Sutiã ou Calcinha foi alterada."
 }
