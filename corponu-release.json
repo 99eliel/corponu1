@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-10-lateral-canceladas-direto-161",
-  "updatedAt": "2026-08-10T09:36:00-03:00",
-  "notes": "Corrige diretamente o módulo visual obrigatório da aba Facções > Lateral e Alça. Linhas da tabela que estejam marcadas como Cancelada são removidas imediatamente e novamente após qualquer redesenho da tela. O registro continua preservado no Firebase/logs, mas deixa de permanecer na listagem operacional. Nenhuma regra de saída, chegada, pagamentos, busca de OP, Manejo, Sutiã ou Calcinha foi alterada."
+  "version": "2026-08-10-alca-00540-valores-4casas-162",
+  "updatedAt": "2026-08-10T13:19:00-03:00",
+  "notes": "Atualiza o valor global da ALÇA de 0,0500 para 0,0540 sem recalcular pagamentos antigos nem executar varreduras pesadas. O campo de valor da ALÇA volta a ser editável com passo de 0,0001 e futuras alterações salvam apenas o cadastro global, evitando travamentos. Novos lançamentos usam o valor vigente; pagamentos já gerados permanecem preservados. A interface passa a exibir valores monetários com 4 casas decimais e campos monetários passam a aceitar precisão de 0,0001, sem alterar a lógica dos cálculos."
 }
