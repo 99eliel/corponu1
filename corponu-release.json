@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-10-lateral-alca-carregamento-158",
-  "updatedAt": "2026-08-10T09:07:00-03:00",
-  "notes": "Otimiza somente o carregamento da aba Facções > Lateral e Alça. A tabela passa a priorizar movimentações, aproveita o cache persistente do Firestore quando disponível e completa perfil, processos, facções, preços e pagamentos em etapas posteriores. Trocas de aba reutilizam um cache curto de 45 segundos para evitar leituras repetidas; o botão Atualizar e operações que alteram dados continuam forçando consulta nova. Nenhuma regra de saída, chegada, cancelamento, pagamento, busca de OP, Manejo, Sutiã ou Calcinha foi alterada."
+  "version": "2026-08-10-faccoes-canceladas-origem-159",
+  "updatedAt": "2026-08-10T09:18:00-03:00",
+  "notes": "Corrige a listagem da aba Facções > Lateral e Alça para que movimentações canceladas não apareçam no modo normal, mesmo após novos renders da tabela. Elas continuam preservadas para histórico e só ficam visíveis quando o filtro Status estiver em Cancelada. O botão Cancelar também deixa de aparecer nessas linhas históricas. Nenhuma regra de saída, chegada, pagamento, busca de OP, Manejo, Sutiã ou Calcinha foi alterada."
 }
