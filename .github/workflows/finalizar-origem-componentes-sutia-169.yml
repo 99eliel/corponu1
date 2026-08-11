@@ -1,0 +1,110 @@
+name: Finalizar origem componentes Sutia 169
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.finalizar-origem-componentes-sutia-169'
+
+permissions:
+  contents: write
+
+jobs:
+  finalizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Persistir origem em todos os caminhos
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          p = Path('corponu-sutia-completo-calculo.js')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('const VERSION = "2026-08-11-origem-componentes-calculo-168";', 'const VERSION = "2026-08-11-origem-componentes-calculo-169";', 1)
+
+          antigo = '''    return {\n      conhecido: true,\n      pronto,\n      origem: revisao.origemAtualizacao === "pagamento_manual" ? "Pagamento manual" : "Revisão manual",\n      responsavel\n    };'''
+          novo = '''    return {\n      conhecido: true,\n      pronto,\n      descontar: pronto,\n      feitoPelaFaccao: false,\n      feitoPelaConfeccao: pronto,\n      origemExecucao: pronto ? "confeccao" : "",\n      origem: revisao.origemAtualizacao === "pagamento_manual" ? "Pagamento manual" : "Revisão manual",\n      responsavel\n    };'''
+          if antigo not in s: raise SystemExit('Manual componente nao encontrado')
+          s = s.replace(antigo, novo, 1)
+
+          antigo = 'descontar: salvo.feitoPelaConfeccao === true ? true : salvo.feitoPelaFaccao === true ? false : salvo.pronto === true,'
+          novo = 'descontar: salvo.descontarNoSutiaCompleto === true ? true : salvo.descontarNoSutiaCompleto === false ? false : salvo.feitoPelaConfeccao === true ? true : salvo.feitoPelaFaccao === true ? false : salvo.pronto === true,'
+          if antigo not in s: raise SystemExit('Regra consolidada nao encontrada')
+          s = s.replace(antigo, novo, 1)
+
+          antigo = '''      quantidadePronta: Math.max(0, numero(info.quantidade)),\n      quantidadeTotal: Math.max(0, numero(contexto.totalOP)),\n      origem: info.origem || "",'''
+          novo = '''      quantidadePronta: Math.max(0, numero(info.quantidade)),\n      quantidadeTotal: Math.max(0, numero(contexto.totalOP)),\n      descontarNoSutiaCompleto: info.descontar === true || (info.descontar !== false && info.pronto === true),\n      feitoPelaFaccao: info.feitoPelaFaccao === true,\n      feitoPelaConfeccao: info.feitoPelaConfeccao === true,\n      origemExecucao: info.origemExecucao || "",\n      origem: info.origem || "",'''
+          if antigo not in s: raise SystemExit('Salvar consolidado nao encontrado')
+          s = s.replace(antigo, novo, 1)
+
+          antigo = '<div class="sc51-componente" data-componente="${nome}">\n          <strong>${titulo}</strong>'
+          novo = '<div class="sc51-componente" data-componente="${nome}" data-descontar="${info.descontar === true || (info.descontar !== false && info.pronto === true) ? "1" : "0"}" data-feito-faccao="${info.feitoPelaFaccao === true ? "1" : "0"}" data-feito-confeccao="${info.feitoPelaConfeccao === true ? "1" : "0"}" data-origem-execucao="${escapar(info.origemExecucao || "")}">\n          <strong>${titulo}</strong>'
+          if antigo not in s: raise SystemExit('Card definitivo nao encontrado')
+          s = s.replace(antigo, novo, 1)
+
+          antigo = '''        lateralPronta: dados.lateral.pronto,\n        lateralOrigem: dados.lateral.origem || "",\n        lateralResponsavel: dados.lateral.responsavel || "",\n        bojoPronto: dados.bojo.pronto,\n        bojoOrigem: dados.bojo.origem || "",\n        bojoResponsavel: dados.bojo.responsavel || "",'''
+          novo = '''        lateralPronta: dados.lateral.pronto,\n        lateralDescontada: dados.lateral.descontar === true,\n        lateralFeitaPelaFaccao: dados.lateral.feitoPelaFaccao === true,\n        lateralFeitaPelaConfeccao: dados.lateral.feitoPelaConfeccao === true,\n        lateralOrigemExecucao: dados.lateral.origemExecucao || "",\n        lateralOrigem: dados.lateral.origem || "",\n        lateralResponsavel: dados.lateral.responsavel || "",\n        bojoPronto: dados.bojo.pronto,\n        bojoDescontado: dados.bojo.descontar === true,\n        bojoFeitoPelaFaccao: dados.bojo.feitoPelaFaccao === true,\n        bojoFeitoPelaConfeccao: dados.bojo.feitoPelaConfeccao === true,\n        bojoOrigemExecucao: dados.bojo.origemExecucao || "",\n        bojoOrigem: dados.bojo.origem || "",\n        bojoResponsavel: dados.bojo.responsavel || "",'''
+          if antigo not in s: raise SystemExit('Conferencia movimento nao encontrada')
+          s = s.replace(antigo, novo, 1)
+
+          antigo = '''      lateralPronta: dados.lateral.pronto,\n      lateralOrigem: dados.lateral.origem || "",\n      lateralResponsavel: dados.lateral.responsavel || "",\n      bojoPronto: dados.bojo.pronto,\n      bojoOrigem: dados.bojo.origem || "",\n      bojoResponsavel: dados.bojo.responsavel || "",'''
+          novo = '''      lateralPronta: dados.lateral.pronto,\n      lateralDescontada: dados.lateral.descontar === true,\n      lateralFeitaPelaFaccao: dados.lateral.feitoPelaFaccao === true,\n      lateralFeitaPelaConfeccao: dados.lateral.feitoPelaConfeccao === true,\n      lateralOrigemExecucao: dados.lateral.origemExecucao || "",\n      lateralOrigem: dados.lateral.origem || "",\n      lateralResponsavel: dados.lateral.responsavel || "",\n      bojoPronto: dados.bojo.pronto,\n      bojoDescontado: dados.bojo.descontar === true,\n      bojoFeitoPelaFaccao: dados.bojo.feitoPelaFaccao === true,\n      bojoFeitoPelaConfeccao: dados.bojo.feitoPelaConfeccao === true,\n      bojoOrigemExecucao: dados.bojo.origemExecucao || "",\n      bojoOrigem: dados.bojo.origem || "",\n      bojoResponsavel: dados.bojo.responsavel || "",'''
+          # Primeiro match restante e o patch de pagamento.
+          if antigo not in s: raise SystemExit('Metadados pagamento nao encontrados')
+          s = s.replace(antigo, novo, 1)
+
+          # Log de calculo passa a relatar desconto, não apenas pronto.
+          s = s.replace('lateral ${dadosFinais.lateral.pronto ? moeda4(memoria.descontos.lateral) : "não"} | bojo ${dadosFinais.bojo.pronto ? moeda4(memoria.descontos.bojo) : "não"}', 'lateral ${dadosFinais.lateral.descontar ? moeda4(memoria.descontos.lateral) : "sem desconto"} | bojo ${dadosFinais.bojo.descontar ? moeda4(memoria.descontos.bojo) : "sem desconto"}', 1)
+
+          p.write_text(s, encoding='utf-8')
+
+          p2 = Path('corponu-sutia-completo-chegada-rapida.js')
+          t = p2.read_text(encoding='utf-8')
+          t = t.replace('const VERSION = "2026-08-11-origem-componentes-chegada-168";', 'const VERSION = "2026-08-11-origem-componentes-chegada-169";', 1)
+
+          antigo = '''    return {\n      conhecido: pronto || nao,\n      pronto,\n      origem: partes[0] || "Informação registrada na OP",\n      responsavel: partes.length > 1 ? partes[partes.length - 1] : "",\n      informadoAgora: false\n    };'''
+          novo = '''    const descontoAttr = texto(card?.dataset?.descontar);\n    const feitoPelaFaccao = card?.dataset?.feitoFaccao === "1";\n    const feitoPelaConfeccao = card?.dataset?.feitoConfeccao === "1";\n    return {\n      conhecido: pronto || nao,\n      pronto,\n      descontar: descontoAttr === "1" ? true : descontoAttr === "0" ? false : pronto,\n      feitoPelaFaccao,\n      feitoPelaConfeccao,\n      origemExecucao: texto(card?.dataset?.origemExecucao || ""),\n      origem: partes[0] || "Informação registrada na OP",\n      responsavel: partes.length > 1 ? partes[partes.length - 1] : "",\n      informadoAgora: false\n    };'''
+          if antigo not in t: raise SystemExit('Fallback do card nao encontrado')
+          t = t.replace(antigo, novo, 1)
+
+          antigo = '''      quantidadePronta: info.pronto ? total : 0,\n      quantidadeTotal: total,\n      origem: "chegada_sutia_completo",'''
+          novo = '''      quantidadePronta: info.pronto ? total : 0,\n      quantidadeTotal: total,\n      descontarNoSutiaCompleto: info.descontar === true,\n      feitoPelaFaccao: info.feitoPelaFaccao === true,\n      feitoPelaConfeccao: info.feitoPelaConfeccao === true,\n      origemExecucao: info.origemExecucao || "",\n      origem: "chegada_sutia_completo",'''
+          if antigo not in t: raise SystemExit('Persistencia atomica da OP nao encontrada')
+          t = t.replace(antigo, novo, 1)
+
+          t = t.replace('lateral ${dados.lateral.pronto ? "sim" : "não"} | bojo ${dados.bojo.pronto ? "sim" : "não"}', 'lateral ${dados.lateral.feitoPelaFaccao ? "facção" : dados.lateral.feitoPelaConfeccao ? "confecção" : dados.lateral.descontar ? "desconto" : "sem desconto"} | bojo ${dados.bojo.feitoPelaFaccao ? "facção" : dados.bojo.feitoPelaConfeccao ? "confecção" : dados.bojo.descontar ? "desconto" : "sem desconto"}', 1)
+
+          p2.write_text(t, encoding='utf-8')
+
+          release = {
+            'version': '2026-08-11-origem-componentes-sutia-169',
+            'updatedAt': '2026-08-11T08:42:00-03:00',
+            'notes': 'Finaliza a regra de origem de Lateral e Bojo no Sutiã Completo. Feito pela facção não desconta; feito pela confecção desconta. A origem e a decisão de desconto ficam persistidas na OP, movimentação e pagamento para não haver inversão em acessos futuros. Registros legados mantêm a interpretação anterior.'
+          }
+          Path('corponu-release.json').write_text(json.dumps(release, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Validar JavaScript e persistencia
+        run: |
+          node --check corponu-sutia-completo-calculo.js
+          node --check corponu-sutia-completo-chegada-rapida.js
+          grep -q 'descontarNoSutiaCompleto' corponu-sutia-completo-calculo.js
+          grep -q 'descontarNoSutiaCompleto' corponu-sutia-completo-chegada-rapida.js
+          grep -q 'data-descontar=' corponu-sutia-completo-calculo.js
+          grep -q 'feitoPelaFaccao' corponu-sutia-completo-chegada-rapida.js
+          grep -q 'feitoPelaConfeccao' corponu-sutia-completo-chegada-rapida.js
+
+      - name: Publicar e limpar temporarios
+        run: |
+          rm -f .finalizar-origem-componentes-sutia-169
+          rm -f .github/workflows/finalizar-origem-componentes-sutia-169.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'release: persistir origem de Lateral e Bojo 169 [skip ci]'
+          git push origin HEAD:main
