@@ -9,6 +9,7 @@
   const VERSION_CALCINHA_SALVAMENTO_RAPIDO = "2026-08-07-calcinha-salvamento-rapido-147";
   const VERSION_QUANTIDADE_SEM_SCROLL = "2026-08-07-quantidade-sem-scroll-148";
   const VERSION_LATERAL_CANCELADAS = "2026-08-10-lateral-canceladas-dom-160";
+  const VERSION_PENDENCIAS_MOTIVO = "2026-08-11-pendencias-motivo-171";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -87,6 +88,15 @@
     "lateral-canceladas-160",
     VERSION_LATERAL_CANCELADAS,
     "Não foi possível ocultar movimentações canceladas de Lateral e Alça."
+  );
+
+  // 171 mostra na Central Financeira o motivo real de cada pagamento sem valor,
+  // usando primeiro o cache do Firestore para evitar leituras extras no uso normal.
+  carregarScript(
+    "corponu-pendencias-motivo-171.js",
+    "pendencias-motivo-171",
+    VERSION_PENDENCIAS_MOTIVO,
+    "Não foi possível mostrar o motivo específico das pendências financeiras."
   );
 
   if (window.__CORPONU_DUPLICIDADE_TABELA_LOADER_135__ === VERSION_DUPLICIDADE) return;
