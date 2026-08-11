@@ -1,0 +1,267 @@
+name: Fix chegada Sutiã origem 179
+on:
+  push:
+    branches: [main]
+    paths: ['.fix-chegada-sutia-origem-179']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Alinhar chegada definitiva com origem atual
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json, re
+
+          p = Path('corponu-chegada-sutia-sync-legado.js')
+          s = p.read_text(encoding='utf-8')
+
+          s = s.replace(
+            'const VERSION = "2026-08-03-correcao-definitiva-chegada-sutia-110";',
+            'const VERSION = "2026-08-11-fix-chegada-sutia-origem-179";',
+            1
+          )
+
+          padrao = re.compile(r'  function lerComponente\(nome\) \{[\s\S]*?\n  \}\n\n  function bloquearForm', re.S)
+          novo = r'''  function lerComponente(nome) {
+    const titulo = nome === "lateral" ? "Lateral" : "Bojo";
+    const select = document.getElementById(`sc51${titulo}Situacao`);
+    const responsavelInput = document.getElementById(`sc51${titulo}Responsavel`);
+
+    if (select instanceof HTMLSelectElement) {
+      const valor = texto(select.value).toLowerCase();
+      if (!["faccao", "confeccao", "nao_informado", "sim", "nao"].includes(valor)) return null;
+
+      const feitoPelaFaccao = valor === "faccao";
+      const feitoPelaConfeccao = valor === "confeccao";
+      const indefinido = valor === "nao_informado";
+      const legadoComDesconto = valor === "sim";
+      const legadoSemDesconto = valor === "nao";
+
+      return {
+        conhecido: true,
+        pronto: feitoPelaFaccao || feitoPelaConfeccao || legadoComDesconto,
+        descontar: feitoPelaConfeccao || legadoComDesconto,
+        indefinido,
+        feitoPelaFaccao,
+        feitoPelaConfeccao,
+        origemExecucao: feitoPelaFaccao ? "faccao" : feitoPelaConfeccao ? "confeccao" : indefinido ? "nao_informado" : "legado",
+        responsavel: texto(responsavelInput?.value),
+        origem: feitoPelaFaccao
+          ? "Feito pela facção na chegada do Sutiã Completo"
+          : feitoPelaConfeccao
+            ? "Feito pela confecção"
+            : indefinido
+              ? "Origem ainda não informada"
+              : legadoSemDesconto
+                ? "Informação legada sem desconto"
+                : "Informação legada com desconto",
+        informadoAgora: true
+      };
+    }
+
+    const painel = document.getElementById(PAINEL_ID);
+    const card = painel?.querySelector(`[data-componente="${nome}"]`);
+    if (!(card instanceof HTMLElement)) return null;
+
+    const origemAttr = normalizar(card.dataset?.origemExecucao || "");
+    const descontoAttr = texto(card.dataset?.descontar || "");
+    const feitoFaccaoAttr = card.dataset?.feitoFaccao === "1";
+    const feitoConfeccaoAttr = card.dataset?.feitoConfeccao === "1";
+    const pillSim = card.querySelector(".sc51-pill.sim");
+    const pillNao = card.querySelector(".sc51-pill.nao");
+    const pillPendente = card.querySelector(".sc51-pill.pendente");
+
+    let feitoPelaFaccao = feitoFaccaoAttr || origemAttr === "FACCAO";
+    let feitoPelaConfeccao = feitoConfeccaoAttr || origemAttr === "CONFECCAO";
+    let indefinido = origemAttr === "NAO INFORMADO" || origemAttr === "NAO_INFORMADO" || Boolean(pillPendente);
+    let descontar = feitoPelaConfeccao;
+    let pronto = feitoPelaFaccao || feitoPelaConfeccao;
+
+    if (!feitoPelaFaccao && !feitoPelaConfeccao && !indefinido && descontoAttr) {
+      descontar = descontoAttr === "1";
+      feitoPelaConfeccao = descontar;
+      feitoPelaFaccao = descontoAttr === "0";
+      pronto = true;
+    }
+
+    if (!feitoPelaFaccao && !feitoPelaConfeccao && !indefinido) {
+      if (!pillSim && !pillNao) return null;
+      // Compatibilidade histórica: no formato legado, "sim/pronta" gerava desconto.
+      pronto = Boolean(pillSim);
+      descontar = Boolean(pillSim);
+    }
+
+    const detalhe = texto(card.querySelector("small")?.textContent);
+    const partes = detalhe.split("•").map(item => item.trim()).filter(Boolean);
+    return {
+      conhecido: true,
+      pronto,
+      descontar,
+      indefinido,
+      feitoPelaFaccao,
+      feitoPelaConfeccao,
+      origemExecucao: feitoPelaFaccao ? "faccao" : feitoPelaConfeccao ? "confeccao" : indefinido ? "nao_informado" : "legado",
+      origem: partes[0] || (feitoPelaFaccao ? "Feito pela facção" : feitoPelaConfeccao ? "Feito pela confecção" : indefinido ? "Origem ainda não informada" : "Informação registrada na OP"),
+      responsavel: partes.length > 1 ? partes[partes.length - 1] : "",
+      informadoAgora: false
+    };
+  }
+
+  function bloquearForm'''
+          if not padrao.search(s):
+              raise SystemExit('lerComponente não encontrado')
+          s = padrao.sub(novo, s, count=1)
+
+          antigo = '''  function componenteConsolidado(info, total, usuario, agora) {
+    return {
+      informado: true,
+      pronto: info.pronto,
+      status: info.pronto ? "completo" : "nao_pronto",
+      quantidadePronta: info.pronto ? total : 0,
+      quantidadeTotal: total,
+      origem: info.informadoAgora ? "chegada_sutia_completo" : (info.origem || "registro_confirmado_na_chegada"),
+      origemLabel: info.origem || "Confirmado na chegada do Sutiã Completo",
+      responsavel: info.responsavel || "",
+      atualizadoPor: usuario?.uid || "",
+      atualizadoEm: agora,
+      versao: VERSION
+    };
+  }'''
+          novo2 = '''  function componenteConsolidado(info, total, usuario, agora) {
+    const indefinido = info.indefinido === true;
+    return {
+      informado: true,
+      pronto: indefinido ? false : info.pronto === true,
+      status: indefinido ? "nao_informado" : "completo",
+      quantidadePronta: indefinido ? 0 : total,
+      quantidadeTotal: total,
+      descontarNoSutiaCompleto: indefinido ? false : info.descontar === true,
+      feitoPelaFaccao: indefinido ? false : info.feitoPelaFaccao === true,
+      feitoPelaConfeccao: indefinido ? false : info.feitoPelaConfeccao === true,
+      origemExecucao: indefinido ? "nao_informado" : (info.origemExecucao || ""),
+      origem: info.informadoAgora ? "chegada_sutia_completo" : (info.origem || "registro_confirmado_na_chegada"),
+      origemLabel: info.origem || "Confirmado na chegada do Sutiã Completo",
+      responsavel: info.responsavel || "",
+      atualizadoPor: usuario?.uid || "",
+      atualizadoEm: agora,
+      versao: VERSION
+    };
+  }'''
+          if antigo not in s:
+              raise SystemExit('componenteConsolidado não encontrado')
+          s = s.replace(antigo, novo2, 1)
+
+          antigo_calc = '''    const precoLateral = lateral.pronto ? buscarPreco(precos, PROCESSO_LATERAL) : null;
+    const precoBojo = bojo.pronto ? buscarPreco(precos, PROCESSO_BOJO) : null;
+    const faltantes = [];
+    if (lateral.pronto && !precoLateral) faltantes.push(`${PROCESSO_LATERAL} da referência ${referencia}`);
+    if (bojo.pronto && !precoBojo) faltantes.push(`${PROCESSO_BOJO} da referência ${referencia}`);
+
+    const descontos = {
+      lateral: lateral.pronto && precoLateral ? arred4(precoLateral.valor) : 0,
+      bojo: bojo.pronto && precoBojo ? arred4(precoBojo.valor) : 0,
+      fecho: fechoPronto ? 0 : arred4(config.descontoFechoNaoFeito),
+      pontoLuz: pontoLuzPronto ? 0 : arred4(config.descontoPontoLuzNaoFeito)
+    };'''
+          novo_calc = '''    const precoLateral = lateral.descontar ? buscarPreco(precos, PROCESSO_LATERAL) : null;
+    const precoBojo = bojo.descontar ? buscarPreco(precos, PROCESSO_BOJO) : null;
+    const faltantes = [];
+    if (lateral.indefinido) faltantes.push("definição da LATERAL");
+    else if (lateral.descontar && !precoLateral) faltantes.push(`${PROCESSO_LATERAL} da referência ${referencia}`);
+    if (bojo.indefinido) faltantes.push("definição do BOJO");
+    else if (bojo.descontar && !precoBojo) faltantes.push(`${PROCESSO_BOJO} da referência ${referencia}`);
+
+    const descontos = {
+      lateral: lateral.descontar && precoLateral ? arred4(precoLateral.valor) : 0,
+      bojo: bojo.descontar && precoBojo ? arred4(precoBojo.valor) : 0,
+      fecho: fechoPronto ? 0 : arred4(config.descontoFechoNaoFeito),
+      pontoLuz: pontoLuzPronto ? 0 : arred4(config.descontoPontoLuzNaoFeito)
+    };'''
+          if antigo_calc not in s:
+              raise SystemExit('cálculo antigo não encontrado')
+          s = s.replace(antigo_calc, novo_calc, 1)
+
+          s = s.replace('      if (lateral.pronto && lateral.informadoAgora && !lateral.responsavel) throw new Error("LATERAL_SEM_RESPONSAVEL");\n', '', 1)
+          s = s.replace('      if (bojo.pronto && bojo.informadoAgora && !bojo.responsavel) throw new Error("BOJO_SEM_RESPONSAVEL");\n', '', 1)
+
+          s = s.replace(
+            '        `Lateral: ${lateral.pronto ? "Sim" : "Não"}`,\n        `Bojo: ${bojo.pronto ? "Sim" : "Não"}`,',
+            '        `Lateral: ${lateral.feitoPelaFaccao ? "Feito pela facção" : lateral.feitoPelaConfeccao ? "Feito pela confecção" : lateral.indefinido ? "Não informado" : "Legado"}`,\n        `Bojo: ${bojo.feitoPelaFaccao ? "Feito pela facção" : bojo.feitoPelaConfeccao ? "Feito pela confecção" : bojo.indefinido ? "Não informado" : "Legado"}`,',
+            1
+          )
+
+          s = s.replace(
+            '      lateralPronta: lateral.pronto,\n      lateralOrigem: lateral.origem || "",',
+            '      lateralPronta: lateral.pronto,\n      lateralDescontar: lateral.descontar === true,\n      lateralFeitaPelaFaccao: lateral.feitoPelaFaccao === true,\n      lateralFeitaPelaConfeccao: lateral.feitoPelaConfeccao === true,\n      lateralOrigemExecucao: lateral.origemExecucao || "",\n      lateralIndefinida: lateral.indefinido === true,\n      lateralOrigem: lateral.origem || "",',
+            1
+          )
+          s = s.replace(
+            '      bojoPronto: bojo.pronto,\n      bojoOrigem: bojo.origem || "",',
+            '      bojoPronto: bojo.pronto,\n      bojoDescontar: bojo.descontar === true,\n      bojoFeitoPelaFaccao: bojo.feitoPelaFaccao === true,\n      bojoFeitoPelaConfeccao: bojo.feitoPelaConfeccao === true,\n      bojoOrigemExecucao: bojo.origemExecucao || "",\n      bojoIndefinido: bojo.indefinido === true,\n      bojoOrigem: bojo.origem || "",',
+            1
+          )
+
+          # O bloco de pagamento possui os mesmos campos uma segunda vez.
+          s = s.replace(
+            '      lateralPronta: lateral.pronto,\n      lateralOrigem: lateral.origem || "",',
+            '      lateralPronta: lateral.pronto,\n      lateralDescontar: lateral.descontar === true,\n      lateralFeitaPelaFaccao: lateral.feitoPelaFaccao === true,\n      lateralFeitaPelaConfeccao: lateral.feitoPelaConfeccao === true,\n      lateralOrigemExecucao: lateral.origemExecucao || "",\n      lateralIndefinida: lateral.indefinido === true,\n      lateralOrigem: lateral.origem || "",',
+            1
+          )
+          s = s.replace(
+            '      bojoPronto: bojo.pronto,\n      bojoOrigem: bojo.origem || "",',
+            '      bojoPronto: bojo.pronto,\n      bojoDescontar: bojo.descontar === true,\n      bojoFeitoPelaFaccao: bojo.feitoPelaFaccao === true,\n      bojoFeitoPelaConfeccao: bojo.feitoPelaConfeccao === true,\n      bojoOrigemExecucao: bojo.origemExecucao || "",\n      bojoIndefinido: bojo.indefinido === true,\n      bojoOrigem: bojo.origem || "",',
+            1
+          )
+
+          s = s.replace(
+            '        lateralProntaSutiaCompleto: lateral.pronto,\n        bojoProntoSutiaCompleto: bojo.pronto,',
+            '        lateralProntaSutiaCompleto: lateral.pronto,\n        lateralDescontarSutiaCompleto: lateral.descontar === true,\n        lateralOrigemExecucaoSutiaCompleto: lateral.origemExecucao || "",\n        bojoProntoSutiaCompleto: bojo.pronto,\n        bojoDescontarSutiaCompleto: bojo.descontar === true,\n        bojoOrigemExecucaoSutiaCompleto: bojo.origemExecucao || "",',
+            1
+          )
+
+          s = s.replace(
+            'detalhes: `OP ${movOriginal.numeroOP || "-"} | ${faccaoSelecionada} | voltou ${quantidade} peças | falta ${falta} | lateral ${lateral.pronto ? "sim" : "não"} | bojo ${bojo.pronto ? "sim" : "não"} | fecho ${fechoPronto ? "sim" : "não"} | ponto de luz ${pontoLuzPronto ? "sim" : "não"} | valor ${moeda4(memoria.valorUnitario)}`,',
+            'detalhes: `OP ${movOriginal.numeroOP || "-"} | ${faccaoSelecionada} | voltou ${quantidade} peças | falta ${falta} | lateral ${lateral.origemExecucao || "legado"} | bojo ${bojo.origemExecucao || "legado"} | fecho ${fechoPronto ? "sim" : "não"} | ponto de luz ${pontoLuzPronto ? "sim" : "não"} | valor ${moeda4(memoria.valorUnitario)}`,',
+            1
+          )
+
+          p.write_text(s, encoding='utf-8')
+
+          # Bump do atualizador para garantir que o navegador busque o módulo corrigido.
+          a = Path('corponu-atualizador.js')
+          t = a.read_text(encoding='utf-8')
+          t = re.sub(r'const LOCAL_RELEASE = "[^"]+";', 'const LOCAL_RELEASE = "2026-08-11-fix-chegada-sutia-origem-179";', t, count=1)
+          a.write_text(t, encoding='utf-8')
+
+          h = Path('index.html')
+          html = h.read_text(encoding='utf-8')
+          html = re.sub(r'corponu-atualizador\.js\?v=[^"\']+', 'corponu-atualizador.js?v=2026-08-11-fix-chegada-sutia-origem-179', html, count=1)
+          h.write_text(html, encoding='utf-8')
+
+          Path('corponu-release.json').write_text(json.dumps({
+            'version':'2026-08-11-fix-chegada-sutia-origem-179',
+            'updatedAt':'2026-08-11T13:50:00-03:00',
+            'notes':'Corrige a chegada do Sutiã Completo após a edição administrativa de Lateral/Bojo. O módulo definitivo agora entende feito pela facção, feito pela confecção e não informado; facção não desconta, confecção desconta, não informado mantém pagamento aguardando definição e responsável continua opcional. Remove o falso aviso de situação da lateral não carregada.'
+          }, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+      - name: Validar JavaScript e regras
+        run: |
+          node --check corponu-chegada-sutia-sync-legado.js
+          node --check corponu-atualizador.js
+          grep -q '"faccao", "confeccao", "nao_informado"' corponu-chegada-sutia-sync-legado.js
+          grep -q 'lateral.descontar' corponu-chegada-sutia-sync-legado.js
+          grep -q 'definição da LATERAL' corponu-chegada-sutia-sync-legado.js
+          ! grep -q 'lateral.pronto && lateral.informadoAgora && !lateral.responsavel' corponu-chegada-sutia-sync-legado.js
+          grep -q '2026-08-11-fix-chegada-sutia-origem-179' corponu-release.json
+      - name: Publicar e limpar temporários
+        run: |
+          rm -f .fix-chegada-sutia-origem-179 .github/workflows/fix-chegada-sutia-origem-179.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'fix: alinhar chegada do Sutiã Completo com origem de Lateral e Bojo 179 [skip ci]'
+          git push
