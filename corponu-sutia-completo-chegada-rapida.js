@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-03-chegada-sutia-completo-rapida-107";
+  const VERSION = "2026-08-11-origem-componentes-chegada-168";
   const FIREBASE_VERSION = "10.12.5";
   const PROCESSO_COMPLETO = "SUTIÃ COMPLETO";
   const PROCESSO_LATERAL = "LATERAL";
@@ -207,10 +207,14 @@
     if (select instanceof HTMLSelectElement) {
       const valor = texto(select.value);
       return {
-        conhecido: valor === "sim" || valor === "nao",
-        pronto: valor === "sim",
+        conhecido: ["faccao", "confeccao", "sim", "nao"].includes(valor),
+        pronto: ["faccao", "confeccao", "sim"].includes(valor),
+        descontar: valor === "confeccao" || valor === "sim",
+        feitoPelaFaccao: valor === "faccao",
+        feitoPelaConfeccao: valor === "confeccao",
+        origemExecucao: valor === "faccao" ? "faccao" : valor === "confeccao" ? "confeccao" : "legado",
         responsavel: texto(responsavelInput?.value),
-        origem: "Informado na chegada do Sutiã Completo",
+        origem: valor === "faccao" ? "Feito pela facção na chegada do Sutiã Completo" : valor === "confeccao" ? "Feito pela confecção" : "Informado na chegada do Sutiã Completo",
         informadoAgora: true
       };
     }
@@ -362,15 +366,15 @@
     }
 
     const precos = await carregarPrecos();
-    const precoLateral = dados.lateral.pronto ? buscarPrecoEmLista(precos, PROCESSO_LATERAL, referencia) : null;
-    const precoBojo = dados.bojo.pronto ? buscarPrecoEmLista(precos, PROCESSO_BOJO, referencia) : null;
+    const precoLateral = dados.lateral.descontar ? buscarPrecoEmLista(precos, PROCESSO_LATERAL, referencia) : null;
+    const precoBojo = dados.bojo.descontar ? buscarPrecoEmLista(precos, PROCESSO_BOJO, referencia) : null;
     const faltantes = [];
-    if (dados.lateral.pronto && !precoLateral) faltantes.push(`${PROCESSO_LATERAL} da referência ${referencia}`);
-    if (dados.bojo.pronto && !precoBojo) faltantes.push(`${PROCESSO_BOJO} da referência ${referencia}`);
+    if (dados.lateral.descontar && !precoLateral) faltantes.push(`${PROCESSO_LATERAL} da referência ${referencia}`);
+    if (dados.bojo.descontar && !precoBojo) faltantes.push(`${PROCESSO_BOJO} da referência ${referencia}`);
 
     const descontos = {
-      lateral: dados.lateral.pronto && precoLateral ? arred4(precoLateral.valor) : 0,
-      bojo: dados.bojo.pronto && precoBojo ? arred4(precoBojo.valor) : 0,
+      lateral: dados.lateral.descontar && precoLateral ? arred4(precoLateral.valor) : 0,
+      bojo: dados.bojo.descontar && precoBojo ? arred4(precoBojo.valor) : 0,
       fecho: dados.fechoPronto ? 0 : arred4(config.descontoFechoNaoFeito),
       pontoLuz: dados.pontoLuzPronto ? 0 : arred4(config.descontoPontoLuzNaoFeito)
     };
@@ -440,9 +444,17 @@
   function montarConferencia(dados, memoria, usuario, quantidade) {
     return {
       lateralPronta: dados.lateral.pronto,
+      lateralDescontada: dados.lateral.descontar === true,
+      lateralFeitaPelaFaccao: dados.lateral.feitoPelaFaccao === true,
+      lateralFeitaPelaConfeccao: dados.lateral.feitoPelaConfeccao === true,
+      lateralOrigemExecucao: dados.lateral.origemExecucao || "",
       lateralOrigem: dados.lateral.origem || "",
       lateralResponsavel: dados.lateral.responsavel || "",
       bojoPronto: dados.bojo.pronto,
+      bojoDescontado: dados.bojo.descontar === true,
+      bojoFeitoPelaFaccao: dados.bojo.feitoPelaFaccao === true,
+      bojoFeitoPelaConfeccao: dados.bojo.feitoPelaConfeccao === true,
+      bojoOrigemExecucao: dados.bojo.origemExecucao || "",
       bojoOrigem: dados.bojo.origem || "",
       bojoResponsavel: dados.bojo.responsavel || "",
       fechoPronto: dados.fechoPronto,
@@ -507,9 +519,17 @@
       precoLateralReferenciaId: memoria.precoLateralId || "",
       precoBojoReferenciaId: memoria.precoBojoId || "",
       lateralPronta: dados.lateral.pronto,
+      lateralDescontada: dados.lateral.descontar === true,
+      lateralFeitaPelaFaccao: dados.lateral.feitoPelaFaccao === true,
+      lateralFeitaPelaConfeccao: dados.lateral.feitoPelaConfeccao === true,
+      lateralOrigemExecucao: dados.lateral.origemExecucao || "",
       lateralOrigem: dados.lateral.origem || "",
       lateralResponsavel: dados.lateral.responsavel || "",
       bojoPronto: dados.bojo.pronto,
+      bojoDescontado: dados.bojo.descontar === true,
+      bojoFeitoPelaFaccao: dados.bojo.feitoPelaFaccao === true,
+      bojoFeitoPelaConfeccao: dados.bojo.feitoPelaConfeccao === true,
+      bojoOrigemExecucao: dados.bojo.origemExecucao || "",
       bojoOrigem: dados.bojo.origem || "",
       bojoResponsavel: dados.bojo.responsavel || "",
       fechoPronto: dados.fechoPronto,

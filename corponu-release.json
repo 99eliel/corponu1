@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-11-termos-componentes-sutia-167",
-  "updatedAt": "2026-08-11T08:34:00-03:00",
-  "notes": "Altera somente os textos das opções de Lateral e Bojo na conferência do Sutiã Completo: feito pela facção ou feito pela confecção. Os valores internos sim/não, cálculos, descontos, responsáveis, pagamentos e dados salvos permanecem inalterados."
+  "version": "2026-08-11-origem-componentes-sutia-168",
+  "updatedAt": "2026-08-11T08:38:00-03:00",
+  "notes": "Corrige a regra de Lateral e Bojo no Sutiã Completo: quando feito pela facção não há desconto; quando feito pela confecção, o valor do componente é descontado. Novos registros gravam explicitamente a origem do trabalho, preservando a interpretação dos registros legados."
 }
