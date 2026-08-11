@@ -1,0 +1,133 @@
+name: Corrigir estrutura cabecalho Manejo 178
+on:
+  push:
+    branches: [main]
+    paths: ['.corrigir-estrutura-cabecalho-manejo-178']
+permissions:
+  contents: write
+jobs:
+  corrigir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Corrigir somente estrutura do cabecalho do Manejo Sutiã
+        run: |
+          cat > corponu-manejo-cabecalho-texto-177.js <<'EOF'
+          (() => {
+            "use strict";
+
+            const VERSION = "2026-08-11-cabecalho-manejo-estrutura-178";
+            const GUARD = "__CORPONU_MANEJO_CABECALHO_ESTRUTURA__";
+            if (window[GUARD] === VERSION) return;
+            window[GUARD] = VERSION;
+
+            const NOMES_SUTIA = [
+              "Nº OP",
+              "REF",
+              "SILK",
+              "TECIDO",
+              "FASE BOJO",
+              "FASE LATERAL",
+              "QTI",
+              "COR",
+              "NECESSIDADE",
+              "STATUS",
+              "AÇÕES"
+            ];
+
+            function setorAtualEhSutia() {
+              const ativo = document.querySelector("#manejo .manejo-setor-btn.active")?.dataset?.setor;
+              if (ativo) return ativo === "sutia";
+              return document.querySelector("#manejo .manejo-inline-table")?.classList.contains("manejo-sutia-ativo") === true;
+            }
+
+            function cabecalhoSutiaEstaCorreto(linha) {
+              const celulas = Array.from(linha?.children || []).filter(el => el.tagName === "TH");
+              if (celulas.length !== NOMES_SUTIA.length) return false;
+              return NOMES_SUTIA.every((nome, indice) => celulas[indice]?.textContent?.trim() === nome);
+            }
+
+            function reconstruirCabecalhoSutia() {
+              if (!setorAtualEhSutia()) return;
+              const linha = document.querySelector("#manejo .manejo-head-row");
+              if (!linha || cabecalhoSutiaEstaCorreto(linha)) return;
+
+              const fragmento = document.createDocumentFragment();
+              NOMES_SUTIA.forEach((nome, indice) => {
+                const th = document.createElement("th");
+                th.textContent = nome;
+                if (indice === 5) th.className = "manejo-head-fase-lateral";
+                fragmento.appendChild(th);
+              });
+              linha.replaceChildren(fragmento);
+            }
+
+            function agendarCorrecao() {
+              [0, 30, 120, 350].forEach(atraso => setTimeout(reconstruirCabecalhoSutia, atraso));
+            }
+
+            function iniciar() {
+              agendarCorrecao();
+
+              document.addEventListener("click", event => {
+                if (event.target?.closest?.("#manejo .manejo-setor-btn") ||
+                    event.target?.closest?.('.nav-btn[data-page="manejo"]')) {
+                  agendarCorrecao();
+                }
+              }, true);
+
+              const manejo = document.getElementById("manejo");
+              if (!manejo) return;
+
+              const observer = new MutationObserver(() => {
+                if (setorAtualEhSutia()) reconstruirCabecalhoSutia();
+              });
+              observer.observe(manejo, { childList: true, subtree: true, characterData: true });
+            }
+
+            if (document.readyState === "loading") {
+              document.addEventListener("DOMContentLoaded", iniciar, { once: true });
+            } else {
+              iniciar();
+            }
+          })();
+          EOF
+
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          index = Path('index.html')
+          html = index.read_text(encoding='utf-8')
+          html = html.replace(
+              'corponu-manejo-cabecalho-texto-177.js?v=2026-08-11-cabecalho-manejo-texto-177',
+              'corponu-manejo-cabecalho-texto-177.js?v=2026-08-11-cabecalho-manejo-estrutura-178'
+          )
+          index.write_text(html, encoding='utf-8')
+
+          Path('corponu-release.json').write_text(json.dumps({
+              'version': '2026-08-11-cabecalho-manejo-estrutura-178',
+              'updatedAt': '2026-08-11T12:12:00-03:00',
+              'notes': 'Corrige somente a estrutura visual do cabeçalho do Manejo Sutiã. A ordem fica Nº OP, REF, SILK, TECIDO, FASE BOJO, FASE LATERAL, QTI, COR, NECESSIDADE, STATUS e AÇÕES. A correção não altera filtros, dados, salvamento, largura ou a estrutura específica da Calcinha.'
+          }, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Validar
+        run: |
+          node --check corponu-manejo-cabecalho-texto-177.js
+          grep -q '"Nº OP",' corponu-manejo-cabecalho-texto-177.js
+          grep -q '"REF",' corponu-manejo-cabecalho-texto-177.js
+          grep -q '"SILK",' corponu-manejo-cabecalho-texto-177.js
+          grep -q '"TECIDO",' corponu-manejo-cabecalho-texto-177.js
+          grep -q '"FASE BOJO",' corponu-manejo-cabecalho-texto-177.js
+          grep -q '"FASE LATERAL",' corponu-manejo-cabecalho-texto-177.js
+          grep -q 'cabecalho-manejo-estrutura-178' index.html
+
+      - name: Publicar e limpar temporarios
+        run: |
+          rm -f .corrigir-estrutura-cabecalho-manejo-178 .github/workflows/corrigir-estrutura-cabecalho-manejo-178.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'fix: organizar estrutura do cabecalho do Manejo Sutiã 178 [skip ci]'
+          git push
