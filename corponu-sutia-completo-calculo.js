@@ -644,7 +644,7 @@
           <option value="confeccao">${nome === "lateral" ? "Lateral feita pela confecção" : "Bojo feito pela confecção"}</option>
           <option value="nao_informado">Não sei / não informado</option>
         </select>
-        <input id="${idResponsavel}" type="text" maxlength="120" placeholder="Quem fez? Informe ao marcar como pronta" value="${parcial ? escapar(info.responsavel || "") : ""}" disabled>
+        <input id="${idResponsavel}" type="text" maxlength="120" placeholder="Quem fez? (opcional)" value="${parcial ? escapar(info.responsavel || "") : ""}" disabled>
         <small>${detalheParcial} A escolha será usada neste cálculo${parcial ? "" : " e ficará registrada na OP"}.</small>
       </div>`;
   }
@@ -682,7 +682,7 @@
     select.addEventListener("change", () => {
       const feitoPelaFaccao = select.value === "faccao";
       input.disabled = !feitoPelaFaccao;
-      input.required = feitoPelaFaccao;
+      input.required = false;
       if (!feitoPelaFaccao) input.value = "";
       atualizarResumoChegada(prefixo);
     });
@@ -713,7 +713,7 @@
         feitoPelaFaccao: valor === "faccao",
         feitoPelaConfeccao: valor === "confeccao",
         origemExecucao: valor === "nao_informado" ? "nao_informado" : valor,
-        origem: valor === "faccao" ? "Feito pela facção na chegada do Sutiã Completo" : "Feito pela confecção",
+        origem: valor === "faccao" ? "Feito pela facção na chegada do Sutiã Completo" : valor === "confeccao" ? "Feito pela confecção" : "Origem ainda não informada",
         responsavel: texto(document.getElementById(`${prefixo}${titulo}Responsavel`)?.value)
       };
     };
@@ -892,19 +892,9 @@
       avisar("Informe quem fez a lateral: facção ou confecção.", "erro");
       return null;
     }
-    if (dados.lateral.feitoPelaFaccao && !dados.lateral.responsavel && !informacaoDefinitiva(atual.contexto.lateral)) {
-      document.getElementById(`${prefixo}LateralResponsavel`)?.focus();
-      avisar("Informe quem fez a lateral.", "erro");
-      return null;
-    }
     if (!dados.bojo.conhecido) {
       document.getElementById(`${prefixo}BojoSituacao`)?.focus();
       avisar("Informe quem fez o bojo: facção ou confecção.", "erro");
-      return null;
-    }
-    if (dados.bojo.feitoPelaFaccao && !dados.bojo.responsavel && !informacaoDefinitiva(atual.contexto.bojo)) {
-      document.getElementById(`${prefixo}BojoResponsavel`)?.focus();
-      avisar("Informe quem fez o bojo.", "erro");
       return null;
     }
 
@@ -919,8 +909,8 @@
         `Confirmar a chegada de SUTIÃ COMPLETO da OP ${atual.mov?.numeroOP || atual.numeroOP || atual.op?.numeroOP || "-"}?`,
         "",
         `Valor-base: ${moeda4(memoria.base)}`,
-        `Lateral: ${dados.lateral.pronto ? (memoria.precoLateral ? `desconto ${moeda4(memoria.descontos.lateral)}` : "PRONTA, mas sem valor cadastrado") : "não pronta — sem desconto"}`,
-        `Bojo: ${dados.bojo.pronto ? (memoria.precoBojo ? `desconto ${moeda4(memoria.descontos.bojo)}` : "PRONTO, mas sem valor cadastrado") : "não pronto — sem desconto"}`,
+        `Lateral: ${dados.lateral.indefinido ? "não informada — pagamento aguardará definição" : dados.lateral.descontar ? (memoria.precoLateral ? `feita pela confecção — desconto ${moeda4(memoria.descontos.lateral)}` : "feita pela confecção, mas sem valor cadastrado") : "feita pela facção — sem desconto"}`,
+        `Bojo: ${dados.bojo.indefinido ? "não informado — pagamento aguardará definição" : dados.bojo.descontar ? (memoria.precoBojo ? `feito pela confecção — desconto ${moeda4(memoria.descontos.bojo)}` : "feito pela confecção, mas sem valor cadastrado") : "feito pela facção — sem desconto"}`,
         `Fecho: ${dados.fechoPronto ? "veio pronto — sem desconto" : `não feito — desconto ${moeda4(memoria.descontos.fecho)}`}`,
         `Ponto de luz: ${dados.pontoLuzPronto ? "veio pronto — sem desconto" : `não feito — desconto ${moeda4(memoria.descontos.pontoLuz)}`}`,
         "",

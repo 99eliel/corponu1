@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-11-componentes-opcionais-170",
-  "updatedAt": "2026-08-11T08:52:00-03:00",
-  "notes": "Lateral e Bojo não bloqueiam mais a chegada quando o usuário não souber quem fez. A opção Não sei / não informado salva a chegada e mantém o pagamento aguardando definição, sem assumir desconto. Facção segue sem desconto; confecção segue com desconto. Fecho e ponto de luz continuam obrigatórios."
+  "version": "2026-08-11-componentes-opcionais-170b",
+  "updatedAt": "2026-08-11T08:56:00-03:00",
+  "notes": "Lateral e Bojo podem ficar como Não sei / não informado sem bloquear a chegada. O nome de quem fez também deixa de ser obrigatório. Quando a origem não for conhecida, a chegada é salva e o pagamento fica aguardando definição; não há suposição de desconto. Facção segue sem desconto e confecção com desconto."
 }
