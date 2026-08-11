@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-11-cadastro-valores-pendencias-172",
-  "updatedAt": "2026-08-11T09:28:00-03:00",
-  "notes": "Corrige o cadastro de valores por referência para LATERAL/ENCAPAR BOJO. O setor selecionado deixa de ser bloqueado pelo campo oculto antigo. Ao salvar um valor de LATERAL ou BOJO, o sistema recalcula somente pendências de SUTIÃ COMPLETO da mesma referência, respeitando facção sem desconto e confecção com desconto. Pagamentos pagos permanecem protegidos."
+  "version": "2026-08-11-cadastro-valores-estavel-172b",
+  "updatedAt": "2026-08-11T09:42:00-03:00",
+  "notes": "Hotfix de estabilidade: cadastrar valor de LATERAL/BOJO salva somente o valor por referência. O recálculo automático de pendências foi desacoplado do botão Salvar para evitar travamento/crash. O campo de setor dinâmico continua corrigido e pagamentos pagos permanecem protegidos."
 }
