@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-11-admin-edita-componentes-chegada-175b",
-  "updatedAt": "2026-08-11T10:45:00-03:00",
-  "notes": "Correção técnica da edição administrativa de Lateral e Bojo na chegada do Sutiã Completo. Administradores podem alterar informações já existentes antes de confirmar; usuários comuns permanecem somente leitura. A escolha do admin entra no cálculo, pagamento e substitui a informação consolidada da OP."
+  "version": "2026-08-11-cabecalho-manejo-176",
+  "updatedAt": "2026-08-11T11:15:00-03:00",
+  "notes": "Correção exclusivamente textual do cabeçalho do Manejo: restaura TECIDO e mantém FASE BOJO/FASE LATERAL no Sutiã e FASE na Calcinha. Nenhuma lógica, filtro, largura ou salvamento foi alterado."
 }
