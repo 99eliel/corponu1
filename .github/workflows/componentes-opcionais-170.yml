@@ -1,0 +1,53 @@
+name: Componentes opcionais 170
+on:
+  push:
+    branches: [main]
+    paths: ['.componentes-opcionais-170']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ajustar chegada
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('corponu-sutia-completo-calculo.js'); s=p.read_text(encoding='utf-8')
+          s=s.replace('2026-08-11-origem-componentes-calculo-169','2026-08-11-componentes-opcionais-calculo-170',1)
+          s=s.replace('<option value="confeccao">${nome === "lateral" ? "Lateral feita pela confecção" : "Bojo feito pela confecção"}</option>','<option value="confeccao">${nome === "lateral" ? "Lateral feita pela confecção" : "Bojo feito pela confecção"}</option>\n          <option value="nao_informado">Não sei / não informado</option>',1)
+          s=s.replace('conhecido: valor === "faccao" || valor === "confeccao",','conhecido: valor === "faccao" || valor === "confeccao" || valor === "nao_informado",',1)
+          s=s.replace('descontar: valor === "confeccao",\n        feitoPelaFaccao:', 'descontar: valor === "confeccao",\n        indefinido: valor === "nao_informado",\n        feitoPelaFaccao:',1)
+          s=s.replace('origemExecucao: valor,','origemExecucao: valor === "nao_informado" ? "nao_informado" : valor,',1)
+          s=s.replace('origem: valor === "faccao" ? "Feito pela facção na chegada do Sutiã Completo" : valor === "confeccao" ? "Feito pela confecção" : "Origem ainda não informada",','origem: valor === "faccao" ? "Feito pela facção na chegada do Sutiã Completo" : valor === "confeccao" ? "Feito pela confecção" : "Origem ainda não informada",',1)
+          s=s.replace('if (dados.lateral.descontar && !precoLateral) faltantes.push(`${PROCESSO_LATERAL} da referência ${referencia}`);\n    if (dados.bojo.descontar && !precoBojo) faltantes.push(`${PROCESSO_BOJO} da referência ${referencia}`);','if (dados.lateral.indefinido) faltantes.push("definição da LATERAL");\n    else if (dados.lateral.descontar && !precoLateral) faltantes.push(`${PROCESSO_LATERAL} da referência ${referencia}`);\n    if (dados.bojo.indefinido) faltantes.push("definição do BOJO");\n    else if (dados.bojo.descontar && !precoBojo) faltantes.push(`${PROCESSO_BOJO} da referência ${referencia}`);',1)
+          s=s.replace('dados.lateral.descontar ? `Lateral − ${memoria.precoLateral ? moeda4(memoria.descontos.lateral) : "valor não cadastrado"}` : "Lateral sem desconto",','dados.lateral.indefinido ? "Lateral aguardando informação" : dados.lateral.descontar ? `Lateral − ${memoria.precoLateral ? moeda4(memoria.descontos.lateral) : "valor não cadastrado"}` : "Lateral sem desconto",',1)
+          s=s.replace('dados.bojo.descontar ? `Bojo − ${memoria.precoBojo ? moeda4(memoria.descontos.bojo) : "valor não cadastrado"}` : "Bojo sem desconto",','dados.bojo.indefinido ? "Bojo aguardando informação" : dados.bojo.descontar ? `Bojo − ${memoria.precoBojo ? moeda4(memoria.descontos.bojo) : "valor não cadastrado"}` : "Bojo sem desconto",',1)
+          s=s.replace('if (original.conhecido || novo.indefinido === true) return;','if (original.conhecido || novo.indefinido === true) return;',1) if 'novo.indefinido' in s else s.replace('if (original.conhecido) return;','if (original.conhecido || novo.indefinido === true) return;',1)
+          p.write_text(s,encoding='utf-8')
+          p=Path('corponu-sutia-completo-chegada-rapida.js'); r=p.read_text(encoding='utf-8')
+          r=r.replace('2026-08-11-origem-componentes-chegada-169','2026-08-11-componentes-opcionais-chegada-170',1)
+          r=r.replace('["faccao", "confeccao", "sim", "nao"].includes(valor)','["faccao", "confeccao", "nao_informado", "sim", "nao"].includes(valor)',1)
+          r=r.replace('descontar: valor === "confeccao" || valor === "sim",\n        feitoPelaFaccao:', 'descontar: valor === "confeccao" || valor === "sim",\n        indefinido: valor === "nao_informado",\n        feitoPelaFaccao:',1)
+          r=r.replace('origemExecucao: valor === "faccao" ? "faccao" : valor === "confeccao" ? "confeccao" : "legado",','origemExecucao: valor === "faccao" ? "faccao" : valor === "confeccao" ? "confeccao" : valor === "nao_informado" ? "nao_informado" : "legado",',1)
+          r=r.replace('origem: valor === "faccao" ? "Feito pela facção na chegada do Sutiã Completo" : valor === "confeccao" ? "Feito pela confecção" : "Informado na chegada do Sutiã Completo",','origem: valor === "faccao" ? "Feito pela facção na chegada do Sutiã Completo" : valor === "confeccao" ? "Feito pela confecção" : valor === "nao_informado" ? "Origem ainda não informada" : "Informado na chegada do Sutiã Completo",',1)
+          r=r.replace('if (dados.lateral.descontar && !precoLateral) faltantes.push(`${PROCESSO_LATERAL} da referência ${referencia}`);\n    if (dados.bojo.descontar && !precoBojo) faltantes.push(`${PROCESSO_BOJO} da referência ${referencia}`);','if (dados.lateral.indefinido) faltantes.push("definição da LATERAL");\n    else if (dados.lateral.descontar && !precoLateral) faltantes.push(`${PROCESSO_LATERAL} da referência ${referencia}`);\n    if (dados.bojo.indefinido) faltantes.push("definição do BOJO");\n    else if (dados.bojo.descontar && !precoBojo) faltantes.push(`${PROCESSO_BOJO} da referência ${referencia}`);',1)
+          r=r.replace('if (dados.lateral.informadoAgora) patch["componentesConsolidados.lateral"] = montar(dados.lateral);','if (dados.lateral.informadoAgora && !dados.lateral.indefinido) patch["componentesConsolidados.lateral"] = montar(dados.lateral);',1)
+          r=r.replace('if (dados.bojo.informadoAgora) patch["componentesConsolidados.bojo"] = montar(dados.bojo);','if (dados.bojo.informadoAgora && !dados.bojo.indefinido) patch["componentesConsolidados.bojo"] = montar(dados.bojo);',1)
+          p.write_text(r,encoding='utf-8')
+          Path('corponu-release.json').write_text(json.dumps({'version':'2026-08-11-componentes-opcionais-170','updatedAt':'2026-08-11T08:52:00-03:00','notes':'Lateral e Bojo não bloqueiam mais a chegada quando o usuário não souber quem fez. A opção Não sei / não informado salva a chegada e mantém o pagamento aguardando definição, sem assumir desconto. Facção segue sem desconto; confecção segue com desconto. Fecho e ponto de luz continuam obrigatórios.'},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+      - name: Validar
+        run: |
+          node --check corponu-sutia-completo-calculo.js
+          node --check corponu-sutia-completo-chegada-rapida.js
+          grep -q 'value="nao_informado"' corponu-sutia-completo-calculo.js
+          grep -q 'definição da LATERAL' corponu-sutia-completo-chegada-rapida.js
+      - name: Publicar
+        run: |
+          rm -f .componentes-opcionais-170 .github/workflows/componentes-opcionais-170.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A && git commit -m 'release: permitir componentes não informados 170 [skip ci]' && git push
