@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-11-origem-componentes-chegada-168";
+  const VERSION = "2026-08-11-origem-componentes-chegada-169";
   const FIREBASE_VERSION = "10.12.5";
   const PROCESSO_COMPLETO = "SUTIÃ COMPLETO";
   const PROCESSO_LATERAL = "LATERAL";
@@ -225,9 +225,16 @@
     const detalhe = texto(card?.querySelector("small")?.textContent);
     const partes = detalhe.split("•").map(item => item.trim()).filter(Boolean);
 
+    const descontoAttr = texto(card?.dataset?.descontar);
+    const feitoPelaFaccao = card?.dataset?.feitoFaccao === "1";
+    const feitoPelaConfeccao = card?.dataset?.feitoConfeccao === "1";
     return {
       conhecido: pronto || nao,
       pronto,
+      descontar: descontoAttr === "1" ? true : descontoAttr === "0" ? false : pronto,
+      feitoPelaFaccao,
+      feitoPelaConfeccao,
+      origemExecucao: texto(card?.dataset?.origemExecucao || ""),
       origem: partes[0] || "Informação registrada na OP",
       responsavel: partes.length > 1 ? partes[partes.length - 1] : "",
       informadoAgora: false
@@ -587,6 +594,10 @@
       status: info.pronto ? "completo" : "nao_pronto",
       quantidadePronta: info.pronto ? total : 0,
       quantidadeTotal: total,
+      descontarNoSutiaCompleto: info.descontar === true,
+      feitoPelaFaccao: info.feitoPelaFaccao === true,
+      feitoPelaConfeccao: info.feitoPelaConfeccao === true,
+      origemExecucao: info.origemExecucao || "",
       origem: "chegada_sutia_completo",
       origemLabel: "Informado na chegada do Sutiã Completo",
       responsavel: info.responsavel || "",
@@ -610,7 +621,7 @@
       acao: "movimentacao_retorno_sutia_completo_otimizada",
       tipoAlvo: "movimentacaoProducao",
       alvoId: String(mov.id || ""),
-      detalhes: `OP ${mov.numeroOP || "-"} | ${mov.destino || "-"} | voltou ${quantidade} peças | falta ${falta} | defeito ${moeda(descontoDefeito)} | lateral ${dados.lateral.pronto ? "sim" : "não"} | bojo ${dados.bojo.pronto ? "sim" : "não"} | fecho ${dados.fechoPronto ? "sim" : "não"} | ponto de luz ${dados.pontoLuzPronto ? "sim" : "não"} | valor ${moeda4(memoria.valorUnitario)}`,
+      detalhes: `OP ${mov.numeroOP || "-"} | ${mov.destino || "-"} | voltou ${quantidade} peças | falta ${falta} | defeito ${moeda(descontoDefeito)} | lateral ${dados.lateral.feitoPelaFaccao ? "facção" : dados.lateral.feitoPelaConfeccao ? "confecção" : dados.lateral.descontar ? "desconto" : "sem desconto"} | bojo ${dados.bojo.feitoPelaFaccao ? "facção" : dados.bojo.feitoPelaConfeccao ? "confecção" : dados.bojo.descontar ? "desconto" : "sem desconto"} | fecho ${dados.fechoPronto ? "sim" : "não"} | ponto de luz ${dados.pontoLuzPronto ? "sim" : "não"} | valor ${moeda4(memoria.valorUnitario)}`,
       usuarioUid: usuario?.uid || "",
       usuarioNome: usuario?.displayName || "",
       usuarioEmail: usuario?.email || "",

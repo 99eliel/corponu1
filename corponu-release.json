@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-11-origem-componentes-sutia-168",
-  "updatedAt": "2026-08-11T08:38:00-03:00",
-  "notes": "Corrige a regra de Lateral e Bojo no Sutiã Completo: quando feito pela facção não há desconto; quando feito pela confecção, o valor do componente é descontado. Novos registros gravam explicitamente a origem do trabalho, preservando a interpretação dos registros legados."
+  "version": "2026-08-11-origem-componentes-sutia-169",
+  "updatedAt": "2026-08-11T08:42:00-03:00",
+  "notes": "Finaliza a regra de origem de Lateral e Bojo no Sutiã Completo. Feito pela facção não desconta; feito pela confecção desconta. A origem e a decisão de desconto ficam persistidas na OP, movimentação e pagamento para não haver inversão em acessos futuros. Registros legados mantêm a interpretação anterior."
 }

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-11-origem-componentes-calculo-168";
+  const VERSION = "2026-08-11-origem-componentes-calculo-169";
   const FB = "10.12.5";
   const CONFIG_DOC = "sutia-completo-pagamento";
   const PROCESSO_COMPLETO = "SUTIÃ COMPLETO";
@@ -475,6 +475,10 @@
     return {
       conhecido: true,
       pronto,
+      descontar: pronto,
+      feitoPelaFaccao: false,
+      feitoPelaConfeccao: pronto,
+      origemExecucao: pronto ? "confeccao" : "",
       origem: revisao.origemAtualizacao === "pagamento_manual" ? "Pagamento manual" : "Revisão manual",
       responsavel
     };
@@ -488,7 +492,7 @@
     return {
       conhecido: salvo.informado === true || salvo.pronto === true || salvo.pronto === false,
       pronto: salvo.pronto === true,
-      descontar: salvo.feitoPelaConfeccao === true ? true : salvo.feitoPelaFaccao === true ? false : salvo.pronto === true,
+      descontar: salvo.descontarNoSutiaCompleto === true ? true : salvo.descontarNoSutiaCompleto === false ? false : salvo.feitoPelaConfeccao === true ? true : salvo.feitoPelaFaccao === true ? false : salvo.pronto === true,
       feitoPelaFaccao: salvo.feitoPelaFaccao === true,
       feitoPelaConfeccao: salvo.feitoPelaConfeccao === true,
       origemExecucao: texto(salvo.origemExecucao || ""),
@@ -586,6 +590,10 @@
       status: info.status || (info.pronto ? "completo" : "nao_pronto"),
       quantidadePronta: Math.max(0, numero(info.quantidade)),
       quantidadeTotal: Math.max(0, numero(contexto.totalOP)),
+      descontarNoSutiaCompleto: info.descontar === true || (info.descontar !== false && info.pronto === true),
+      feitoPelaFaccao: info.feitoPelaFaccao === true,
+      feitoPelaConfeccao: info.feitoPelaConfeccao === true,
+      origemExecucao: info.origemExecucao || "",
       origem: info.origem || "",
       origemLabel: info.origem || "",
       responsavel: info.responsavel || "",
@@ -615,7 +623,7 @@
 
     if (informacaoDefinitiva(info)) {
       return `
-        <div class="sc51-componente" data-componente="${nome}">
+        <div class="sc51-componente" data-componente="${nome}" data-descontar="${info.descontar === true || (info.descontar !== false && info.pronto === true) ? "1" : "0"}" data-feito-faccao="${info.feitoPelaFaccao === true ? "1" : "0"}" data-feito-confeccao="${info.feitoPelaConfeccao === true ? "1" : "0"}" data-origem-execucao="${escapar(info.origemExecucao || "")}">
           <strong>${titulo}</strong>
           <span class="sc51-pill ${info.pronto ? "sim" : "nao"}">${info.pronto ? "Pronta" : "Não pronta"}</span>
           <small>${info.origem || "Informação registrada"}${info.responsavel ? ` • ${info.responsavel}` : ""}</small>
@@ -991,9 +999,17 @@
     await ctx.fs.setDoc(ctx.fs.doc(ctx.db, "movimentacoesProducao", mov.id), {
       sutiaCompletoConferencia: {
         lateralPronta: dados.lateral.pronto,
+        lateralDescontada: dados.lateral.descontar === true,
+        lateralFeitaPelaFaccao: dados.lateral.feitoPelaFaccao === true,
+        lateralFeitaPelaConfeccao: dados.lateral.feitoPelaConfeccao === true,
+        lateralOrigemExecucao: dados.lateral.origemExecucao || "",
         lateralOrigem: dados.lateral.origem || "",
         lateralResponsavel: dados.lateral.responsavel || "",
         bojoPronto: dados.bojo.pronto,
+        bojoDescontado: dados.bojo.descontar === true,
+        bojoFeitoPelaFaccao: dados.bojo.feitoPelaFaccao === true,
+        bojoFeitoPelaConfeccao: dados.bojo.feitoPelaConfeccao === true,
+        bojoOrigemExecucao: dados.bojo.origemExecucao || "",
         bojoOrigem: dados.bojo.origem || "",
         bojoResponsavel: dados.bojo.responsavel || "",
         fechoPronto: dados.fechoPronto,
@@ -1099,9 +1115,17 @@
       precoLateralReferenciaId: memoria.precoLateral?.id || "",
       precoBojoReferenciaId: memoria.precoBojo?.id || "",
       lateralPronta: dados.lateral.pronto,
+      lateralDescontada: dados.lateral.descontar === true,
+      lateralFeitaPelaFaccao: dados.lateral.feitoPelaFaccao === true,
+      lateralFeitaPelaConfeccao: dados.lateral.feitoPelaConfeccao === true,
+      lateralOrigemExecucao: dados.lateral.origemExecucao || "",
       lateralOrigem: dados.lateral.origem || "",
       lateralResponsavel: dados.lateral.responsavel || "",
       bojoPronto: dados.bojo.pronto,
+      bojoDescontado: dados.bojo.descontar === true,
+      bojoFeitoPelaFaccao: dados.bojo.feitoPelaFaccao === true,
+      bojoFeitoPelaConfeccao: dados.bojo.feitoPelaConfeccao === true,
+      bojoOrigemExecucao: dados.bojo.origemExecucao || "",
       bojoOrigem: dados.bojo.origem || "",
       bojoResponsavel: dados.bojo.responsavel || "",
       fechoPronto: dados.fechoPronto,
@@ -1198,7 +1222,7 @@
       await registrarLog(
         "calculo_sutia_completo_aplicado",
         mov.id,
-        `OP ${mov.numeroOP || op.numeroOP || "-"} | base ${moeda4(memoria.base)} | lateral ${dadosFinais.lateral.pronto ? moeda4(memoria.descontos.lateral) : "não"} | bojo ${dadosFinais.bojo.pronto ? moeda4(memoria.descontos.bojo) : "não"} | fecho ${dadosFinais.fechoPronto ? "pronto" : `-${moeda4(memoria.descontos.fecho)}`} | ponto de luz ${dadosFinais.pontoLuzPronto ? "pronto" : `-${moeda4(memoria.descontos.pontoLuz)}`}`
+        `OP ${mov.numeroOP || op.numeroOP || "-"} | base ${moeda4(memoria.base)} | lateral ${dadosFinais.lateral.descontar ? moeda4(memoria.descontos.lateral) : "sem desconto"} | bojo ${dadosFinais.bojo.descontar ? moeda4(memoria.descontos.bojo) : "sem desconto"} | fecho ${dadosFinais.fechoPronto ? "pronto" : `-${moeda4(memoria.descontos.fecho)}`} | ponto de luz ${dadosFinais.pontoLuzPronto ? "pronto" : `-${moeda4(memoria.descontos.pontoLuz)}`}`
       );
 
       if (resultado?.faltando) {
