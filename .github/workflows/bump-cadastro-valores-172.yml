@@ -1,0 +1,25 @@
+name: Bump cadastro valores 172
+on:
+  push:
+    branches: [main]
+    paths: ['.bump-cadastro-valores-172']
+permissions:
+  contents: write
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
+          old='app.js?v=2026-08-10-fase-lateral-manejo-164'
+          if old not in s: raise SystemExit('versão antiga do app não encontrada')
+          s=s.replace(old,'app.js?v=2026-08-11-cadastro-valores-pendencias-172',1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          rm -f .bump-cadastro-valores-172 .github/workflows/bump-cadastro-valores-172.yml
+          git config user.name github-actions[bot]
+          git config user.email 418982+github-actions[bot]@users.noreply.github.com
+          git add -A && git commit -m 'release: atualizar cache do cadastro de valores 172 [skip ci]' && git push
