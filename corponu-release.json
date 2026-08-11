@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-10-alca-00270-165",
-  "updatedAt": "2026-08-10T16:02:00-03:00",
-  "notes": "Corrige o valor unitário da ALÇA para R$ 0,0270. Cada sutiã utiliza 2 alças, totalizando R$ 0,0540 por sutiã. O cadastro incorreto de R$ 0,0540 unitário é migrado para R$ 0,0270. O recálculo administrativo passa a usar a regra correta e continua alterando somente pagamentos pendentes; pagos, quitados, confirmados, cancelados, excluídos e estornados permanecem intocados. Mantém Fase Lateral, valores com 4 casas e demais funções da release 164."
+  "version": "2026-08-11-alca-legado-pendentes-166",
+  "updatedAt": "2026-08-11T08:26:00-03:00",
+  "notes": "Corrige o recálculo de pagamentos antigos de ALÇA que foram gravados pela área Lateral/Alça com origem movimentacao_corte e, por isso, ficaram fora da primeira correção. Mantém R$ 0,0270 por alça e R$ 0,0540 por sutiã, usa a mesma regra normal de arredondamento financeiro em centavos e continua alterando somente pagamentos pendentes. Pagos, quitados, confirmados, cancelados, excluídos e estornados permanecem intocados."
 }
