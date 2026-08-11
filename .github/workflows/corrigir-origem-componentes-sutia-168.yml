@@ -1,0 +1,135 @@
+name: Corrigir origem componentes Sutia 168
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.corrigir-origem-componentes-sutia-168'
+
+permissions:
+  contents: write
+
+jobs:
+  corrigir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Corrigir regra de origem e desconto
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          p = Path('corponu-sutia-completo-calculo.js')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('const VERSION = "2026-07-31-sutia-completo-calculo-51";', 'const VERSION = "2026-08-11-origem-componentes-calculo-168";')
+
+          antigo = '''          <option value="sim">${nome === "lateral" ? "Lateral feita pela facção" : "Bojo feito pela facção"}</option>\n          <option value="nao">${nome === "lateral" ? "Lateral feita pela confecção" : "Bojo feito pela confecção"}</option>'''
+          novo = '''          <option value="faccao">${nome === "lateral" ? "Lateral feita pela facção" : "Bojo feito pela facção"}</option>\n          <option value="confeccao">${nome === "lateral" ? "Lateral feita pela confecção" : "Bojo feito pela confecção"}</option>'''
+          if antigo not in s: raise SystemExit('Opcoes atuais nao encontradas')
+          s = s.replace(antigo, novo, 1)
+
+          antigo = '''      const pronto = select.value === "sim";\n      input.disabled = !pronto;\n      input.required = pronto;\n      if (!pronto) input.value = "";'''
+          novo = '''      const feitoPelaFaccao = select.value === "faccao";\n      input.disabled = !feitoPelaFaccao;\n      input.required = feitoPelaFaccao;\n      if (!feitoPelaFaccao) input.value = "";'''
+          if antigo not in s: raise SystemExit('Listener de situacao nao encontrado')
+          s = s.replace(antigo, novo, 1)
+
+          antigo = '''        conhecido: valor === "sim" || valor === "nao",\n        pronto: valor === "sim",\n        origem: "Informado na chegada do Sutiã Completo",\n        responsavel: texto(document.getElementById(`${prefixo}${titulo}Responsavel`)?.value)'''
+          novo = '''        conhecido: valor === "faccao" || valor === "confeccao",\n        pronto: valor === "faccao" || valor === "confeccao",\n        descontar: valor === "confeccao",\n        feitoPelaFaccao: valor === "faccao",\n        feitoPelaConfeccao: valor === "confeccao",\n        origemExecucao: valor,\n        origem: valor === "faccao" ? "Feito pela facção na chegada do Sutiã Completo" : "Feito pela confecção",\n        responsavel: texto(document.getElementById(`${prefixo}${titulo}Responsavel`)?.value)'''
+          if antigo not in s: raise SystemExit('Leitura do painel nao encontrada')
+          s = s.replace(antigo, novo, 1)
+
+          antigo = '''          conhecido: true,\n          pronto: info.pronto,\n          origem: info.origem,\n          responsavel: info.responsavel'''
+          novo = '''          conhecido: true,\n          pronto: info.pronto,\n          descontar: info.descontar === true || (info.descontar !== false && info.pronto === true),\n          feitoPelaFaccao: info.feitoPelaFaccao === true,\n          feitoPelaConfeccao: info.feitoPelaConfeccao === true,\n          origemExecucao: info.origemExecucao || "",\n          origem: info.origem,\n          responsavel: info.responsavel'''
+          if antigo not in s: raise SystemExit('Leitura definitiva nao encontrada')
+          s = s.replace(antigo, novo, 1)
+
+          s = s.replace('const precoLateral = dados.lateral.pronto ? await buscarPreco(PROCESSO_LATERAL, referencia) : null;', 'const precoLateral = dados.lateral.descontar ? await buscarPreco(PROCESSO_LATERAL, referencia) : null;', 1)
+          s = s.replace('const precoBojo = dados.bojo.pronto ? await buscarPreco(PROCESSO_BOJO, referencia) : null;', 'const precoBojo = dados.bojo.descontar ? await buscarPreco(PROCESSO_BOJO, referencia) : null;', 1)
+          s = s.replace('if (dados.lateral.pronto && !precoLateral)', 'if (dados.lateral.descontar && !precoLateral)', 1)
+          s = s.replace('if (dados.bojo.pronto && !precoBojo)', 'if (dados.bojo.descontar && !precoBojo)', 1)
+          s = s.replace('lateral: dados.lateral.pronto && precoLateral ? arred4(precoLateral.valor) : 0,', 'lateral: dados.lateral.descontar && precoLateral ? arred4(precoLateral.valor) : 0,', 1)
+          s = s.replace('bojo: dados.bojo.pronto && precoBojo ? arred4(precoBojo.valor) : 0,', 'bojo: dados.bojo.descontar && precoBojo ? arred4(precoBojo.valor) : 0,', 1)
+          s = s.replace('dados.lateral.pronto ? `Lateral − ${memoria.precoLateral ? moeda4(memoria.descontos.lateral) : "valor não cadastrado"}` : "Lateral sem desconto",', 'dados.lateral.descontar ? `Lateral − ${memoria.precoLateral ? moeda4(memoria.descontos.lateral) : "valor não cadastrado"}` : "Lateral sem desconto",', 1)
+          s = s.replace('dados.bojo.pronto ? `Bojo − ${memoria.precoBojo ? moeda4(memoria.descontos.bojo) : "valor não cadastrado"}` : "Bojo sem desconto",', 'dados.bojo.descontar ? `Bojo − ${memoria.precoBojo ? moeda4(memoria.descontos.bojo) : "valor não cadastrado"}` : "Bojo sem desconto",', 1)
+
+          s = s.replace('avisar("Informe se a lateral veio pronta.", "erro");', 'avisar("Informe quem fez a lateral: facção ou confecção.", "erro");', 1)
+          s = s.replace('if (dados.lateral.pronto && !dados.lateral.responsavel && !informacaoDefinitiva(atual.contexto.lateral)) {', 'if (dados.lateral.feitoPelaFaccao && !dados.lateral.responsavel && !informacaoDefinitiva(atual.contexto.lateral)) {', 1)
+          s = s.replace('avisar("Informe se o bojo veio pronto.", "erro");', 'avisar("Informe quem fez o bojo: facção ou confecção.", "erro");', 1)
+          s = s.replace('if (dados.bojo.pronto && !dados.bojo.responsavel && !informacaoDefinitiva(atual.contexto.bojo)) {', 'if (dados.bojo.feitoPelaFaccao && !dados.bojo.responsavel && !informacaoDefinitiva(atual.contexto.bojo)) {', 1)
+
+          antigo = '''      conhecido: salvo.informado === true || salvo.pronto === true || salvo.pronto === false,\n      pronto: salvo.pronto === true,\n      origem: texto(salvo.origemLabel || salvo.origem || "Registro consolidado"),\n      responsavel: texto(salvo.responsavel || salvo.quemFez),\n      quantidade: Math.max(0, numero(salvo.quantidadePronta))'''
+          novo = '''      conhecido: salvo.informado === true || salvo.pronto === true || salvo.pronto === false,\n      pronto: salvo.pronto === true,\n      descontar: salvo.feitoPelaConfeccao === true ? true : salvo.feitoPelaFaccao === true ? false : salvo.pronto === true,\n      feitoPelaFaccao: salvo.feitoPelaFaccao === true,\n      feitoPelaConfeccao: salvo.feitoPelaConfeccao === true,\n      origemExecucao: texto(salvo.origemExecucao || ""),\n      origem: texto(salvo.origemLabel || salvo.origem || "Registro consolidado"),\n      responsavel: texto(salvo.responsavel || salvo.quemFez),\n      quantidade: Math.max(0, numero(salvo.quantidadePronta))'''
+          if antigo not in s: raise SystemExit('Consolidado salvo nao encontrado')
+          s = s.replace(antigo, novo, 1)
+
+          s = s.replace('          pronto: true,\n          origem: `Chegada de ${processo}`,', '          pronto: true,\n          descontar: true,\n          feitoPelaFaccao: false,\n          feitoPelaConfeccao: false,\n          origemExecucao: "processo_anterior",\n          origem: `Chegada de ${processo}`,', 1)
+
+          antigo = '''      atualizacoes[`componentesConsolidados.${nome}`] = {\n        informado: true,\n        pronto: novo.pronto,\n        status: novo.pronto ? "completo" : "nao_pronto",\n        quantidadePronta: novo.pronto ? Math.max(0, numero(contexto.totalOP)) : 0,'''
+          novo = '''      atualizacoes[`componentesConsolidados.${nome}`] = {\n        informado: true,\n        pronto: novo.pronto,\n        status: novo.pronto ? "completo" : "nao_pronto",\n        quantidadePronta: novo.pronto ? Math.max(0, numero(contexto.totalOP)) : 0,\n        descontarNoSutiaCompleto: novo.descontar === true,\n        feitoPelaFaccao: novo.feitoPelaFaccao === true,\n        feitoPelaConfeccao: novo.feitoPelaConfeccao === true,\n        origemExecucao: novo.origemExecucao || "",'''
+          if antigo not in s: raise SystemExit('Persistencia das escolhas nao encontrada')
+          s = s.replace(antigo, novo, 1)
+
+          # Evita duplicar a linha quantidadeTotal que ja vem depois do trecho substituido.
+          s = s.replace('        origemExecucao: novo.origemExecucao || "",\n        quantidadeTotal:', '        origemExecucao: novo.origemExecucao || "",\n        quantidadeTotal:', 1)
+
+          # Dados definitivos usados apos salvar: preserva regra antiga e novos metadados.
+          s = s.replace('? { conhecido: true, pronto: contexto.lateral.pronto, origem: contexto.lateral.origem, responsavel: contexto.lateral.responsavel }', '? { conhecido: true, pronto: contexto.lateral.pronto, descontar: contexto.lateral.descontar === true || (contexto.lateral.descontar !== false && contexto.lateral.pronto === true), feitoPelaFaccao: contexto.lateral.feitoPelaFaccao === true, feitoPelaConfeccao: contexto.lateral.feitoPelaConfeccao === true, origemExecucao: contexto.lateral.origemExecucao || "", origem: contexto.lateral.origem, responsavel: contexto.lateral.responsavel }', 1)
+          s = s.replace('? { conhecido: true, pronto: contexto.bojo.pronto, origem: contexto.bojo.origem, responsavel: contexto.bojo.responsavel }', '? { conhecido: true, pronto: contexto.bojo.pronto, descontar: contexto.bojo.descontar === true || (contexto.bojo.descontar !== false && contexto.bojo.pronto === true), feitoPelaFaccao: contexto.bojo.feitoPelaFaccao === true, feitoPelaConfeccao: contexto.bojo.feitoPelaConfeccao === true, origemExecucao: contexto.bojo.origemExecucao || "", origem: contexto.bojo.origem, responsavel: contexto.bojo.responsavel }', 1)
+
+          p.write_text(s, encoding='utf-8')
+
+          p2 = Path('corponu-sutia-completo-chegada-rapida.js')
+          t = p2.read_text(encoding='utf-8')
+          t = t.replace('const VERSION = "2026-08-03-chegada-sutia-completo-rapida-107";', 'const VERSION = "2026-08-11-origem-componentes-chegada-168";')
+
+          antigo = '''        conhecido: valor === "sim" || valor === "nao",\n        pronto: valor === "sim",\n        responsavel: texto(responsavelInput?.value),\n        origem: "Informado na chegada do Sutiã Completo",\n        informadoAgora: true'''
+          novo = '''        conhecido: ["faccao", "confeccao", "sim", "nao"].includes(valor),\n        pronto: ["faccao", "confeccao", "sim"].includes(valor),\n        descontar: valor === "confeccao" || valor === "sim",\n        feitoPelaFaccao: valor === "faccao",\n        feitoPelaConfeccao: valor === "confeccao",\n        origemExecucao: valor === "faccao" ? "faccao" : valor === "confeccao" ? "confeccao" : "legado",\n        responsavel: texto(responsavelInput?.value),\n        origem: valor === "faccao" ? "Feito pela facção na chegada do Sutiã Completo" : valor === "confeccao" ? "Feito pela confecção" : "Informado na chegada do Sutiã Completo",\n        informadoAgora: true'''
+          if antigo not in t: raise SystemExit('Leitura da chegada rapida nao encontrada')
+          t = t.replace(antigo, novo, 1)
+
+          t = t.replace('const precoLateral = dados.lateral.pronto ? buscarPrecoEmLista(precos, PROCESSO_LATERAL, referencia) : null;', 'const precoLateral = dados.lateral.descontar ? buscarPrecoEmLista(precos, PROCESSO_LATERAL, referencia) : null;', 1)
+          t = t.replace('const precoBojo = dados.bojo.pronto ? buscarPrecoEmLista(precos, PROCESSO_BOJO, referencia) : null;', 'const precoBojo = dados.bojo.descontar ? buscarPrecoEmLista(precos, PROCESSO_BOJO, referencia) : null;', 1)
+          t = t.replace('if (dados.lateral.pronto && !precoLateral)', 'if (dados.lateral.descontar && !precoLateral)', 1)
+          t = t.replace('if (dados.bojo.pronto && !precoBojo)', 'if (dados.bojo.descontar && !precoBojo)', 1)
+          t = t.replace('lateral: dados.lateral.pronto && precoLateral ? arred4(precoLateral.valor) : 0,', 'lateral: dados.lateral.descontar && precoLateral ? arred4(precoLateral.valor) : 0,', 1)
+          t = t.replace('bojo: dados.bojo.pronto && precoBojo ? arred4(precoBojo.valor) : 0,', 'bojo: dados.bojo.descontar && precoBojo ? arred4(precoBojo.valor) : 0,', 1)
+
+          # Persiste metadados explicitos na conferencia e pagamento.
+          t = t.replace('      lateralPronta: dados.lateral.pronto,\n      lateralOrigem:', '      lateralPronta: dados.lateral.pronto,\n      lateralDescontada: dados.lateral.descontar === true,\n      lateralFeitaPelaFaccao: dados.lateral.feitoPelaFaccao === true,\n      lateralFeitaPelaConfeccao: dados.lateral.feitoPelaConfeccao === true,\n      lateralOrigemExecucao: dados.lateral.origemExecucao || "",\n      lateralOrigem:', 1)
+          t = t.replace('      bojoPronto: dados.bojo.pronto,\n      bojoOrigem:', '      bojoPronto: dados.bojo.pronto,\n      bojoDescontado: dados.bojo.descontar === true,\n      bojoFeitoPelaFaccao: dados.bojo.feitoPelaFaccao === true,\n      bojoFeitoPelaConfeccao: dados.bojo.feitoPelaConfeccao === true,\n      bojoOrigemExecucao: dados.bojo.origemExecucao || "",\n      bojoOrigem:', 1)
+          t = t.replace('      lateralPronta: dados.lateral.pronto,\n      lateralOrigem:', '      lateralPronta: dados.lateral.pronto,\n      lateralDescontada: dados.lateral.descontar === true,\n      lateralFeitaPelaFaccao: dados.lateral.feitoPelaFaccao === true,\n      lateralFeitaPelaConfeccao: dados.lateral.feitoPelaConfeccao === true,\n      lateralOrigemExecucao: dados.lateral.origemExecucao || "",\n      lateralOrigem:', 1)
+          t = t.replace('      bojoPronto: dados.bojo.pronto,\n      bojoOrigem:', '      bojoPronto: dados.bojo.pronto,\n      bojoDescontado: dados.bojo.descontar === true,\n      bojoFeitoPelaFaccao: dados.bojo.feitoPelaFaccao === true,\n      bojoFeitoPelaConfeccao: dados.bojo.feitoPelaConfeccao === true,\n      bojoOrigemExecucao: dados.bojo.origemExecucao || "",\n      bojoOrigem:', 1)
+
+          p2.write_text(t, encoding='utf-8')
+
+          release = {
+            'version': '2026-08-11-origem-componentes-sutia-168',
+            'updatedAt': '2026-08-11T08:38:00-03:00',
+            'notes': 'Corrige a regra de Lateral e Bojo no Sutiã Completo: quando feito pela facção não há desconto; quando feito pela confecção, o valor do componente é descontado. Novos registros gravam explicitamente a origem do trabalho, preservando a interpretação dos registros legados.'
+          }
+          Path('corponu-release.json').write_text(json.dumps(release, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Validar JavaScript e regra
+        run: |
+          node --check corponu-sutia-completo-calculo.js
+          node --check corponu-sutia-completo-chegada-rapida.js
+          grep -q 'value="faccao"' corponu-sutia-completo-calculo.js
+          grep -q 'value="confeccao"' corponu-sutia-completo-calculo.js
+          grep -q 'descontar: valor === "confeccao"' corponu-sutia-completo-calculo.js
+          grep -q 'dados.lateral.descontar' corponu-sutia-completo-calculo.js
+          grep -q 'dados.bojo.descontar' corponu-sutia-completo-calculo.js
+
+      - name: Publicar e limpar temporarios
+        run: |
+          rm -f .corrigir-origem-componentes-sutia-168
+          rm -f .github/workflows/corrigir-origem-componentes-sutia-168.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'release: corrigir desconto por origem de Lateral e Bojo 168 [skip ci]'
+          git push origin HEAD:main
