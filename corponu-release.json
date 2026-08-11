@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-11-origem-componentes-sutia-169",
-  "updatedAt": "2026-08-11T08:42:00-03:00",
-  "notes": "Finaliza a regra de origem de Lateral e Bojo no Sutiã Completo. Feito pela facção não desconta; feito pela confecção desconta. A origem e a decisão de desconto ficam persistidas na OP, movimentação e pagamento para não haver inversão em acessos futuros. Registros legados mantêm a interpretação anterior."
+  "version": "2026-08-11-componentes-opcionais-170",
+  "updatedAt": "2026-08-11T08:52:00-03:00",
+  "notes": "Lateral e Bojo não bloqueiam mais a chegada quando o usuário não souber quem fez. A opção Não sei / não informado salva a chegada e mantém o pagamento aguardando definição, sem assumir desconto. Facção segue sem desconto; confecção segue com desconto. Fecho e ponto de luz continuam obrigatórios."
 }
