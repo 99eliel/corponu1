@@ -1,0 +1,109 @@
+name: Fix chegada Sutiã rápida 180
+on:
+  push:
+    branches: [main]
+    paths: ['.fix-chegada-sutia-rapida-180']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Corrigir conflito e reduzir espera
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          # 1) update.js: fluxo antigo não intercepta SUTIÃ COMPLETO e expõe a movimentação já carregada.
+          p = Path('update.js')
+          s = p.read_text(encoding='utf-8')
+
+          antigo = """      const mov = { id: snapshot.id, ...snapshot.data() };\n      if (normalizarComparacao(mov.tipoDestino) !== 'FACCAO') {"""
+          novo = """      const mov = { id: snapshot.id, ...snapshot.data() };\n      window.__CORPONU_CHEGADA_MOV_CARREGADA__ = mov;\n      if (normalizarComparacao(mov.tipoDestino) !== 'FACCAO') {"""
+          if antigo not in s:
+              raise SystemExit('Trecho de cache da movimentação não encontrado em update.js')
+          s = s.replace(antigo, novo, 1)
+
+          antigo = """  function limparConfirmacaoChegadaFaccao() {\n    confirmacaoChegadaFaccaoAtual = null;"""
+          novo = """  function limparConfirmacaoChegadaFaccao() {\n    confirmacaoChegadaFaccaoAtual = null;\n    window.__CORPONU_CHEGADA_MOV_CARREGADA__ = null;"""
+          if antigo not in s:
+              raise SystemExit('Trecho de limpeza da confirmação não encontrado em update.js')
+          s = s.replace(antigo, novo, 1)
+
+          antigo = """  async function confirmarChegadaFaccaoComRevalidacao(event) {\n    const bloco = document.getElementById('grupoConfirmacaoChegadaFaccao');\n    const form = document.getElementById('formChegadaMovimentacao');\n    if (!form || !bloco || bloco.classList.contains('hidden')) return;\n\n    event.preventDefault();\n    event.stopImmediatePropagation();"""
+          novo = """  async function confirmarChegadaFaccaoComRevalidacao(event) {\n    const bloco = document.getElementById('grupoConfirmacaoChegadaFaccao');\n    const form = document.getElementById('formChegadaMovimentacao');\n    if (!form || !bloco || bloco.classList.contains('hidden')) return;\n\n    // SUTIÃ COMPLETO usa exclusivamente o fluxo atual. O bloco antigo continua\n    // servindo para reconfirmar processo/facção, mas não valida nem grava Lateral/Bojo.\n    const processoFluxoAtual = normalizarComparacao(document.getElementById('chegadaConfirmarProcesso')?.value || '');\n    if (\n      processoFluxoAtual === 'SUTIA COMPLETO' &&\n      document.getElementById('sutCompletoComponentesChegada') &&\n      window.CorpoNuSutiaChegadaRapida?.fluxoRapidoAtivo === true\n    ) {\n      form.dataset.sc107ReenvioSubmit = '1';\n      form.dataset.corponuSutiaConfirmacaoProcesso = String(document.getElementById('chegadaConfirmarProcesso')?.value || '').trim();\n      form.dataset.corponuSutiaConfirmacaoFaccao = String(document.getElementById('chegadaConfirmarFaccao')?.value || '').trim();\n      return;\n    }\n\n    event.preventDefault();\n    event.stopImmediatePropagation();"""
+          if antigo not in s:
+              raise SystemExit('Trecho de submit antigo não encontrado em update.js')
+          s = s.replace(antigo, novo, 1)
+          p.write_text(s, encoding='utf-8')
+
+          # 2) Fluxo atual: reaproveita a movimentação já carregada e respeita processo/facção confirmados.
+          p = Path('corponu-sutia-completo-chegada-rapida.js')
+          q = p.read_text(encoding='utf-8')
+          q = q.replace(
+              'const VERSION = "2026-08-11-componentes-opcionais-chegada-170";',
+              'const VERSION = "2026-08-11-chegada-sutia-rapida-180";',
+              1
+          )
+
+          antigo = """      const movOriginal = await buscarMovimentacao(id);\n      if (!movOriginal || processoCanonico(movOriginal.processo) !== PROCESSO_COMPLETO) return;\n\n      const especial = form.dataset.sutia912Rapido === \"1\";"""
+          novo = """      const movEmMemoria = window.__CORPONU_CHEGADA_MOV_CARREGADA__;\n      const movOriginal = movEmMemoria && texto(movEmMemoria.id) === id\n        ? movEmMemoria\n        : await buscarMovimentacao(id);\n      if (!movOriginal) return;\n\n      const processoConfirmado = processoCanonico(\n        form.dataset.corponuSutiaConfirmacaoProcesso ||\n        document.getElementById(\"chegadaConfirmarProcesso\")?.value ||\n        movOriginal.processo\n      );\n      const faccaoConfirmada = texto(\n        form.dataset.corponuSutiaConfirmacaoFaccao ||\n        document.getElementById(\"chegadaConfirmarFaccao\")?.value ||\n        movOriginal.destino\n      ).toUpperCase();\n      if (processoConfirmado !== PROCESSO_COMPLETO || !faccaoConfirmada) return;\n\n      const especial = form.dataset.sutia912Rapido === \"1\";"""
+          if antigo not in q:
+              raise SystemExit('Trecho de leitura da movimentação não encontrado no fluxo rápido')
+          q = q.replace(antigo, novo, 1)
+
+          antigo = """      const mov = {\n        ...movOriginal,\n        dataChegada,"""
+          novo = """      const corrigiuProcessoFaccao =\n        normalizar(movOriginal.processo || \"\") !== normalizar(PROCESSO_COMPLETO) ||\n        normalizar(movOriginal.destino || \"\") !== normalizar(faccaoConfirmada);\n      const mov = {\n        ...movOriginal,\n        processoEnvioOriginal: movOriginal.processoEnvioOriginal || movOriginal.processo || \"\",\n        destinoEnvioOriginal: movOriginal.destinoEnvioOriginal || movOriginal.destino || \"\",\n        processo: PROCESSO_COMPLETO,\n        destino: faccaoConfirmada,\n        processoConfirmadoNaChegada: PROCESSO_COMPLETO,\n        faccaoConfirmadaNaChegada: faccaoConfirmada,\n        confirmacaoProcessoFaccaoNaChegada: true,\n        dadosEnvioCorrigidosNaChegada: corrigiuProcessoFaccao,\n        dataChegada,"""
+          if antigo not in q:
+              raise SystemExit('Trecho do objeto mov não encontrado no fluxo rápido')
+          q = q.replace(antigo, novo, 1)
+
+          antigo = """      batch.set(fs.doc(db, \"movimentacoesProducao\", id), {\n        dataChegada,"""
+          novo = """      batch.set(fs.doc(db, \"movimentacoesProducao\", id), {\n        processoEnvioOriginal: movOriginal.processoEnvioOriginal || movOriginal.processo || \"\",\n        destinoEnvioOriginal: movOriginal.destinoEnvioOriginal || movOriginal.destino || \"\",\n        processo: PROCESSO_COMPLETO,\n        destino: faccaoConfirmada,\n        processoConfirmadoNaChegada: PROCESSO_COMPLETO,\n        faccaoConfirmadaNaChegada: faccaoConfirmada,\n        confirmacaoProcessoFaccaoNaChegada: true,\n        dadosEnvioCorrigidosNaChegada: corrigiuProcessoFaccao,\n        dataChegada,"""
+          if antigo not in q:
+              raise SystemExit('Trecho do batch da movimentação não encontrado no fluxo rápido')
+          q = q.replace(antigo, novo, 1)
+
+          antigo = """      await batch.commit();\n\n      document.getElementById(\"modalChegadaMovimentacao\")?.classList.add(\"hidden\");"""
+          novo = """      await batch.commit();\n      window.__CORPONU_CHEGADA_MOV_CARREGADA__ = null;\n      delete form.dataset.corponuSutiaConfirmacaoProcesso;\n      delete form.dataset.corponuSutiaConfirmacaoFaccao;\n\n      document.getElementById(\"modalChegadaMovimentacao\")?.classList.add(\"hidden\");"""
+          if antigo not in q:
+              raise SystemExit('Trecho pós-commit não encontrado no fluxo rápido')
+          q = q.replace(antigo, novo, 1)
+          p.write_text(q, encoding='utf-8')
+
+          # 3) Cache-busting do update.js para os navegadores receberem a correção.
+          p = Path('index.html')
+          h = p.read_text(encoding='utf-8')
+          antigo = 'update.js?v=2026-08-10-fase-lateral-manejo-164'
+          novo = 'update.js?v=2026-08-11-chegada-sutia-rapida-180'
+          if antigo not in h:
+              raise SystemExit('Versão antiga de update.js não encontrada em index.html')
+          h = h.replace(antigo, novo, 1)
+          p.write_text(h, encoding='utf-8')
+
+          # 4) Release.
+          Path('corponu-release.json').write_text(json.dumps({
+            'version': '2026-08-11-chegada-sutia-rapida-180',
+            'updatedAt': '2026-08-11T14:38:00-03:00',
+            'notes': 'Remove o conflito entre a validação antiga Sim/Não e o fluxo atual de Lateral/Bojo na chegada do Sutiã Completo. O fluxo atual passa a ser o único responsável pelo salvamento, reaproveita a movimentação já carregada ao abrir o modal para evitar leitura repetida e respeita processo/facção reconfirmados na tela. Também força atualização do update.js no navegador.'
+          }, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+      - name: Validar JavaScript e alterações
+        run: |
+          node --check update.js
+          node --check corponu-sutia-completo-chegada-rapida.js
+          grep -q 'processoFluxoAtual' update.js
+          grep -q '__CORPONU_CHEGADA_MOV_CARREGADA__' update.js
+          grep -q 'corponuSutiaConfirmacaoFaccao' corponu-sutia-completo-chegada-rapida.js
+          grep -q 'update.js?v=2026-08-11-chegada-sutia-rapida-180' index.html
+          grep -q '2026-08-11-chegada-sutia-rapida-180' corponu-release.json
+      - name: Publicar
+        run: |
+          rm -f .fix-chegada-sutia-rapida-180 .github/workflows/fix-chegada-sutia-rapida-180.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'release: chegada rápida do Sutiã Completo 180 [skip ci]'
+          git push
