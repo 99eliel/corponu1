@@ -11682,6 +11682,7 @@
       }
 
       const mov = { id: snapshot.id, ...snapshot.data() };
+      window.__CORPONU_CHEGADA_MOV_CARREGADA__ = mov;
       if (normalizarComparacao(mov.tipoDestino) !== 'FACCAO') {
         bloco.classList.add('hidden');
         confirmacaoChegadaFaccaoAtual = null;
@@ -11711,6 +11712,7 @@
 
   function limparConfirmacaoChegadaFaccao() {
     confirmacaoChegadaFaccaoAtual = null;
+    window.__CORPONU_CHEGADA_MOV_CARREGADA__ = null;
     const bloco = document.getElementById('grupoConfirmacaoChegadaFaccao');
     if (bloco) {
       bloco.classList.add('hidden');
@@ -11754,6 +11756,20 @@
     const bloco = document.getElementById('grupoConfirmacaoChegadaFaccao');
     const form = document.getElementById('formChegadaMovimentacao');
     if (!form || !bloco || bloco.classList.contains('hidden')) return;
+
+    // SUTIÃ COMPLETO usa exclusivamente o fluxo atual. O bloco antigo continua
+    // servindo para reconfirmar processo/facção, mas não valida nem grava Lateral/Bojo.
+    const processoFluxoAtual = normalizarComparacao(document.getElementById('chegadaConfirmarProcesso')?.value || '');
+    if (
+      processoFluxoAtual === 'SUTIA COMPLETO' &&
+      document.getElementById('sutCompletoComponentesChegada') &&
+      window.CorpoNuSutiaChegadaRapida?.fluxoRapidoAtivo === true
+    ) {
+      form.dataset.sc107ReenvioSubmit = '1';
+      form.dataset.corponuSutiaConfirmacaoProcesso = String(document.getElementById('chegadaConfirmarProcesso')?.value || '').trim();
+      form.dataset.corponuSutiaConfirmacaoFaccao = String(document.getElementById('chegadaConfirmarFaccao')?.value || '').trim();
+      return;
+    }
 
     event.preventDefault();
     event.stopImmediatePropagation();

@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-11-fix-chegada-sutia-origem-179",
-  "updatedAt": "2026-08-11T13:59:00-03:00",
-  "notes": "Corrige o falso bloqueio na chegada do Sutiã Completo. O módulo legado deixa de interceptar e recalcular a chegada e passa a encaminhar o submit para o fluxo atual, que já usa a regra correta: feito pela facção não desconta, feito pela confecção desconta, não informado mantém o pagamento aguardando definição e responsável é opcional."
+  "version": "2026-08-11-chegada-sutia-rapida-180",
+  "updatedAt": "2026-08-11T14:38:00-03:00",
+  "notes": "Remove o conflito entre a validação antiga Sim/Não e o fluxo atual de Lateral/Bojo na chegada do Sutiã Completo. O fluxo atual passa a ser o único responsável pelo salvamento, reaproveita a movimentação já carregada ao abrir o modal para evitar leitura repetida e respeita processo/facção reconfirmados na tela. Também força atualização do update.js no navegador."
 }
