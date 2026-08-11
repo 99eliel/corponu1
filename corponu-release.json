@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-11-alca-legado-pendentes-166",
-  "updatedAt": "2026-08-11T08:26:00-03:00",
-  "notes": "Corrige o recálculo de pagamentos antigos de ALÇA que foram gravados pela área Lateral/Alça com origem movimentacao_corte e, por isso, ficaram fora da primeira correção. Mantém R$ 0,0270 por alça e R$ 0,0540 por sutiã, usa a mesma regra normal de arredondamento financeiro em centavos e continua alterando somente pagamentos pendentes. Pagos, quitados, confirmados, cancelados, excluídos e estornados permanecem intocados."
+  "version": "2026-08-11-termos-componentes-sutia-167",
+  "updatedAt": "2026-08-11T08:34:00-03:00",
+  "notes": "Altera somente os textos das opções de Lateral e Bojo na conferência do Sutiã Completo: feito pela facção ou feito pela confecção. Os valores internos sim/não, cálculos, descontos, responsáveis, pagamentos e dados salvos permanecem inalterados."
 }
