@@ -663,7 +663,7 @@ function carregarPrecosReferenciaSeNecessario() {
   if (state.dadosCarregados.precosReferencia || state.carregandoDados.precosReferencia || state.listenersPorChave.precosReferencia) return;
   state.carregandoDados.precosReferencia = true;
 
-  const precosReferenciaQuery = query(collection(db, "precosReferencia"), orderBy("referencia", "asc"));
+  const precosReferenciaQuery = collection(db, "precosReferencia");
 
   registrarListenerChave("precosReferencia", onSnapshot(precosReferenciaQuery, snapshot => {
     state.precosReferencia = snapshot.docs.map(normalizarPrecoReferenciaCarregado);
@@ -6444,7 +6444,7 @@ async function garantirPrecosReferenciaCarregados() {
   if (state.dadosCarregados.precosReferencia && state.precosReferencia.length) return;
 
   try {
-    const snap = await getDocs(query(collection(db, "precosReferencia"), orderBy("referencia", "asc")));
+    const snap = await getDocs(collection(db, "precosReferencia"));
     state.precosReferencia = snap.docs.map(normalizarPrecoReferenciaCarregado);
     marcarCarregado("precosReferencia");
     preencherProcessosValores();
@@ -8219,37 +8219,47 @@ async function salvarPrecoReferencia(event) {
   }
 
   try {
-    await setDoc(doc(db, "precosReferencia", docId), dados, { merge: true });
+    const precoRef = doc(db, "precosReferencia", docId);
+    await setDoc(precoRef, dados, { merge: true });
 
-    // Atualiza a tela imediatamente; o onSnapshot depois apenas confirma o estado.
+    const confirmadoSnap = await getDoc(precoRef);
+    if (!confirmadoSnap.exists()) {
+      throw new Error(`Preço ${docId} não encontrado após o salvamento.`);
+    }
+
+    const confirmado = normalizarPrecoReferenciaCarregado(confirmadoSnap);
     const indiceLocal = state.precosReferencia.findIndex(item => item.id === docId);
-    const registroLocal = {
-      ...(indiceLocal >= 0 ? state.precosReferencia[indiceLocal] : {}),
-      id: docId,
-      referencia,
-      processo,
-      setor,
-      setorLabel: getLabelSetorPagamento(setor),
-      valor,
-      ativo: true
-    };
-    if (indiceLocal >= 0) state.precosReferencia[indiceLocal] = registroLocal;
-    else state.precosReferencia.push(registroLocal);
+    if (indiceLocal >= 0) state.precosReferencia[indiceLocal] = confirmado;
+    else state.precosReferencia.push(confirmado);
 
     await registrarLog(
       idAtual ? "preco_referencia_atualizado" : "preco_referencia_criado",
       "precoReferencia",
       docId,
-      `Ref. ${referencia} | ${processo} | ${formatarMoedaBR(valor)}`
+      `Ref. ${confirmado.referencia || referencia} | ${confirmado.processo || processo} | ${formatarMoedaBR(Number(confirmado.valor ?? valor))}`
     );
 
-    processoValorAtivo = chaveProcessoValor(processo, setor);
-    limparFormPrecoReferencia();
+    processoValorAtivo = chaveProcessoValor(
+      confirmado.processo || processo,
+      normalizarSetorPrecoPorProcesso(confirmado.processo || processo, confirmado.setor || setor)
+    );
+
+    const idInput = document.getElementById("precoReferenciaId");
+    const refInput = document.getElementById("precoReferenciaRef");
+    const valorInput = document.getElementById("precoReferenciaValor");
+    const buscaInput = document.getElementById("buscaPrecosReferencia");
+    if (idInput) idInput.value = "";
+    if (refInput) refInput.value = "";
+    if (valorInput) valorInput.value = "";
+    if (buscaInput) buscaInput.value = "";
+
+    aplicarProcessoValorSelecionado(processoValorAtivo);
     preencherProcessosValores();
     renderProcessosValores();
     renderPrecosReferencia();
+    refInput?.focus();
 
-    toast("Valor salvo.");
+    toast(`Valor salvo e confirmado: Ref. ${confirmado.referencia || referencia}.`);
   } catch (error) {
     console.error(error);
     toast("Erro ao salvar valor da referência.");

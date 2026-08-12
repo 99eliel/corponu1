@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-12-precos-processos-185",
-  "updatedAt": "2026-08-12T15:38:00-03:00",
-  "notes": "Corrige cadastro de novos valores por referencia dentro dos processos. O processo/setor ativo passa a ser a fonte da verdade, evitando que CALCINHA MONTAGEM seja salva como bojo. Registros antigos com setor incoerente sao normalizados em memoria para reaparecer na aba correta, e o novo valor aparece imediatamente apos salvar sem aguardar o listener."
+  "version": "2026-08-12-precos-confirmados-186",
+  "updatedAt": "2026-08-12T16:01:00-03:00",
+  "notes": "Confirma cada novo preco pelo documento exato antes de limpar o formulario, mantem a aba selecionada e carrega a colecao completa de precos sem depender de orderBy. O sucesso so aparece depois de o documento existir no Firestore."
 }
