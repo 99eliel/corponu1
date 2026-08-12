@@ -1,0 +1,96 @@
+name: Corrigir cadastro de precos por processo 185
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.fix-precos-processos-185'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Aplicar correcao segura
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          p = Path('app.js')
+          s = p.read_text(encoding='utf-8')
+
+          marcador = 'const OTIMIZACAO_LEITURAS_ATIVA = true;\n'
+          helper = '''const OTIMIZACAO_LEITURAS_ATIVA = true;\n\n// Mantem o setor do preco coerente com processos que pertencem a um unico grupo.\n// Tambem recupera em memoria registros antigos salvos com o setor oculto padrao (bojo).\nfunction normalizarSetorPrecoPorProcesso(processo, setor) {\n  const nome = String(processo || "")\n    .normalize("NFD")\n    .replace(/[\\u0300-\\u036f]/g, "")\n    .trim()\n    .replace(/\\s+/g, " ")\n    .toUpperCase();\n\n  if (nome.includes("CALCINHA")) return "calcinha";\n  if (nome.includes("SUTIA")) return "sutia";\n  if (nome === "ENCAPAR BOJO" || nome === "BOJO") return "bojo";\n  if (nome === "LATERAL") return "lateral";\n  if (nome === "ALCA" || nome === "ALCAS") return "alca";\n\n  return String(setor || "").trim().toLowerCase() || "bojo";\n}\n\nfunction normalizarPrecoReferenciaCarregado(item) {\n  const dados = item?.data ? item.data() : (item || {});\n  const id = item?.id || dados.id || "";\n  return {\n    ...dados,\n    id,\n    setor: normalizarSetorPrecoPorProcesso(dados.processo || dados.servicoNome || "", dados.setor)\n  };\n}\n'''
+          if 'function normalizarSetorPrecoPorProcesso(' not in s:
+              if marcador not in s:
+                  raise SystemExit('Marcador de otimizacao nao encontrado')
+              s = s.replace(marcador, helper, 1)
+
+          antigo_listener = 'state.precosReferencia = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));'
+          novo_listener = 'state.precosReferencia = snapshot.docs.map(normalizarPrecoReferenciaCarregado);'
+          if antigo_listener in s:
+              s = s.replace(antigo_listener, novo_listener, 1)
+          elif novo_listener not in s:
+              raise SystemExit('Loader principal de precos nao encontrado')
+
+          antigo_getdocs = 'state.precosReferencia = snap.docs.map(item => ({ id: item.id, ...item.data() }));'
+          novo_getdocs = 'state.precosReferencia = snap.docs.map(normalizarPrecoReferenciaCarregado);'
+          if antigo_getdocs in s:
+              s = s.replace(antigo_getdocs, novo_getdocs, 1)
+          elif novo_getdocs not in s:
+              raise SystemExit('Loader sob demanda de precos nao encontrado')
+
+          antigo_campos = '''  const idAtual = document.getElementById("precoReferenciaId").value;\n  const referencia = normalizarReferencia(document.getElementById("precoReferenciaRef").value);\n  const processo = limparTexto(document.getElementById("precoReferenciaProcesso").value).toUpperCase();\n  const setor = document.getElementById("precoReferenciaSetor").value;\n  const valor = Number(document.getElementById("precoReferenciaValor").value || 0);'''
+          novo_campos = '''  const idAtual = document.getElementById("precoReferenciaId").value;\n  const referencia = normalizarReferencia(document.getElementById("precoReferenciaRef").value);\n\n  // A aba/processo selecionado e a fonte da verdade. Campos ocultos nao podem\n  // empurrar CALCINHA MONTAGEM (ou outro processo) para o setor bojo.\n  const selecaoAtiva = getProcessoValorDeChave(processoValorAtivo);\n  const processoCampo = limparTexto(document.getElementById("precoReferenciaProcesso")?.value || "").toUpperCase();\n  const setorCampo = document.getElementById("precoReferenciaSetor")?.value || "";\n  const processo = limparTexto(selecaoAtiva.processo || processoCampo).toUpperCase();\n  const setor = normalizarSetorPrecoPorProcesso(processo, selecaoAtiva.setor || setorCampo);\n  const valor = Number(document.getElementById("precoReferenciaValor").value || 0);\n\n  const processoInput = document.getElementById("precoReferenciaProcesso");\n  const setorInput = document.getElementById("precoReferenciaSetor");\n  if (processoInput) processoInput.value = processo;\n  if (setorInput) setorInput.value = setor;'''
+          if antigo_campos in s:
+              s = s.replace(antigo_campos, novo_campos, 1)
+          elif 'const selecaoAtiva = getProcessoValorDeChave(processoValorAtivo);' not in s:
+              raise SystemExit('Campos do salvamento de preco nao encontrados')
+
+          antigo_setdoc = '''    await setDoc(doc(db, "precosReferencia", docId), dados, { merge: true });\n    await registrarLog('''
+          novo_setdoc = '''    await setDoc(doc(db, "precosReferencia", docId), dados, { merge: true });\n\n    // Atualiza a tela imediatamente; o onSnapshot depois apenas confirma o estado.\n    const indiceLocal = state.precosReferencia.findIndex(item => item.id === docId);\n    const registroLocal = {\n      ...(indiceLocal >= 0 ? state.precosReferencia[indiceLocal] : {}),\n      id: docId,\n      referencia,\n      processo,\n      setor,\n      setorLabel: getLabelSetorPagamento(setor),\n      valor,\n      ativo: true\n    };\n    if (indiceLocal >= 0) state.precosReferencia[indiceLocal] = registroLocal;\n    else state.precosReferencia.push(registroLocal);\n\n    await registrarLog('''
+          if antigo_setdoc in s:
+              s = s.replace(antigo_setdoc, novo_setdoc, 1)
+          elif 'const indiceLocal = state.precosReferencia.findIndex(item => item.id === docId);' not in s:
+              raise SystemExit('Ponto do setDoc de preco nao encontrado')
+
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('index.html')
+          h = p.read_text(encoding='utf-8')
+          h = h.replace('app.js?v=2026-08-12-interlock-global-181', 'app.js?v=2026-08-12-precos-processos-185')
+          p.write_text(h, encoding='utf-8')
+
+          Path('corponu-release.json').write_text(json.dumps({
+              'version': '2026-08-12-precos-processos-185',
+              'updatedAt': '2026-08-12T15:38:00-03:00',
+              'notes': 'Corrige cadastro de novos valores por referencia dentro dos processos. O processo/setor ativo passa a ser a fonte da verdade, evitando que CALCINHA MONTAGEM seja salva como bojo. Registros antigos com setor incoerente sao normalizados em memoria para reaparecer na aba correta, e o novo valor aparece imediatamente apos salvar sem aguardar o listener.'
+          }, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Validar
+        shell: bash
+        run: |
+          node --check app.js
+          python -m json.tool corponu-release.json >/dev/null
+          grep -q 'normalizarSetorPrecoPorProcesso' app.js
+          grep -q 'const selecaoAtiva = getProcessoValorDeChave(processoValorAtivo)' app.js
+          grep -q 'state.precosReferencia.push(registroLocal)' app.js
+          grep -q 'app.js?v=2026-08-12-precos-processos-185' index.html
+
+      - name: Publicar
+        shell: bash
+        run: |
+          git rm -f .github/workflows/fix-precos-processos-185.yml .fix-precos-processos-185
+          git add app.js index.html corponu-release.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix: permitir novos valores por processo 185 [skip ci]"
+          git push
