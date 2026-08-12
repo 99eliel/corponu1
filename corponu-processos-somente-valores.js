@@ -53,10 +53,20 @@
       pagina.prepend(intro);
     }
 
-    intro.innerHTML = `
-      <h3>Gestão de valores da produção</h3>
-      <p>Gerencie os valores por referência de todos os processos cadastrados. A escolha do processo permanece livre e não é alterada automaticamente.</p>
-    `;
+    let titulo = intro.querySelector(":scope > h3");
+    if (!titulo) {
+      titulo = document.createElement("h3");
+      intro.prepend(titulo);
+    }
+    titulo.textContent = "Gestão de valores da produção";
+
+    let descricao = intro.querySelector(":scope > p");
+    if (!descricao) {
+      descricao = document.createElement("p");
+      titulo.insertAdjacentElement("afterend", descricao);
+    }
+    descricao.textContent = "Gerencie os valores por referência de todos os processos cadastrados. A escolha do processo permanece livre e não é alterada automaticamente.";
+
     return intro;
   }
 
