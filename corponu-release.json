@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-11-chegada-sutia-rapida-180",
-  "updatedAt": "2026-08-11T14:38:00-03:00",
-  "notes": "Remove o conflito entre a validação antiga Sim/Não e o fluxo atual de Lateral/Bojo na chegada do Sutiã Completo. O fluxo atual passa a ser o único responsável pelo salvamento, reaproveita a movimentação já carregada ao abrir o modal para evitar leitura repetida e respeita processo/facção reconfirmados na tela. Também força atualização do update.js no navegador."
+  "version": "2026-08-12-interlock-global-181",
+  "updatedAt": "2026-08-12T10:11:00-03:00",
+  "notes": "Adiciona o processo INTERLOCK para Sutiã e Calcinha. O valor é global e fixo em R$ 0,1800 por peça para qualquer referência, sem leitura de preço por referência. O processo aparece em Gerenciar facções inicialmente sem facções vinculadas; o administrador pode definir quem realiza o serviço."
 }

@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-07-30-modo-web-sem-pwa-15";
+  const APP_VERSION = "2026-08-12-interlock-global-181";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -173,6 +173,7 @@
     "ALÇA": [
       "JANAINA", "IVONE", "LUANA", "KARYTA", "SIMEI", "SIMONE"
     ],
+    "INTERLOCK": [],
     "CALCINHA MONTAGEM": [
       "ANA FLAVIA", "KAUANE", "LIANA", "DAIANA", "LEIDIANE", "ANDREZA"
     ],
@@ -3382,6 +3383,7 @@
 
   async function buscarPrecoMovUsuario(referencia, processo) {
     const { firestore, db } = contextoMovUsuario;
+    if (processoPagamentoInterlock(processo)) return precoPadraoInterlock();
     if (processoPagamentoAlca(processo)) {
       return buscarPrecoPadraoAlca(firestore, db);
     }
@@ -9365,6 +9367,7 @@
   const PROCESSOS_FACCOES_ORDEM_PADRAO = [
     "ENCAPAR BOJO",
     "ALÇA",
+    "INTERLOCK",
     "CALCINHA MONTAGEM",
     "CALCINHA COMPLETA",
     "SUTIÃ MONTAGEM",
@@ -9540,7 +9543,12 @@
     const origem = configuracaoProcessosFaccoesExiste
       ? processosFaccoesConfigurados
       : construirConfiguracaoInferidaProcessosFaccoes();
-    return origem.filter(item => item?.ativo !== false && item?.nome);
+    const ativos = origem.filter(item => item?.ativo !== false && item?.nome);
+    const temInterlock = ativos.some(item => normalizarComparacao(item.nome) === "INTERLOCK");
+    if (!temInterlock) {
+      ativos.push({ nome: "INTERLOCK", setor: "ambos", faccoes: [], ativo: true });
+    }
+    return ativos;
   }
 
   function getNomesProcessosFaccoesAtivos(setor = "") {
@@ -10838,6 +10846,7 @@
   }
 
   async function buscarPrecoChegadaManualSimplificada(firestore, db, referencia, processo) {
+    if (processoPagamentoInterlock(processo)) return precoPadraoInterlock();
     if (processoPagamentoAlca(processo)) {
       return buscarPrecoPadraoAlca(firestore, db);
     }
@@ -11737,6 +11746,7 @@
   }
 
   async function buscarPrecoConfirmacaoChegada(firestore, db, referencia, processo) {
+    if (processoPagamentoInterlock(processo)) return precoPadraoInterlock();
     if (processoPagamentoAlca(processo)) {
       return buscarPrecoPadraoAlca(firestore, db);
     }
@@ -12660,6 +12670,28 @@
 
   function processoPagamentoAlca(valor) {
     return normalizarComparacao(valor) === 'ALCA';
+  }
+
+  const VALOR_PADRAO_INTERLOCK = 0.18;
+  const ID_PRECO_PADRAO_INTERLOCK = 'valor-padrao-interlock';
+
+  function processoPagamentoInterlock(valor) {
+    return normalizarComparacao(valor) === 'INTERLOCK';
+  }
+
+  function precoPadraoInterlock() {
+    return {
+      id: ID_PRECO_PADRAO_INTERLOCK,
+      referencia: '*',
+      processo: 'INTERLOCK',
+      servicoNome: 'INTERLOCK',
+      setor: 'ambos',
+      setorLabel: 'Todos',
+      valor: VALOR_PADRAO_INTERLOCK,
+      ativo: true,
+      tipoValor: 'padrao_global_interlock',
+      valorPadraoGlobalInterlock: true
+    };
   }
 
   function precoPadraoAlcaValido(preco) {
