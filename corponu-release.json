@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-12-cabecalho-calcinha-estavel-191",
-  "updatedAt": "2026-08-12T18:47:00-03:00",
-  "notes": "Estabiliza exclusivamente o cabecalho do Manejo Calcinha. A coluna Linha passa a ser identificada visualmente como LINHA e SILK/TECIDO sao ocultados pela identidade real dos filtros, sem depender do texto momentaneo do cabecalho. A correcao e totalmente condicionada a Calcinha e nao altera estrutura, nomes, filtros ou layout do Manejo Sutia."
+  "version": "2026-08-12-calcinha-colunas-filtros-192",
+  "updatedAt": "2026-08-12T19:36:00-03:00",
+  "notes": "Corrige exclusivamente o Manejo Calcinha: restaura a coluna FASE, alinha LINHA, QTI, COR, NECESSIDADE e STATUS pelos IDs reais dos filtros e oculta apenas SILK, TECIDO e FASE LATERAL. Isso elimina o deslocamento visual que fazia o filtro Cor aparecer sob a coluna errada. O Manejo Sutia nao e alterado."
 }
