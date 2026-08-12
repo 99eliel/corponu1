@@ -2,7 +2,8 @@ name: Adicionar INTERLOCK 181
 on:
   push:
     branches: [main]
-    paths: ['.add-interlock-181']
+    paths:
+      - '.add-interlock-181'
 permissions:
   contents: write
 jobs:
@@ -11,188 +12,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Aplicar INTERLOCK global
+        run: python .github/scripts/add_interlock_181.py
+      - name: Validar JavaScript
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import json
-
-          # app.js: processo disponível nos dois setores e fallback padrão.
-          p = Path('app.js')
-          s = p.read_text(encoding='utf-8')
-          s = s.replace(
-            '  "ALÇA",\n  "CALCINHA MONTAGEM",',
-            '  "ALÇA",\n  "INTERLOCK",\n  "CALCINHA MONTAGEM",',
-            1
-          )
-          s = s.replace(
-            '  sutia: ["ENCAPAR BOJO", "SUTIÃ COMPLETO", "SUTIÃ MONTAGEM", "ALÇA"],\n  calcinha: ["CALCINHA MONTAGEM", "CALCINHA COMPLETA"]',
-            '  sutia: ["ENCAPAR BOJO", "SUTIÃ COMPLETO", "SUTIÃ MONTAGEM", "ALÇA", "INTERLOCK"],\n  calcinha: ["CALCINHA MONTAGEM", "CALCINHA COMPLETA", "INTERLOCK"]',
-            1
-          )
-          s = s.replace(
-            '  "ALÇA": ["JANAINA", "IVONE", "LUANA", "KARYTA", "SIMEI", "SIMONE"],\n  "CALCINHA MONTAGEM":',
-            '  "ALÇA": ["JANAINA", "IVONE", "LUANA", "KARYTA", "SIMEI", "SIMONE"],\n  "INTERLOCK": [],\n  "CALCINHA MONTAGEM":',
-            1
-          )
-          p.write_text(s, encoding='utf-8')
-
-          # update.js: processo gerenciado + valor global fixo em todos os fluxos de pagamento.
-          p = Path('update.js')
-          s = p.read_text(encoding='utf-8')
-          s = s.replace(
-            'const APP_VERSION = "2026-07-30-modo-web-sem-pwa-15";',
-            'const APP_VERSION = "2026-08-12-interlock-global-181";',
-            1
-          )
-
-          # Fallback de processos/facções do update.js.
-          s = s.replace(
-            '    "ALÇA": [\n      "JANAINA", "IVONE", "LUANA", "KARYTA", "SIMEI", "SIMONE"\n    ],\n    "CALCINHA MONTAGEM":',
-            '    "ALÇA": [\n      "JANAINA", "IVONE", "LUANA", "KARYTA", "SIMEI", "SIMONE"\n    ],\n    "INTERLOCK": [],\n    "CALCINHA MONTAGEM":',
-            1
-          )
-
-          # Ordem do gerenciamento de processos.
-          s = s.replace(
-            '    "ENCAPAR BOJO",\n    "ALÇA",\n    "CALCINHA MONTAGEM",',
-            '    "ENCAPAR BOJO",\n    "ALÇA",\n    "INTERLOCK",\n    "CALCINHA MONTAGEM",',
-            1
-          )
-
-          # Mesmo com configuração já existente no Firebase, INTERLOCK deve existir.
-          antigo = '''  function getProcessosFaccoesAtivos() {
-    const origem = configuracaoProcessosFaccoesExiste
-      ? processosFaccoesConfigurados
-      : construirConfiguracaoInferidaProcessosFaccoes();
-    return origem.filter(item => item?.ativo !== false && item?.nome);
-  }'''
-          novo = '''  function getProcessosFaccoesAtivos() {
-    const origem = configuracaoProcessosFaccoesExiste
-      ? processosFaccoesConfigurados
-      : construirConfiguracaoInferidaProcessosFaccoes();
-    const ativos = origem.filter(item => item?.ativo !== false && item?.nome);
-    const temInterlock = ativos.some(item => normalizarComparacao(item.nome) === "INTERLOCK");
-    if (!temInterlock) {
-      ativos.push({ nome: "INTERLOCK", setor: "ambos", faccoes: [], ativo: true });
-    }
-    return ativos;
-  }'''
-          if antigo not in s:
-            raise SystemExit('getProcessosFaccoesAtivos não encontrado')
-          s = s.replace(antigo, novo, 1)
-
-          # Helper único do preço global do INTERLOCK: zero leitura de Firestore.
-          ancora = '''  function processoPagamentoAlca(valor) {
-    return normalizarComparacao(valor) === 'ALCA';
-  }
-'''
-          helper = '''  function processoPagamentoAlca(valor) {
-    return normalizarComparacao(valor) === 'ALCA';
-  }
-
-  const VALOR_PADRAO_INTERLOCK = 0.18;
-  const ID_PRECO_PADRAO_INTERLOCK = 'valor-padrao-interlock';
-
-  function processoPagamentoInterlock(valor) {
-    return normalizarComparacao(valor) === 'INTERLOCK';
-  }
-
-  function precoPadraoInterlock() {
-    return {
-      id: ID_PRECO_PADRAO_INTERLOCK,
-      referencia: '*',
-      processo: 'INTERLOCK',
-      servicoNome: 'INTERLOCK',
-      setor: 'ambos',
-      setorLabel: 'Todos',
-      valor: VALOR_PADRAO_INTERLOCK,
-      ativo: true,
-      tipoValor: 'padrao_global_interlock',
-      valorPadraoGlobalInterlock: true
-    };
-  }
-'''
-          if ancora not in s:
-            raise SystemExit('processoPagamentoAlca não encontrado')
-          s = s.replace(ancora, helper, 1)
-
-          # Recalcular/editar movimentações de usuário.
-          s = s.replace(
-            '''  async function buscarPrecoMovUsuario(referencia, processo) {
-    const { firestore, db } = contextoMovUsuario;
-    if (processoPagamentoAlca(processo)) {
-      return buscarPrecoPadraoAlca(firestore, db);
-    }
-''',
-            '''  async function buscarPrecoMovUsuario(referencia, processo) {
-    const { firestore, db } = contextoMovUsuario;
-    if (processoPagamentoInterlock(processo)) return precoPadraoInterlock();
-    if (processoPagamentoAlca(processo)) {
-      return buscarPrecoPadraoAlca(firestore, db);
-    }
-''',
-            1
-          )
-
-          # Chegada manual.
-          s = s.replace(
-            '''  async function buscarPrecoChegadaManualSimplificada(firestore, db, referencia, processo) {
-    if (processoPagamentoAlca(processo)) {
-      return buscarPrecoPadraoAlca(firestore, db);
-    }
-''',
-            '''  async function buscarPrecoChegadaManualSimplificada(firestore, db, referencia, processo) {
-    if (processoPagamentoInterlock(processo)) return precoPadraoInterlock();
-    if (processoPagamentoAlca(processo)) {
-      return buscarPrecoPadraoAlca(firestore, db);
-    }
-''',
-            1
-          )
-
-          # Chegada normal/reconfirmação e Restantes pendentes.
-          s = s.replace(
-            '''  async function buscarPrecoConfirmacaoChegada(firestore, db, referencia, processo) {
-    if (processoPagamentoAlca(processo)) {
-      return buscarPrecoPadraoAlca(firestore, db);
-    }
-''',
-            '''  async function buscarPrecoConfirmacaoChegada(firestore, db, referencia, processo) {
-    if (processoPagamentoInterlock(processo)) return precoPadraoInterlock();
-    if (processoPagamentoAlca(processo)) {
-      return buscarPrecoPadraoAlca(firestore, db);
-    }
-''',
-            1
-          )
-
-          p.write_text(s, encoding='utf-8')
-
-          # Cache busting dos arquivos realmente alterados.
-          p = Path('index.html')
-          s = p.read_text(encoding='utf-8')
-          s = s.replace(
-            'update.js?v=2026-08-11-chegada-sutia-rapida-180',
-            'update.js?v=2026-08-12-interlock-global-181',
-            1
-          )
-          s = s.replace(
-            'app.js?v=2026-08-11-cadastro-valores-estavel-172b',
-            'app.js?v=2026-08-12-interlock-global-181',
-            1
-          )
-          p.write_text(s, encoding='utf-8')
-
-          Path('corponu-release.json').write_text(json.dumps({
-            'version': '2026-08-12-interlock-global-181',
-            'updatedAt': '2026-08-12T10:11:00-03:00',
-            'notes': 'Adiciona o processo INTERLOCK para Sutiã e Calcinha. O valor é global e fixo em R$ 0,1800 por peça para qualquer referência, sem leitura de preço por referência. O processo aparece em Gerenciar facções inicialmente sem facções vinculadas; o administrador pode definir quem realiza o serviço.'
-          }, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-          PY
-
           node --check update.js
           node --check app.js
-          git rm -f .github/workflows/add-interlock-181.yml .add-interlock-181 || true
+      - name: Publicar
+        run: |
+          git rm -f .github/workflows/add-interlock-181.yml .github/scripts/add_interlock_181.py .add-interlock-181 || true
           git add app.js update.js index.html corponu-release.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
