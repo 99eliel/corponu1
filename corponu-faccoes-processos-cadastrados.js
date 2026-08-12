@@ -1,11 +1,12 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-07-30-faccoes-processos-cadastrados-27";
+  const VERSION = "2026-08-12-faccoes-otimizadas-183";
   const FIREBASE_VERSION = "10.12.5";
   const PROCESSOS_PADRAO = [
     "ENCAPAR BOJO",
     "ALÇA",
+    "INTERLOCK",
     "CALCINHA MONTAGEM",
     "CALCINHA COMPLETA",
     "SUTIÃ MONTAGEM",
@@ -170,8 +171,15 @@
 
       PROCESSOS_PADRAO.forEach(nome => {
         adicionarLista(porAba.corte, nome);
-        if (normalizar(nome).includes("CALCINHA")) adicionarLista(porAba.calcinha, nome);
-        else adicionarLista(porAba.sutia, nome);
+        const chave = normalizar(nome);
+        if (chave === "INTERLOCK") {
+          adicionarLista(porAba.sutia, nome);
+          adicionarLista(porAba.calcinha, nome);
+        } else if (chave.includes("CALCINHA")) {
+          adicionarLista(porAba.calcinha, nome);
+        } else {
+          adicionarLista(porAba.sutia, nome);
+        }
       });
 
       cache = porAba;

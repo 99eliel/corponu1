@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-12-interlock-ui-182",
-  "updatedAt": "2026-08-12T11:04:00-03:00",
-  "notes": "Corrige a interface do INTERLOCK: o processo agora aparece no cadastro/edição de facções e no seletor Registrar saída para Sutiã e Calcinha. Mantém o valor global fixo de R$ 0,1800 por peça da release 181, sem acrescentar leituras do Firestore."
+  "version": "2026-08-12-faccoes-otimizadas-183",
+  "updatedAt": "2026-08-12T13:50:00-03:00",
+  "notes": "Otimiza os fluxos de faccoes sem alterar regras de negocio: INTERLOCK integra as listas originais, o hotfix visual com observers e timers e desativado, a troca de processo reaproveita o cache existente de faccoes e o verificador legado deixa de limpar cache e recarregar sem necessidade."
 }
