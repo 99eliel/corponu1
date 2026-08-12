@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-10-alca-recalculo-pendentes-163";
+  const VERSION = "2026-08-12-precos-recalcular-pendencias-189";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -21,30 +21,21 @@
     return script;
   }
 
-  // 162 padroniza a exibição de valores em 4 casas decimais e permite passo
-  // monetário de 0,0001 sem alterar cálculos ou documentos do Firebase.
   carregarScript(
     "./corponu-valores-4-casas-162.js",
     "valores-4-casas-162"
   );
 
-  // Mantém somente a contenção visual da tabela de Facções.
   carregarScript(
     "./corponu-faccoes-layout-141.js",
     "faccoes-layout-141"
   );
 
-  // 156 remove somente o botão Bipar da aba Facções por CSS. Não usa observer,
-  // não altera movimentações e não interfere na bipagem disponível em outras telas.
   carregarScript(
     "./corponu-faccoes-sem-bipar-156.js",
     "faccoes-sem-bipar-156"
   );
 
-  // Um único responsável pela interface e dados do aviso de chegada.
-  // Depois dele, a 155 apenas restaura o rótulo "Informar chegada" e protege
-  // cliques em linhas que ainda tenham nascido com o botão legado "Chegada".
-  // A 155 não usa MutationObserver, intervalo nem recriação de elementos.
   carregarScript(
     "./corponu-chegada-estabilidade-132.js",
     "chegada-estabilidade-132",
@@ -58,9 +49,6 @@
     )
   );
 
-  // 162 mantém a edição do valor global da ALÇA leve e sem varredura automática.
-  // A 163 adiciona uma ação separada e explícita para recalcular SOMENTE os
-  // pagamentos de ALÇA ainda pendentes para R$ 0,0540; pagos ficam intocados.
   carregarScript(
     "./corponu-alca-pendencia-leve-126.js",
     "alca-pendencia-leve-162",
@@ -70,17 +58,19 @@
     )
   );
 
-  // LATERAL permanece com a rotina estável já validada.
   carregarScript(
     "./corponu-lateral-unificada-118-seguro.js",
     "lateral-unificada-118",
     () => carregarScript(
       "./corponu-pendencias-valor-seguro-117.js",
-      "pendencias-valor-seguro-117"
+      "pendencias-valor-seguro-117",
+      () => carregarScript(
+        "./corponu-precos-recalcular-pendencias-189.js",
+        "precos-recalcular-pendencias-189"
+      )
     )
   );
 
-  // A chegada manual mantém as facções ativas vinculadas ao processo.
   carregarScript(
     "./corponu-chegada-manual-faccoes-processo-119-seguro.js",
     "chegada-manual-faccoes-processo-119"
