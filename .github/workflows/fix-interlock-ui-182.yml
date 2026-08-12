@@ -1,0 +1,89 @@
+name: Corrigir INTERLOCK nas listas 182
+on:
+  push:
+    branches: [main]
+    paths: ['.fix-interlock-ui-182']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar correção
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          # 1) Editar facção: INTERLOCK precisa aparecer entre os processos disponíveis.
+          p = Path('corponu-faccoes-grupos-processos.js')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace(
+              'const VERSION = "2026-07-31-faccoes-grupos-processos-43";',
+              'const VERSION = "2026-08-12-interlock-ui-182";',
+              1
+          )
+          alvo = '    { nome: "LATERAL", atendeSutia: true, atendeCalcinha: false },\n'
+          novo = alvo + '    { nome: "INTERLOCK", atendeSutia: true, atendeCalcinha: true },\n'
+          if alvo not in s:
+              raise SystemExit('PROCESSOS_PADRAO do modal de facção não encontrado')
+          if 'nome: "INTERLOCK", atendeSutia: true, atendeCalcinha: true' not in s:
+              s = s.replace(alvo, novo, 1)
+          p.write_text(s, encoding='utf-8')
+
+          # 2) Registrar saída: INTERLOCK precisa entrar na lista para Sutiã e Calcinha.
+          p = Path('corponu-faccoes-processos-cadastrados.js')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace(
+              'const VERSION = "2026-07-30-faccoes-processos-cadastrados-27";',
+              'const VERSION = "2026-08-12-interlock-ui-182";',
+              1
+          )
+          alvo = '    "ALÇA",\n    "CALCINHA MONTAGEM",'
+          novo = '    "ALÇA",\n    "INTERLOCK",\n    "CALCINHA MONTAGEM",'
+          if alvo not in s and '    "INTERLOCK",\n    "CALCINHA MONTAGEM",' not in s:
+              raise SystemExit('PROCESSOS_PADRAO da saída não encontrado')
+          if '    "INTERLOCK",\n    "CALCINHA MONTAGEM",' not in s:
+              s = s.replace(alvo, novo, 1)
+
+          bloco_antigo = '''      PROCESSOS_PADRAO.forEach(nome => {
+        adicionarLista(porAba.corte, nome);
+        if (normalizar(nome).includes("CALCINHA")) adicionarLista(porAba.calcinha, nome);
+        else adicionarLista(porAba.sutia, nome);
+      });'''
+          bloco_novo = '''      PROCESSOS_PADRAO.forEach(nome => {
+        adicionarLista(porAba.corte, nome);
+        const chave = normalizar(nome);
+        if (chave === "INTERLOCK") {
+          adicionarLista(porAba.sutia, nome);
+          adicionarLista(porAba.calcinha, nome);
+        } else if (chave.includes("CALCINHA")) {
+          adicionarLista(porAba.calcinha, nome);
+        } else {
+          adicionarLista(porAba.sutia, nome);
+        }
+      });'''
+          if bloco_antigo not in s and bloco_novo not in s:
+              raise SystemExit('Distribuição de processos por aba não encontrada')
+          if bloco_novo not in s:
+              s = s.replace(bloco_antigo, bloco_novo, 1)
+          p.write_text(s, encoding='utf-8')
+
+          # Release: só corrige a presença do processo na interface.
+          Path('corponu-release.json').write_text(json.dumps({
+              'version': '2026-08-12-interlock-ui-182',
+              'updatedAt': '2026-08-12T10:58:00-03:00',
+              'notes': 'Corrige a interface do INTERLOCK: o processo agora aparece no cadastro/edição de facções e no seletor Registrar saída, tanto em Sutiã quanto em Calcinha. Mantém o valor global de R$ 0,1800 por peça definido na release 181.'
+          }, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+          node --check corponu-faccoes-grupos-processos.js
+          node --check corponu-faccoes-processos-cadastrados.js
+
+          git rm -f .github/workflows/fix-interlock-ui-182.yml .fix-interlock-ui-182 || true
+          git add corponu-faccoes-grupos-processos.js corponu-faccoes-processos-cadastrados.js corponu-release.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix: exibir INTERLOCK nas facções e saídas 182 [skip ci]"
+          git push
