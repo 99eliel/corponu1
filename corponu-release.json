@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-12-precos-confirmados-186",
-  "updatedAt": "2026-08-12T16:01:00-03:00",
-  "notes": "Confirma cada novo preco pelo documento exato antes de limpar o formulario, mantem a aba selecionada e carrega a colecao completa de precos sem depender de orderBy. O sucesso so aparece depois de o documento existir no Firestore."
+  "version": "2026-08-12-precos-selecao-estavel-187",
+  "updatedAt": "2026-08-12T16:21:00-03:00",
+  "notes": "Mantem o processo selecionado no gerenciamento de valores, remove a selecao automatica de ENCAPAR BOJO, evita reconstruir o seletor ao renderizar a tabela e libera a interface antes do log de auditoria."
 }

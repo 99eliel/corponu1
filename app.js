@@ -7741,7 +7741,9 @@ function configurarPagamentos() {
   const processoAtivo = document.getElementById("valorProcessoAtivo");
   if (processoAtivo) {
     processoAtivo.addEventListener("change", () => {
+      processoAtivo.dataset.chaveSelecionada = processoAtivo.value || "";
       aplicarProcessoValorSelecionado(processoAtivo.value);
+      renderProcessosValores();
       renderPrecosReferencia();
     });
   }
@@ -7941,34 +7943,47 @@ function preencherProcessosValores() {
   if (!select) return;
 
   const processos = getProcessosValores();
-  const atual = processoValorAtivo || select.value;
+  // Nunca troca sozinho para o primeiro processo. A escolha do usuário é a
+  // fonte da verdade enquanto o painel estiver aberto.
+  const atual = processoValorAtivo || select.dataset.chaveSelecionada || select.value || "";
 
-  select.innerHTML = `<option value="">Todos os processos</option>` + processos.map(item => {
+  select.innerHTML = `<option value="">Selecione um processo</option>` + processos.map(item => {
     return `<option value="${escapeHtml(item.chave)}">${escapeHtml(item.processo)} | ${escapeHtml(item.setorLabel)} (${item.total})</option>`;
   }).join("");
 
-  if (atual && processos.some(item => item.chave === atual)) {
-    select.value = atual;
-    processoValorAtivo = atual;
-  } else if (!processoValorAtivo && processos.length) {
-    select.value = processos[0].chave;
-    processoValorAtivo = processos[0].chave;
-  } else {
-    select.value = processoValorAtivo || "";
+  let chaveFinal = atual;
+  if (chaveFinal && !processos.some(item => item.chave === chaveFinal)) {
+    // Durante um snapshot o processo pode sumir por um instante. Mantemos uma
+    // opção temporária em vez de zerar a seleção e cair em ENCAPAR BOJO.
+    const { processo, setor } = getProcessoValorDeChave(chaveFinal);
+    if (processo && setor) {
+      const option = document.createElement("option");
+      option.value = chaveFinal;
+      option.textContent = `${processo} | ${getLabelSetorPagamento(setor)}`;
+      select.appendChild(option);
+    } else {
+      chaveFinal = "";
+    }
   }
 
-  aplicarProcessoValorSelecionado(select.value);
+  processoValorAtivo = chaveFinal;
+  select.dataset.chaveSelecionada = chaveFinal;
+  select.value = chaveFinal;
+  aplicarProcessoValorSelecionado(chaveFinal);
 }
 
 function aplicarProcessoValorSelecionado(chave) {
   processoValorAtivo = chave || "";
+  const select = document.getElementById("valorProcessoAtivo");
+  if (select) select.dataset.chaveSelecionada = processoValorAtivo;
+
   const { processo, setor } = getProcessoValorDeChave(processoValorAtivo);
 
   const processoInput = document.getElementById("precoReferenciaProcesso");
   const setorInput = document.getElementById("precoReferenciaSetor");
 
-  if (processoInput && processo) processoInput.value = processo;
-  if (setorInput && setor) setorInput.value = setor || "bojo";
+  if (processoInput) processoInput.value = processo || "";
+  if (setorInput) setorInput.value = setor || "";
 
   const renomearInput = document.getElementById("valorRenomearProcesso");
   if (renomearInput) renomearInput.value = processo || "";
@@ -8035,7 +8050,10 @@ function usarNovoProcessoValor() {
     select.appendChild(option);
   }
 
-  if (select) select.value = chave;
+  if (select) {
+    select.dataset.chaveSelecionada = chave;
+    select.value = chave;
+  }
 
   document.getElementById("precoReferenciaProcesso").value = processo;
   document.getElementById("precoReferenciaSetor").value = setor;
@@ -8151,7 +8169,10 @@ function selecionarProcessoValor(chave) {
   const select = document.getElementById("valorProcessoAtivo");
   processoValorAtivo = chave || "";
 
-  if (select) select.value = processoValorAtivo;
+  if (select) {
+    select.dataset.chaveSelecionada = processoValorAtivo;
+    select.value = processoValorAtivo;
+  }
 
   aplicarProcessoValorSelecionado(processoValorAtivo);
   renderProcessosValores();
@@ -8232,17 +8253,12 @@ async function salvarPrecoReferencia(event) {
     if (indiceLocal >= 0) state.precosReferencia[indiceLocal] = confirmado;
     else state.precosReferencia.push(confirmado);
 
-    await registrarLog(
-      idAtual ? "preco_referencia_atualizado" : "preco_referencia_criado",
-      "precoReferencia",
-      docId,
-      `Ref. ${confirmado.referencia || referencia} | ${confirmado.processo || processo} | ${formatarMoedaBR(Number(confirmado.valor ?? valor))}`
-    );
-
     processoValorAtivo = chaveProcessoValor(
       confirmado.processo || processo,
       normalizarSetorPrecoPorProcesso(confirmado.processo || processo, confirmado.setor || setor)
     );
+    const selectAtivo = document.getElementById("valorProcessoAtivo");
+    if (selectAtivo) selectAtivo.dataset.chaveSelecionada = processoValorAtivo;
 
     const idInput = document.getElementById("precoReferenciaId");
     const refInput = document.getElementById("precoReferenciaRef");
@@ -8260,6 +8276,15 @@ async function salvarPrecoReferencia(event) {
     refInput?.focus();
 
     toast(`Valor salvo e confirmado: Ref. ${confirmado.referencia || referencia}.`);
+
+    // Auditoria continua sendo gravada, mas nao bloqueia a tela nem troca o
+    // processo selecionado caso a escrita do log demore.
+    registrarLog(
+      idAtual ? "preco_referencia_atualizado" : "preco_referencia_criado",
+      "precoReferencia",
+      docId,
+      `Ref. ${confirmado.referencia || referencia} | ${confirmado.processo || processo} | ${formatarMoedaBR(Number(confirmado.valor ?? valor))}`
+    ).catch(errorLog => console.warn("Nao foi possivel registrar o log do preco.", errorLog));
   } catch (error) {
     console.error(error);
     toast("Erro ao salvar valor da referência.");
@@ -8269,8 +8294,6 @@ async function salvarPrecoReferencia(event) {
 function renderPrecosReferencia() {
   const tbody = document.getElementById("listaPrecosReferencia");
   if (!tbody) return;
-
-  preencherProcessosValores();
 
   const busca = normalizarTexto(document.getElementById("buscaPrecosReferencia")?.value || "");
   const { processo, setor } = getProcessoValorDeChave(processoValorAtivo);

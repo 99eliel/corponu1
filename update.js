@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-08-12-interlock-global-181";
+  const APP_VERSION = "2026-08-12-precos-selecao-estavel-187";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
