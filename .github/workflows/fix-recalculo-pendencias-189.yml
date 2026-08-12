@@ -1,0 +1,251 @@
+name: Corrigir pendencias ao salvar preco 189
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/fix-recalculo-pendencias-189.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Aplicar correcao 189
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          VERSION = "2026-08-12-preco-recalcula-pendencias-189"
+          APP = Path("app.js")
+          s = APP.read_text(encoding="utf-8")
+
+          anchor = "async function salvarPrecoReferencia(event) {"
+          if anchor not in s:
+              raise SystemExit("salvarPrecoReferencia nao encontrado")
+
+          helper = r'''function numeroFinanceiroSeguro(valor) {
+            if (typeof valor === "number") return Number.isFinite(valor) ? valor : 0;
+            const bruto = String(valor ?? "").trim().replace(/R\$/gi, "").replace(/\s+/g, "");
+            if (!bruto) return 0;
+            const ajustado = bruto.includes(",")
+              ? bruto.replace(/\./g, "").replace(",", ".")
+              : bruto;
+            const numero = Number(ajustado.replace(/[^0-9.-]/g, ""));
+            return Number.isFinite(numero) ? numero : 0;
+          }
+
+          function pagamentoAguardandoValor(item) {
+            const status = String(item?.statusPagamento || item?.status || "")
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/_/g, " ")
+              .replace(/\s+/g, " ")
+              .trim()
+              .toUpperCase();
+
+            if (item?.pago === true || item?.cancelado === true || item?.excluido === true) return false;
+            if ([
+              "PAGO", "PAGA", "QUITADO", "QUITADA", "CANCELADO", "CANCELADA",
+              "EXCLUIDO", "EXCLUIDA", "ESTORNADO", "ESTORNADA"
+            ].includes(status)) return false;
+
+            return item?.valorPendente === true ||
+              item?.valorManualFinanceiroPendente === true ||
+              ["SEM VALOR", "AGUARDANDO VALOR"].includes(status) ||
+              !(numeroFinanceiroSeguro(item?.valorUnitario) > 0) ||
+              !(numeroFinanceiroSeguro(item?.total ?? item?.valorTotal) > 0);
+          }
+
+          async function recalcularPendenciasDoPrecoSalvo(preco, precoId) {
+            const referencia = normalizarReferencia(preco?.referencia || "");
+            const processo = normalizarNomeProcesso(preco?.processo || "");
+            const valor = numeroFinanceiroSeguro(preco?.valor);
+            if (!referencia || !processo || !(valor > 0)) return 0;
+
+            const referencias = [referencia];
+            const referenciaNumerica = Number(referencia);
+            if (Number.isFinite(referenciaNumerica)) referencias.push(referenciaNumerica);
+
+            const consulta = referencias.length > 1
+              ? query(collection(db, "entregasPagamento"), where("referencia", "in", referencias))
+              : query(collection(db, "entregasPagamento"), where("referencia", "==", referencia));
+            const snapshot = await getDocs(consulta);
+
+            const correspondentes = snapshot.docs
+              .map(documento => ({ id: documento.id, ...documento.data() }))
+              .filter(item => {
+                if (!pagamentoAguardandoValor(item)) return false;
+                if (normalizarReferencia(item?.referencia || "") !== referencia) return false;
+                const processoItem = normalizarNomeProcesso(
+                  item?.processo || item?.servicoNome || item?.processoMovimentacao || item?.nomeProcesso || ""
+                );
+                return processoItem === processo;
+              });
+
+            if (!correspondentes.length) return 0;
+
+            const setor = normalizarSetorPrecoPorProcesso(processo, preco?.setor || "");
+            let atualizados = 0;
+
+            for (let inicio = 0; inicio < correspondentes.length; inicio += 400) {
+              const loteItens = correspondentes.slice(inicio, inicio + 400);
+              const batch = writeBatch(db);
+              const agora = serverTimestamp();
+              let operacoes = 0;
+
+              loteItens.forEach(item => {
+                const quantidade = Math.max(0, numeroFinanceiroSeguro(item?.quantidade ?? item?.quantidadeRecebida ?? 0));
+                if (!(quantidade > 0)) return;
+
+                const desconto = Math.max(0, numeroFinanceiroSeguro(item?.descontoDefeito ?? item?.defeito ?? 0));
+                const subtotal = quantidade * valor;
+                const processoSalvo = limparTexto(preco?.processo || processo).toUpperCase();
+
+                batch.set(doc(db, "entregasPagamento", item.id), {
+                  precoReferenciaId: precoId,
+                  servicoId: precoId,
+                  processo: processoSalvo,
+                  processoMovimentacao: item?.processoMovimentacao || processoSalvo,
+                  servicoNome: processoSalvo,
+                  setor,
+                  setorLabel: getLabelSetorPagamento(setor),
+                  valorUnitario: valor,
+                  subtotal,
+                  total: Math.max(subtotal - desconto, 0),
+                  statusPagamento: "pendente",
+                  valorPendente: false,
+                  valorManualFinanceiroPendente: false,
+                  formaValorPagamento: "valor_unitario_base",
+                  motivoValorPendente: "",
+                  avisoPagamento: "",
+                  valorInformadoPor: state.currentUser.uid,
+                  valorInformadoEm: agora,
+                  atualizadoPor: state.currentUser.uid,
+                  atualizadoEm: agora,
+                  origemAtualizacaoValor: "preco_referencia_189"
+                }, { merge: true });
+                operacoes += 1;
+              });
+
+              if (operacoes > 0) {
+                await batch.commit();
+                atualizados += operacoes;
+              }
+            }
+
+            if (atualizados > 0) {
+              window.dispatchEvent(new CustomEvent("corponu:pendencias-recalculadas", {
+                detail: { referencia, processo, valor, quantidade: atualizados }
+              }));
+            }
+
+            return atualizados;
+          }
+
+          '''
+
+          if "async function recalcularPendenciasDoPrecoSalvo" not in s:
+              s = s.replace(anchor, helper + anchor, 1)
+
+          old = '''    const confirmado = normalizarPrecoReferenciaCarregado(confirmadoSnap);
+              const indiceLocal = state.precosReferencia.findIndex(item => item.id === docId);
+              if (indiceLocal >= 0) state.precosReferencia[indiceLocal] = confirmado;
+              else state.precosReferencia.push(confirmado);
+          '''
+          if old not in s:
+              # tolerate indentation from source exactly as it is normally formatted
+              old = '''    const confirmado = normalizarPrecoReferenciaCarregado(confirmadoSnap);
+    const indiceLocal = state.precosReferencia.findIndex(item => item.id === docId);
+    if (indiceLocal >= 0) state.precosReferencia[indiceLocal] = confirmado;
+    else state.precosReferencia.push(confirmado);
+'''
+          new = '''    const confirmado = normalizarPrecoReferenciaCarregado(confirmadoSnap);
+    const indiceLocal = state.precosReferencia.findIndex(item => item.id === docId);
+    if (indiceLocal >= 0) state.precosReferencia[indiceLocal] = confirmado;
+    else state.precosReferencia.push(confirmado);
+
+    let pendenciasRecalculadas = 0;
+    let erroRecalculoPendencias = null;
+    try {
+      pendenciasRecalculadas = await recalcularPendenciasDoPrecoSalvo(confirmado, docId);
+    } catch (errorPendencias) {
+      erroRecalculoPendencias = errorPendencias;
+      console.warn("Preco salvo, mas nao foi possivel recalcular as pendencias correspondentes.", errorPendencias);
+    }
+'''
+          if old not in s:
+              raise SystemExit("bloco confirmado/state.precosReferencia nao encontrado")
+          s = s.replace(old, new, 1)
+
+          old_toast = '    toast(`Valor salvo e confirmado: Ref. ${confirmado.referencia || referencia}.`);'
+          new_toast = '''    if (pendenciasRecalculadas > 0) {
+      toast(`Valor salvo. ${pendenciasRecalculadas} pendência(s) de ${confirmado.processo || processo} / Ref. ${confirmado.referencia || referencia} foram recalculadas automaticamente.`);
+    } else if (erroRecalculoPendencias) {
+      toast(`Valor salvo para Ref. ${confirmado.referencia || referencia}, mas a pendência não pôde ser recalculada automaticamente.`);
+    } else {
+      toast(`Valor salvo e confirmado: Ref. ${confirmado.referencia || referencia}.`);
+    }'''
+          if old_toast not in s:
+              raise SystemExit("toast de confirmacao nao encontrado")
+          s = s.replace(old_toast, new_toast, 1)
+
+          APP.write_text(s, encoding="utf-8")
+
+          # Cache busting do app principal
+          index = Path("index.html")
+          html = index.read_text(encoding="utf-8")
+          html = html.replace(
+              'update.js?v=2026-08-12-precos-selecao-estavel-187',
+              f'update.js?v={VERSION}'
+          ).replace(
+              'app.js?v=2026-08-12-precos-selecao-estavel-187',
+              f'app.js?v={VERSION}'
+          )
+          index.write_text(html, encoding="utf-8")
+
+          update = Path("update.js")
+          u = update.read_text(encoding="utf-8")
+          u = u.replace(
+              'const APP_VERSION = "2026-08-12-precos-selecao-estavel-187";',
+              f'const APP_VERSION = "{VERSION}";'
+          )
+          update.write_text(u, encoding="utf-8")
+
+          payload = {
+              "version": VERSION,
+              "updatedAt": "2026-08-12T16:55:00-03:00",
+              "notes": "Ao salvar um valor por referência/processo, recalcula automaticamente somente pagamentos ainda sem valor da mesma referência e processo. A consulta é pontual por referência, evita varredura geral e limpa valorPendente/status sem_valor sem alterar pagamentos já pagos ou com valor definido."
+          }
+          for nome in ["version.json", "corponu-release.json"]:
+              Path(nome).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          PY
+
+      - name: Validar arquivos
+        shell: bash
+        run: |
+          node --check app.js
+          node --check update.js
+          python -m json.tool version.json >/dev/null
+          python -m json.tool corponu-release.json >/dev/null
+          grep -q 'recalcularPendenciasDoPrecoSalvo' app.js
+          grep -q 'corponu:pendencias-recalculadas' app.js
+          grep -q '2026-08-12-preco-recalcula-pendencias-189' update.js
+          grep -q 'app.js?v=2026-08-12-preco-recalcula-pendencias-189' index.html
+
+      - name: Publicar e remover workflow temporario
+        shell: bash
+        run: |
+          git rm -f .github/workflows/fix-recalculo-pendencias-189.yml
+          git add app.js index.html update.js version.json corponu-release.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix: recalcular pendencias ao salvar preco 189 [skip ci]"
+          git push
