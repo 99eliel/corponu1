@@ -4,6 +4,19 @@
   const VERSION = "2026-08-12-relatorio-geral-valores-190";
   const PAGINA_ID = "processos";
   const CLASSE_OCULTA = "cn61-processos-oculto";
+  const CABECALHO_CALCINHA = "corponu-manejo-cabecalho-calcinha-191.js";
+
+  function carregarCabecalhoCalcinha191() {
+    if ([...document.scripts].some(script => String(script.src || "").includes(CABECALHO_CALCINHA))) return;
+    const script = document.createElement("script");
+    script.src = `./${CABECALHO_CALCINHA}?v=2026-08-12-cabecalho-calcinha-estavel-191&t=${Date.now()}`;
+    script.async = false;
+    script.dataset.corponuModulo = "manejo-cabecalho-calcinha-191";
+    script.onerror = () => console.error("Não foi possível estabilizar o cabeçalho do Manejo Calcinha.");
+    document.head.appendChild(script);
+  }
+
+  carregarCabecalhoCalcinha191();
 
   if (window.__CORPONU_PROCESSOS_SOMENTE_VALORES__ === VERSION) return;
   window.__CORPONU_PROCESSOS_SOMENTE_VALORES__ = VERSION;
@@ -158,12 +171,14 @@
   }
 
   function iniciar() {
+    carregarCabecalhoCalcinha191();
     carregarRelatorioGeral();
     instalarEventos();
     focarEstrutura();
     aplicarDepois([250, 800]);
   }
 
+  carregarCabecalhoCalcinha191();
   carregarRelatorioGeral();
 
   if (document.readyState === "loading") {
