@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-12-processos-todos-valores-188",
-  "updatedAt": "2026-08-12T16:35:00-03:00",
-  "notes": "Remove a restricao legada que limitava a aba Processos a LATERAL e ENCAPAR BOJO. Todos os processos com valores podem ser selecionados e permanecem ativos sem retorno automatico ao Bojo. Nenhuma regra de calculo ou Firestore foi alterada."
+  "version": "2026-08-12-precos-recalcular-pendencias-189",
+  "updatedAt": "2026-08-12T16:58:00-03:00",
+  "notes": "Quando um valor por referencia e processo e cadastrado, os pagamentos ainda sem valor da mesma referencia/processo recebem o preco automaticamente. A Central Financeira tambem tenta reconciliar pendencias visiveis ao abrir ou atualizar a lista quando ja existe um unico preco ativo. SUTIA MONTAGEM e SUTIA COMPLETO continuam fora desse calculo unitario."
 }
