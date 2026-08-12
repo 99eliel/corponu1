@@ -156,13 +156,6 @@ jobs:
               s = s.replace(anchor, helper + anchor, 1)
 
           old = '''    const confirmado = normalizarPrecoReferenciaCarregado(confirmadoSnap);
-              const indiceLocal = state.precosReferencia.findIndex(item => item.id === docId);
-              if (indiceLocal >= 0) state.precosReferencia[indiceLocal] = confirmado;
-              else state.precosReferencia.push(confirmado);
-          '''
-          if old not in s:
-              # tolerate indentation from source exactly as it is normally formatted
-              old = '''    const confirmado = normalizarPrecoReferenciaCarregado(confirmadoSnap);
     const indiceLocal = state.precosReferencia.findIndex(item => item.id === docId);
     if (indiceLocal >= 0) state.precosReferencia[indiceLocal] = confirmado;
     else state.precosReferencia.push(confirmado);
@@ -199,7 +192,6 @@ jobs:
 
           APP.write_text(s, encoding="utf-8")
 
-          # Cache busting do app principal
           index = Path("index.html")
           html = index.read_text(encoding="utf-8")
           html = html.replace(
@@ -249,3 +241,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "fix: recalcular pendencias ao salvar preco 189 [skip ci]"
           git push
+
+# trigger 189
