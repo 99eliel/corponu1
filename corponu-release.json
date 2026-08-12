@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-12-interlock-global-181",
-  "updatedAt": "2026-08-12T10:11:00-03:00",
-  "notes": "Adiciona o processo INTERLOCK para Sutiã e Calcinha. O valor é global e fixo em R$ 0,1800 por peça para qualquer referência, sem leitura de preço por referência. O processo aparece em Gerenciar facções inicialmente sem facções vinculadas; o administrador pode definir quem realiza o serviço."
+  "version": "2026-08-12-interlock-ui-182",
+  "updatedAt": "2026-08-12T11:04:00-03:00",
+  "notes": "Corrige a interface do INTERLOCK: o processo agora aparece no cadastro/edição de facções e no seletor Registrar saída para Sutiã e Calcinha. Mantém o valor global fixo de R$ 0,1800 por peça da release 181, sem acrescentar leituras do Firestore."
 }
