@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-12-processos-todos-valores-188";
+  const VERSION = "2026-08-12-relatorio-geral-valores-190";
   const PAGINA_ID = "processos";
   const CLASSE_OCULTA = "cn61-processos-oculto";
 
@@ -9,6 +9,17 @@
   window.__CORPONU_PROCESSOS_SOMENTE_VALORES__ = VERSION;
 
   let aplicando = false;
+
+  function carregarRelatorioGeral() {
+    const arquivo = "corponu-relatorio-geral-valores-190.js";
+    if ([...document.scripts].some(script => String(script.src || "").includes(arquivo))) return;
+    const script = document.createElement("script");
+    script.src = `./${arquivo}?v=${encodeURIComponent(VERSION)}&t=${Date.now()}`;
+    script.async = false;
+    script.dataset.corponuModulo = "relatorio-geral-valores-190";
+    script.onerror = () => console.error("Não foi possível carregar o relatório geral de valores.");
+    document.head.appendChild(script);
+  }
 
   function injetarEstilo() {
     document.getElementById("styleProcessosSomenteValores61")?.remove();
@@ -137,10 +148,13 @@
   }
 
   function iniciar() {
+    carregarRelatorioGeral();
     instalarEventos();
     focarEstrutura();
     aplicarDepois([250, 800]);
   }
+
+  carregarRelatorioGeral();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", iniciar, { once: true });
