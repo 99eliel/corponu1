@@ -10,6 +10,7 @@
   const VERSION_QUANTIDADE_SEM_SCROLL = "2026-08-07-quantidade-sem-scroll-148";
   const VERSION_LATERAL_CANCELADAS = "2026-08-10-lateral-canceladas-dom-160";
   const VERSION_PENDENCIAS_MOTIVO = "2026-08-11-pendencias-motivo-171b";
+  const VERSION_INTERLOCK_UI = "2026-08-12-interlock-ui-182";
 
   function carregarScript(nomeArquivo, modulo, versao, mensagemErro) {
     const existente = [...document.scripts].find(script =>
@@ -25,6 +26,13 @@
     document.head.appendChild(script);
     return script;
   }
+
+  carregarScript(
+    "corponu-interlock-ui-182.js",
+    "interlock-ui-182",
+    VERSION_INTERLOCK_UI,
+    "Não foi possível exibir o processo INTERLOCK nas telas de facções."
+  );
 
   carregarScript(
     "corponu-identidade-corpo-nu-flow-145.js",
