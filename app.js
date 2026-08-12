@@ -86,6 +86,35 @@ const state = {
 // - renderização fica limitada à tela ativa para não travar filtros/digitação.
 const OTIMIZACAO_LEITURAS_ATIVA = true;
 
+// Mantem o setor do preco coerente com processos que pertencem a um unico grupo.
+// Tambem recupera em memoria registros antigos salvos com o setor oculto padrao (bojo).
+function normalizarSetorPrecoPorProcesso(processo, setor) {
+  const nome = String(processo || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+
+  if (nome.includes("CALCINHA")) return "calcinha";
+  if (nome.includes("SUTIA")) return "sutia";
+  if (nome === "ENCAPAR BOJO" || nome === "BOJO") return "bojo";
+  if (nome === "LATERAL") return "lateral";
+  if (nome === "ALCA" || nome === "ALCAS") return "alca";
+
+  return String(setor || "").trim().toLowerCase() || "bojo";
+}
+
+function normalizarPrecoReferenciaCarregado(item) {
+  const dados = item?.data ? item.data() : (item || {});
+  const id = item?.id || dados.id || "";
+  return {
+    ...dados,
+    id,
+    setor: normalizarSetorPrecoPorProcesso(dados.processo || dados.servicoNome || "", dados.setor)
+  };
+}
+
 function paginaAtivaAtual() {
   return document.querySelector(".page.active")?.id || "manejo";
 }
@@ -637,7 +666,7 @@ function carregarPrecosReferenciaSeNecessario() {
   const precosReferenciaQuery = query(collection(db, "precosReferencia"), orderBy("referencia", "asc"));
 
   registrarListenerChave("precosReferencia", onSnapshot(precosReferenciaQuery, snapshot => {
-    state.precosReferencia = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    state.precosReferencia = snapshot.docs.map(normalizarPrecoReferenciaCarregado);
     marcarCarregado("precosReferencia");
     preencherProcessosValores();
     renderProcessosValores();
@@ -6416,7 +6445,7 @@ async function garantirPrecosReferenciaCarregados() {
 
   try {
     const snap = await getDocs(query(collection(db, "precosReferencia"), orderBy("referencia", "asc")));
-    state.precosReferencia = snap.docs.map(item => ({ id: item.id, ...item.data() }));
+    state.precosReferencia = snap.docs.map(normalizarPrecoReferenciaCarregado);
     marcarCarregado("precosReferencia");
     preencherProcessosValores();
     renderProcessosValores();
@@ -8151,9 +8180,20 @@ async function salvarPrecoReferencia(event) {
 
   const idAtual = document.getElementById("precoReferenciaId").value;
   const referencia = normalizarReferencia(document.getElementById("precoReferenciaRef").value);
-  const processo = limparTexto(document.getElementById("precoReferenciaProcesso").value).toUpperCase();
-  const setor = document.getElementById("precoReferenciaSetor").value;
+
+  // A aba/processo selecionado e a fonte da verdade. Campos ocultos nao podem
+  // empurrar CALCINHA MONTAGEM (ou outro processo) para o setor bojo.
+  const selecaoAtiva = getProcessoValorDeChave(processoValorAtivo);
+  const processoCampo = limparTexto(document.getElementById("precoReferenciaProcesso")?.value || "").toUpperCase();
+  const setorCampo = document.getElementById("precoReferenciaSetor")?.value || "";
+  const processo = limparTexto(selecaoAtiva.processo || processoCampo).toUpperCase();
+  const setor = normalizarSetorPrecoPorProcesso(processo, selecaoAtiva.setor || setorCampo);
   const valor = Number(document.getElementById("precoReferenciaValor").value || 0);
+
+  const processoInput = document.getElementById("precoReferenciaProcesso");
+  const setorInput = document.getElementById("precoReferenciaSetor");
+  if (processoInput) processoInput.value = processo;
+  if (setorInput) setorInput.value = setor;
 
   if (!referencia || !processo || valor <= 0) {
     toast("Informe referência, processo e valor maior que zero.");
@@ -8180,6 +8220,22 @@ async function salvarPrecoReferencia(event) {
 
   try {
     await setDoc(doc(db, "precosReferencia", docId), dados, { merge: true });
+
+    // Atualiza a tela imediatamente; o onSnapshot depois apenas confirma o estado.
+    const indiceLocal = state.precosReferencia.findIndex(item => item.id === docId);
+    const registroLocal = {
+      ...(indiceLocal >= 0 ? state.precosReferencia[indiceLocal] : {}),
+      id: docId,
+      referencia,
+      processo,
+      setor,
+      setorLabel: getLabelSetorPagamento(setor),
+      valor,
+      ativo: true
+    };
+    if (indiceLocal >= 0) state.precosReferencia[indiceLocal] = registroLocal;
+    else state.precosReferencia.push(registroLocal);
+
     await registrarLog(
       idAtual ? "preco_referencia_atualizado" : "preco_referencia_criado",
       "precoReferencia",

@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-12-layout-calcinha-184",
-  "updatedAt": "2026-08-12T14:58:00-03:00",
-  "notes": "Corrige somente o layout do Manejo Calcinha: as larguras compactas criadas para Fase Bojo e Fase Lateral passam a valer exclusivamente no Manejo Sutia. A Calcinha volta ao comportamento responsivo anterior. Nenhuma logica, filtro, salvamento ou dado foi alterado."
+  "version": "2026-08-12-precos-processos-185",
+  "updatedAt": "2026-08-12T15:38:00-03:00",
+  "notes": "Corrige cadastro de novos valores por referencia dentro dos processos. O processo/setor ativo passa a ser a fonte da verdade, evitando que CALCINHA MONTAGEM seja salva como bojo. Registros antigos com setor incoerente sao normalizados em memoria para reaparecer na aba correta, e o novo valor aparece imediatamente apos salvar sem aguardar o listener."
 }
