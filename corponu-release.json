@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-12-relatorio-geral-valores-190",
-  "updatedAt": "2026-08-12T17:12:00-03:00",
-  "notes": "Adiciona na area de Processos/Valores um relatorio geral sob demanda com todos os valores por referencia agrupados por processo, ativos e inativos, alem dos valores globais e regras do sistema: ALCA, INTERLOCK, base do SUTIA COMPLETO, referencia especial, FECHO e PONTO DE LUZ. O relatorio abre em pagina propria pronta para imprimir ou salvar em PDF e so consulta o Firebase quando o administrador solicita o relatorio."
+  "version": "2026-08-12-cabecalho-calcinha-estavel-191",
+  "updatedAt": "2026-08-12T18:47:00-03:00",
+  "notes": "Estabiliza exclusivamente o cabecalho do Manejo Calcinha. A coluna Linha passa a ser identificada visualmente como LINHA e SILK/TECIDO sao ocultados pela identidade real dos filtros, sem depender do texto momentaneo do cabecalho. A correcao e totalmente condicionada a Calcinha e nao altera estrutura, nomes, filtros ou layout do Manejo Sutia."
 }
