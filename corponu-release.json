@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-12-precos-recalcular-pendencias-189",
-  "updatedAt": "2026-08-12T16:58:00-03:00",
-  "notes": "Quando um valor por referencia e processo e cadastrado, os pagamentos ainda sem valor da mesma referencia/processo recebem o preco automaticamente. A Central Financeira tambem tenta reconciliar pendencias visiveis ao abrir ou atualizar a lista quando ja existe um unico preco ativo. SUTIA MONTAGEM e SUTIA COMPLETO continuam fora desse calculo unitario."
+  "version": "2026-08-12-relatorio-geral-valores-190",
+  "updatedAt": "2026-08-12T17:12:00-03:00",
+  "notes": "Adiciona na area de Processos/Valores um relatorio geral sob demanda com todos os valores por referencia agrupados por processo, ativos e inativos, alem dos valores globais e regras do sistema: ALCA, INTERLOCK, base do SUTIA COMPLETO, referencia especial, FECHO e PONTO DE LUZ. O relatorio abre em pagina propria pronta para imprimir ou salvar em PDF e so consulta o Firebase quando o administrador solicita o relatorio."
 }
