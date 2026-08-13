@@ -10,9 +10,9 @@
     },
     {
       arquivo: "corponu-manejo-calcinha-salvar-fase-194.js",
-      versao: "2026-08-13-fase-calcinha-nao-reverter-194",
-      marcador: "manejo-calcinha-salvar-fase-194",
-      erro: "Não foi possível proteger o salvamento da fase do Manejo Calcinha."
+      versao: "2026-08-13-fase-calcinha-restrita-198",
+      marcador: "manejo-calcinha-salvar-fase-198",
+      erro: "Não foi possível validar a fase permitida do Manejo Calcinha."
     }
   ];
 
