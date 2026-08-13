@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-13-excluir-processo-valores-195",
-  "updatedAt": "2026-08-13T11:36:00-03:00",
-  "notes": "Adiciona em Gerenciar valores a exclusao segura de um processo inteiro. A funcao e exclusiva para administrador, mostra o processo/setor e a quantidade de valores, exige duas confirmacoes e remove somente os registros de preco do processo selecionado em lotes. Pagamentos historicos, OPs e movimentacoes sao preservados. A criacao de novo processo existente permanece funcionando pelo botao Criar / usar processo."
+  "version": "2026-08-13-faccoes-busca-rapida-196",
+  "updatedAt": "2026-08-13T11:56:00-03:00",
+  "notes": "Otimiza exclusivamente Registrar saída em Facções. A busca de OP usa cache, tenta primeiro o ID direto e executa consultas alternativas em paralelo somente quando necessário. A lista de facções usa cache curto e é pré-carregada ao abrir o modal. Nenhuma regra de chegada, pagamento ou criação da movimentação foi alterada."
 }
