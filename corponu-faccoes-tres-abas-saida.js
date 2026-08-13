@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const V = "2026-08-06-faccoes-saida-identidade-140";
+  const V = "2026-08-13-faccoes-busca-rapida-196";
   const FB = "10.12.5";
 
   if (window.__FACCOES_3_ABAS__ === V) return;
@@ -10,6 +10,10 @@
   let aba = "sutia";
   let op = null;
   let faccoes = [];
+  let faccoesCarregadasEm = 0;
+  const FACCOES_CACHE_MS = 60 * 1000;
+  const OP_CACHE_MS = 2 * 60 * 1000;
+  const cacheOps = new Map();
   let ctxP = null;
 
   const norm = v => String(v ?? "")
@@ -210,6 +214,7 @@
     document.getElementById("s3titulo").textContent = `Registrar saída • ${a === "sutia" ? "Sutiã" : a === "calcinha" ? "Calcinha" : "Corte"}`;
     document.getElementById("s3data").value = hoje();
     document.getElementById("modalSaida3").classList.remove("hidden");
+    carregarFaccoesRapido().catch(() => {});
     setTimeout(() => document.getElementById("s3op")?.focus(), 30);
   }
 
@@ -218,37 +223,7 @@
     op = null;
   }
 
-  async function buscarOP(v, preferencia = aba) {
-    const c = await ctx();
-    const s = String(v || "").trim();
-    if (!s) return null;
-
-    const encontrados = new Map();
-
-    try {
-      const d = await c.f.getDoc(c.f.doc(c.db, "ordensProducao", s));
-      if (d.exists()) encontrados.set(d.id, { id: d.id, ...d.data() });
-    } catch (_) {}
-
-    const vs = [s];
-    const n = Number(s);
-    if (Number.isFinite(n)) vs.push(n);
-
-    for (const k of ["numeroOP", "numeroOPExterno", "op"]) {
-      for (const z of vs) {
-        try {
-          const q = await c.f.getDocs(
-            c.f.query(
-              c.f.collection(c.db, "ordensProducao"),
-              c.f.where(k, "==", z),
-              c.f.limit(10)
-            )
-          );
-          q.docs.forEach(d => encontrados.set(d.id, { id: d.id, ...d.data() }));
-        } catch (_) {}
-      }
-    }
-
+  function escolherOrdemEncontrada(encontrados, preferencia, s) {
     const ativos = [...encontrados.values()].filter(ordemAtiva);
     if (!ativos.length) return null;
 
@@ -268,6 +243,117 @@
 
     const direto = ativos.find(item => String(item.id) === s);
     return direto || ativos[0];
+  }
+
+  async function executarConsultasOP(c, campos, valores, encontrados) {
+    const tarefas = [];
+
+    for (const campo of campos) {
+      for (const valor of valores) {
+        tarefas.push(
+          c.f.getDocs(
+            c.f.query(
+              c.f.collection(c.db, "ordensProducao"),
+              c.f.where(campo, "==", valor),
+              c.f.limit(10)
+            )
+          )
+        );
+      }
+    }
+
+    const resultados = await Promise.allSettled(tarefas);
+    resultados.forEach(resultado => {
+      if (resultado.status !== "fulfilled") return;
+      resultado.value.docs.forEach(d => encontrados.set(d.id, { id: d.id, ...d.data() }));
+    });
+  }
+
+  async function buscarOP(v, preferencia = aba) {
+    const c = await ctx();
+    const s = String(v || "").trim();
+    if (!s) return null;
+
+    const chaveCache = `${preferencia}|${s}`;
+    const cache = cacheOps.get(chaveCache);
+    if (cache && Date.now() - cache.em < OP_CACHE_MS) return cache.valor;
+
+    const encontrados = new Map();
+    const refDireta = c.f.doc(c.db, "ordensProducao", s);
+
+    try {
+      const dCache = await c.f.getDocFromCache(refDireta);
+      if (dCache.exists()) {
+        encontrados.set(dCache.id, { id: dCache.id, ...dCache.data() });
+        const encontrada = escolherOrdemEncontrada(encontrados, preferencia, s);
+        if (encontrada && (preferencia === "corte" || tipo(encontrada) === preferencia)) {
+          cacheOps.set(chaveCache, { em: Date.now(), valor: encontrada });
+          return encontrada;
+        }
+      }
+    } catch (_) {}
+
+    try {
+      const d = await c.f.getDoc(refDireta);
+      if (d.exists()) {
+        encontrados.set(d.id, { id: d.id, ...d.data() });
+        const encontrada = escolherOrdemEncontrada(encontrados, preferencia, s);
+        if (encontrada && (preferencia === "corte" || tipo(encontrada) === preferencia)) {
+          cacheOps.set(chaveCache, { em: Date.now(), valor: encontrada });
+          return encontrada;
+        }
+      }
+    } catch (_) {}
+
+    const valores = [s];
+    const n = Number(s);
+    if (Number.isFinite(n)) valores.push(n);
+    const valoresUnicos = [...new Set(valores)];
+
+    await executarConsultasOP(c, ["numeroOP"], valoresUnicos, encontrados);
+    let escolhida = escolherOrdemEncontrada(encontrados, preferencia, s);
+    if (escolhida && (preferencia === "corte" || tipo(escolhida) === preferencia)) {
+      cacheOps.set(chaveCache, { em: Date.now(), valor: escolhida });
+      return escolhida;
+    }
+
+    await executarConsultasOP(c, ["numeroOPExterno", "op"], valoresUnicos, encontrados);
+    escolhida = escolherOrdemEncontrada(encontrados, preferencia, s);
+    cacheOps.set(chaveCache, { em: Date.now(), valor: escolhida || null });
+    return escolhida;
+  }
+
+  function normalizarListaFaccoes(snapshot) {
+    return snapshot.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(f => f.ativo !== false && !f.cadastroPendente && !f.duplicadaDe);
+  }
+
+  async function carregarFaccoesRapido() {
+    if (faccoes.length && Date.now() - faccoesCarregadasEm < FACCOES_CACHE_MS) return faccoes;
+
+    const c = await ctx();
+    const colecao = c.f.collection(c.db, "faccoes");
+
+    try {
+      const cache = await c.f.getDocsFromCache(colecao);
+      if (!cache.empty) {
+        faccoes = normalizarListaFaccoes(cache);
+        faccoesCarregadasEm = Date.now();
+
+        c.f.getDocs(colecao).then(snapshot => {
+          faccoes = normalizarListaFaccoes(snapshot);
+          faccoesCarregadasEm = Date.now();
+        }).catch(() => {});
+
+        return faccoes;
+      }
+    } catch (_) {}
+
+    const servidor = await c.f.getDocs(colecao);
+    faccoes = normalizarListaFaccoes(servidor);
+    faccoesCarregadasEm = Date.now();
+    return faccoes;
   }
 
   function classe(f) {
@@ -296,11 +382,7 @@
       }
 
       op = o;
-      const c = await ctx();
-      const fs = await c.f.getDocs(c.f.collection(c.db, "faccoes"));
-      faccoes = fs.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(f => f.ativo !== false && !f.cadastroPendente && !f.duplicadaDe);
+      faccoes = await carregarFaccoesRapido();
 
       const comp = faccoes
         .filter(f => {
