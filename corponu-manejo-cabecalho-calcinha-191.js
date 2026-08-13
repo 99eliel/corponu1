@@ -1,15 +1,29 @@
 (() => {
   "use strict";
 
-  const ARQUIVO = "corponu-manejo-calcinha-filtros-193.js";
-  const VERSION = "2026-08-12-calcinha-filtros-corretos-193";
+  const MODULOS = [
+    {
+      arquivo: "corponu-manejo-calcinha-filtros-193.js",
+      versao: "2026-08-12-calcinha-filtros-corretos-193",
+      marcador: "manejo-calcinha-filtros-193",
+      erro: "Não foi possível alinhar os filtros do Manejo Calcinha."
+    },
+    {
+      arquivo: "corponu-manejo-calcinha-salvar-fase-194.js",
+      versao: "2026-08-13-fase-calcinha-nao-reverter-194",
+      marcador: "manejo-calcinha-salvar-fase-194",
+      erro: "Não foi possível proteger o salvamento da fase do Manejo Calcinha."
+    }
+  ];
 
-  if ([...document.scripts].some(script => String(script.src || "").includes(ARQUIVO))) return;
+  MODULOS.forEach(({ arquivo, versao, marcador, erro }) => {
+    if ([...document.scripts].some(script => String(script.src || "").includes(arquivo))) return;
 
-  const script = document.createElement("script");
-  script.src = `./${ARQUIVO}?v=${encodeURIComponent(VERSION)}&t=${Date.now()}`;
-  script.async = false;
-  script.dataset.corponuModulo = "manejo-calcinha-filtros-193";
-  script.onerror = () => console.error("Não foi possível alinhar os filtros do Manejo Calcinha.");
-  document.head.appendChild(script);
+    const script = document.createElement("script");
+    script.src = `./${arquivo}?v=${encodeURIComponent(versao)}&t=${Date.now()}`;
+    script.async = false;
+    script.dataset.corponuModulo = marcador;
+    script.onerror = () => console.error(erro);
+    document.head.appendChild(script);
+  });
 })();
