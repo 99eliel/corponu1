@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-13-fase-calcinha-nao-reverter-194",
-  "updatedAt": "2026-08-13T09:18:00-03:00",
-  "notes": "Corrige exclusivamente o Manejo Calcinha: um modulo legado da Linha regravava um snapshot antigo de manejosSetores.calcinha depois do salvamento principal e fazia a Fase voltar ao valor anterior. A protecao 194 executa por ultimo e reafirma apenas a Fase digitada, sem leituras extras e sem alterar o Manejo Sutia."
+  "version": "2026-08-13-excluir-processo-valores-195",
+  "updatedAt": "2026-08-13T11:36:00-03:00",
+  "notes": "Adiciona em Gerenciar valores a exclusao segura de um processo inteiro. A funcao e exclusiva para administrador, mostra o processo/setor e a quantidade de valores, exige duas confirmacoes e remove somente os registros de preco do processo selecionado em lotes. Pagamentos historicos, OPs e movimentacoes sao preservados. A criacao de novo processo existente permanece funcionando pelo botao Criar / usar processo."
 }
