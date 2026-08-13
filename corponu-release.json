@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-12-calcinha-filtros-corretos-193",
-  "updatedAt": "2026-08-12T22:24:00-03:00",
-  "notes": "Corrige exclusivamente o Manejo Calcinha. A coluna Fase Lateral, que nao e usada na Calcinha, deixa de ocupar indice interno enquanto a Calcinha esta ativa; com isso Quantidade, Cor, Necessidade e Status voltam a coincidir com o motor dos filtros acumulativos. Ao abrir Manejo Sutia, a coluna e restaurada antes da renderizacao. Nenhuma regra de filtro ou layout do Sutia foi alterada."
+  "version": "2026-08-13-fase-calcinha-nao-reverter-194",
+  "updatedAt": "2026-08-13T09:18:00-03:00",
+  "notes": "Corrige exclusivamente o Manejo Calcinha: um modulo legado da Linha regravava um snapshot antigo de manejosSetores.calcinha depois do salvamento principal e fazia a Fase voltar ao valor anterior. A protecao 194 executa por ultimo e reafirma apenas a Fase digitada, sem leituras extras e sem alterar o Manejo Sutia."
 }
