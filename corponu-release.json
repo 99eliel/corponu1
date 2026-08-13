@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-13-faccoes-busca-rapida-196",
-  "updatedAt": "2026-08-13T11:56:00-03:00",
-  "notes": "Otimiza exclusivamente Registrar saída em Facções. A busca de OP usa cache, tenta primeiro o ID direto e executa consultas alternativas em paralelo somente quando necessário. A lista de facções usa cache curto e é pré-carregada ao abrir o modal. Nenhuma regra de chegada, pagamento ou criação da movimentação foi alterada."
+  "version": "2026-08-13-faccoes-catalogo-processos-197",
+  "updatedAt": "2026-08-13T14:18:00-03:00",
+  "notes": "Sincroniza o seletor de processos do Registrar saída em Facções com os valores ativos cadastrados no sistema. Processos por referência sem nenhum valor ativo deixam de aparecer, inclusive SUTIÃ MONTAGEM já excluído. SUTIÃ COMPLETO e INTERLOCK permanecem como processos globais. Históricos, pagamentos e movimentações antigas não são alterados."
 }
