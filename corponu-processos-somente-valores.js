@@ -1,22 +1,34 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-12-relatorio-geral-valores-190";
+  const VERSION = "2026-08-13-excluir-processo-valores-195";
   const PAGINA_ID = "processos";
   const CLASSE_OCULTA = "cn61-processos-oculto";
   const CABECALHO_CALCINHA = "corponu-manejo-cabecalho-calcinha-191.js";
+  const EXCLUIR_PROCESSO = "corponu-processos-excluir-195.js";
 
   function carregarCabecalhoCalcinha191() {
     if ([...document.scripts].some(script => String(script.src || "").includes(CABECALHO_CALCINHA))) return;
     const script = document.createElement("script");
-    script.src = `./${CABECALHO_CALCINHA}?v=2026-08-12-cabecalho-calcinha-estavel-191&t=${Date.now()}`;
+    script.src = `./${CABECALHO_CALCINHA}?v=2026-08-13-fase-calcinha-nao-reverter-194&t=${Date.now()}`;
     script.async = false;
     script.dataset.corponuModulo = "manejo-cabecalho-calcinha-191";
     script.onerror = () => console.error("Não foi possível estabilizar o cabeçalho do Manejo Calcinha.");
     document.head.appendChild(script);
   }
 
+  function carregarExcluirProcesso195() {
+    if ([...document.scripts].some(script => String(script.src || "").includes(EXCLUIR_PROCESSO))) return;
+    const script = document.createElement("script");
+    script.src = `./${EXCLUIR_PROCESSO}?v=${encodeURIComponent(VERSION)}&t=${Date.now()}`;
+    script.async = false;
+    script.dataset.corponuModulo = "processos-excluir-195";
+    script.onerror = () => console.error("Não foi possível carregar a exclusão segura de processo.");
+    document.head.appendChild(script);
+  }
+
   carregarCabecalhoCalcinha191();
+  carregarExcluirProcesso195();
 
   if (window.__CORPONU_PROCESSOS_SOMENTE_VALORES__ === VERSION) return;
   window.__CORPONU_PROCESSOS_SOMENTE_VALORES__ = VERSION;
@@ -172,6 +184,7 @@
 
   function iniciar() {
     carregarCabecalhoCalcinha191();
+    carregarExcluirProcesso195();
     carregarRelatorioGeral();
     instalarEventos();
     focarEstrutura();
@@ -179,6 +192,7 @@
   }
 
   carregarCabecalhoCalcinha191();
+  carregarExcluirProcesso195();
   carregarRelatorioGeral();
 
   if (document.readyState === "loading") {
