@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-14-faccoes-classificacao-visual-200";
+  const VERSION = "2026-08-14-faccoes-busca-calcinha-rapida-201";
   const FIREBASE_VERSION = "10.12.5";
   const PROCESSOS_PADRAO = [
     "ENCAPAR BOJO",
@@ -122,9 +122,6 @@
           return;
         }
 
-        // Se o processo da própria linha comprova que é Calcinha, ele prevalece
-        // sobre metadados antigos/incompletos que possam ter marcado a movimentação
-        // como Sutiã. Não altera o documento histórico; corrige somente a exibição.
         linha.classList.remove(CLASSE_TIPO_INCOMPATIVEL);
         linha.classList.remove("corponu-dual-hidden");
       });
@@ -346,10 +343,8 @@
       setTimeout(preencherSelect, 80);
     }
 
-    if (alvo.closest("#s3buscar")) {
-      setTimeout(preencherSelect, 180);
-      setTimeout(preencherSelect, 650);
-    }
+    // O catálogo já é carregado ao abrir o modal. Buscar uma OP não precisa
+    // reler facções, preços e configuração de processos novamente.
 
     if (alvo.closest('.corponu-dual-tabs[data-page="faccoes"] .corponu-dual-tab, #abaFaccaoCorte, [data-page="faccoes"]')) {
       [0, 60, 180, 420].forEach(atraso => window.setTimeout(agendarClassificacaoVisual, atraso));
