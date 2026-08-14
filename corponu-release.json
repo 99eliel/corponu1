@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-13-fase-calcinha-restrita-198",
-  "updatedAt": "2026-08-13T14:27:00-03:00",
-  "notes": "No Manejo Calcinha, a Fase passa a aceitar no salvamento somente opções existentes na lista oficial configuracoes/fasesManejoCalcinha, administrada pelo responsável. Texto livre não autorizado é bloqueado antes de qualquer gravação. A validação usa a lista já sincronizada no navegador, sem nova leitura do Firestore por salvamento. O Manejo Sutiã não é alterado e permanece a proteção que evita a fase da Calcinha voltar para o valor antigo após salvar."
+  "version": "2026-08-14-op-salvamento-rapido-199",
+  "updatedAt": "2026-08-14T08:18:00-03:00",
+  "notes": "O cadastro e a edição de OP passam a usar uma única rotina de salvamento para Sutiã e Calcinha. A rotina usa primeiro os produtos e OPs já carregados no navegador, evita múltiplas consultas e salvamentos concorrentes, grava a OP uma única vez, registra o log em segundo plano e não força atualização completa do servidor após salvar. As validações de referência, duplicidade, necessidade e planejamento da Calcinha foram preservadas."
 }
