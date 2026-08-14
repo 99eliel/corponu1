@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-14-op-salvamento-rapido-199",
-  "updatedAt": "2026-08-14T08:18:00-03:00",
-  "notes": "O cadastro e a edição de OP passam a usar uma única rotina de salvamento para Sutiã e Calcinha. A rotina usa primeiro os produtos e OPs já carregados no navegador, evita múltiplas consultas e salvamentos concorrentes, grava a OP uma única vez, registra o log em segundo plano e não força atualização completa do servidor após salvar. As validações de referência, duplicidade, necessidade e planejamento da Calcinha foram preservadas."
+  "version": "2026-08-14-faccoes-classificacao-visual-200",
+  "updatedAt": "2026-08-14T08:38:00-03:00",
+  "notes": "Corrige a exibição de movimentações antigas na aba Facções. CALCINHA MONTAGEM e CALCINHA COMPLETA passam a ser classificadas pela própria coluna Processo e nunca aparecem na aba Sutiã, mesmo quando metadados antigos da movimentação estejam incompletos ou desatualizados. Na aba Calcinha, essas linhas são recuperadas visualmente. Não altera nem regrava históricos, pagamentos, chegadas ou movimentações. A proteção que impede lançar uma OP de Calcinha pela aba Sutiã permanece ativa."
 }
