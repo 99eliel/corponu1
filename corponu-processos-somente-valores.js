@@ -1,11 +1,23 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-13-excluir-processo-valores-195";
+  const VERSION = "2026-08-14-op-salvamento-rapido-199";
   const PAGINA_ID = "processos";
   const CLASSE_OCULTA = "cn61-processos-oculto";
   const CABECALHO_CALCINHA = "corponu-manejo-cabecalho-calcinha-191.js";
   const EXCLUIR_PROCESSO = "corponu-processos-excluir-195.js";
+  const SALVAR_OP_RAPIDO = "corponu-op-salvamento-rapido-199.js";
+
+  function carregarSalvarOp199() {
+    if (window.__CORPONU_OP_SALVAMENTO_RAPIDO_199__ === VERSION) return;
+    if ([...document.scripts].some(script => String(script.src || "").includes(SALVAR_OP_RAPIDO))) return;
+    const script = document.createElement("script");
+    script.src = `./${SALVAR_OP_RAPIDO}?v=${encodeURIComponent(VERSION)}&t=${Date.now()}`;
+    script.async = false;
+    script.dataset.corponuModulo = "op-salvamento-rapido-199";
+    script.onerror = () => console.error("Não foi possível carregar o salvamento rápido de OP.");
+    document.head.appendChild(script);
+  }
 
   function carregarCabecalhoCalcinha191() {
     if ([...document.scripts].some(script => String(script.src || "").includes(CABECALHO_CALCINHA))) return;
@@ -27,6 +39,7 @@
     document.head.appendChild(script);
   }
 
+  carregarSalvarOp199();
   carregarCabecalhoCalcinha191();
   carregarExcluirProcesso195();
 
@@ -183,6 +196,7 @@
   }
 
   function iniciar() {
+    carregarSalvarOp199();
     carregarCabecalhoCalcinha191();
     carregarExcluirProcesso195();
     carregarRelatorioGeral();
@@ -191,6 +205,7 @@
     aplicarDepois([250, 800]);
   }
 
+  carregarSalvarOp199();
   carregarCabecalhoCalcinha191();
   carregarExcluirProcesso195();
   carregarRelatorioGeral();
