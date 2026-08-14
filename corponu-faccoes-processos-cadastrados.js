@@ -1,17 +1,12 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-14-faccoes-busca-calcinha-rapida-201";
-  const FIREBASE_VERSION = "10.12.5";
-  const PROCESSOS_PADRAO = [
-    "ENCAPAR BOJO",
-    "ALÇA",
-    "INTERLOCK",
-    "CALCINHA MONTAGEM",
-    "CALCINHA COMPLETA",
-    "SUTIÃ MONTAGEM",
-    "SUTIÃ COMPLETO"
-  ];
+  const VERSION = "2026-08-14-faccoes-processos-saida-fixos-202";
+  const PROCESSOS_SAIDA = Object.freeze({
+    sutia: ["ENCAPAR BOJO", "SUTIÃ COMPLETO", "INTERLOCK"],
+    calcinha: ["CALCINHA COMPLETA", "CALCINHA MONTAGEM"],
+    corte: ["LATERAL", "ALÇA"]
+  });
   const PROCESSOS_EXCLUSIVOS_CALCINHA = new Set([
     "CALCINHA MONTAGEM",
     "CALCINHA COMPLETA"
@@ -21,11 +16,10 @@
   if (window.__CORPONU_FACCOES_PROCESSOS_CADASTRADOS__ === VERSION) return;
   window.__CORPONU_FACCOES_PROCESSOS_CADASTRADOS__ = VERSION;
 
-  let contextoPromise = null;
-  let carregando = false;
-  let cache = null;
-  let cacheEm = 0;
   let classificacaoAgendada = 0;
+  let observerSelect = null;
+  let selectObservado = null;
+  let preenchendo = false;
 
   const normalizar = valor => String(valor ?? "")
     .normalize("NFD")
@@ -40,20 +34,6 @@
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-
-  function adicionarLista(destino, valor) {
-    const itens = Array.isArray(valor) ? valor : (valor ? [valor] : []);
-    itens.forEach(item => {
-      const nome = typeof item === "string"
-        ? item
-        : item?.nome || item?.processo || item?.servicoNome || item?.label || "";
-      const ativo = typeof item === "object" ? item?.ativo !== false : true;
-      const chave = normalizar(nome);
-      if (ativo && chave && !["TODOS", "TODAS", "SELECIONE", "PROCESSO"].includes(chave)) {
-        destino.set(chave, String(nome).trim().toUpperCase());
-      }
-    });
-  }
 
   function garantirEstiloClassificacao() {
     if (document.getElementById("styleFaccaoClassificacaoVisual200")) return;
@@ -116,14 +96,11 @@
         }
 
         linha.dataset.corponuTipoProcessoVisual = "calcinha";
-
-        if (aba === "sutia") {
-          linha.classList.add(CLASSE_TIPO_INCOMPATIVEL);
-          return;
+        if (aba === "sutia") linha.classList.add(CLASSE_TIPO_INCOMPATIVEL);
+        else {
+          linha.classList.remove(CLASSE_TIPO_INCOMPATIVEL);
+          linha.classList.remove("corponu-dual-hidden");
         }
-
-        linha.classList.remove(CLASSE_TIPO_INCOMPATIVEL);
-        linha.classList.remove("corponu-dual-hidden");
       });
     });
   }
@@ -136,145 +113,17 @@
     });
   }
 
-  async function contexto() {
-    if (contextoPromise) return contextoPromise;
-    contextoPromise = Promise.all([
-      import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`),
-      import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-firestore.js`)
-    ]).then(([appModulo, firestore]) => {
-      if (!appModulo.getApps().length) throw new Error("Firebase não inicializado");
-      return { db: firestore.getFirestore(appModulo.getApp()), firestore };
-    }).catch(error => {
-      contextoPromise = null;
-      throw error;
-    });
-    return contextoPromise;
-  }
+  function abaSaidaAtual() {
+    if (document.getElementById("abaFaccaoCorte")?.classList.contains("active")) return "corte";
 
-  function classificacaoFaccao(faccao) {
-    const processos = Array.isArray(faccao?.processosPermitidos) ? faccao.processosPermitidos : [];
-    const grupos = Array.isArray(faccao?.gruposPermitidos) ? faccao.gruposPermitidos : [];
-    const texto = normalizar([...processos, ...grupos, faccao?.grupo].join(" "));
-    return {
-      sutia: typeof faccao?.trabalhaSutia === "boolean"
-        ? faccao.trabalhaSutia
-        : faccao?.atendeSutia === true || /SUTIA|BOJO|ALCA/.test(texto),
-      calcinha: typeof faccao?.trabalhaCalcinha === "boolean"
-        ? faccao.trabalhaCalcinha
-        : faccao?.atendeCalcinha === true || texto.includes("CALCINHA")
-    };
-  }
-
-  function abaAtual() {
-    const titulo = normalizar(document.getElementById("s3titulo")?.textContent);
+    const titulo = normalizar(document.getElementById("s3titulo")?.textContent || "");
     if (titulo.includes("CALCINHA")) return "calcinha";
-    if (titulo.includes("CORTE")) return "corte";
+    if (titulo.includes("LATERAL") || titulo.includes("CORTE")) return "corte";
     return "sutia";
   }
 
-  function processosDoDOM() {
-    const resultado = new Map();
-
-    document.querySelectorAll("#faccoes select").forEach(select => {
-      if (select.id === "s3processo") return;
-      if (!/processo/i.test(`${select.id} ${select.name} ${select.closest("label")?.textContent || ""}`)) return;
-      [...select.options].forEach(option => adicionarLista(resultado, option.value || option.textContent));
-    });
-
-    document.querySelectorAll("#faccoes [data-processo], #faccoes [data-processo-nome]").forEach(elemento => {
-      adicionarLista(resultado, elemento.dataset.processo || elemento.dataset.processoNome);
-    });
-
-    return resultado;
-  }
-
-  async function carregarBase() {
-    if (cache && Date.now() - cacheEm < 30000) return cache;
-    if (carregando) {
-      for (let tentativa = 0; tentativa < 50 && carregando; tentativa += 1) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      if (cache) return cache;
-    }
-
-    carregando = true;
-    try {
-      const { db, firestore: f } = await contexto();
-      const porAba = {
-        sutia: processosDoDOM(),
-        calcinha: processosDoDOM(),
-        corte: processosDoDOM()
-      };
-
-      const [faccoesSnap, precosSnap, configSnap] = await Promise.all([
-        f.getDocs(f.collection(db, "faccoes")),
-        f.getDocs(f.collection(db, "precosReferencia")),
-        f.getDoc(f.doc(db, "configuracoes", "processos-corte"))
-      ]);
-
-      faccoesSnap.docs.forEach(documento => {
-        const faccao = documento.data();
-        if (faccao.ativo === false || faccao.cadastroPendente || faccao.duplicadaDe || faccao.statusImportacao === "duplicada_consolidada") return;
-        const classe = classificacaoFaccao(faccao);
-        const listas = [
-          faccao.processosPermitidos,
-          faccao.processos,
-          faccao.servicosPermitidos,
-          faccao.servicos,
-          faccao.processo
-        ];
-        listas.forEach(lista => {
-          adicionarLista(porAba.corte, lista);
-          if (classe.sutia) adicionarLista(porAba.sutia, lista);
-          if (classe.calcinha) adicionarLista(porAba.calcinha, lista);
-        });
-      });
-
-      precosSnap.docs.forEach(documento => {
-        const preco = documento.data();
-        if (preco.ativo === false) return;
-        const nome = preco.processo || preco.servicoNome || preco.processoMovimentacao;
-        if (!nome) return;
-        adicionarLista(porAba.corte, nome);
-        const setor = normalizar(preco.setor || preco.area || preco.tipoPeca);
-        const processo = normalizar(nome);
-        if (setor.includes("CALCINHA") || processo.includes("CALCINHA")) {
-          adicionarLista(porAba.calcinha, nome);
-        } else if (setor.includes("SUTIA") || /SUTIA|BOJO|ALCA/.test(processo)) {
-          adicionarLista(porAba.sutia, nome);
-        } else {
-          adicionarLista(porAba.sutia, nome);
-          adicionarLista(porAba.calcinha, nome);
-        }
-      });
-
-      const configuracao = configSnap.exists() ? configSnap.data() : {};
-      (Array.isArray(configuracao.processos) ? configuracao.processos : []).forEach(processo => {
-        if (processo?.ativo === false) return;
-        adicionarLista(porAba.corte, processo);
-        if (processo?.atendeSutia === true) adicionarLista(porAba.sutia, processo);
-        if (processo?.atendeCalcinha === true) adicionarLista(porAba.calcinha, processo);
-      });
-
-      PROCESSOS_PADRAO.forEach(nome => {
-        adicionarLista(porAba.corte, nome);
-        const chave = normalizar(nome);
-        if (chave === "INTERLOCK") {
-          adicionarLista(porAba.sutia, nome);
-          adicionarLista(porAba.calcinha, nome);
-        } else if (chave.includes("CALCINHA")) {
-          adicionarLista(porAba.calcinha, nome);
-        } else {
-          adicionarLista(porAba.sutia, nome);
-        }
-      });
-
-      cache = porAba;
-      cacheEm = Date.now();
-      return porAba;
-    } finally {
-      carregando = false;
-    }
+  function processosPermitidos(aba = abaSaidaAtual()) {
+    return PROCESSOS_SAIDA[aba] || PROCESSOS_SAIDA.sutia;
   }
 
   function garantirSelect() {
@@ -284,52 +133,103 @@
 
     const select = document.createElement("select");
     [...atual.attributes].forEach(atributo => {
-      if (atributo.name === "type" || atributo.name === "placeholder") return;
+      if (["type", "placeholder", "list"].includes(atributo.name)) return;
       select.setAttribute(atributo.name, atributo.value);
     });
     select.id = "s3processo";
     select.required = true;
-    select.innerHTML = '<option value="">Busque a OP para carregar</option>';
+    select.innerHTML = '<option value="">Selecione o processo</option>';
     atual.replaceWith(select);
     return select;
   }
 
-  async function preencherSelect() {
+  function assinaturaSelect(select) {
+    return [...select.options]
+      .slice(1)
+      .map(option => normalizar(option.value || option.textContent))
+      .filter(Boolean)
+      .join("|");
+  }
+
+  function preencherSelect() {
+    if (preenchendo) return;
     const select = garantirSelect();
-    if (!select) return;
+    if (!(select instanceof HTMLSelectElement)) return;
 
-    const aba = abaAtual();
-    const valorAnterior = select.value;
-    select.disabled = true;
-    select.innerHTML = '<option value="">Carregando processos cadastrados...</option>';
+    const itens = processosPermitidos();
+    const assinaturaDesejada = itens.map(normalizar).join("|");
+    const atual = normalizar(select.value);
 
+    if (assinaturaSelect(select) === assinaturaDesejada) {
+      if (atual && !itens.some(item => normalizar(item) === atual)) select.value = "";
+      select.disabled = false;
+      return;
+    }
+
+    preenchendo = true;
     try {
-      const base = await carregarBase();
-      const itens = [...(base[aba] || new Map()).values()]
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
-
       select.innerHTML = '<option value="">Selecione o processo</option>' + itens
         .map(nome => `<option value="${escapar(nome)}">${escapar(nome)}</option>`)
         .join("");
       select.disabled = false;
-      if (itens.some(nome => normalizar(nome) === normalizar(valorAnterior))) {
-        select.value = itens.find(nome => normalizar(nome) === normalizar(valorAnterior));
-      }
 
-      if (!itens.length) {
-        select.innerHTML = '<option value="">Nenhum processo cadastrado</option>';
-        select.disabled = true;
-      }
-    } catch (error) {
-      console.error("Não foi possível carregar os processos cadastrados.", error);
-      select.innerHTML = '<option value="">Erro ao carregar processos</option>';
-      select.disabled = true;
+      const permitidoAnterior = itens.find(item => normalizar(item) === atual);
+      if (permitidoAnterior) select.value = permitidoAnterior;
+      else select.value = "";
+    } finally {
+      preenchendo = false;
     }
+
+    observarSelect();
+  }
+
+  function observarSelect() {
+    const select = garantirSelect();
+    if (!(select instanceof HTMLSelectElement)) return;
+    if (selectObservado === select) return;
+
+    observerSelect?.disconnect();
+    selectObservado = select;
+    observerSelect = new MutationObserver(() => {
+      if (!preenchendo) window.setTimeout(preencherSelect, 0);
+    });
+    observerSelect.observe(select, { childList: true });
+  }
+
+  function avisar(mensagem) {
+    const toast = document.getElementById("toast");
+    if (toast) {
+      toast.textContent = mensagem;
+      toast.classList.remove("hidden");
+      window.clearTimeout(window.__faccoesProcessos202Toast);
+      window.__faccoesProcessos202Toast = window.setTimeout(() => toast.classList.add("hidden"), 6000);
+      return;
+    }
+    window.alert(mensagem);
+  }
+
+  function validarSubmit(event) {
+    if (event.target?.id !== "s3form") return;
+    const select = garantirSelect();
+    if (!(select instanceof HTMLSelectElement)) return;
+
+    const aba = abaSaidaAtual();
+    const valor = normalizar(select.value);
+    const permitidos = processosPermitidos(aba);
+    const valido = permitidos.some(item => normalizar(item) === valor);
+    if (valido) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    avisar(`Selecione um processo permitido para esta aba: ${permitidos.join(", ")}.`);
+    preencherSelect();
+    select.focus();
   }
 
   function preparar() {
     garantirSelect();
+    observarSelect();
     agendarClassificacaoVisual();
   }
 
@@ -338,28 +238,31 @@
     if (!alvo) return;
 
     if (alvo.closest("#btnSaidaAbas, #btnSaidaCorteNovo")) {
-      cache = null;
-      cacheEm = 0;
-      setTimeout(preencherSelect, 80);
+      [0, 50, 140].forEach(atraso => window.setTimeout(preencherSelect, atraso));
     }
 
-    // O catálogo já é carregado ao abrir o modal. Buscar uma OP não precisa
-    // reler facções, preços e configuração de processos novamente.
+    if (alvo.closest("#s3buscar")) {
+      [0, 80].forEach(atraso => window.setTimeout(preencherSelect, atraso));
+    }
 
     if (alvo.closest('.corponu-dual-tabs[data-page="faccoes"] .corponu-dual-tab, #abaFaccaoCorte, [data-page="faccoes"]')) {
-      [0, 60, 180, 420].forEach(atraso => window.setTimeout(agendarClassificacaoVisual, atraso));
+      [0, 60, 180].forEach(atraso => window.setTimeout(agendarClassificacaoVisual, atraso));
     }
   }, true);
 
-  const observer = new MutationObserver(() => preparar());
+  document.addEventListener("submit", validarSubmit, true);
+
+  function iniciar() {
+    preparar();
+    [60, 180, 500].forEach(atraso => window.setTimeout(() => {
+      preparar();
+      if (!document.getElementById("modalSaida3")?.classList.contains("hidden")) preencherSelect();
+    }, atraso));
+  }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-      preparar();
-      observer.observe(document.body, { childList: true, subtree: true });
-    }, { once: true });
+    document.addEventListener("DOMContentLoaded", iniciar, { once: true });
   } else {
-    preparar();
-    observer.observe(document.body, { childList: true, subtree: true });
+    iniciar();
   }
 })();
