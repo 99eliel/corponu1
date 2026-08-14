@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-12-faccoes-otimizadas-183";
+  const VERSION = "2026-08-14-faccoes-classificacao-visual-200";
   const FIREBASE_VERSION = "10.12.5";
   const PROCESSOS_PADRAO = [
     "ENCAPAR BOJO",
@@ -12,6 +12,11 @@
     "SUTIÃ MONTAGEM",
     "SUTIÃ COMPLETO"
   ];
+  const PROCESSOS_EXCLUSIVOS_CALCINHA = new Set([
+    "CALCINHA MONTAGEM",
+    "CALCINHA COMPLETA"
+  ]);
+  const CLASSE_TIPO_INCOMPATIVEL = "cn200-faccao-tipo-incompativel";
 
   if (window.__CORPONU_FACCOES_PROCESSOS_CADASTRADOS__ === VERSION) return;
   window.__CORPONU_FACCOES_PROCESSOS_CADASTRADOS__ = VERSION;
@@ -20,6 +25,7 @@
   let carregando = false;
   let cache = null;
   let cacheEm = 0;
+  let classificacaoAgendada = 0;
 
   const normalizar = valor => String(valor ?? "")
     .normalize("NFD")
@@ -46,6 +52,90 @@
       if (ativo && chave && !["TODOS", "TODAS", "SELECIONE", "PROCESSO"].includes(chave)) {
         destino.set(chave, String(nome).trim().toUpperCase());
       }
+    });
+  }
+
+  function garantirEstiloClassificacao() {
+    if (document.getElementById("styleFaccaoClassificacaoVisual200")) return;
+    const style = document.createElement("style");
+    style.id = "styleFaccaoClassificacaoVisual200";
+    style.textContent = `
+      #faccoes #listaFaccoesMovimentacoes tr.${CLASSE_TIPO_INCOMPATIVEL},
+      #faccoes #listaMovimentacoesUsuario tr.${CLASSE_TIPO_INCOMPATIVEL}{
+        display:none!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function abaPrincipalFaccoesAtiva() {
+    const corte = document.getElementById("abaFaccaoCorte");
+    if (corte?.classList.contains("active")) return "corte";
+
+    const ativa = document.querySelector('.corponu-dual-tabs[data-page="faccoes"] .corponu-dual-tab.active');
+    const tipo = String(ativa?.dataset?.type || "").toLowerCase();
+    return tipo === "calcinha" || tipo === "sutia" ? tipo : "";
+  }
+
+  function indiceProcessoDaTabela(tabela) {
+    if (!tabela) return -1;
+    const cabecalhos = [...tabela.querySelectorAll("thead th")];
+    return cabecalhos.findIndex(th => normalizar(th.textContent) === "PROCESSO");
+  }
+
+  function processoDaLinha(linha) {
+    const tabela = linha?.closest("table");
+    const indice = indiceProcessoDaTabela(tabela);
+    if (indice < 0) return "";
+    return normalizar(linha.cells?.[indice]?.textContent || "");
+  }
+
+  function corrigirClassificacaoVisualMovimentacoes() {
+    garantirEstiloClassificacao();
+
+    const aba = abaPrincipalFaccoesAtiva();
+    if (!aba || aba === "corte") {
+      document.querySelectorAll(`#faccoes tr.${CLASSE_TIPO_INCOMPATIVEL}`)
+        .forEach(linha => linha.classList.remove(CLASSE_TIPO_INCOMPATIVEL));
+      return;
+    }
+
+    ["listaFaccoesMovimentacoes", "listaMovimentacoesUsuario"].forEach(id => {
+      const tbody = document.getElementById(id);
+      if (!tbody) return;
+
+      tbody.querySelectorAll(":scope > tr").forEach(linha => {
+        if (linha.querySelector(".empty") || linha.cells.length <= 1) return;
+
+        const processo = processoDaLinha(linha);
+        const ehCalcinha = PROCESSOS_EXCLUSIVOS_CALCINHA.has(processo);
+
+        if (!ehCalcinha) {
+          linha.classList.remove(CLASSE_TIPO_INCOMPATIVEL);
+          return;
+        }
+
+        linha.dataset.corponuTipoProcessoVisual = "calcinha";
+
+        if (aba === "sutia") {
+          linha.classList.add(CLASSE_TIPO_INCOMPATIVEL);
+          return;
+        }
+
+        // Se o processo da própria linha comprova que é Calcinha, ele prevalece
+        // sobre metadados antigos/incompletos que possam ter marcado a movimentação
+        // como Sutiã. Não altera o documento histórico; corrige somente a exibição.
+        linha.classList.remove(CLASSE_TIPO_INCOMPATIVEL);
+        linha.classList.remove("corponu-dual-hidden");
+      });
+    });
+  }
+
+  function agendarClassificacaoVisual() {
+    if (classificacaoAgendada) return;
+    classificacaoAgendada = window.requestAnimationFrame(() => {
+      classificacaoAgendada = 0;
+      corrigirClassificacaoVisualMovimentacoes();
     });
   }
 
@@ -243,6 +333,7 @@
 
   function preparar() {
     garantirSelect();
+    agendarClassificacaoVisual();
   }
 
   document.addEventListener("click", event => {
@@ -258,6 +349,10 @@
     if (alvo.closest("#s3buscar")) {
       setTimeout(preencherSelect, 180);
       setTimeout(preencherSelect, 650);
+    }
+
+    if (alvo.closest('.corponu-dual-tabs[data-page="faccoes"] .corponu-dual-tab, #abaFaccaoCorte, [data-page="faccoes"]')) {
+      [0, 60, 180, 420].forEach(atraso => window.setTimeout(agendarClassificacaoVisual, atraso));
     }
   }, true);
 
