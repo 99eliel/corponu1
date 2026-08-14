@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-14-faccoes-classificacao-visual-200",
-  "updatedAt": "2026-08-14T08:38:00-03:00",
-  "notes": "Corrige a exibição de movimentações antigas na aba Facções. CALCINHA MONTAGEM e CALCINHA COMPLETA passam a ser classificadas pela própria coluna Processo e nunca aparecem na aba Sutiã, mesmo quando metadados antigos da movimentação estejam incompletos ou desatualizados. Na aba Calcinha, essas linhas são recuperadas visualmente. Não altera nem regrava históricos, pagamentos, chegadas ou movimentações. A proteção que impede lançar uma OP de Calcinha pela aba Sutiã permanece ativa."
+  "version": "2026-08-14-faccoes-busca-calcinha-rapida-201",
+  "updatedAt": "2026-08-14T10:58:00-03:00",
+  "notes": "O fluxo Facções > Calcinha > Registrar saída passa a localizar OPs primeiro no mapa já carregado no navegador e tenta diretamente IDs do padrão calcinha-OP antes de consultas por campos. O carregamento de facções é compartilhado entre abertura e busca, evitando leituras duplicadas simultâneas. Buscar OP deixa de recarregar o catálogo completo de processos, facções e preços. A lógica de saída, chegada e pagamentos não foi alterada."
 }
