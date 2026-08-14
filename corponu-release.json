@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-14-faccoes-busca-calcinha-rapida-201",
-  "updatedAt": "2026-08-14T10:58:00-03:00",
-  "notes": "O fluxo Facções > Calcinha > Registrar saída passa a localizar OPs primeiro no mapa já carregado no navegador e tenta diretamente IDs do padrão calcinha-OP antes de consultas por campos. O carregamento de facções é compartilhado entre abertura e busca, evitando leituras duplicadas simultâneas. Buscar OP deixa de recarregar o catálogo completo de processos, facções e preços. A lógica de saída, chegada e pagamentos não foi alterada."
+  "version": "2026-08-14-faccoes-processos-saida-fixos-202",
+  "updatedAt": "2026-08-14T13:41:00-03:00",
+  "notes": "Na aba Facções, o Registrar saída passa a usar listas fixas por área: Sutiã mostra somente ENCAPAR BOJO, SUTIÃ COMPLETO e INTERLOCK; Calcinha mostra somente CALCINHA COMPLETA e CALCINHA MONTAGEM; Lateral e Alça mostra somente LATERAL e ALÇA. O seletor é validado também no envio para impedir processo incompatível. O catálogo duplicado baseado em precosReferencia foi desativado, eliminando uma leitura e um observer desnecessários sem alterar históricos, chegadas ou pagamentos."
 }
