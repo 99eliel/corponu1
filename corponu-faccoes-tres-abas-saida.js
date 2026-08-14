@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const V = "2026-08-13-faccoes-busca-rapida-196";
+  const V = "2026-08-14-faccoes-busca-calcinha-rapida-201";
   const FB = "10.12.5";
 
   if (window.__FACCOES_3_ABAS__ === V) return;
@@ -11,6 +11,7 @@
   let op = null;
   let faccoes = [];
   let faccoesCarregadasEm = 0;
+  let faccoesPromise = null;
   const FACCOES_CACHE_MS = 60 * 1000;
   const OP_CACHE_MS = 2 * 60 * 1000;
   const cacheOps = new Map();
@@ -39,6 +40,10 @@
   };
 
   const qtd = o => Math.max(0, num(o?.quantidade ?? o?.quantidadeTotal ?? o?.qtd ?? o?.qti));
+  const idSeguro = v => norm(v)
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
   function tipo(o) {
     if (!o) return "sutia";
@@ -245,6 +250,34 @@
     return direto || ativos[0];
   }
 
+  function buscarOPNoEstado(v, preferencia) {
+    const mapa = window.corponuDualMode?.state?.maps?.ordens;
+    if (!(mapa instanceof Map) || !mapa.size) return null;
+
+    const s = String(v || "").trim();
+    const alvo = norm(s);
+    const slug = idSeguro(s);
+    const idsPreferidos = new Set([
+      s,
+      slug,
+      `calcinha-${slug}`,
+      `op-${slug}`
+    ].filter(Boolean).map(norm));
+
+    const encontrados = new Map();
+    mapa.forEach((item, id) => {
+      const numero = norm(item?.numeroOP || item?.numeroOPExterno || item?.op || "");
+      if (numero === alvo || idsPreferidos.has(norm(id)) || idsPreferidos.has(norm(item?.id))) {
+        encontrados.set(String(id), { id: String(id), ...item });
+      }
+    });
+
+    const escolhida = escolherOrdemEncontrada(encontrados, preferencia, s);
+    if (!escolhida) return null;
+    if (preferencia !== "corte" && tipo(escolhida) !== preferencia) return null;
+    return escolhida;
+  }
+
   async function executarConsultasOP(c, campos, valores, encontrados) {
     const tarefas = [];
 
@@ -269,8 +302,18 @@
     });
   }
 
+  async function buscarDocumentosDiretos(c, ids, encontrados, usarCache) {
+    const tarefas = ids.map(id => {
+      const ref = c.f.doc(c.db, "ordensProducao", id);
+      return (usarCache ? c.f.getDocFromCache(ref) : c.f.getDoc(ref)).catch(() => null);
+    });
+    const resultados = await Promise.all(tarefas);
+    resultados.forEach(d => {
+      if (d?.exists?.()) encontrados.set(d.id, { id: d.id, ...d.data() });
+    });
+  }
+
   async function buscarOP(v, preferencia = aba) {
-    const c = await ctx();
     const s = String(v || "").trim();
     if (!s) return null;
 
@@ -278,32 +321,32 @@
     const cache = cacheOps.get(chaveCache);
     if (cache && Date.now() - cache.em < OP_CACHE_MS) return cache.valor;
 
+    const local = buscarOPNoEstado(s, preferencia);
+    if (local) {
+      cacheOps.set(chaveCache, { em: Date.now(), valor: local });
+      return local;
+    }
+
+    const c = await ctx();
     const encontrados = new Map();
-    const refDireta = c.f.doc(c.db, "ordensProducao", s);
+    const slug = idSeguro(s);
+    const ids = preferencia === "calcinha"
+      ? [...new Set([`calcinha-${slug}`, s, `op-${slug}`, slug].filter(Boolean))]
+      : [...new Set([s, `op-${slug}`, slug, `calcinha-${slug}`].filter(Boolean))];
 
-    try {
-      const dCache = await c.f.getDocFromCache(refDireta);
-      if (dCache.exists()) {
-        encontrados.set(dCache.id, { id: dCache.id, ...dCache.data() });
-        const encontrada = escolherOrdemEncontrada(encontrados, preferencia, s);
-        if (encontrada && (preferencia === "corte" || tipo(encontrada) === preferencia)) {
-          cacheOps.set(chaveCache, { em: Date.now(), valor: encontrada });
-          return encontrada;
-        }
-      }
-    } catch (_) {}
+    await buscarDocumentosDiretos(c, ids, encontrados, true);
+    let escolhida = escolherOrdemEncontrada(encontrados, preferencia, s);
+    if (escolhida && (preferencia === "corte" || tipo(escolhida) === preferencia)) {
+      cacheOps.set(chaveCache, { em: Date.now(), valor: escolhida });
+      return escolhida;
+    }
 
-    try {
-      const d = await c.f.getDoc(refDireta);
-      if (d.exists()) {
-        encontrados.set(d.id, { id: d.id, ...d.data() });
-        const encontrada = escolherOrdemEncontrada(encontrados, preferencia, s);
-        if (encontrada && (preferencia === "corte" || tipo(encontrada) === preferencia)) {
-          cacheOps.set(chaveCache, { em: Date.now(), valor: encontrada });
-          return encontrada;
-        }
-      }
-    } catch (_) {}
+    await buscarDocumentosDiretos(c, ids, encontrados, false);
+    escolhida = escolherOrdemEncontrada(encontrados, preferencia, s);
+    if (escolhida && (preferencia === "corte" || tipo(escolhida) === preferencia)) {
+      cacheOps.set(chaveCache, { em: Date.now(), valor: escolhida });
+      return escolhida;
+    }
 
     const valores = [s];
     const n = Number(s);
@@ -311,7 +354,7 @@
     const valoresUnicos = [...new Set(valores)];
 
     await executarConsultasOP(c, ["numeroOP"], valoresUnicos, encontrados);
-    let escolhida = escolherOrdemEncontrada(encontrados, preferencia, s);
+    escolhida = escolherOrdemEncontrada(encontrados, preferencia, s);
     if (escolhida && (preferencia === "corte" || tipo(escolhida) === preferencia)) {
       cacheOps.set(chaveCache, { em: Date.now(), valor: escolhida });
       return escolhida;
@@ -331,29 +374,36 @@
 
   async function carregarFaccoesRapido() {
     if (faccoes.length && Date.now() - faccoesCarregadasEm < FACCOES_CACHE_MS) return faccoes;
+    if (faccoesPromise) return faccoesPromise;
 
-    const c = await ctx();
-    const colecao = c.f.collection(c.db, "faccoes");
+    faccoesPromise = (async () => {
+      const c = await ctx();
+      const colecao = c.f.collection(c.db, "faccoes");
 
-    try {
-      const cache = await c.f.getDocsFromCache(colecao);
-      if (!cache.empty) {
-        faccoes = normalizarListaFaccoes(cache);
-        faccoesCarregadasEm = Date.now();
-
-        c.f.getDocs(colecao).then(snapshot => {
-          faccoes = normalizarListaFaccoes(snapshot);
+      try {
+        const cache = await c.f.getDocsFromCache(colecao);
+        if (!cache.empty) {
+          faccoes = normalizarListaFaccoes(cache);
           faccoesCarregadasEm = Date.now();
-        }).catch(() => {});
 
-        return faccoes;
-      }
-    } catch (_) {}
+          c.f.getDocs(colecao).then(snapshot => {
+            faccoes = normalizarListaFaccoes(snapshot);
+            faccoesCarregadasEm = Date.now();
+          }).catch(() => {});
 
-    const servidor = await c.f.getDocs(colecao);
-    faccoes = normalizarListaFaccoes(servidor);
-    faccoesCarregadasEm = Date.now();
-    return faccoes;
+          return faccoes;
+        }
+      } catch (_) {}
+
+      const servidor = await c.f.getDocs(colecao);
+      faccoes = normalizarListaFaccoes(servidor);
+      faccoesCarregadasEm = Date.now();
+      return faccoes;
+    })().finally(() => {
+      faccoesPromise = null;
+    });
+
+    return faccoesPromise;
   }
 
   function classe(f) {
@@ -371,8 +421,10 @@
 
     b.disabled = true;
     b.textContent = "Buscando...";
+    const inicio = performance.now();
 
     try {
+      const promessaFaccoes = carregarFaccoesRapido().catch(() => faccoes);
       const o = await buscarOP(v, aba);
       if (!o) return toast("OP não encontrada ou está excluída.");
 
@@ -382,7 +434,7 @@
       }
 
       op = o;
-      faccoes = await carregarFaccoesRapido();
+      faccoes = await promessaFaccoes;
 
       const comp = faccoes
         .filter(f => {
@@ -399,6 +451,7 @@
       document.getElementById("s3prev").classList.remove("hidden");
       document.getElementById("s3campos").classList.remove("hidden");
       document.getElementById("s3processo").focus();
+      console.info(`[Facções 201] OP ${v} localizada em ${Math.round(performance.now() - inicio)} ms (${tp}).`);
     } catch (e) {
       console.error(e);
       toast("Erro ao buscar a OP.");
