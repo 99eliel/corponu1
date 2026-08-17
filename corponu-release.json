@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-17-pagamentos-pendentes-busca-op-208",
-  "updatedAt": "2026-08-17T13:45:00-03:00",
-  "notes": "PRODUÇÃO. Adicionada uma barra específica de busca por Nº da OP no modal Restantes pendentes da aba Pagamentos. A pesquisa filtra instantaneamente apenas os pendentes já carregados na tela, sem novas leituras do Firebase. Os filtros existentes de processo, tipo, referência e facção foram preservados. Nenhuma regra de pagamento, valor, exclusão ou confirmação foi alterada."
+  "version": "2026-08-17-rollback-estavel-209",
+  "updatedAt": "2026-08-17T13:47:00-03:00",
+  "notes": "PRODUÇÃO. Rollback emergencial da alteração 208 após comportamento de loop no sistema. Restaurado o runtime exatamente para o estado estável anterior à busca de OP. Mantidas as correções já validadas do Manejo Calcinha e da regra de ponto de luz somente para a referência 411. A busca de OP em Restantes pendentes foi temporariamente removida até nova implementação isolada e validada."
 }
