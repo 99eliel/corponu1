@@ -218,16 +218,3 @@
   script.onerror = () => console.error("Não foi possível carregar a regra de ponto de luz da REF 411.");
   (document.head || document.documentElement).appendChild(script);
 })();
-
-(() => {
-  "use strict";
-
-  if (document.querySelector('script[data-corponu-pendentes-busca-op="208"]')) return;
-
-  const script = document.createElement("script");
-  script.src = `./corponu-pagamentos-pendentes-busca-op-208.js?v=2026-08-17-pagamentos-pendentes-busca-op-208&t=${Date.now()}`;
-  script.async = false;
-  script.dataset.corponuPendentesBuscaOp = "208";
-  script.onerror = () => console.error("Não foi possível carregar a busca por OP dos pagamentos pendentes.");
-  (document.head || document.documentElement).appendChild(script);
-})();
