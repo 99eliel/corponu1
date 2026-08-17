@@ -192,3 +192,16 @@
     iniciar();
   }
 })();
+
+(() => {
+  "use strict";
+
+  if (document.querySelector('script[data-corponu-manejo-calcinha-estavel="204"]')) return;
+
+  const script = document.createElement("script");
+  script.src = `./corponu-manejo-calcinha-estavel-204.js?v=2026-08-17-manejo-calcinha-estavel-204&t=${Date.now()}`;
+  script.async = false;
+  script.dataset.corponuManejoCalcinhaEstavel = "204";
+  script.onerror = () => console.error("Não foi possível carregar a estabilização visual do Manejo Calcinha 204.");
+  (document.head || document.documentElement).appendChild(script);
+})();
