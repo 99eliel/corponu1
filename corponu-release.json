@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-17-manejo-calcinha-fluido-205",
-  "updatedAt": "2026-08-17T10:39:00-03:00",
-  "notes": "PRODUÇÃO. Ajuste de desempenho do Manejo Calcinha. Removido o overlay que congelava a tabela, bloqueava cliques e mostrava cursor de espera durante o salvamento. Mantida a proteção contra piscadas por CSS antes da pintura e a pausa do observador genérico que causava reaplicações desnecessárias ao editar Fase. O visto verde agora apenas impede clique duplicado na própria linha enquanto salva; o restante da interface continua utilizável. Nenhuma regra de negócio, gravação, filtro, Manejo Sutiã, Facções ou Pagamentos foi alterada."
+  "version": "2026-08-17-ponto-luz-somente-411-206",
+  "updatedAt": "2026-08-17T11:03:00-03:00",
+  "notes": "PRODUÇÃO. Ajuste pontual na chegada de SUTIÃ COMPLETO: a pergunta sobre ponto de luz passa a existir somente para a referência 411. Para qualquer outra referência de Sutiã Completo, o campo é ocultado e tratado como não aplicável ao cálculo, portanto não gera desconto de ponto de luz. A pergunta de fecho e as conferências de lateral e bojo permanecem inalteradas. Nenhuma outra regra de pagamento, chegada, facção, manejo ou referência foi modificada."
 }
