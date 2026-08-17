@@ -205,3 +205,16 @@
   script.onerror = () => console.error("Não foi possível carregar a estabilização visual do Manejo Calcinha 204.");
   (document.head || document.documentElement).appendChild(script);
 })();
+
+(() => {
+  "use strict";
+
+  if (document.querySelector('script[data-corponu-ponto-luz-411="206"]')) return;
+
+  const script = document.createElement("script");
+  script.src = `./corponu-sutia-completo-ponto-luz-411-206.js?v=2026-08-17-ponto-luz-somente-411-206&t=${Date.now()}`;
+  script.async = false;
+  script.dataset.corponuPontoLuz411 = "206";
+  script.onerror = () => console.error("Não foi possível carregar a regra de ponto de luz da REF 411.");
+  (document.head || document.documentElement).appendChild(script);
+})();
