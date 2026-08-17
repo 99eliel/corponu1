@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-17-manejo-calcinha-estavel-204",
-  "updatedAt": "2026-08-17T10:28:00-03:00",
-  "notes": "PRODUÇÃO. Correção visual isolada no Manejo Calcinha. Ao editar a Fase, o observador genérico de classes do módulo Sutiã/Calcinha fica pausado enquanto a Calcinha está ativa, evitando reaplicações desnecessárias. Ao clicar no visto verde para concluir, a tabela visível fica congelada exatamente no estado atual enquanto o Firestore e os snapshots reconstroem o DOM por trás; somente o estado final já estabilizado é revelado. Silk e Tecido permanecem ocultos durante toda a reconstrução, impedindo a exibição rápida de outros nomes. O salvamento, os dados, os filtros, o Manejo Sutiã, Facções e Pagamentos não foram alterados."
+  "version": "2026-08-17-manejo-calcinha-fluido-205",
+  "updatedAt": "2026-08-17T10:39:00-03:00",
+  "notes": "PRODUÇÃO. Ajuste de desempenho do Manejo Calcinha. Removido o overlay que congelava a tabela, bloqueava cliques e mostrava cursor de espera durante o salvamento. Mantida a proteção contra piscadas por CSS antes da pintura e a pausa do observador genérico que causava reaplicações desnecessárias ao editar Fase. O visto verde agora apenas impede clique duplicado na própria linha enquanto salva; o restante da interface continua utilizável. Nenhuma regra de negócio, gravação, filtro, Manejo Sutiã, Facções ou Pagamentos foi alterada."
 }
