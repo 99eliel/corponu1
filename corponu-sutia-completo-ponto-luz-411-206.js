@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-17-ponto-luz-somente-411-206";
+  const VERSION = "2026-08-17-ponto-luz-somente-411-207";
   const REFERENCIA_PONTO_LUZ = "411";
 
   if (window.__CORPONU_PONTO_LUZ_SOMENTE_411__ === VERSION) return;
