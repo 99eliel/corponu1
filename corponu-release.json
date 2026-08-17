@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-17-auto-update-definitivo-203",
-  "updatedAt": "2026-08-17T10:22:00-03:00",
-  "notes": "PRODUÇÃO. Correção exclusiva do mecanismo de atualização automática. A mudança 202 -> 203 força as abas antigas a recarregarem pelo atualizador já existente. Nessa recarga, o módulo dinâmico instala o novo runtime de atualização por aba, que consulta corponu-release.json sem cache a cada 15 segundos e também ao recuperar foco, visibilidade ou conexão. Quando houver nova release, o runtime busca o index sem cache e reaplica cache busting em JS/CSS, removendo a dependência de Ctrl+F5. Nenhuma regra de negócio, dado, pagamento, facção ou lógica de manejo foi alterada."
+  "version": "2026-08-17-manejo-calcinha-estavel-204",
+  "updatedAt": "2026-08-17T10:28:00-03:00",
+  "notes": "PRODUÇÃO. Correção visual isolada no Manejo Calcinha. Ao editar a Fase, o observador genérico de classes do módulo Sutiã/Calcinha fica pausado enquanto a Calcinha está ativa, evitando reaplicações desnecessárias. Ao clicar no visto verde para concluir, a tabela visível fica congelada exatamente no estado atual enquanto o Firestore e os snapshots reconstroem o DOM por trás; somente o estado final já estabilizado é revelado. Silk e Tecido permanecem ocultos durante toda a reconstrução, impedindo a exibição rápida de outros nomes. O salvamento, os dados, os filtros, o Manejo Sutiã, Facções e Pagamentos não foram alterados."
 }
