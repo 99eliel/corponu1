@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-17-ponto-luz-somente-411-207",
-  "updatedAt": "2026-08-17T11:06:00-03:00",
-  "notes": "PRODUÇÃO. Regra final da chegada de SUTIÃ COMPLETO: somente a referência 411 pergunta se a peça veio com ponto de luz. Para todas as demais referências, o campo fica oculto e o ponto de luz é tratado como não aplicável ao cálculo, sem desconto correspondente. Fecho, lateral e bojo continuam com as regras atuais. Ajuste isolado e compatível com chegada normal e chegada manual."
+  "version": "2026-08-17-pagamentos-pendentes-busca-op-208",
+  "updatedAt": "2026-08-17T13:45:00-03:00",
+  "notes": "PRODUÇÃO. Adicionada uma barra específica de busca por Nº da OP no modal Restantes pendentes da aba Pagamentos. A pesquisa filtra instantaneamente apenas os pendentes já carregados na tela, sem novas leituras do Firebase. Os filtros existentes de processo, tipo, referência e facção foram preservados. Nenhuma regra de pagamento, valor, exclusão ou confirmação foi alterada."
 }
