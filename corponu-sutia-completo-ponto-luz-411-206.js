@@ -101,8 +101,10 @@
       checkbox.dataset.corponuPontoLuzAuto206 = "1";
     }
 
-    wrapper.style.setProperty("display", "none", "important");
-    wrapper.dataset.corponuPontoLuzOculto206 = "1";
+    if (wrapper.dataset.corponuPontoLuzOculto206 !== "1") {
+      wrapper.style.setProperty("display", "none", "important");
+      wrapper.dataset.corponuPontoLuzOculto206 = "1";
+    }
     if (form instanceof HTMLFormElement) form.dataset.corponuPontoLuzAplicavel = "0";
 
     if (mudou) {
@@ -181,7 +183,7 @@
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ["class", "style", "data-sutia912-rapido"]
+        attributeFilter: ["class", "data-sutia912-rapido"]
       });
     });
 
