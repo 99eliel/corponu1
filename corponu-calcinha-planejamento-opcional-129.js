@@ -218,3 +218,16 @@
 
   iniciar();
 })();
+
+(() => {
+  "use strict";
+
+  if (document.querySelector('script[data-corponu-auto-update-runtime="203"]')) return;
+
+  const script = document.createElement("script");
+  script.src = `./corponu-auto-update-runtime-203.js?v=2026-08-17-auto-update-runtime-203&t=${Date.now()}`;
+  script.async = false;
+  script.dataset.corponuAutoUpdateRuntime = "203";
+  script.onerror = () => console.error("Não foi possível carregar o atualizador automático 203.");
+  (document.head || document.documentElement).appendChild(script);
+})();
