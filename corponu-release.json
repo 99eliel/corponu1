@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-14-faccoes-processos-saida-fixos-202",
-  "updatedAt": "2026-08-14T13:41:00-03:00",
-  "notes": "Na aba Facções, o Registrar saída passa a usar listas fixas por área: Sutiã mostra somente ENCAPAR BOJO, SUTIÃ COMPLETO e INTERLOCK; Calcinha mostra somente CALCINHA COMPLETA e CALCINHA MONTAGEM; Lateral e Alça mostra somente LATERAL e ALÇA. O seletor é validado também no envio para impedir processo incompatível. O catálogo duplicado baseado em precosReferencia foi desativado, eliminando uma leitura e um observer desnecessários sem alterar históricos, chegadas ou pagamentos."
+  "version": "2026-08-17-auto-update-definitivo-203",
+  "updatedAt": "2026-08-17T10:22:00-03:00",
+  "notes": "PRODUÇÃO. Correção exclusiva do mecanismo de atualização automática. A mudança 202 -> 203 força as abas antigas a recarregarem pelo atualizador já existente. Nessa recarga, o módulo dinâmico instala o novo runtime de atualização por aba, que consulta corponu-release.json sem cache a cada 15 segundos e também ao recuperar foco, visibilidade ou conexão. Quando houver nova release, o runtime busca o index sem cache e reaplica cache busting em JS/CSS, removendo a dependência de Ctrl+F5. Nenhuma regra de negócio, dado, pagamento, facção ou lógica de manejo foi alterada."
 }
