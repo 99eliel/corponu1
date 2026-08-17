@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-17-rollback-estavel-209",
-  "updatedAt": "2026-08-17T13:47:00-03:00",
-  "notes": "PRODUÇÃO. Rollback emergencial da alteração 208 após comportamento de loop no sistema. Restaurado o runtime exatamente para o estado estável anterior à busca de OP. Mantidas as correções já validadas do Manejo Calcinha e da regra de ponto de luz somente para a referência 411. A busca de OP em Restantes pendentes foi temporariamente removida até nova implementação isolada e validada."
+  "version": "2026-08-17-recuperacao-deploy-210",
+  "updatedAt": "2026-08-17T13:57:00-03:00",
+  "notes": "PRODUÇÃO. Republicação técnica do rollback estável após o build 209 ficar preso no GitHub Pages. Nenhuma nova funcionalidade foi adicionada. O runtime permanece exatamente no estado estável anterior à alteração 208; a busca de OP problemática continua desativada. Mantidas as correções já validadas do Manejo Calcinha e do ponto de luz somente para a referência 411."
 }
