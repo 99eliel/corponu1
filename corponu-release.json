@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-17-ponto-luz-somente-411-206",
-  "updatedAt": "2026-08-17T11:03:00-03:00",
-  "notes": "PRODUÇÃO. Ajuste pontual na chegada de SUTIÃ COMPLETO: a pergunta sobre ponto de luz passa a existir somente para a referência 411. Para qualquer outra referência de Sutiã Completo, o campo é ocultado e tratado como não aplicável ao cálculo, portanto não gera desconto de ponto de luz. A pergunta de fecho e as conferências de lateral e bojo permanecem inalteradas. Nenhuma outra regra de pagamento, chegada, facção, manejo ou referência foi modificada."
+  "version": "2026-08-17-ponto-luz-somente-411-207",
+  "updatedAt": "2026-08-17T11:06:00-03:00",
+  "notes": "PRODUÇÃO. Regra final da chegada de SUTIÃ COMPLETO: somente a referência 411 pergunta se a peça veio com ponto de luz. Para todas as demais referências, o campo fica oculto e o ponto de luz é tratado como não aplicável ao cálculo, sem desconto correspondente. Fecho, lateral e bojo continuam com as regras atuais. Ajuste isolado e compatível com chegada normal e chegada manual."
 }
