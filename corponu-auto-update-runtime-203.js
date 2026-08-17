@@ -209,12 +209,12 @@
 (() => {
   "use strict";
 
-  if (document.querySelector('script[data-corponu-ponto-luz-411="206"]')) return;
+  if (document.querySelector('script[data-corponu-ponto-luz-411="207"]')) return;
 
   const script = document.createElement("script");
-  script.src = `./corponu-sutia-completo-ponto-luz-411-206.js?v=2026-08-17-ponto-luz-somente-411-206&t=${Date.now()}`;
+  script.src = `./corponu-sutia-completo-ponto-luz-411-206.js?v=2026-08-17-ponto-luz-somente-411-207&t=${Date.now()}`;
   script.async = false;
-  script.dataset.corponuPontoLuz411 = "206";
+  script.dataset.corponuPontoLuz411 = "207";
   script.onerror = () => console.error("Não foi possível carregar a regra de ponto de luz da REF 411.");
   (document.head || document.documentElement).appendChild(script);
 })();
