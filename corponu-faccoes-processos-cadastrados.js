@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-14-faccoes-processos-saida-fixos-202";
+  const VERSION = "2026-08-18-faccoes-contexto-explicito-211";
   const PROCESSOS_SAIDA = Object.freeze({
     sutia: ["ENCAPAR BOJO", "SUTIÃ COMPLETO", "INTERLOCK"],
     calcinha: ["CALCINHA COMPLETA", "CALCINHA MONTAGEM"],
@@ -20,6 +20,7 @@
   let observerSelect = null;
   let selectObservado = null;
   let preenchendo = false;
+  let abaSaidaForcada = "";
 
   const normalizar = valor => String(valor ?? "")
     .normalize("NFD")
@@ -34,6 +35,14 @@
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+
+  function normalizarTipoAba(valor) {
+    const tipo = String(valor || "").trim().toLowerCase();
+    if (tipo === "sutia" || tipo === "sutiã") return "sutia";
+    if (tipo === "calcinha") return "calcinha";
+    if (["corte", "lateral", "lateral-alca", "lateral_alca", "lateral e alça", "lateral e alca"].includes(tipo)) return "corte";
+    return "";
+  }
 
   function garantirEstiloClassificacao() {
     if (document.getElementById("styleFaccaoClassificacaoVisual200")) return;
@@ -53,7 +62,7 @@
     if (corte?.classList.contains("active")) return "corte";
 
     const ativa = document.querySelector('.corponu-dual-tabs[data-page="faccoes"] .corponu-dual-tab.active');
-    const tipo = String(ativa?.dataset?.type || "").toLowerCase();
+    const tipo = normalizarTipoAba(ativa?.dataset?.type || "");
     return tipo === "calcinha" || tipo === "sutia" ? tipo : "";
   }
 
@@ -113,9 +122,37 @@
     });
   }
 
-  function abaSaidaAtual() {
-    if (document.getElementById("abaFaccaoCorte")?.classList.contains("active")) return "corte";
+  function fixarAbaSaida(aba) {
+    const tipo = normalizarTipoAba(aba);
+    if (!tipo) return "";
 
+    abaSaidaForcada = tipo;
+    const modal = document.getElementById("modalSaida3");
+    if (modal) modal.dataset.corponuAbaSaida = tipo;
+    return tipo;
+  }
+
+  function tipoDaAbaClicada(alvo) {
+    if (!alvo) return "";
+    if (alvo.closest("#abaFaccaoCorte")) return "corte";
+
+    const dual = alvo.closest('.corponu-dual-tabs[data-page="faccoes"] .corponu-dual-tab');
+    if (dual) return normalizarTipoAba(dual.dataset.type || "");
+
+    return "";
+  }
+
+  function abaSaidaAtual() {
+    const modal = document.getElementById("modalSaida3");
+    const gravadaNoModal = normalizarTipoAba(modal?.dataset?.corponuAbaSaida || "");
+    if (gravadaNoModal) return gravadaNoModal;
+    if (abaSaidaForcada) return abaSaidaForcada;
+
+    const ativa = abaPrincipalFaccoesAtiva();
+    if (ativa) return ativa;
+
+    // Compatibilidade com telas antigas: título é apenas o último recurso,
+    // nunca mais a fonte principal para decidir os processos.
     const titulo = normalizar(document.getElementById("s3titulo")?.textContent || "");
     if (titulo.includes("CALCINHA")) return "calcinha";
     if (titulo.includes("LATERAL") || titulo.includes("CORTE")) return "corte";
@@ -201,8 +238,8 @@
     if (toast) {
       toast.textContent = mensagem;
       toast.classList.remove("hidden");
-      window.clearTimeout(window.__faccoesProcessos202Toast);
-      window.__faccoesProcessos202Toast = window.setTimeout(() => toast.classList.add("hidden"), 6000);
+      window.clearTimeout(window.__faccoesProcessos211Toast);
+      window.__faccoesProcessos211Toast = window.setTimeout(() => toast.classList.add("hidden"), 6000);
       return;
     }
     window.alert(mensagem);
@@ -237,27 +274,40 @@
     const alvo = event.target instanceof Element ? event.target : null;
     if (!alvo) return;
 
-    if (alvo.closest("#btnSaidaAbas, #btnSaidaCorteNovo")) {
-      [0, 50, 140].forEach(atraso => window.setTimeout(preencherSelect, atraso));
+    const tipoClicado = tipoDaAbaClicada(alvo);
+    if (tipoClicado) {
+      fixarAbaSaida(tipoClicado);
+      agendarClassificacaoVisual();
+    }
+
+    if (alvo.closest("#btnSaidaCorteNovo")) {
+      fixarAbaSaida("corte");
+      preencherSelect();
+      window.setTimeout(preencherSelect, 80);
+      return;
+    }
+
+    if (alvo.closest("#btnSaidaAbas")) {
+      fixarAbaSaida(abaSaidaForcada || abaPrincipalFaccoesAtiva() || abaSaidaAtual());
+      preencherSelect();
+      window.setTimeout(preencherSelect, 80);
     }
 
     if (alvo.closest("#s3buscar")) {
-      [0, 80].forEach(atraso => window.setTimeout(preencherSelect, atraso));
-    }
-
-    if (alvo.closest('.corponu-dual-tabs[data-page="faccoes"] .corponu-dual-tab, #abaFaccaoCorte, [data-page="faccoes"]')) {
-      [0, 60, 180].forEach(atraso => window.setTimeout(agendarClassificacaoVisual, atraso));
+      preencherSelect();
     }
   }, true);
 
   document.addEventListener("submit", validarSubmit, true);
 
   function iniciar() {
+    const inicial = abaPrincipalFaccoesAtiva();
+    if (inicial) fixarAbaSaida(inicial);
     preparar();
-    [60, 180, 500].forEach(atraso => window.setTimeout(() => {
+    window.setTimeout(() => {
       preparar();
       if (!document.getElementById("modalSaida3")?.classList.contains("hidden")) preencherSelect();
-    }, atraso));
+    }, 120);
   }
 
   if (document.readyState === "loading") {
