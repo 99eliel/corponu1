@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-17-recuperacao-deploy-210",
-  "updatedAt": "2026-08-17T13:57:00-03:00",
-  "notes": "PRODUÇÃO. Republicação técnica do rollback estável após o build 209 ficar preso no GitHub Pages. Nenhuma nova funcionalidade foi adicionada. O runtime permanece exatamente no estado estável anterior à alteração 208; a busca de OP problemática continua desativada. Mantidas as correções já validadas do Manejo Calcinha e do ponto de luz somente para a referência 411."
+  "version": "2026-08-18-faccoes-estabilidade-performance-211",
+  "updatedAt": "2026-08-18T19:12:00-03:00",
+  "notes": "PRODUÇÃO. Corrige a condição de corrida que podia mostrar processos de Calcinha em Lateral e Alça em alguns computadores. O contexto da saída agora fica preso à aba escolhida, sem depender do tempo de atualização do título ou da classe visual. Também reduz trabalho em segundo plano: o observador de nome da Lateral fica restrito à área de Facções e a integração Lateral/Alça só consulta e renderiza dados quando essa aba está realmente aberta. As consultas específicas de Lateral/Alça passam a rodar em paralelo e foram removidas atualizações redundantes após operações de outras facções. Nenhuma regra de pagamento, quantidade, chegada ou cadastro de OP foi alterada."
 }
