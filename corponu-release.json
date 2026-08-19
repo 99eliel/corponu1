@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-19-manejo-calcinha-fase-lista-real-219",
-  "updatedAt": "2026-08-19T10:58:00-03:00",
-  "notes": "PRODUÇÃO. Corrige a causa concreta das versões 216-218 não alterarem a Fase: o campo real criado pelo app usa o datalist manejoFasesList, enquanto os módulos de proteção estavam procurando manejoFasesListCalcinha. A versão 219 passa a usar a lista real, cria um select visual estável para a Fase da Calcinha, mantém o input original escondido apenas para compatibilidade e não dispara eventos artificiais ao selecionar uma fase. Também alinha o atualizador principal à release 219 e corrige a validação legado para a mesma lista real. Não altera pagamentos, facções, chegada, OP, cálculos ou regras do Firebase."
+  "version": "2026-08-19-manejo-calcinha-fases-oficiais-220",
+  "updatedAt": "2026-08-19T11:12:00-03:00",
+  "notes": "PRODUÇÃO. Corrige a fonte do seletor Fase no Manejo Calcinha. A versão 220 usa exclusivamente a lista oficial da Calcinha já mantida pelo sistema em configuracoes/fasesManejoCalcinha.sugestoes e exposta no datalist manejoFasesListCalcinha; não reutiliza nem filtra a lista global do Sutiã. O seletor permanece visível mesmo enquanto a lista oficial está carregando ou quando está vazia, impedindo retorno silencioso ao campo legado. Fases antigas fora da lista oficial podem aparecer apenas como valor atual e não como opção autorizada. A validação auxiliar também foi alinhada à lista exclusiva da Calcinha. Não altera Sutiã, pagamentos, facções, chegada, OP, cálculos ou regras do Firebase."
 }
