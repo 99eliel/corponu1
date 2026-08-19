@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-19-valores-pendentes-excluir-215",
-  "updatedAt": "2026-08-19T09:44:00-03:00",
-  "notes": "PRODUÇÃO. Adiciona ação Excluir em Valores pendentes. A exclusão aparece somente para lançamentos com status Pendente, exige confirmação com facção e valor e atualiza a lista após apagar. Lançamentos quitados precisam ser reabertos antes de qualquer exclusão. As regras do Firestore passam a permitir exclusão somente por usuário financeiro autorizado e apenas enquanto o ajuste estiver pendente. Não altera entregasPagamento nem o cálculo dos pagamentos normais."
+  "version": "2026-08-19-manejo-calcinha-fase-definitivo-216",
+  "updatedAt": "2026-08-19T10:08:00-03:00",
+  "notes": "PRODUÇÃO. Correção estrutural e isolada da Fase do Manejo Calcinha. Identificada a combinação de dois problemas: o Manejo recria o tbody inteiro quando chegam snapshots, destruindo o input em edição, e o wrapper legado da Linha da Calcinha executa uma segunda gravação baseada em state.maps.ordens que podia estar defasado e restaurar a fase anterior. A versão 216 mantém um rascunho local de Fase, Necessidade e Linha e o reaplica no mesmo ciclo do MutationObserver antes do próximo paint, preservando texto e foco durante renders. Antes de concluir uma linha, também sincroniza o estado usado pela segunda gravação com os valores atuais da tela, impedindo que uma fase antiga sobrescreva a nova. Nenhuma regra de pagamento, facção, chegada, OP ou cálculo foi alterada."
 }
