@@ -1,12 +1,12 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-13-fase-calcinha-restrita-198";
+  const VERSION = "2026-08-19-fase-calcinha-lista-real-219";
   const FIREBASE_VERSION = "10.12.5";
-  const DATALIST_FASES_CALCINHA = "manejoFasesListCalcinha";
+  const DATALIST_FASES_CALCINHA = "manejoFasesList";
 
-  if (window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_198__ === VERSION) return;
-  window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_198__ = VERSION;
+  if (window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_219__ === VERSION) return;
+  window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_219__ = VERSION;
 
   let instalado = false;
   let contextoPromise = null;
@@ -55,9 +55,17 @@
   function faseOficialDaLinha(orderId) {
     const campo = campoFaseDaLinha(orderId);
     const digitada = String(campo?.value || "").trim();
-    if (!digitada) return { campo, digitada: "", oficial: "", listaCarregada: fasesPermitidasCalcinha().length > 0 };
-
     const permitidas = fasesPermitidasCalcinha();
+
+    if (!digitada) {
+      return {
+        campo,
+        digitada: "",
+        oficial: "",
+        listaCarregada: permitidas.length > 0
+      };
+    }
+
     const chaveDigitada = normalizarComparacao(digitada);
     const encontrada = permitidas.find(item => item.chave === chaveDigitada);
 
@@ -74,8 +82,8 @@
     if (toast) {
       toast.textContent = mensagem;
       toast.classList.remove("hidden");
-      window.clearTimeout(window.__faseCalcinha198Toast);
-      window.__faseCalcinha198Toast = window.setTimeout(() => toast.classList.add("hidden"), 6500);
+      window.clearTimeout(window.__faseCalcinha219Toast);
+      window.__faseCalcinha219Toast = window.setTimeout(() => toast.classList.add("hidden"), 6500);
       return;
     }
     window.alert(mensagem);
@@ -106,14 +114,14 @@
     if (instalado) return true;
     const atual = window.salvarManejoLinha;
     if (typeof atual !== "function") return false;
-    if (atual.__corponuFaseCalcinhaRestrita198) {
+    if (atual.__corponuFaseCalcinhaListaReal219) {
       instalado = true;
       return true;
     }
 
     const original = atual;
 
-    async function salvarManejoLinhaComFaseCalcinhaValidada(orderId) {
+    async function salvarManejoLinhaComFaseCalcinhaValidada219(orderId) {
       const ehCalcinha = calcinhaAtiva();
       let faseOficial = "";
 
@@ -121,21 +129,17 @@
         const validacao = faseOficialDaLinha(orderId);
 
         if (!validacao.listaCarregada) {
-          mostrarAviso("As fases permitidas da Calcinha ainda estão carregando. Aguarde um instante e tente salvar novamente.");
-          validacao.campo?.focus();
+          mostrarAviso("As fases permitidas ainda estão carregando. Aguarde um instante e tente salvar novamente.");
           return false;
         }
 
         if (!validacao.digitada) {
           mostrarAviso("Selecione uma fase permitida pelo administrador antes de salvar.");
-          validacao.campo?.focus();
           return false;
         }
 
         if (!validacao.oficial) {
           mostrarAviso(`A fase \"${String(validacao.digitada).toUpperCase()}\" não está autorizada. Escolha uma das fases liberadas pelo administrador.`);
-          validacao.campo?.focus();
-          validacao.campo?.select?.();
           return false;
         }
 
@@ -152,9 +156,6 @@
         const user = auth.currentUser;
         if (!user) return retorno;
 
-        // O módulo legado da Linha da Calcinha pode reenviar um snapshot antigo do manejo
-        // depois do salvamento principal. Reafirmamos somente a FASE já validada contra
-        // a lista oficial do administrador, sem ler a OP e sem tocar em Sutiã ou outros campos.
         await firestore.updateDoc(
           firestore.doc(db, "ordensProducao", String(orderId)),
           {
@@ -172,15 +173,13 @@
       return retorno;
     }
 
-    salvarManejoLinhaComFaseCalcinhaValidada.__corponuFaseCalcinhaRestrita198 = true;
-    window.salvarManejoLinha = salvarManejoLinhaComFaseCalcinhaValidada;
+    salvarManejoLinhaComFaseCalcinhaValidada219.__corponuFaseCalcinhaListaReal219 = true;
+    window.salvarManejoLinha = salvarManejoLinhaComFaseCalcinhaValidada219;
     instalado = true;
     return true;
   }
 
   function iniciar() {
-    // Aguarda os wrappers antigos de Manejo/Calcinha terminarem de ser instalados.
-    // Assim esta proteção fica por fora deles, valida antes e executa por último.
     window.setTimeout(instalarProtecao, 2200);
     window.setTimeout(() => {
       if (!instalado) instalarProtecao();
