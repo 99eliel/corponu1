@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-19-manejo-calcinha-fase-persistencia-222",
-  "updatedAt": "2026-08-19T12:18:00-03:00",
-  "notes": "PRODUÇÃO. Corrige a persistência real da Fase no Manejo Calcinha. A escolha continua usando somente a lista oficial da Calcinha, mas agora o confirmar garante que a fase selecionada chega ao Firestore em ordensProducao.manejosSetores.calcinha.fase após o salvamento legado. O wrapper é garantido antes do onclick do botão verde, preserva a fase no estado em memória antes da gravação e faz uma atualização final específica da fase após o fluxo antigo, evitando que wrappers ou snapshots anteriores restaurem o valor velho. Depois do ACK do Firestore, limpa o rascunho e atualiza os dados para encerrar o estado de edição. Não altera Sutiã, pagamentos, facções, chegada, regras ou cálculos."
+  "version": "2026-08-19-manejo-calcinha-fase-sem-piscar-223",
+  "updatedAt": "2026-08-19T12:31:00-03:00",
+  "notes": "PRODUÇÃO. Mantém a persistência definitiva da Fase do Manejo Calcinha da versão 222 e remove apenas o refresh forçado da tabela após o ACK do Firestore, que causava o piscar da tela. Depois de salvar, a linha é marcada localmente como concluída, o botão verde volta ao estado normal e o listener natural do Firestore continua atualizando os dados sem uma reconstrução extra da tela. Não altera a gravação da fase, lista oficial da Calcinha, Sutiã, pagamentos, facções, chegada, regras ou cálculos."
 }
