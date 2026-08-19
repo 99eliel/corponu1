@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-19-manejo-calcinha-fase-visual-221",
-  "updatedAt": "2026-08-19T12:05:00-03:00",
-  "notes": "PRODUÇÃO. Corrige o comportamento visual do seletor Fase no Manejo Calcinha: ao escolher outra fase, a seleção agora é capturada antes dos listeners antigos e preservada como rascunho da linha até a confirmação, impedindo que um redesenho da tabela devolva visualmente a fase anterior. Mantém exclusivamente a lista oficial da Calcinha em manejoFasesListCalcinha e a validação já existente. Não altera Sutiã, pagamentos, facções, chegada, OP, cálculos ou regras do Firebase."
+  "version": "2026-08-19-manejo-calcinha-fase-persistencia-222",
+  "updatedAt": "2026-08-19T12:18:00-03:00",
+  "notes": "PRODUÇÃO. Corrige a persistência real da Fase no Manejo Calcinha. A escolha continua usando somente a lista oficial da Calcinha, mas agora o confirmar garante que a fase selecionada chega ao Firestore em ordensProducao.manejosSetores.calcinha.fase após o salvamento legado. O wrapper é garantido antes do onclick do botão verde, preserva a fase no estado em memória antes da gravação e faz uma atualização final específica da fase após o fluxo antigo, evitando que wrappers ou snapshots anteriores restaurem o valor velho. Depois do ACK do Firestore, limpa o rascunho e atualiza os dados para encerrar o estado de edição. Não altera Sutiã, pagamentos, facções, chegada, regras ou cálculos."
 }
