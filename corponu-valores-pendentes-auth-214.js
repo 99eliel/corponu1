@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-19-valores-pendentes-auth-214";
+  const VERSION = "2026-08-19-valores-pendentes-excluir-215";
   const FIREBASE_VERSION = "10.12.5";
   const BUTTON_ID = "btnValoresPendentesFinanceiro";
   const COLLECTION = "ajustesFinanceirosFaccoes";
@@ -22,6 +22,21 @@
     return codigo.includes("permission-denied") ||
       mensagem.includes("missing or insufficient permissions") ||
       mensagem.includes("permission-denied");
+  }
+
+  function moeda(valor) {
+    return Number(valor || 0).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    });
+  }
+
+  function avisar(mensagem) {
+    if (typeof window.mostrarAvisoFormulario === "function") {
+      window.mostrarAvisoFormulario(mensagem);
+      return;
+    }
+    window.alert(mensagem);
   }
 
   async function aguardarUsuario(auth, authMod) {
@@ -147,8 +162,7 @@
       const mensagem = erroPermissao(erro)
         ? "O Firebase ainda não liberou o acesso a Valores pendentes. Aguarde alguns segundos e tente novamente."
         : (erro?.message || "Não foi possível validar o acesso a Valores pendentes.");
-      if (typeof window.mostrarAvisoFormulario === "function") window.mostrarAvisoFormulario(mensagem);
-      else window.alert(mensagem);
+      avisar(mensagem);
     } finally {
       botao.disabled = disabledOriginal;
       botao.textContent = textoOriginal;
@@ -156,5 +170,122 @@
     }
   }
 
+  function adicionarBotoesExcluir() {
+    const lista = document.getElementById("vpLista");
+    if (!lista) return false;
+
+    lista.querySelectorAll("tr").forEach(linha => {
+      const status = linha.querySelector(".vp-status");
+      const botaoStatus = linha.querySelector("button[data-vp-id]");
+      if (!status || !botaoStatus) return;
+
+      const pendente = status.classList.contains("pendente") ||
+        String(status.textContent || "").trim().toLowerCase() === "pendente";
+
+      const existente = linha.querySelector("button[data-vp-excluir]");
+      if (!pendente) {
+        existente?.remove();
+        return;
+      }
+      if (existente) return;
+
+      const botao = document.createElement("button");
+      botao.type = "button";
+      botao.className = "vp-btn";
+      botao.textContent = "Excluir";
+      botao.dataset.vpExcluir = String(botaoStatus.dataset.vpId || "");
+      botao.style.marginLeft = "6px";
+      botao.style.background = "#fee2e2";
+      botao.style.color = "#991b1b";
+      botao.style.border = "1px solid #fecaca";
+      botao.title = "Excluir este valor pendente";
+      botaoStatus.parentElement?.appendChild(botao);
+    });
+
+    return true;
+  }
+
+  async function excluirValorPendente(botao) {
+    const id = String(botao?.dataset?.vpExcluir || "").trim();
+    if (!id || botao.disabled) return;
+
+    const linha = botao.closest("tr");
+    const nomeFaccao = String(linha?.children?.[1]?.textContent || "facção").trim();
+    const valorTela = String(linha?.children?.[4]?.textContent || "").trim();
+
+    if (!window.confirm(`Excluir este valor pendente de ${nomeFaccao}${valorTela ? ` (${valorTela})` : ""}?\n\nEsta ação remove o lançamento e não pode ser desfeita.`)) {
+      return;
+    }
+
+    const textoOriginal = botao.textContent;
+    try {
+      botao.disabled = true;
+      botao.textContent = "Excluindo...";
+
+      const contexto = await contextoFirebase();
+      const referencia = contexto.firestore.doc(contexto.db, COLLECTION, id);
+      const snap = await contexto.firestore.getDoc(referencia);
+
+      if (!snap.exists()) {
+        avisar("Esse valor pendente já não existe mais.");
+        document.getElementById("vpAtualizar")?.click();
+        return;
+      }
+
+      const dados = snap.data() || {};
+      if (String(dados.status || "pendente") !== "pendente") {
+        avisar("Somente valores com status Pendente podem ser excluídos. Reabra o lançamento antes de excluir.");
+        document.getElementById("vpAtualizar")?.click();
+        return;
+      }
+
+      await contexto.firestore.deleteDoc(referencia);
+      avisar(`Valor pendente de ${dados.faccao || nomeFaccao} (${moeda(dados.valor)}) excluído.`);
+      document.getElementById("vpAtualizar")?.click();
+    } catch (erro) {
+      console.error("Valores pendentes: falha ao excluir lançamento.", erro);
+      avisar(
+        erroPermissao(erro)
+          ? "O Firebase não permitiu excluir este valor. Confirme se as regras da versão 215 foram publicadas."
+          : (erro?.message || "Não foi possível excluir o valor pendente.")
+      );
+    } finally {
+      botao.disabled = false;
+      botao.textContent = textoOriginal;
+    }
+  }
+
+  function interceptarExclusao(event) {
+    const botao = event.target.closest?.("button[data-vp-excluir]");
+    if (!botao) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    excluirValorPendente(botao);
+  }
+
+  function iniciarExclusao() {
+    let tentativas = 0;
+    const timer = window.setInterval(() => {
+      tentativas += 1;
+      const lista = document.getElementById("vpLista");
+      if (!lista) {
+        if (tentativas >= 40) window.clearInterval(timer);
+        return;
+      }
+
+      window.clearInterval(timer);
+      adicionarBotoesExcluir();
+      const observer = new MutationObserver(() => adicionarBotoesExcluir());
+      observer.observe(lista, { childList: true, subtree: true });
+    }, 250);
+  }
+
   document.addEventListener("click", interceptarClique, true);
+  document.addEventListener("click", interceptarExclusao, true);
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", iniciarExclusao, { once: true });
+  } else {
+    iniciarExclusao();
+  }
 })();
