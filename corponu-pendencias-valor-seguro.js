@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-12-precos-recalcular-pendencias-189";
+  const VERSION = "2026-08-19-valores-pendentes-bilateral-213";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -74,5 +74,10 @@
   carregarScript(
     "./corponu-chegada-manual-faccoes-processo-119-seguro.js",
     "chegada-manual-faccoes-processo-119"
+  );
+
+  carregarScript(
+    "./corponu-valores-pendentes-financeiro.js",
+    "valores-pendentes-financeiro-213"
   );
 })();
