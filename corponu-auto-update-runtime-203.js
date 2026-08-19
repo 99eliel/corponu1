@@ -231,3 +231,16 @@
   script.onerror = () => console.error("Não foi possível carregar a correção do seletor de Lateral e Alça 212.");
   (document.head || document.documentElement).appendChild(script);
 })();
+
+(() => {
+  "use strict";
+
+  if (document.querySelector('script[data-corponu-restantes-filtro-op="225"]')) return;
+
+  const script = document.createElement("script");
+  script.src = `./corponu-restantes-pendentes-filtro-op-225.js?v=2026-08-19-restantes-pendentes-filtro-op-225&t=${Date.now()}`;
+  script.async = false;
+  script.dataset.corponuRestantesFiltroOp = "225";
+  script.onerror = () => console.error("Não foi possível carregar o filtro seguro de OP em Restantes pendentes.");
+  (document.head || document.documentElement).appendChild(script);
+})();
