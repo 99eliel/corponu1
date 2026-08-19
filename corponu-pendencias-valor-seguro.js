@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-19-valores-pendentes-bilateral-213";
+  const VERSION = "2026-08-19-valores-pendentes-auth-214";
   if (window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ === VERSION) return;
   window.__CORPONU_PENDENCIAS_VALOR_BOOTSTRAP__ = VERSION;
 
@@ -78,6 +78,10 @@
 
   carregarScript(
     "./corponu-valores-pendentes-financeiro.js",
-    "valores-pendentes-financeiro-213"
+    "valores-pendentes-financeiro-213",
+    () => carregarScript(
+      "./corponu-valores-pendentes-auth-214.js",
+      "valores-pendentes-auth-214"
+    )
   );
 })();
