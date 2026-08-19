@@ -18,6 +18,10 @@
       Boolean(document.querySelector('#manejo .manejo-setor-btn.active[data-setor="calcinha"]'));
   }
 
+  function controleEditavel(elemento) {
+    return elemento instanceof HTMLInputElement || elemento instanceof HTMLSelectElement;
+  }
+
   function normalizar(valor) {
     return String(valor ?? "").replace(/\s+/g, " ").trim().toUpperCase();
   }
@@ -34,10 +38,10 @@
   }
 
   function campoDaEntrada(input) {
-    if (!(input instanceof HTMLInputElement)) return "";
+    if (!controleEditavel(input)) return "";
     if (input.classList.contains("corponu-manejo-line-select")) return "linhaCalcinha";
-    if (/-fase$/i.test(String(input.id || ""))) return "fase";
-    if (/-necessidade$/i.test(String(input.id || ""))) return "necessidade";
+    if (input instanceof HTMLInputElement && /-fase$/i.test(String(input.id || ""))) return "fase";
+    if (input instanceof HTMLInputElement && /-necessidade$/i.test(String(input.id || ""))) return "necessidade";
     return "";
   }
 
@@ -68,7 +72,7 @@
   }
 
   function capturarCampo(input, marcarAlterado = true) {
-    if (!calcinhaAtiva() || !(input instanceof HTMLInputElement)) return;
+    if (!calcinhaAtiva() || !controleEditavel(input)) return;
     const campo = campoDaEntrada(input);
     if (!campo) return;
     const row = input.closest("tr[data-manejo-row='1']");
@@ -93,7 +97,7 @@
     const draft = obterDraft(id, true);
     ["fase", "necessidade", "linhaCalcinha"].forEach(campo => {
       const input = entradaDaLinha(row, campo);
-      if (!input) return;
+      if (!controleEditavel(input)) return;
       draft.valores[campo] = input.value;
       draft.alterados.add(campo);
     });
@@ -157,7 +161,7 @@
 
       for (const campo of draft.alterados) {
         const input = entradaDaLinha(row, campo);
-        if (!(input instanceof HTMLInputElement)) {
+        if (!controleEditavel(input)) {
           todosConfirmados = false;
           continue;
         }
@@ -168,15 +172,11 @@
           ? normalizar(veioDoRender) === normalizar(desejado)
           : veioDoRender === desejado;
 
-        if (draft.salvoEm && igual) {
-          draft.confirmados.add(campo);
-        } else {
-          draft.confirmados.delete(campo);
-        }
+        if (draft.salvoEm && igual) draft.confirmados.add(campo);
+        else draft.confirmados.delete(campo);
 
         if (!igual) input.value = desejado;
         input.dataset.corponuDraft216 = "1";
-
         if (!draft.confirmados.has(campo)) todosConfirmados = false;
       }
 
@@ -207,8 +207,7 @@
     observerTabela?.disconnect?.();
 
     observerTabela = new MutationObserver(() => {
-      // MutationObserver roda antes do próximo paint. Restaurar aqui impede que
-      // o usuário veja a Fase antiga/zerada entre dois renders do Manejo.
+      // A restauração acontece no microtask do MutationObserver, antes do próximo paint.
       restaurarDrafts();
     });
     observerTabela.observe(tbody, { childList: true, subtree: true });
@@ -242,26 +241,31 @@
   }
 
   function instalarEventosRascunho() {
+    document.addEventListener("pointerdown", event => {
+      const alvo = event.target;
+      const controlado = controleEditavel(alvo) && Boolean(alvo.closest("#listaManejoInline")) && Boolean(campoDaEntrada(alvo));
+      if (!controlado) focoAtual = null;
+    }, true);
+
     document.addEventListener("focusin", event => {
       const input = event.target;
-      if (!(input instanceof HTMLInputElement) || !input.closest("#listaManejoInline")) return;
+      if (!controleEditavel(input) || !input.closest("#listaManejoInline")) return;
       registrarFoco(input);
       capturarCampo(input, false);
     }, true);
 
     document.addEventListener("input", event => {
       const input = event.target;
-      if (!(input instanceof HTMLInputElement) || !input.closest("#listaManejoInline")) return;
+      if (!controleEditavel(input) || !input.closest("#listaManejoInline")) return;
       capturarCampo(input, true);
-      atualizarSelecao(input);
+      if (input instanceof HTMLInputElement) atualizarSelecao(input);
     }, true);
 
     document.addEventListener("change", event => {
       const input = event.target;
-      if (!(input instanceof HTMLInputElement) || !input.closest("#listaManejoInline")) return;
+      if (!controleEditavel(input) || !input.closest("#listaManejoInline")) return;
       capturarCampo(input, true);
-      atualizarSelecao(input);
-      // Datalist pode disparar change e algum módulo antigo reagir logo depois.
+      if (input instanceof HTMLInputElement) atualizarSelecao(input);
       queueMicrotask(restaurarDrafts);
     }, true);
 
@@ -302,9 +306,8 @@
       const orderId = String(args[0] || "");
       const draft = capturarLinhaCompleta(orderId);
       if (draft) {
-        // O modo Calcinha antigo grava a LINHA depois do save principal usando
-        // state.maps.ordens. Mantemos essa cópia em sincronia com o que está
-        // visível para impedir que a segunda gravação restaure uma Fase antiga.
+        // O wrapper antigo da LINHA faz uma segunda gravação a partir deste Map.
+        // Atualizamos a cópia antes do save para ela nunca restaurar uma Fase velha.
         sincronizarEstadoDual(orderId, draft);
       }
 
@@ -317,7 +320,7 @@
           atualDraft.salvoEm = Date.now();
           atualDraft.atualizadoEm = Date.now();
           atualDraft.confirmados.clear();
-          // Mantém o rascunho até os snapshots confirmarem o valor final.
+          // O rascunho só some quando um novo render vier com os mesmos valores.
           restaurarDrafts();
           setTimeout(restaurarDrafts, 120);
           setTimeout(restaurarDrafts, 400);
@@ -340,8 +343,8 @@
   }
 
   function instalarWrapperDepoisDosLegados() {
-    // Os wrappers 205 e de validação antiga terminam de se instalar nos primeiros
-    // segundos da página. Entramos depois deles para não criar cadeia recursiva.
+    // O 205 termina suas tentativas de instalação em cerca de 6 s. Entramos depois
+    // dele para manter uma cadeia única e evitar wrappers recursivos.
     setTimeout(() => {
       envolverSalvar();
       restaurarDrafts();
@@ -372,9 +375,6 @@
     console.info(`[CorpoNu] Fase do Manejo Calcinha protegida: ${VERSION}`);
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", iniciar, { once: true });
-  } else {
-    iniciar();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar, { once: true });
+  else iniciar();
 })();
