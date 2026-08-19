@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-19-valores-pendentes-auth-214",
-  "updatedAt": "2026-08-19T09:32:00-03:00",
-  "notes": "PRODUÇÃO. Corrige o aviso transitório de Missing or insufficient permissions ao abrir Valores pendentes. Antes de abrir o modal, o sistema agora aguarda a autenticação estabilizar, renova o token e valida o acesso à coleção com tentativas silenciosas em caso de permission-denied transitório. As regras permanecem restritivas e nenhuma lógica de valores, pagamentos ou baixa foi alterada."
+  "version": "2026-08-19-valores-pendentes-excluir-215",
+  "updatedAt": "2026-08-19T09:44:00-03:00",
+  "notes": "PRODUÇÃO. Adiciona ação Excluir em Valores pendentes. A exclusão aparece somente para lançamentos com status Pendente, exige confirmação com facção e valor e atualiza a lista após apagar. Lançamentos quitados precisam ser reabertos antes de qualquer exclusão. As regras do Firestore passam a permitir exclusão somente por usuário financeiro autorizado e apenas enquanto o ajuste estiver pendente. Não altera entregasPagamento nem o cálculo dos pagamentos normais."
 }
