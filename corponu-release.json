@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-18-faccoes-estabilidade-performance-211",
-  "updatedAt": "2026-08-18T19:12:00-03:00",
-  "notes": "PRODUÇÃO. Corrige a condição de corrida que podia mostrar processos de Calcinha em Lateral e Alça em alguns computadores. O contexto da saída agora fica preso à aba escolhida, sem depender do tempo de atualização do título ou da classe visual. Também reduz trabalho em segundo plano: o observador de nome da Lateral fica restrito à área de Facções e a integração Lateral/Alça só consulta e renderiza dados quando essa aba está realmente aberta. As consultas específicas de Lateral/Alça passam a rodar em paralelo e foram removidas atualizações redundantes após operações de outras facções. Nenhuma regra de pagamento, quantidade, chegada ou cadastro de OP foi alterada."
+  "version": "2026-08-18-lateral-select-estavel-212",
+  "updatedAt": "2026-08-18T22:12:00-03:00",
+  "notes": "PRODUÇÃO. Corrige o registro de saída da aba Lateral e Alça que podia abrir o seletor de processo apenas com a opção inicial vazia. O modal agora reconhece de forma independente o contexto de Lateral/Corte e mantém as opções LATERAL e ALÇA disponíveis mesmo quando o clique de abertura é interceptado pela lógica antiga das três abas. Nenhuma regra de pagamento, quantidade, chegada ou cadastro de OP foi alterada."
 }
