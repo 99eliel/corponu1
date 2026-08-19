@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-19-manejo-calcinha-fase-sem-piscar-223",
-  "updatedAt": "2026-08-19T12:31:00-03:00",
-  "notes": "PRODUÇÃO. Mantém a persistência definitiva da Fase do Manejo Calcinha da versão 222 e remove apenas o refresh forçado da tabela após o ACK do Firestore, que causava o piscar da tela. Depois de salvar, a linha é marcada localmente como concluída, o botão verde volta ao estado normal e o listener natural do Firestore continua atualizando os dados sem uma reconstrução extra da tela. Não altera a gravação da fase, lista oficial da Calcinha, Sutiã, pagamentos, facções, chegada, regras ou cálculos."
+  "version": "2026-08-19-faccoes-lateral-alca-pc-lento-224",
+  "updatedAt": "2026-08-19T13:10:00-03:00",
+  "notes": "PRODUÇÃO. Corrige o modal Registrar saída da aba Lateral e Alça em computadores mais lentos. O processo LATERAL ou ALÇA agora fica memorizado durante a abertura do modal e é restaurado automaticamente se alguma rotina atrasada reconstruir o seletor. Ao restaurar o processo, o sistema dispara novamente a atualização das facções habilitadas, evitando que o campo Quem vai fazer fique vazio. O observer da correção foi reduzido ao modal e ao seletor específicos, sem observar o body inteiro. Não altera pagamentos, cálculos, Manejo, Sutiã, Calcinha ou regras de movimentação."
 }
