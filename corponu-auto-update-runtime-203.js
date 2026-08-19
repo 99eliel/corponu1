@@ -218,3 +218,16 @@
   script.onerror = () => console.error("Não foi possível carregar a regra de ponto de luz da REF 411.");
   (document.head || document.documentElement).appendChild(script);
 })();
+
+(() => {
+  "use strict";
+
+  if (document.querySelector('script[data-corponu-faccoes-lateral-select="212"]')) return;
+
+  const script = document.createElement("script");
+  script.src = `./corponu-faccoes-lateral-select-212.js?v=2026-08-18-lateral-select-estavel-212&t=${Date.now()}`;
+  script.async = false;
+  script.dataset.corponuFaccoesLateralSelect = "212";
+  script.onerror = () => console.error("Não foi possível carregar a correção do seletor de Lateral e Alça 212.");
+  (document.head || document.documentElement).appendChild(script);
+})();
