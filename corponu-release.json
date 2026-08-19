@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-19-manejo-calcinha-fase-definitivo-216",
-  "updatedAt": "2026-08-19T10:08:00-03:00",
-  "notes": "PRODUÇÃO. Correção estrutural e isolada da Fase do Manejo Calcinha. Identificada a combinação de dois problemas: o Manejo recria o tbody inteiro quando chegam snapshots, destruindo o input em edição, e o wrapper legado da Linha da Calcinha executa uma segunda gravação baseada em state.maps.ordens que podia estar defasado e restaurar a fase anterior. A versão 216 mantém um rascunho local de Fase, Necessidade e Linha e o reaplica no mesmo ciclo do MutationObserver antes do próximo paint, preservando texto e foco durante renders. Antes de concluir uma linha, também sincroniza o estado usado pela segunda gravação com os valores atuais da tela, impedindo que uma fase antiga sobrescreva a nova. Nenhuma regra de pagamento, facção, chegada, OP ou cálculo foi alterada."
+  "version": "2026-08-19-manejo-calcinha-fase-selecao-217",
+  "updatedAt": "2026-08-19T10:34:00-03:00",
+  "notes": "PRODUÇÃO. Corrige a regressão da versão 216 que podia impedir a escolha de uma opção no campo Fase do Manejo Calcinha. A proteção de rascunho deixa de capturar/restaurar foco e passa a acompanhar somente eventos reais de input/change. A opção escolhida no datalist passa a ter prioridade imediata e, se a tabela for reconstruída por snapshot, o novo valor é preservado. Mantida a sincronização do estado usado pela gravação da Linha para impedir que uma fase antiga volte depois do salvar. Nenhuma regra de pagamento, facção, chegada, OP ou cálculo foi alterada."
 }
