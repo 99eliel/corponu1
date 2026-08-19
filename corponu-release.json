@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-18-lateral-select-estavel-212",
-  "updatedAt": "2026-08-18T22:12:00-03:00",
-  "notes": "PRODUÇÃO. Corrige o registro de saída da aba Lateral e Alça que podia abrir o seletor de processo apenas com a opção inicial vazia. O modal agora reconhece de forma independente o contexto de Lateral/Corte e mantém as opções LATERAL e ALÇA disponíveis mesmo quando o clique de abertura é interceptado pela lógica antiga das três abas. Nenhuma regra de pagamento, quantidade, chegada ou cadastro de OP foi alterada."
+  "version": "2026-08-19-valores-pendentes-bilateral-213",
+  "updatedAt": "2026-08-19T18:30:00-03:00",
+  "notes": "PRODUÇÃO. Adiciona na aba Pagamentos a função Valores pendentes em módulo isolado. Permite registrar tanto valores que a facção deve à empresa, tratados como desconto, quanto valores que o financeiro deve à facção, tratados como acréscimo. Mantém histórico próprio com data, motivo e status pendente/quitado, calcula o ajuste líquido e permite imprimir extrato. Não altera nem regrava os documentos de pagamentos já existentes em entregasPagamento."
 }
