@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-19-valores-pendentes-bilateral-213",
-  "updatedAt": "2026-08-19T18:30:00-03:00",
-  "notes": "PRODUÇÃO. Adiciona na aba Pagamentos a função Valores pendentes em módulo isolado. Permite registrar tanto valores que a facção deve à empresa, tratados como desconto, quanto valores que o financeiro deve à facção, tratados como acréscimo. Mantém histórico próprio com data, motivo e status pendente/quitado, calcula o ajuste líquido e permite imprimir extrato. Não altera nem regrava os documentos de pagamentos já existentes em entregasPagamento."
+  "version": "2026-08-19-valores-pendentes-auth-214",
+  "updatedAt": "2026-08-19T09:32:00-03:00",
+  "notes": "PRODUÇÃO. Corrige o aviso transitório de Missing or insufficient permissions ao abrir Valores pendentes. Antes de abrir o modal, o sistema agora aguarda a autenticação estabilizar, renova o token e valida o acesso à coleção com tentativas silenciosas em caso de permission-denied transitório. As regras permanecem restritivas e nenhuma lógica de valores, pagamentos ou baixa foi alterada."
 }
