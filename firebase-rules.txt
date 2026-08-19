@@ -370,7 +370,8 @@ service cloud.firestore {
           "quitadoPor"
         ]);
 
-      allow delete: if admin();
+      allow delete: if financeiroPodeDefinirValor()
+        && resource.data.status == "pendente";
     }
 
     match /ajustesMigracao/{ajusteId} {
