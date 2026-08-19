@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-19-manejo-calcinha-fase-selecao-217",
-  "updatedAt": "2026-08-19T10:34:00-03:00",
-  "notes": "PRODUÇÃO. Corrige a regressão da versão 216 que podia impedir a escolha de uma opção no campo Fase do Manejo Calcinha. A proteção de rascunho deixa de capturar/restaurar foco e passa a acompanhar somente eventos reais de input/change. A opção escolhida no datalist passa a ter prioridade imediata e, se a tabela for reconstruída por snapshot, o novo valor é preservado. Mantida a sincronização do estado usado pela gravação da Linha para impedir que uma fase antiga volte depois do salvar. Nenhuma regra de pagamento, facção, chegada, OP ou cálculo foi alterada."
+  "version": "2026-08-19-manejo-calcinha-fase-select-218",
+  "updatedAt": "2026-08-19T10:41:00-03:00",
+  "notes": "PRODUÇÃO. Substitui a seleção frágil por datalist da Fase no Manejo Calcinha por um select visual real, mantendo o input legado escondido apenas para compatibilidade com o salvamento existente. A escolha do usuário é sincronizada imediatamente para o input original e para o estado usado pela gravação da Linha, evitando que o clique em uma fase seja perdido por reconstruções do tbody e impedindo que uma fase antiga volte no segundo salvamento. O módulo atua somente no Manejo Calcinha e não altera pagamentos, facções, chegada, OP, cálculo ou regras do Firebase."
 }
