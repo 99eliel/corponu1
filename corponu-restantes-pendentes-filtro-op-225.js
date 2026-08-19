@@ -62,7 +62,9 @@
         border-radius:9px;
         background:#fff;
         color:#0f172a;
-        font:700 12px/1.3 inherit;
+        font-size:12px;
+        font-weight:700;
+        line-height:1.3;
         outline:none;
       }
       #${INPUT_ID}:focus{
@@ -174,7 +176,7 @@
 
       const linhaVaziaOriginal = tbody.querySelector(":scope > tr > td.empty")?.closest("tr");
       if (linhaVaziaOriginal instanceof HTMLTableRowElement) {
-        linhaVaziaOriginal.hidden = linhas.length > 0 || Boolean(busca);
+        linhaVaziaOriginal.hidden = linhas.length > 0;
         linhaVaziaOriginal.style.display = linhaVaziaOriginal.hidden ? "none" : "";
       }
 
