@@ -1,12 +1,12 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-19-manejo-calcinha-fase-lista-real-219";
-  const GUARD = "__CORPONU_MANEJO_CALCINHA_FASE_LISTA_REAL_219__";
-  const STYLE_ID = "corponuManejoCalcinhaFaseSelect219Style";
-  const SELECT_CLASS = "corponu-fase-select-219";
-  const INPUT_CLASS = "corponu-fase-input-legado-219";
-  const DATALIST_ID = "manejoFasesList";
+  const VERSION = "2026-08-19-manejo-calcinha-fases-oficiais-220";
+  const GUARD = "__CORPONU_MANEJO_CALCINHA_FASES_OFICIAIS_220__";
+  const STYLE_ID = "corponuManejoCalcinhaFaseSelect220Style";
+  const SELECT_CLASS = "corponu-fase-select-220";
+  const INPUT_CLASS = "corponu-fase-input-legado-220";
+  const DATALIST_ID = "manejoFasesListCalcinha";
   const DRAFT_TTL = 10 * 60 * 1000;
 
   if (window[GUARD] === VERSION) return;
@@ -42,10 +42,19 @@
   }
 
   function limparRestosVersoesAnteriores() {
-    document.getElementById("corponuManejoCalcinhaFaseSelect218Style")?.remove();
-    document.querySelectorAll("#listaManejoInline .corponu-fase-select-218").forEach(el => el.remove());
-    document.querySelectorAll("#listaManejoInline .corponu-fase-input-legado-218").forEach(input => {
-      input.classList.remove("corponu-fase-input-legado-218");
+    [
+      "corponuManejoCalcinhaFaseSelect218Style",
+      "corponuManejoCalcinhaFaseSelect219Style"
+    ].forEach(id => document.getElementById(id)?.remove());
+
+    document.querySelectorAll(
+      "#listaManejoInline .corponu-fase-select-218, #listaManejoInline .corponu-fase-select-219"
+    ).forEach(el => el.remove());
+
+    document.querySelectorAll(
+      "#listaManejoInline .corponu-fase-input-legado-218, #listaManejoInline .corponu-fase-input-legado-219"
+    ).forEach(input => {
+      input.classList.remove("corponu-fase-input-legado-218", "corponu-fase-input-legado-219");
     });
   }
 
@@ -54,8 +63,7 @@
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
-      body[data-corponu-manejo-tipo="calcinha"] #listaManejoInline .${INPUT_CLASS},
-      body[data-corponu-manejo-estavel="calcinha"] #listaManejoInline .${INPUT_CLASS}{
+      #listaManejoInline .${INPUT_CLASS}{
         display:none!important;
       }
       #listaManejoInline .${SELECT_CLASS}{
@@ -73,6 +81,11 @@
       #listaManejoInline .${SELECT_CLASS}:focus{
         outline:2px solid rgba(124,58,237,.22);
         border-color:#7c3aed;
+      }
+      #listaManejoInline .${SELECT_CLASS}:disabled{
+        background:#f8fafc;
+        color:#64748b;
+        cursor:not-allowed;
       }
     `;
     (document.head || document.documentElement).appendChild(style);
@@ -101,8 +114,12 @@
     return row?.querySelector('input[id$="-fase"]') || null;
   }
 
+  function datalistFasesCalcinha() {
+    return document.getElementById(DATALIST_ID);
+  }
+
   function fasesPermitidas() {
-    const datalist = document.getElementById(DATALIST_ID);
+    const datalist = datalistFasesCalcinha();
     if (!datalist) return [];
 
     const mapa = new Map();
@@ -143,6 +160,7 @@
   function sincronizarInputLegado(input, valor) {
     if (!(input instanceof HTMLInputElement)) return;
     input.value = String(valor || "");
+    input.setAttribute("list", DATALIST_ID);
   }
 
   function sincronizarEstadoDual(orderId, faseValor) {
@@ -175,14 +193,12 @@
     const orderId = orderIdDaLinha(row);
     if (!orderId) return;
 
+    const datalist = datalistFasesCalcinha();
     const fases = fasesPermitidas();
-    if (!fases.length) {
-      input.classList.remove(INPUT_CLASS);
-      row.querySelector(`.${SELECT_CLASS}`)?.remove();
-      return;
-    }
-
     const desejado = valorDesejado(orderId, input);
+    const atualNormalizado = normalizar(desejado);
+    const faseOficialAtual = fases.find(fase => normalizar(fase) === atualNormalizado) || "";
+
     sincronizarInputLegado(input, desejado);
 
     let select = row.querySelector(`.${SELECT_CLASS}`);
@@ -194,23 +210,49 @@
       input.insertAdjacentElement("afterend", select);
     }
 
-    const atualNormalizado = normalizar(desejado);
-    const valores = [...fases];
-    if (desejado && !valores.some(fase => normalizar(fase) === atualNormalizado)) {
-      valores.unshift(desejado);
+    let opcoes = [];
+    let valorSelecionado = "";
+    let desabilitado = false;
+
+    if (!datalist) {
+      opcoes = ['<option value="">Carregando fases da Calcinha...</option>'];
+      desabilitado = true;
+    } else if (!fases.length) {
+      if (desejado) {
+        opcoes.push(`<option value="${escapeHtml(desejado)}" disabled>${escapeHtml(desejado)} (fase atual)</option>`);
+        valorSelecionado = desejado;
+      }
+      opcoes.push('<option value="" disabled>Nenhuma fase cadastrada para Calcinha</option>');
+      desabilitado = true;
+    } else {
+      opcoes.push('<option value="">Selecione a fase</option>');
+
+      if (desejado && !faseOficialAtual) {
+        opcoes.push(`<option value="${escapeHtml(desejado)}" disabled>${escapeHtml(desejado)} (fase atual)</option>`);
+        valorSelecionado = desejado;
+      }
+
+      fases.forEach(fase => {
+        opcoes.push(`<option value="${escapeHtml(fase)}">${escapeHtml(fase)}</option>`);
+      });
+
+      if (faseOficialAtual) valorSelecionado = faseOficialAtual;
     }
 
-    const assinatura = valores.map(normalizar).join("|");
-    if (select.dataset.assinatura219 !== assinatura) {
-      select.innerHTML = [
-        '<option value="">Selecione a fase</option>',
-        ...valores.map(fase => `<option value="${escapeHtml(fase)}">${escapeHtml(fase)}</option>`)
-      ].join("");
-      select.dataset.assinatura219 = assinatura;
+    const assinatura = [
+      datalist ? "lista-presente" : "lista-ausente",
+      desabilitado ? "bloqueado" : "liberado",
+      valorSelecionado,
+      ...fases.map(normalizar)
+    ].join("|");
+
+    if (select.dataset.assinatura220 !== assinatura) {
+      select.innerHTML = opcoes.join("");
+      select.dataset.assinatura220 = assinatura;
     }
 
-    const oficial = [...select.options].find(option => normalizar(option.value) === atualNormalizado);
-    select.value = oficial?.value || "";
+    select.disabled = desabilitado;
+    select.value = valorSelecionado;
     input.classList.add(INPUT_CLASS);
   }
 
@@ -218,6 +260,7 @@
     document.querySelectorAll(`#listaManejoInline .${SELECT_CLASS}`).forEach(el => el.remove());
     document.querySelectorAll(`#listaManejoInline .${INPUT_CLASS}`).forEach(input => {
       input.classList.remove(INPUT_CLASS);
+      if (input.getAttribute("list") === DATALIST_ID) input.setAttribute("list", "manejoFasesList");
     });
   }
 
@@ -239,7 +282,7 @@
 
   function aoMudarSelect(event) {
     const select = event.target?.closest?.(`.${SELECT_CLASS}`);
-    if (!(select instanceof HTMLSelectElement) || !calcinhaAtiva()) return;
+    if (!(select instanceof HTMLSelectElement) || !calcinhaAtiva() || select.disabled) return;
 
     const row = select.closest("tr[data-manejo-row='1']");
     const input = inputFase(row);
@@ -251,9 +294,8 @@
     sincronizarInputLegado(input, valor);
     sincronizarEstadoDual(orderId, valor);
 
-    // Não disparamos input/change no campo legado. O salvamento já lê o valor dele
-    // diretamente e isso evita que listeners antigos redesenhem a linha no instante
-    // em que o usuário escolhe uma fase.
+    // Não disparamos input/change no campo legado: o salvamento lê o valor diretamente.
+    // Isso impede listeners antigos de reconstruírem a linha no momento da seleção.
   }
 
   function observarTabela() {
@@ -269,8 +311,12 @@
   }
 
   function observarListaFases() {
-    const datalist = document.getElementById(DATALIST_ID);
-    if (!datalist) return false;
+    const datalist = datalistFasesCalcinha();
+    if (!datalist) {
+      observerFases?.disconnect?.();
+      observerFases = null;
+      return false;
+    }
     if (observerFases?.__target === datalist) return true;
 
     observerFases?.disconnect?.();
@@ -283,20 +329,20 @@
   function envolverSalvar() {
     const atual = window.salvarManejoLinha;
     if (typeof atual !== "function") return false;
-    if (atual.__corponuFaseListaReal219 === true) {
+    if (atual.__corponuFaseCalcinhaOficial220 === true) {
       wrapperInstalado = atual;
       return true;
     }
     if (wrapperInstalado === atual) return true;
 
-    const embrulhado = async function corponuSalvarManejoCalcinhaFaseListaReal219(...args) {
+    const embrulhado = async function corponuSalvarManejoCalcinhaFaseOficial220(...args) {
       if (!calcinhaAtiva()) return atual.apply(this, args);
 
       const orderId = String(args[0] || "");
       const row = localizarLinha(orderId);
       const input = inputFase(row);
       const select = row?.querySelector(`.${SELECT_CLASS}`);
-      const fase = String(select?.value || input?.value || "");
+      const fase = String(select?.disabled ? input?.value || "" : select?.value || input?.value || "");
 
       if (orderId) {
         registrarDraft(orderId, fase);
@@ -327,7 +373,7 @@
       }
     };
 
-    Object.defineProperty(embrulhado, "__corponuFaseListaReal219", {
+    Object.defineProperty(embrulhado, "__corponuFaseCalcinhaOficial220", {
       value: true,
       configurable: false,
       enumerable: false
@@ -369,21 +415,23 @@
       aplicarSelects();
     }, delay));
 
-    // Os wrappers antigos terminam de se instalar nos primeiros segundos.
-    // Este fica por fora somente para sincronizar a Fase antes da gravação da Linha.
+    // Wrappers antigos terminam de se instalar nos primeiros segundos.
+    // Este fica por fora apenas para sincronizar a Fase antes da gravação da Linha.
     setTimeout(envolverSalvar, 7000);
     setTimeout(envolverSalvar, 10000);
 
     setInterval(() => {
       observarTabela();
       observarListaFases();
+      if (calcinhaAtiva()) aplicarSelects();
+
       const agora = Date.now();
       for (const [id, draft] of drafts.entries()) {
         if (agora - draft.atualizadoEm > DRAFT_TTL) drafts.delete(id);
       }
     }, 5000);
 
-    console.info(`[CorpoNu] Fase Calcinha usando lista real: ${VERSION}`);
+    console.info(`[CorpoNu] Fase Calcinha usando lista oficial: ${VERSION}`);
   }
 
   if (document.readyState === "loading") {
