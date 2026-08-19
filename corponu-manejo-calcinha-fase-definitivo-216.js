@@ -1,12 +1,12 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-19-manejo-calcinha-fase-persistencia-222";
-  const GUARD = "__CORPONU_MANEJO_CALCINHA_FASE_PERSISTENCIA_222__";
+  const VERSION = "2026-08-19-manejo-calcinha-fase-sem-piscar-223";
+  const GUARD = "__CORPONU_MANEJO_CALCINHA_FASE_SEM_PISCAR_223__";
   const DATALIST_ID = "manejoFasesListCalcinha";
-  const SELECT_CLASS = "corponu-fase-calcinha-select-222";
-  const INPUT_CLASS = "corponu-fase-calcinha-input-legado-222";
-  const STYLE_ID = "corponuManejoCalcinhaFase222Style";
+  const SELECT_CLASS = "corponu-fase-calcinha-select-223";
+  const INPUT_CLASS = "corponu-fase-calcinha-input-legado-223";
+  const STYLE_ID = "corponuManejoCalcinhaFase223Style";
   const FIREBASE_VERSION = "10.12.5";
 
   if (window[GUARD] === VERSION) return;
@@ -47,8 +47,8 @@
     if (toast) {
       toast.textContent = mensagem;
       toast.classList.remove("hidden");
-      clearTimeout(window.__corponuFaseCalcinha222Toast);
-      window.__corponuFaseCalcinha222Toast = setTimeout(() => toast.classList.add("hidden"), 5500);
+      clearTimeout(window.__corponuFaseCalcinha223Toast);
+      window.__corponuFaseCalcinha223Toast = setTimeout(() => toast.classList.add("hidden"), 5500);
       return;
     }
     console.warn(`[CorpoNu] ${mensagem}`);
@@ -101,21 +101,23 @@
       "corponuManejoCalcinhaFaseSelect218Style",
       "corponuManejoCalcinhaFaseSelect219Style",
       "corponuManejoCalcinhaFaseSelect220Style",
-      "corponuManejoCalcinhaFaseSelect221Style"
+      "corponuManejoCalcinhaFaseSelect221Style",
+      "corponuManejoCalcinhaFase222Style"
     ].forEach(id => document.getElementById(id)?.remove());
 
     document.querySelectorAll(
-      "#listaManejoInline .corponu-fase-select-218, #listaManejoInline .corponu-fase-select-219, #listaManejoInline .corponu-fase-select-220, #listaManejoInline .corponu-fase-select-221"
+      "#listaManejoInline .corponu-fase-select-218, #listaManejoInline .corponu-fase-select-219, #listaManejoInline .corponu-fase-select-220, #listaManejoInline .corponu-fase-select-221, #listaManejoInline .corponu-fase-calcinha-select-222"
     ).forEach(el => el.remove());
 
     document.querySelectorAll(
-      "#listaManejoInline .corponu-fase-input-legado-218, #listaManejoInline .corponu-fase-input-legado-219, #listaManejoInline .corponu-fase-input-legado-220, #listaManejoInline .corponu-fase-input-legado-221"
+      "#listaManejoInline .corponu-fase-input-legado-218, #listaManejoInline .corponu-fase-input-legado-219, #listaManejoInline .corponu-fase-input-legado-220, #listaManejoInline .corponu-fase-input-legado-221, #listaManejoInline .corponu-fase-calcinha-input-legado-222"
     ).forEach(input => {
       input.classList.remove(
         "corponu-fase-input-legado-218",
         "corponu-fase-input-legado-219",
         "corponu-fase-input-legado-220",
-        "corponu-fase-input-legado-221"
+        "corponu-fase-input-legado-221",
+        "corponu-fase-calcinha-input-legado-222"
       );
     });
   }
@@ -214,9 +216,9 @@
     }
 
     const assinatura = `${disabled ? 1 : 0}|${selecionado}|${fases.map(normalizar).join("|")}`;
-    if (select.dataset.assinatura222 !== assinatura) {
+    if (select.dataset.assinatura223 !== assinatura) {
       select.innerHTML = opcoes.join("");
-      select.dataset.assinatura222 = assinatura;
+      select.dataset.assinatura223 = assinatura;
     }
 
     select.disabled = disabled;
@@ -312,14 +314,41 @@
     return oficial;
   }
 
+  function finalizarVisualSalvo(orderId, fase) {
+    const linha = localizarLinha(orderId);
+    if (!linha) return;
+
+    linha.classList.remove("manejo-row-dirty", "manejo-row-pending");
+    linha.classList.add("manejo-row-saved");
+
+    const input = inputFase(linha);
+    if (input) {
+      input.value = fase;
+      input.setAttribute("list", DATALIST_ID);
+    }
+
+    const select = linha.querySelector(`.${SELECT_CLASS}`);
+    if (select instanceof HTMLSelectElement) select.value = fase;
+
+    const botao = linha.querySelector(".btn-save-manejo");
+    if (botao) {
+      botao.removeAttribute("data-salvando-manejo");
+      botao.removeAttribute("data-corponu-salvando");
+      botao.disabled = false;
+      botao.textContent = "✓";
+      botao.title = "Concluir alterações desta linha";
+      botao.setAttribute("aria-label", "Concluir alterações desta linha");
+    }
+  }
+
   function garantirWrapperSalvar() {
     const atual = window.salvarManejoLinha;
     if (typeof atual !== "function") return false;
-    if (atual.__corponuFaseCalcinhaPersistencia222 === true) return true;
+    if (atual.__corponuFaseCalcinhaSemPiscar223 === true) return true;
 
     const interno = atual;
 
-    const wrapper = async function corponuSalvarManejoCalcinhaPersistencia222(...args) {
+    const wrapper = async function corponuSalvarManejoCalcinhaSemPiscar223(...args) {
       if (!calcinhaAtiva()) return interno.apply(this, args);
 
       const orderId = String(args[0] || "");
@@ -346,7 +375,7 @@
       try {
         retorno = await interno.apply(this, args);
       } catch (error) {
-        console.error("[Calcinha 222] O salvamento original falhou; tentando preservar a fase mesmo assim.", error);
+        console.error("[Calcinha 223] O salvamento original falhou; tentando preservar a fase mesmo assim.", error);
       }
 
       try {
@@ -354,29 +383,25 @@
         drafts.delete(orderId);
         sincronizarEstadoDual(orderId, salva);
 
-        const linhaAtual = localizarLinha(orderId);
-        const inputAtual = inputFase(linhaAtual);
-        if (inputAtual) inputAtual.value = salva;
-        const selectAtual = linhaAtual?.querySelector(`.${SELECT_CLASS}`);
-        if (selectAtual instanceof HTMLSelectElement) selectAtual.value = salva;
-
-        // Recarrega os dados após o ACK do Firestore. Isso encerra o estado de edição
-        // e devolve o botão verde ao estado normal, sem depender de temporizadores visuais.
-        try {
-          await window.corponuDualMode?.refresh?.();
-        } catch (_) {}
-
+        // A versão anterior forçava corponuDualMode.refresh() aqui. Esse refresh
+        // reconstruía a tabela inteira depois do ACK e causava o piscar visível.
+        // O listener normal do Firestore já recebe o dado salvo; portanto, mantemos
+        // a linha atual estável e apenas encerramos o estado visual de edição.
+        finalizarVisualSalvo(orderId, salva);
         queueMicrotask(aplicarSelects);
-        setTimeout(aplicarSelects, 80);
+        requestAnimationFrame(() => {
+          aplicarSelects();
+          finalizarVisualSalvo(orderId, salva);
+        });
         return retorno;
       } catch (error) {
-        console.error("[Calcinha 222] Não foi possível persistir a fase.", error);
+        console.error("[Calcinha 223] Não foi possível persistir a fase.", error);
         avisar(`A fase não foi salva: ${error?.message || "erro no Firestore"}`);
         return false;
       }
     };
 
-    Object.defineProperty(wrapper, "__corponuFaseCalcinhaPersistencia222", {
+    Object.defineProperty(wrapper, "__corponuFaseCalcinhaSemPiscar223", {
       value: true,
       configurable: false,
       enumerable: false
@@ -419,7 +444,7 @@
       const alvo = event.target instanceof Element ? event.target : null;
       if (!alvo) return;
 
-      // Antes do onclick inline resolver salvarManejoLinha, garantimos que a versão 222
+      // Antes do onclick inline resolver salvarManejoLinha, garantimos que a versão 223
       // é a camada mais externa do salvamento.
       if (alvo.closest("#listaManejoInline .btn-save-manejo") && calcinhaAtiva()) {
         garantirWrapperSalvar();
@@ -462,7 +487,7 @@
       }
     }, 3000);
 
-    console.info(`[CorpoNu] Persistência da Fase Calcinha ativa: ${VERSION}`);
+    console.info(`[CorpoNu] Fase Calcinha sem refresh forçado: ${VERSION}`);
   }
 
   if (document.readyState === "loading") {
