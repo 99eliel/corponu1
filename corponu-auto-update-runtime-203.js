@@ -244,16 +244,3 @@
   script.onerror = () => console.error("Não foi possível carregar o filtro seguro de OP em Restantes pendentes.");
   (document.head || document.documentElement).appendChild(script);
 })();
-
-(() => {
-  "use strict";
-
-  if (document.querySelector('script[data-corponu-manejo-calcinha-fase-rapida="226"]')) return;
-
-  const script = document.createElement("script");
-  script.src = `./corponu-manejo-calcinha-fase-rapida-226.js?v=2026-08-24-manejo-calcinha-fase-rapida-226&t=${Date.now()}`;
-  script.async = false;
-  script.dataset.corponuManejoCalcinhaFaseRapida = "226";
-  script.onerror = () => console.error("Não foi possível carregar o salvamento rápido da Fase do Manejo Calcinha 226.");
-  (document.head || document.documentElement).appendChild(script);
-})();
