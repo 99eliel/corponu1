@@ -49,71 +49,65 @@ await page.route('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.
 });
 
 await page.goto('http://127.0.0.1:4173/tests/manejo-calcinha-230.html', { waitUntil: 'load' });
-
-// Deixa todos os timers de instalação (205, 194 e 223) concluírem.
 await page.waitForTimeout(5200);
 
-const marcas = await page.evaluate(() => ({
-  fase223: window.salvarManejoLinha?.__corponuFaseCalcinhaSemPiscar223 === true,
-  fluido205: window.salvarManejoLinha?.__corponuCalcinhaFluido205 === true,
-  validacao230: window.salvarManejoLinha?.__corponuFaseCalcinhaValidacaoCoordenada230 === true
-}));
-assert.deepEqual(marcas, { fase223: true, fluido205: true, validacao230: true }, 'As marcas dos wrappers precisam sobreviver na função externa.');
+const resumo = async rotulo => {
+  const estado = await page.evaluate(() => ({
+    original: window.__originalCalls || 0,
+    updates: window.__mockUpdateDocCalls || 0,
+    fase223: window.salvarManejoLinha?.__corponuFaseCalcinhaSemPiscar223 === true,
+    fluido205: window.salvarManejoLinha?.__corponuCalcinhaFluido205 === true,
+    validacao230: window.salvarManejoLinha?.__corponuFaseCalcinhaValidacaoCoordenada230 === true,
+    botaoDesabilitado: document.querySelector('.btn-save-manejo')?.disabled,
+    faseInput: document.querySelector('input[id$="-fase"]')?.value,
+    faseSelect: document.querySelector('.corponu-fase-calcinha-select-223')?.value,
+    linhaSalva: document.querySelector('#listaManejoInline tr')?.classList.contains('manejo-row-saved'),
+    toast: document.querySelector('#toast')?.textContent || ''
+  }));
+  console.log(`${rotulo}: ${JSON.stringify(estado)}`);
+  return estado;
+};
+
+let estado = await resumo('após instalação');
+assert.equal(estado.fase223, true, 'A proteção 223 deve continuar identificável na função externa.');
+assert.equal(estado.fluido205, true, 'A proteção visual 205 deve continuar identificável na função externa.');
+assert.equal(estado.validacao230, true, 'A validação coordenada 230 deve estar instalada.');
 
 const select = page.locator('.corponu-fase-calcinha-select-223');
 await select.waitFor({ state: 'visible' });
 assert.equal(await select.inputValue(), 'FASE A');
 
-// 1º salvamento: deve passar pelo fluxo real uma única vez e confirmar a fase uma única vez.
 await select.selectOption('FASE B');
+await resumo('após selecionar FASE B');
 await page.locator('.btn-save-manejo').click();
-await page.waitForFunction(() => window.__originalCalls === 1 && window.__mockUpdateDocCalls === 1);
-await page.waitForTimeout(450);
+await page.waitForTimeout(1200);
+estado = await resumo('após primeiro clique');
 
-let estado = await page.evaluate(() => ({
-  original: window.__originalCalls,
-  updates: window.__mockUpdateDocCalls,
-  botaoDesabilitado: document.querySelector('.btn-save-manejo')?.disabled,
-  faseInput: document.querySelector('input[id$="-fase"]')?.value,
-  faseSelect: document.querySelector('.corponu-fase-calcinha-select-223')?.value,
-  linhaSalva: document.querySelector('#listaManejoInline tr')?.classList.contains('manejo-row-saved')
-}));
-assert.equal(estado.original, 1, 'Um clique deve chamar salvarManejoLinha original uma vez.');
-assert.equal(estado.updates, 1, 'Um clique deve gerar apenas uma confirmação updateDoc da Fase.');
+assert.equal(estado.original, 1, `Um clique deve chamar o salvamento original uma vez; recebido ${estado.original}.`);
+assert.equal(estado.updates, 1, `Um clique deve gerar uma confirmação Firestore da Fase; recebido ${estado.updates}.`);
 assert.equal(estado.botaoDesabilitado, false, 'O botão precisa voltar a ficar clicável.');
 assert.equal(estado.faseInput, 'FASE B');
 assert.equal(estado.faseSelect, 'FASE B');
 assert.equal(estado.linhaSalva, true, 'A linha deve terminar marcada como salva.');
 
-// Espera mais um ciclo dos timers para garantir que os wrappers não se empilham depois do primeiro clique.
 await page.waitForTimeout(3500);
+await resumo('após timers adicionais');
 await select.selectOption('FASE A');
 await page.locator('.btn-save-manejo').click();
-await page.waitForFunction(() => window.__originalCalls === 2 && window.__mockUpdateDocCalls === 2);
-await page.waitForTimeout(450);
+await page.waitForTimeout(1200);
+estado = await resumo('após segundo clique');
 
-estado = await page.evaluate(() => ({
-  original: window.__originalCalls,
-  updates: window.__mockUpdateDocCalls,
-  fase: document.querySelector('.corponu-fase-calcinha-select-223')?.value
-}));
-assert.equal(estado.original, 2, 'Segundo clique também deve chamar o fluxo original apenas uma vez.');
-assert.equal(estado.updates, 2, 'Segundo clique deve acrescentar somente um updateDoc.');
-assert.equal(estado.fase, 'FASE A');
+assert.equal(estado.original, 2, `Dois cliques devem totalizar duas chamadas originais; recebido ${estado.original}.`);
+assert.equal(estado.updates, 2, `Dois cliques devem totalizar duas confirmações Firestore; recebido ${estado.updates}.`);
+assert.equal(estado.faseSelect, 'FASE A');
 
-// Sutiã não pode entrar na lógica da Calcinha.
 await page.evaluate(() => {
   const botaoSetor = document.querySelector('.manejo-setor-btn.active');
   botaoSetor.dataset.setor = 'sutia';
+  return window.salvarManejoLinha('op1');
 });
-await page.evaluate(() => window.salvarManejoLinha('op1'));
-await page.waitForFunction(() => window.__originalCalls === 3);
-await page.waitForTimeout(150);
-
-estado = await page.evaluate(() => ({
-  original: window.__originalCalls,
-  updates: window.__mockUpdateDocCalls
-}));
+await page.waitForTimeout(500);
+estado = await resumo('após salvar em Sutiã');
 assert.equal(estado.original, 3, 'Sutiã deve continuar passando pelo salvamento original.');
 assert.equal(estado.updates, 2, 'Sutiã não pode disparar persistência específica da Calcinha.');
 
