@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-24-manejo-calcinha-fase-rapida-227",
-  "updatedAt": "2026-08-24T16:02:00-03:00",
-  "notes": "PRODUÇÃO. Ativa o caminho rápido e seguro para a Fase do Manejo Calcinha. Quando somente a Fase foi alterada, o sistema usa uma única gravação autoritativa no documento da OP, em vez de passar pelo salvamento geral da linha e pelas camadas antigas em sequência. Se Necessidade, Linha ou qualquer outro campo da mesma linha também tiver sido alterado, o fluxo completo anterior é preservado sem mudança. O módulo rápido só se instala por fora da proteção estável 223, pré-aquece o Firebase e não altera app.js, pagamentos, facções, cálculos nem Manejo Sutiã."
+  "version": "2026-08-24-manejo-calcinha-rollback-estavel-228",
+  "updatedAt": "2026-08-24T19:20:00-03:00",
+  "notes": "PRODUÇÃO. Reverte integralmente a otimização rápida 227 da Fase do Manejo Calcinha porque a escrita direta fazia a tabela reagir visualmente ao snapshot do Firestore e causava piscar na tela. Restaura o carregador e o salvamento da Fase exatamente para o estado estável anterior à 226/227. Remove o módulo corponu-manejo-calcinha-fase-rapida-226.js do carregamento e do repositório. Não altera app.js, Pagamentos, Facções, cálculos, Manejo Sutiã ou regras do Firebase."
 }
