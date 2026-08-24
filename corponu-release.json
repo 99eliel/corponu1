@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-24-manejo-calcinha-fase-coordenada-229",
-  "updatedAt": "2026-08-24T20:06:00-03:00",
-  "notes": "PRODUÇÃO. Organiza o salvamento da Fase no Manejo Calcinha. Quando somente a Fase muda, faz uma única gravação autoritativa no Firestore; quando outros campos da linha também mudam, mantém o salvamento normal e confirma a Fase da Calcinha por último. Durante a confirmação do Firestore, evita somente a reconstrução completa da tabela do Manejo que provocava o piscar, mantendo a linha visível e estável. Usa exclusivamente a lista oficial manejoFasesListCalcinha. Não altera app.js, Manejo Sutiã, Pagamentos, Facções, OP, cálculos ou regras do Firebase."
+  "version": "2026-08-24-manejo-calcinha-rollback-estavel-228",
+  "updatedAt": "2026-08-24T19:20:00-03:00",
+  "notes": "PRODUÇÃO. Reverte integralmente a otimização rápida 227 da Fase do Manejo Calcinha porque a escrita direta fazia a tabela reagir visualmente ao snapshot do Firestore e causava piscar na tela. Restaura o carregador e o salvamento da Fase exatamente para o estado estável anterior à 226/227. Remove o módulo corponu-manejo-calcinha-fase-rapida-226.js do carregamento e do repositório. Não altera app.js, Pagamentos, Facções, cálculos, Manejo Sutiã ou regras do Firebase."
 }
