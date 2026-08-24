@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>Teste Manejo Calcinha 230</title></head>
+<body>
+  <div id="appShell">
+    <section id="manejo" class="page active">
+      <button type="button" class="manejo-setor-btn active" data-setor="calcinha">Calcinha</button>
+      <div class="table-wrap">
+        <table class="manejo-inline-table">
+          <tbody id="listaManejoInline">
+            <tr data-manejo-row="1">
+              <td><input id="manejo-op1-fase" list="manejoFasesListCalcinha" value="FASE A"></td>
+              <td><button class="btn-save-manejo" type="button" onclick="salvarManejoLinha('op1')">✓</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <datalist id="manejoFasesListCalcinha">
+    <option value="FASE A"></option>
+    <option value="FASE B"></option>
+  </datalist>
+  <div id="toast" class="hidden"></div>
+
+  <script>
+    window.__originalCalls = 0;
+    window.__originalIds = [];
+    window.__mockUpdateDocCalls = 0;
+    window.salvarManejoLinha = async function salvarOriginal(id) {
+      window.__originalCalls += 1;
+      window.__originalIds.push(String(id));
+      await new Promise(resolve => setTimeout(resolve, 25));
+      return true;
+    };
+
+    const observadorFake = {
+      disconnect() { window.__observerDisconnects = (window.__observerDisconnects || 0) + 1; },
+      observe() { window.__observerObserves = (window.__observerObserves || 0) + 1; },
+      takeRecords() { return []; }
+    };
+
+    window.corponuDualMode = {
+      state: {
+        observers: [observadorFake],
+        maps: {
+          ordens: new Map([["op1", {
+            id: "op1",
+            tipoPeca: "calcinha",
+            manejosSetores: { calcinha: { fase: "FASE A" } }
+          }]])
+        }
+      }
+    };
+  </script>
+
+  <script src="/corponu-manejo-calcinha-estavel-204.js"></script>
+  <script src="/corponu-manejo-calcinha-salvar-fase-194.js"></script>
+  <script src="/corponu-manejo-calcinha-fase-definitivo-216.js"></script>
+</body>
+</html>

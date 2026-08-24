@@ -1,0 +1,42 @@
+name: Testar Manejo Calcinha 230
+
+on:
+  push:
+    branches:
+      - fix/manejo-calcinha-230-validado
+
+permissions:
+  contents: read
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --save-dev playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Iniciar servidor local
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/corponu-http.log 2>&1 &
+          echo $! > /tmp/corponu-http.pid
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:4173/tests/manejo-calcinha-230.html >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/corponu-http.log
+          exit 1
+
+      - name: Testar clique e salvamento da Fase
+        run: node tests/manejo-calcinha-230.mjs

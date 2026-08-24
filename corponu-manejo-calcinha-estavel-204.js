@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-17-manejo-calcinha-fluido-205";
+  const VERSION = "2026-08-24-manejo-calcinha-fluido-coordenado-230";
   const DATA_MODO = "corponuManejoEstavel";
 
   if (window.__CORPONU_MANEJO_CALCINHA_ESTAVEL__ === VERSION) return;
@@ -128,18 +128,31 @@
     }) || null;
   }
 
+  function propagarMarca(destino, origem, nome) {
+    if (!origem?.[nome]) return;
+    try {
+      Object.defineProperty(destino, nome, {
+        value: true,
+        configurable: false,
+        enumerable: false
+      });
+    } catch (_) {
+      try { destino[nome] = true; } catch (_) {}
+    }
+  }
+
   function envolverSalvarAtual() {
     const atual = window.salvarManejoLinha;
     if (typeof atual !== "function") return false;
 
-    if (atual.__corponuCalcinhaFluido205 === true) {
+    if (atual.__corponuCalcinhaFluido205 === true || atual.__corponuCalcinhaFluido230 === true) {
       wrapperInstalado = atual;
       return true;
     }
 
     if (wrapperInstalado === atual) return true;
 
-    const embrulhado = async function corponuSalvarManejoCalcinhaFluido205(...args) {
+    const embrulhado = async function corponuSalvarManejoCalcinhaFluido230(...args) {
       if (!manejoCalcinhaAtivo()) {
         return atual.apply(this, args);
       }
@@ -178,6 +191,17 @@
       configurable: false,
       enumerable: false
     });
+    Object.defineProperty(embrulhado, "__corponuCalcinhaFluido230", {
+      value: true,
+      configurable: false,
+      enumerable: false
+    });
+
+    // Se a 223 já está dentro desta camada, preservamos sua marca no wrapper
+    // externo. Sem isso, a 223 entende que sumiu e se instala novamente a cada
+    // ciclo, multiplicando updateDoc e deixando o clique progressivamente lento.
+    propagarMarca(embrulhado, atual, "__corponuFaseCalcinhaSemPiscar223");
+    propagarMarca(embrulhado, atual, "__corponuFaseCalcinhaValidacaoCoordenada230");
 
     window.salvarManejoLinha = embrulhado;
     wrapperInstalado = embrulhado;
@@ -228,7 +252,7 @@
     window.addEventListener("pageshow", sincronizarModo);
     window.addEventListener("focus", sincronizarModo);
 
-    console.info(`[CorpoNu] Manejo Calcinha fluido ativo: ${VERSION}`);
+    console.info(`[CorpoNu] Manejo Calcinha fluido coordenado ativo: ${VERSION}`);
   }
 
   if (document.readyState === "loading") {
