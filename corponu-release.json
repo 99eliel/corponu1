@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-24-manejo-calcinha-fase-rapida-226",
-  "updatedAt": "2026-08-24T15:45:00-03:00",
-  "notes": "PRODUÇÃO. Otimiza o salvamento da Fase no Manejo Calcinha sem alterar a persistência que ficou estável. Remove uma gravação Firestore redundante da camada antiga de validação, que acontecia depois do salvamento normal e antes da confirmação final autoritativa da Fase. O fluxo mantém a validação pela lista oficial da Calcinha e mantém a gravação final de segurança do módulo 223, reduzindo uma ida serial ao Firestore sem mexer em app.js, pagamentos, facções, cálculos ou demais setores do Manejo."
+  "version": "2026-08-24-manejo-calcinha-fase-rapida-227",
+  "updatedAt": "2026-08-24T16:02:00-03:00",
+  "notes": "PRODUÇÃO. Ativa o caminho rápido e seguro para a Fase do Manejo Calcinha. Quando somente a Fase foi alterada, o sistema usa uma única gravação autoritativa no documento da OP, em vez de passar pelo salvamento geral da linha e pelas camadas antigas em sequência. Se Necessidade, Linha ou qualquer outro campo da mesma linha também tiver sido alterado, o fluxo completo anterior é preservado sem mudança. O módulo rápido só se instala por fora da proteção estável 223, pré-aquece o Firebase e não altera app.js, pagamentos, facções, cálculos nem Manejo Sutiã."
 }
