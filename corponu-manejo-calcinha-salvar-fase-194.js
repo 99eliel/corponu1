@@ -1,13 +1,15 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-24-fase-calcinha-validacao-leve-226";
+  const VERSION = "2026-08-19-fase-calcinha-oficial-220";
+  const FIREBASE_VERSION = "10.12.5";
   const DATALIST_FASES_CALCINHA = "manejoFasesListCalcinha";
 
-  if (window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_226__ === VERSION) return;
-  window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_226__ = VERSION;
+  if (window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_220__ === VERSION) return;
+  window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_220__ = VERSION;
 
   let instalado = false;
+  let contextoPromise = null;
 
   function calcinhaAtiva() {
     return document.querySelector("#manejo .manejo-setor-btn.active")?.dataset?.setor === "calcinha";
@@ -83,26 +85,50 @@
     if (toast) {
       toast.textContent = mensagem;
       toast.classList.remove("hidden");
-      window.clearTimeout(window.__faseCalcinha226Toast);
-      window.__faseCalcinha226Toast = window.setTimeout(() => toast.classList.add("hidden"), 6500);
+      window.clearTimeout(window.__faseCalcinha220Toast);
+      window.__faseCalcinha220Toast = window.setTimeout(() => toast.classList.add("hidden"), 6500);
       return;
     }
     window.alert(mensagem);
+  }
+
+  async function obterContexto() {
+    if (contextoPromise) return contextoPromise;
+
+    contextoPromise = (async () => {
+      const [appModule, authModule, firestoreModule] = await Promise.all([
+        import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`),
+        import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-auth.js`),
+        import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-firestore.js`)
+      ]);
+
+      const app = appModule.getApps()[0] || appModule.getApp();
+      return {
+        auth: authModule.getAuth(app),
+        db: firestoreModule.getFirestore(app),
+        firestore: firestoreModule
+      };
+    })();
+
+    return contextoPromise;
   }
 
   function instalarProtecao() {
     if (instalado) return true;
     const atual = window.salvarManejoLinha;
     if (typeof atual !== "function") return false;
-    if (atual.__corponuFaseCalcinhaValidacaoLeve226) {
+    if (atual.__corponuFaseCalcinhaOficial220) {
       instalado = true;
       return true;
     }
 
     const original = atual;
 
-    async function salvarManejoLinhaComFaseCalcinhaValidada226(orderId) {
-      if (calcinhaAtiva()) {
+    async function salvarManejoLinhaComFaseCalcinhaValidada220(orderId) {
+      const ehCalcinha = calcinhaAtiva();
+      let faseOficial = "";
+
+      if (ehCalcinha) {
         const validacao = faseOficialDaLinha(orderId);
 
         if (!validacao.listaDisponivel) {
@@ -125,22 +151,41 @@
           return false;
         }
 
+        faseOficial = validacao.oficial;
         if (validacao.campo) {
-          validacao.campo.value = validacao.oficial;
+          validacao.campo.value = faseOficial;
           validacao.campo.setAttribute("list", DATALIST_FASES_CALCINHA);
         }
       }
 
-      // IMPORTANTE: esta camada agora faz somente validação/normalização.
-      // A gravação normal continua sendo feita pelo fluxo original e a confirmação
-      // final autoritativa da Fase permanece no módulo 223. Antes, esta camada
-      // ainda fazia outro updateDoc depois do original, criando uma terceira ida
-      // serial ao Firestore e aumentando bastante o tempo do botão verde.
-      return await original.apply(this, arguments);
+      const retorno = await original.apply(this, arguments);
+
+      if (!ehCalcinha || !faseOficial) return retorno;
+
+      try {
+        const { auth, db, firestore } = await obterContexto();
+        const user = auth.currentUser;
+        if (!user) return retorno;
+
+        await firestore.updateDoc(
+          firestore.doc(db, "ordensProducao", String(orderId)),
+          {
+            "manejosSetores.calcinha.fase": faseOficial,
+            "manejosSetores.calcinha.atualizadoPor": user.uid,
+            "manejosSetores.calcinha.atualizadoEm": firestore.serverTimestamp(),
+            atualizadoPor: user.uid,
+            atualizadoEm: firestore.serverTimestamp()
+          }
+        );
+      } catch (error) {
+        console.error("Não foi possível preservar a fase oficial do Manejo Calcinha.", error);
+      }
+
+      return retorno;
     }
 
-    salvarManejoLinhaComFaseCalcinhaValidada226.__corponuFaseCalcinhaValidacaoLeve226 = true;
-    window.salvarManejoLinha = salvarManejoLinhaComFaseCalcinhaValidada226;
+    salvarManejoLinhaComFaseCalcinhaValidada220.__corponuFaseCalcinhaOficial220 = true;
+    window.salvarManejoLinha = salvarManejoLinhaComFaseCalcinhaValidada220;
     instalado = true;
     return true;
   }
