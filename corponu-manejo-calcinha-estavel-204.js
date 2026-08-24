@@ -10,6 +10,7 @@
   let observadorPagina = null;
   let observadorPaginaPausado = false;
   let wrapperInstalado = null;
+  let wrapperJaEstaNaCadeia = false;
   let timerInstalacao = 0;
   const salvamentosEmAndamento = new Set();
 
@@ -147,6 +148,16 @@
 
     if (atual.__corponuCalcinhaFluido205 === true || atual.__corponuCalcinhaFluido230 === true) {
       wrapperInstalado = atual;
+      wrapperJaEstaNaCadeia = true;
+      return true;
+    }
+
+    // Depois que esta camada entrou uma vez na cadeia, qualquer função nova vista
+    // aqui é um wrapper externo (223/230/etc.) em torno dela. Não embrulhamos de
+    // novo. A versão antiga fazia isso e criava duas camadas 205; a externa marcava
+    // a OP como "salvando" e a interna abortava o salvamento original como duplicado.
+    if (wrapperJaEstaNaCadeia) {
+      wrapperInstalado = atual;
       return true;
     }
 
@@ -197,14 +208,12 @@
       enumerable: false
     });
 
-    // Se a 223 já está dentro desta camada, preservamos sua marca no wrapper
-    // externo. Sem isso, a 223 entende que sumiu e se instala novamente a cada
-    // ciclo, multiplicando updateDoc e deixando o clique progressivamente lento.
     propagarMarca(embrulhado, atual, "__corponuFaseCalcinhaSemPiscar223");
     propagarMarca(embrulhado, atual, "__corponuFaseCalcinhaValidacaoCoordenada230");
 
     window.salvarManejoLinha = embrulhado;
     wrapperInstalado = embrulhado;
+    wrapperJaEstaNaCadeia = true;
     return true;
   }
 
