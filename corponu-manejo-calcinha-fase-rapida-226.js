@@ -204,8 +204,6 @@
       return;
     }
 
-    // O input legado da Fase fica escondido e é sincronizado pelos módulos atuais.
-    // Não deve transformar uma alteração apenas de Fase em alteração geral da linha.
     if (alvo === input) return;
 
     if (alvo.matches("input, select, textarea")) {
@@ -217,6 +215,11 @@
     const atual = window.salvarManejoLinha;
     if (typeof atual !== "function") return false;
     if (atual.__corponuFaseCalcinhaRapida226 === true) return true;
+
+    // Só ativamos o caminho rápido depois que a proteção 223, já validada em
+    // produção, estiver instalada. Assim nunca substituímos o fluxo estável por
+    // acidente durante os primeiros segundos de carregamento.
+    if (atual.__corponuFaseCalcinhaSemPiscar223 !== true) return false;
 
     const original = atual;
 
@@ -253,9 +256,9 @@
       }
 
       try {
-        // Caminho rápido: quando SOMENTE a Fase mudou, não executamos o salvamento
-        // geral da linha e todas as camadas antigas. A gravação abaixo é a mesma
-        // confirmação autoritativa que já preservava a Fase na versão 223.
+        // Quando SOMENTE a Fase mudou, uma única escrita autoritativa substitui
+        // o salvamento geral + wrappers em sequência. Se qualquer outro campo da
+        // linha foi alterado manualmente, o fluxo original permanece intacto.
         const salva = await persistirFase(orderId, oficial);
         sincronizarEstadoDual(orderId, salva);
         faseAlterada.delete(orderId);
@@ -274,9 +277,6 @@
       }
     };
 
-    // O módulo 223 verifica esta marca antes de tentar se recolocar por fora.
-    // Como este wrapper já contém o 223 em `original`, a marca evita empilhamento
-    // repetido, mantendo o caminho rápido como camada externa estável.
     Object.defineProperty(wrapper, "__corponuFaseCalcinhaSemPiscar223", {
       value: true,
       configurable: false,
@@ -303,10 +303,9 @@
       }
     }, true);
 
-    // Espera os wrappers antigos terminarem de instalar e então fica por fora.
     [6500, 8500, 11000].forEach(delay => setTimeout(instalarWrapper, delay));
 
-    // Pré-aquece os módulos Firebase; isso retira o custo de importação do primeiro ✓.
+    // Pré-aquece os módulos Firebase; o primeiro clique não precisa pagar esse custo.
     setTimeout(() => firebase().catch(() => {}), 1200);
 
     console.info(`[CorpoNu] Salvamento rápido da Fase Calcinha ativo: ${VERSION}`);
