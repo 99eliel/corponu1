@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-17-manejo-calcinha-fluido-205";
+  const VERSION = "2026-08-24-manejo-calcinha-fluido-coordenado-230";
   const DATA_MODO = "corponuManejoEstavel";
 
   if (window.__CORPONU_MANEJO_CALCINHA_ESTAVEL__ === VERSION) return;
@@ -10,6 +10,7 @@
   let observadorPagina = null;
   let observadorPaginaPausado = false;
   let wrapperInstalado = null;
+  let wrapperJaEstaNaCadeia = false;
   let timerInstalacao = 0;
   const salvamentosEmAndamento = new Set();
 
@@ -128,18 +129,41 @@
     }) || null;
   }
 
+  function propagarMarca(destino, origem, nome) {
+    if (!origem?.[nome]) return;
+    try {
+      Object.defineProperty(destino, nome, {
+        value: true,
+        configurable: false,
+        enumerable: false
+      });
+    } catch (_) {
+      try { destino[nome] = true; } catch (_) {}
+    }
+  }
+
   function envolverSalvarAtual() {
     const atual = window.salvarManejoLinha;
     if (typeof atual !== "function") return false;
 
-    if (atual.__corponuCalcinhaFluido205 === true) {
+    if (atual.__corponuCalcinhaFluido205 === true || atual.__corponuCalcinhaFluido230 === true) {
+      wrapperInstalado = atual;
+      wrapperJaEstaNaCadeia = true;
+      return true;
+    }
+
+    // Depois que esta camada entrou uma vez na cadeia, qualquer função nova vista
+    // aqui é um wrapper externo (223/230/etc.) em torno dela. Não embrulhamos de
+    // novo. A versão antiga fazia isso e criava duas camadas 205; a externa marcava
+    // a OP como "salvando" e a interna abortava o salvamento original como duplicado.
+    if (wrapperJaEstaNaCadeia) {
       wrapperInstalado = atual;
       return true;
     }
 
     if (wrapperInstalado === atual) return true;
 
-    const embrulhado = async function corponuSalvarManejoCalcinhaFluido205(...args) {
+    const embrulhado = async function corponuSalvarManejoCalcinhaFluido230(...args) {
       if (!manejoCalcinhaAtivo()) {
         return atual.apply(this, args);
       }
@@ -178,9 +202,18 @@
       configurable: false,
       enumerable: false
     });
+    Object.defineProperty(embrulhado, "__corponuCalcinhaFluido230", {
+      value: true,
+      configurable: false,
+      enumerable: false
+    });
+
+    propagarMarca(embrulhado, atual, "__corponuFaseCalcinhaSemPiscar223");
+    propagarMarca(embrulhado, atual, "__corponuFaseCalcinhaValidacaoCoordenada230");
 
     window.salvarManejoLinha = embrulhado;
     wrapperInstalado = embrulhado;
+    wrapperJaEstaNaCadeia = true;
     return true;
   }
 
@@ -228,7 +261,7 @@
     window.addEventListener("pageshow", sincronizarModo);
     window.addEventListener("focus", sincronizarModo);
 
-    console.info(`[CorpoNu] Manejo Calcinha fluido ativo: ${VERSION}`);
+    console.info(`[CorpoNu] Manejo Calcinha fluido coordenado ativo: ${VERSION}`);
   }
 
   if (document.readyState === "loading") {

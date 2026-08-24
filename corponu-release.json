@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-24-manejo-calcinha-rollback-estavel-228",
-  "updatedAt": "2026-08-24T19:20:00-03:00",
-  "notes": "PRODUÇÃO. Reverte integralmente a otimização rápida 227 da Fase do Manejo Calcinha porque a escrita direta fazia a tabela reagir visualmente ao snapshot do Firestore e causava piscar na tela. Restaura o carregador e o salvamento da Fase exatamente para o estado estável anterior à 226/227. Remove o módulo corponu-manejo-calcinha-fase-rapida-226.js do carregamento e do repositório. Não altera app.js, Pagamentos, Facções, cálculos, Manejo Sutiã ou regras do Firebase."
+  "version": "2026-08-24-manejo-calcinha-salvamento-coordenado-230",
+  "updatedAt": "2026-08-24T20:57:00-03:00",
+  "notes": "PRODUÇÃO. Corrige a cadeia de salvamento do Manejo Calcinha após teste automatizado em Chromium. Remove a gravação Firestore redundante da proteção antiga de Fase e impede que a camada visual 205 se embrulhe novamente ao redor dos wrappers externos. Isso evita que uma camada interna interprete o próprio salvamento como duplicado e aborte salvarManejoLinha. Mantém a confirmação autoritativa da Fase pela proteção 223, sem fast path, sem bloquear renderização e sem refresh forçado. Testado: um clique chama uma vez o salvamento original e uma vez a confirmação da Fase; após os timers não há empilhamento; o botão volta a habilitar; Sutiã permanece fora da lógica. Não altera app.js, Pagamentos, Facções, cálculos, OPs ou regras do Firebase."
 }

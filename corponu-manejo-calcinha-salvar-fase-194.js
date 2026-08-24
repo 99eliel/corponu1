@@ -1,15 +1,13 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-19-fase-calcinha-oficial-220";
-  const FIREBASE_VERSION = "10.12.5";
+  const VERSION = "2026-08-24-fase-calcinha-validacao-coordenada-230";
   const DATALIST_FASES_CALCINHA = "manejoFasesListCalcinha";
 
-  if (window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_220__ === VERSION) return;
-  window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_220__ = VERSION;
+  if (window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_230__ === VERSION) return;
+  window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_230__ = VERSION;
 
   let instalado = false;
-  let contextoPromise = null;
 
   function calcinhaAtiva() {
     return document.querySelector("#manejo .manejo-setor-btn.active")?.dataset?.setor === "calcinha";
@@ -85,50 +83,40 @@
     if (toast) {
       toast.textContent = mensagem;
       toast.classList.remove("hidden");
-      window.clearTimeout(window.__faseCalcinha220Toast);
-      window.__faseCalcinha220Toast = window.setTimeout(() => toast.classList.add("hidden"), 6500);
+      window.clearTimeout(window.__faseCalcinha230Toast);
+      window.__faseCalcinha230Toast = window.setTimeout(() => toast.classList.add("hidden"), 6500);
       return;
     }
     window.alert(mensagem);
   }
 
-  async function obterContexto() {
-    if (contextoPromise) return contextoPromise;
-
-    contextoPromise = (async () => {
-      const [appModule, authModule, firestoreModule] = await Promise.all([
-        import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`),
-        import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-auth.js`),
-        import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-firestore.js`)
-      ]);
-
-      const app = appModule.getApps()[0] || appModule.getApp();
-      return {
-        auth: authModule.getAuth(app),
-        db: firestoreModule.getFirestore(app),
-        firestore: firestoreModule
-      };
-    })();
-
-    return contextoPromise;
+  function propagarMarca(destino, origem, nome) {
+    if (!origem?.[nome]) return;
+    try {
+      Object.defineProperty(destino, nome, {
+        value: true,
+        configurable: false,
+        enumerable: false
+      });
+    } catch (_) {
+      try { destino[nome] = true; } catch (_) {}
+    }
   }
 
   function instalarProtecao() {
     if (instalado) return true;
     const atual = window.salvarManejoLinha;
     if (typeof atual !== "function") return false;
-    if (atual.__corponuFaseCalcinhaOficial220) {
+
+    if (atual.__corponuFaseCalcinhaValidacaoCoordenada230 === true) {
       instalado = true;
       return true;
     }
 
     const original = atual;
 
-    async function salvarManejoLinhaComFaseCalcinhaValidada220(orderId) {
-      const ehCalcinha = calcinhaAtiva();
-      let faseOficial = "";
-
-      if (ehCalcinha) {
+    async function salvarManejoLinhaComFaseCalcinhaValidada230(orderId) {
+      if (calcinhaAtiva()) {
         const validacao = faseOficialDaLinha(orderId);
 
         if (!validacao.listaDisponivel) {
@@ -151,41 +139,31 @@
           return false;
         }
 
-        faseOficial = validacao.oficial;
         if (validacao.campo) {
-          validacao.campo.value = faseOficial;
+          validacao.campo.value = validacao.oficial;
           validacao.campo.setAttribute("list", DATALIST_FASES_CALCINHA);
         }
       }
 
-      const retorno = await original.apply(this, arguments);
-
-      if (!ehCalcinha || !faseOficial) return retorno;
-
-      try {
-        const { auth, db, firestore } = await obterContexto();
-        const user = auth.currentUser;
-        if (!user) return retorno;
-
-        await firestore.updateDoc(
-          firestore.doc(db, "ordensProducao", String(orderId)),
-          {
-            "manejosSetores.calcinha.fase": faseOficial,
-            "manejosSetores.calcinha.atualizadoPor": user.uid,
-            "manejosSetores.calcinha.atualizadoEm": firestore.serverTimestamp(),
-            atualizadoPor: user.uid,
-            atualizadoEm: firestore.serverTimestamp()
-          }
-        );
-      } catch (error) {
-        console.error("Não foi possível preservar a fase oficial do Manejo Calcinha.", error);
-      }
-
-      return retorno;
+      // Esta camada faz apenas validação/normalização. A gravação normal continua
+      // no fluxo existente e a confirmação final autoritativa permanece na 223.
+      // Assim eliminamos um updateDoc serial redundante sem alterar o clique.
+      return await original.apply(this, arguments);
     }
 
-    salvarManejoLinhaComFaseCalcinhaValidada220.__corponuFaseCalcinhaOficial220 = true;
-    window.salvarManejoLinha = salvarManejoLinhaComFaseCalcinhaValidada220;
+    Object.defineProperty(salvarManejoLinhaComFaseCalcinhaValidada230, "__corponuFaseCalcinhaValidacaoCoordenada230", {
+      value: true,
+      configurable: false,
+      enumerable: false
+    });
+
+    // Muito importante: wrappers antigos se identificam por marcas na função.
+    // Ao preservar as marcas da camada interna, evitamos que 205 e 223 a envolvam
+    // de novo a cada timer, o que multiplicava confirmações e deixava o salvar lento.
+    propagarMarca(salvarManejoLinhaComFaseCalcinhaValidada230, original, "__corponuFaseCalcinhaSemPiscar223");
+    propagarMarca(salvarManejoLinhaComFaseCalcinhaValidada230, original, "__corponuCalcinhaFluido205");
+
+    window.salvarManejoLinha = salvarManejoLinhaComFaseCalcinhaValidada230;
     instalado = true;
     return true;
   }
