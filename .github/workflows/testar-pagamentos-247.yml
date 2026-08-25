@@ -1,0 +1,49 @@
+name: Testar Pagamentos 247
+
+on:
+  push:
+    branches:
+      - fix/pagamentos-core-estavel-247
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pagamentos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validar sintaxe dos módulos alterados
+        shell: bash
+        run: |
+          set -euo pipefail
+          for arquivo in \
+            corponu-pagamentos-seguro.js \
+            corponu-pagamentos-manual.js \
+            corponu-pagamentos-multifiltro.js \
+            corponu-pagamentos-multifiltro-visual.js \
+            corponu-pagamentos-filtro-op.js \
+            corponu-pagamentos-alerta-sem-valor.js \
+            corponu-pagamentos-alerta-duplicidades.js \
+            corponu-pendencias-modal-estavel.js \
+            corponu-pendencias-valor-seguro.js \
+            corponu-verificacao-sutia-completo.js \
+            corponu-valores-pendentes-financeiro.js \
+            corponu-valores-pendentes-auth-214.js \
+            corponu-restantes-pagamento-automatico-245.js; do
+              echo "Validando $arquivo"
+              node --input-type=module --check < "$arquivo"
+          done
+
+      - name: Reproduzir bug e testar recuperação
+        run: node tests/test-pagamentos-247.mjs
