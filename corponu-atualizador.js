@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-25-pagamentos-lazy-loader-250";
+  const LOCAL_RELEASE = "2026-08-25-manejo-calcinha-dedicado-252";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -101,9 +101,8 @@
 
   const MODULOS_APOS_LOGIN = [
     ["corponu-calcinha-planejamento-opcional-129.js", "calcinha-planejamento-opcional-129", "Não foi possível tornar serviço e facção opcionais nas OPs de calcinha."],
-    ["corponu-manejo-calcinha-estavel-204.js", "manejo-calcinha-estavel-204", "Não foi possível carregar a estabilização do Manejo Calcinha."],
-    ["corponu-manejo-calcinha-fase-definitivo-216.js", "manejo-calcinha-fase-lista-real-219", "Não foi possível carregar a lista de Fase da Calcinha."],
-    ["corponu-manejo-calcinha-antipisca-231.js", "manejo-calcinha-antipisca-231", "Não foi possível carregar a proteção visual da Fase da Calcinha."]
+    ["corponu-dual-ready-bridge.js", "dual-ready-bridge", "Não foi possível sincronizar o carregamento do modo Sutiã/Calcinha."],
+    ["corponu-manejo-calcinha-dedicado-252.js", "manejo-calcinha-dedicado-252", "Não foi possível carregar o Manejo Calcinha dedicado."]
   ];
 
   function reservarModoCalcinhaOpcional() {

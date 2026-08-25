@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-25-sutia-completo-automatico-251",
-  "updatedAt": "2026-08-25T19:45:00-03:00",
-  "notes": "PRODUÇÃO. Correção isolada sobre a base estável 250: SUTIÃ COMPLETO deixa de ser classificado pela Central Financeira como valor total manual da OP. SUTIÃ MONTAGEM continua com valor total manual. O cálculo automático já existente do Sutiã Completo continua sendo a fonte de valor e só permanece sem_valor quando o próprio cálculo indicar informação/preço faltante. Não altera app.js, corponu-atualizador.js, runtime lazy 250, update.js, Firebase, regras, dados históricos ou outras áreas. Apenas altera a regra de classificação, o cache do módulo financeiro e o manifesto de release."
+  "version": "2026-08-25-manejo-calcinha-dedicado-252",
+  "updatedAt": "2026-08-25T20:18:32-03:00",
+  "notes": "PRODUÇÃO. Manejo Calcinha passa a usar uma tela própria e otimizada, separada da tabela genérica do Sutiã. Linha, Fase e Necessidade são editadas na área dedicada e salvas juntas em uma única atualização da OP. A lista usa as OPs já carregadas pelo Dual Mode e renderiza até 80 registros por vez. Os adaptadores antigos 204, 216 e 231 deixam de ser carregados. O Dual Mode ignora a tabela genérica escondida enquanto Calcinha estiver ativa. O envio para facção continua reutilizando o fluxo existente. Não altera app.js, Pagamentos, regras Firebase, dados históricos nem o fluxo do Sutiã Completo 251."
 }
