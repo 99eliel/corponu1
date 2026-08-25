@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-19-manejo-calcinha-fase-lista-real-219";
+  const LOCAL_RELEASE = "2026-08-25-pagamentos-loader-estavel-244";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -12,6 +12,21 @@
 
   let verificando = false;
 
+  // Modo de recuperação de Pagamentos 244:
+  // mantém o núcleo e os módulos operacionais atuais, mas retira da inicialização
+  // as camadas auxiliares que fazem leituras/observers próprios sobre a tela.
+  // O conjunto foi baseado no último rollback explicitamente estável de Pagamentos (v40).
+  const MODULOS_PAGAMENTOS_DESATIVADOS_244 = new Set([
+    "corponu-pagamentos-filtro-op.js",
+    "corponu-pagamentos-alerta-sem-valor.js",
+    "corponu-pagamentos-alerta-duplicidades.js",
+    "corponu-pendencias-modal-estavel.js",
+    "corponu-pendencias-valor-seguro.js",
+    "corponu-verificacao-sutia-completo.js",
+    "corponu-valores-pendentes-financeiro.js",
+    "corponu-valores-pendentes-auth-214.js"
+  ]);
+
   function reservarModoCalcinhaOpcional() {
     if (document.querySelector('script[data-corponu-dual-mode="1"]')) return;
     const marcador = document.createElement("script");
@@ -21,6 +36,11 @@
   }
 
   function carregarScript(nomeArquivo, marcador, mensagemErro) {
+    if (MODULOS_PAGAMENTOS_DESATIVADOS_244.has(nomeArquivo)) {
+      console.info(`[CorpoNu 244] Módulo auxiliar de Pagamentos mantido fora da inicialização: ${nomeArquivo}`);
+      return null;
+    }
+
     const existente = [...document.scripts].find(script => String(script.src || "").includes(nomeArquivo));
     if (existente) return existente;
     const script = document.createElement("script");
@@ -68,6 +88,7 @@
       ["corponu-chegada-sem-componentes-duplicados.js", "chegada-sem-componentes-duplicados", "Não foi possível remover a conferência duplicada de lateral e bojo."],
       ["corponu-chegada-manual-sem-componentes-duplicados.js", "chegada-manual-sem-componentes-duplicados", "Não foi possível remover a conferência duplicada na chegada manual."],
       ["corponu-chegada-sutia-sync-legado.js", "chegada-sutia-definitiva", "Não foi possível ativar a chegada definitiva do Sutiã Completo."],
+
       ["corponu-pagamentos-interface.js", "pagamentos-interface", "Não foi possível carregar a organização visual de Pagamentos."],
       ["corponu-pagamentos-interface-fix.js", "pagamentos-interface-fix", "Não foi possível estabilizar a interface de Pagamentos."],
       ["corponu-pagamentos-manual-op-auto.js", "pagamentos-manual-op-auto", "Não foi possível carregar a busca automática da OP no lançamento manual."],
@@ -84,8 +105,10 @@
       ["corponu-verificacao-sutia-completo.js", "verificacao-sutia-completo-segura", "Não foi possível carregar a verificação segura do Sutiã Completo."],
       ["corponu-valores-pendentes-financeiro.js", "valores-pendentes-financeiro", "Não foi possível carregar a área de Valores pendentes."],
       ["corponu-valores-pendentes-auth-214.js", "valores-pendentes-auth-214", "Não foi possível estabilizar a autenticação de Valores pendentes."],
+
       ["corponu-manejo-calcinha-fase-definitivo-216.js", "manejo-calcinha-fase-lista-real-219", "Não foi possível carregar o seletor estável da Fase do Manejo Calcinha."]
     ];
+
     modulos.forEach(([arquivo, marcador, erro]) => carregarScript(arquivo, marcador, erro));
   }
 
