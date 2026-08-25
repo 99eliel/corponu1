@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-24-manejo-calcinha-salvamento-coordenado-230",
-  "updatedAt": "2026-08-24T20:57:00-03:00",
-  "notes": "PRODUÇÃO. Corrige a cadeia de salvamento do Manejo Calcinha após teste automatizado em Chromium. Remove a gravação Firestore redundante da proteção antiga de Fase e impede que a camada visual 205 se embrulhe novamente ao redor dos wrappers externos. Isso evita que uma camada interna interprete o próprio salvamento como duplicado e aborte salvarManejoLinha. Mantém a confirmação autoritativa da Fase pela proteção 223, sem fast path, sem bloquear renderização e sem refresh forçado. Testado: um clique chama uma vez o salvamento original e uma vez a confirmação da Fase; após os timers não há empilhamento; o botão volta a habilitar; Sutiã permanece fora da lógica. Não altera app.js, Pagamentos, Facções, cálculos, OPs ou regras do Firebase."
+  "version": "2026-08-25-restantes-pagamento-automatico-245",
+  "updatedAt": "2026-08-25T17:20:00-03:00",
+  "notes": "PRODUÇÃO. Restaura a carga completa e estável da v230 para Pagamentos e substitui a correção 233 dos Restantes por uma implementação isolada. O preço da chegada complementar é localizado por ID salvo ou por REF + PROCESSO normalizados, aceitando aliases e diferenças de acento/formatação; referências numéricas também são comparadas sem zeros à esquerda. Novos Restantes geram o pagamento em uma única transação. O reparo histórico não varre nem reclassifica tudo: só retira de Valor pendente registros marcados como pagamento complementar de Restante quando existe preço ativo compatível e preserva pagamentos já pagos ou definidos manualmente. Registros sem preço não são alterados. Não altera app.js, regras do Firebase, Manejo, Facções ou a tabela de preços."
 }
