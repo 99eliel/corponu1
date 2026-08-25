@@ -21,7 +21,37 @@ jobs:
           ref: fix/manejo-calcinha-filtros-253
 
       - name: Aplicar refatoração 253
-        run: python3 .github/scripts/aplicar-calcinha-253.py
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('.github/scripts/aplicar-calcinha-253.py')
+          s = p.read_text(encoding='utf-8')
+          antigo = '''calc_trocar(
+    '        necessidade: dados.necessidade,\\n        necessidadeTexto: dados.necessidade,',
+    '        fase: dados.fase,\\n        necessidade: dados.necessidade,\\n        necessidadeTexto: dados.necessidade,',
+    'fase raiz Firestore',
+)
+calc_trocar(
+    '        linhaCalcinhaLabel: linhaLabel,\\n        necessidade: dados.necessidade,',
+    '        linhaCalcinhaLabel: linhaLabel,\\n        fase: dados.fase,\\n        necessidade: dados.necessidade,',
+    'fase raiz mapa local',
+)
+'''
+          novo = '''calc_trocar(
+    '        necessidade: dados.necessidade,\\n        necessidadeTexto: dados.necessidade,',
+    '        fase: dados.fase,\\n        necessidade: dados.necessidade,\\n        necessidadeTexto: dados.necessidade,',
+    'fase raiz Firestore e mapa local',
+    quantidade=2,
+)
+'''
+          if s.count(antigo) != 1:
+              raise SystemExit(f'Bloco de fase esperado não encontrado uma vez: {s.count(antigo)}')
+          p.write_text(s.replace(antigo, novo, 1), encoding='utf-8')
+          PY
+          python3 .github/scripts/aplicar-calcinha-253.py
+          git checkout -- .github/scripts/aplicar-calcinha-253.py
 
       - name: Validar sintaxe e arquitetura
         shell: bash
