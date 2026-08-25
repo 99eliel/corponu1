@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-25-pagamentos-emergencia-249",
-  "updatedAt": "2026-08-25T18:40:00-03:00",
-  "notes": "PRODUÇÃO DE EMERGÊNCIA. Parte da v236 e restaura o carregamento de Pagamentos para o estado anterior à 233. O runtime volta ao loader da v232, portanto a lógica Restantes 233 não é mais carregada. O próprio arquivo 233 também foi neutralizado para proteger clientes com cache antigo. Além disso, remove somente o MutationObserver legado da tabela listaEntregasPagamento em update.js que observava a própria tabela e alterava seu DOM em seguida, criando um ciclo de mutações capaz de congelar o navegador após os pagamentos aparecerem. Não executa migração, reparo, varredura ou recalculo no Firestore. Não altera app.js, valores, status, quantidades, regras, Facções ou a tabela de preços."
+  "version": "2026-08-25-pagamentos-lazy-loader-250",
+  "updatedAt": "2026-08-25T18:55:00-03:00",
+  "notes": "PRODUÇÃO. Adota a arquitetura de carregamento que passou no teste real de Pagamentos do repositório corpunuteste com Chromium e Firebase de homologação. O runtime 203 vira somente um shim de compatibilidade: sem timers, sem troca de documento e sem injeção paralela de scripts. O corponu-atualizador passa a carregar somente um módulo crítico no boot e os demais módulos são carregados sob demanda ao entrar em Manejo, Pagamentos, Facções ou Processos. Mantém app.js, Firebase de produção, dados, valores, status e regras intactos. Mantém também o update.js da produção com o observer recursivo de Pagamentos já removido e continua sem carregar a lógica Restantes 233."
 }
