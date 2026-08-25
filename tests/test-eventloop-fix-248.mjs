@@ -9,74 +9,76 @@ const update = ler('update.js');
 const recuperacao = ler('corponu-restantes-pagamento-automatico-245.js');
 const release = JSON.parse(ler('corponu-release.json'));
 
-// 1) A proteção precisa nascer antes do legado problemático.
-const posAtualizador = index.indexOf('corponu-atualizador.js');
+function extrairFuncao(texto, assinatura) {
+  const inicio = texto.indexOf(assinatura);
+  assert.ok(inicio >= 0, `função não encontrada: ${assinatura}`);
+  const abre = texto.indexOf('{', inicio);
+  let nivel = 0;
+  let quote = null;
+  let escape = false;
+  for (let i = abre; i < texto.length; i++) {
+    const c = texto[i];
+    if (escape) { escape = false; continue; }
+    if (c === '\\') { escape = true; continue; }
+    if (quote) { if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'" || c === '`') { quote = c; continue; }
+    if (c === '{') nivel++;
+    else if (c === '}') {
+      nivel--;
+      if (nivel === 0) return texto.slice(inicio, i + 1);
+    }
+  }
+  throw new Error(`fechamento não encontrado: ${assinatura}`);
+}
+
+// 1) Confirma a ordem real de produção que invalidou a primeira tentativa.
 const posUpdate = index.indexOf('update.js');
 const posApp = index.indexOf('app.js');
-assert.ok(posAtualizador >= 0, 'corponu-atualizador.js não está no index');
 assert.ok(posUpdate >= 0, 'update.js não está no index');
 assert.ok(posApp >= 0, 'app.js não está no index');
-assert.ok(posAtualizador < posUpdate, 'a proteção 248 precisa carregar antes de update.js');
-assert.ok(posUpdate < posApp, 'o teste espera update.js antes do app.js, como em produção');
+assert.ok(posUpdate < posApp, 'update.js deveria carregar antes do app.js no HTML atual');
 
-// 2) O legado realmente contém o ciclo que motivou o patch.
-assert.match(update, /function\s+instalarObserverTabelaPagamentoFinal\s*\(/);
-assert.match(update, /observerTabelaPagamentoFinal\.observe\(tbody,\s*\{\s*childList:\s*true,\s*subtree:\s*true\s*\}\)/);
-assert.match(update, /queueMicrotask\(\(\)\s*=>\s*aprimorarTabelaEntregasPagamentoFinal\(\)\)/);
-assert.match(update, /function\s+aprimorarTabelaEntregasPagamentoFinal\s*\(/);
-assert.match(update, /badge\.textContent\s*=/);
-assert.match(update, /innerHTML\s*=\s*"<strong>A definir<\/strong>"/);
+// 2) O patch precisa estar na origem, dentro do próprio update.js.
+const funcaoObserver = extrairFuncao(update, 'function instalarObserverTabelaPagamentoFinal()');
+assert.match(funcaoObserver, /v248:\s*desativado/);
+assert.match(funcaoObserver, /observerTabelaPagamentoFinal\)\s*observerTabelaPagamentoFinal\.disconnect\(\)/);
+assert.match(funcaoObserver, /observerTabelaPagamentoFinal\s*=\s*null/);
+assert.ok(!funcaoObserver.includes('new MutationObserver'), 'a função ainda cria MutationObserver');
+assert.ok(!funcaoObserver.includes('queueMicrotask'), 'a função ainda agenda o callback autoalimentado');
+assert.ok(!funcaoObserver.includes('.observe('), 'a função ainda observa a tabela');
 
-// 3) Extrai e executa a proteção real do arquivo, não uma cópia do teste.
+// 3) Mantemos a função visual; removemos apenas o observer que a chamava em ciclo.
+const funcaoAprimorar = extrairFuncao(update, 'function aprimorarTabelaEntregasPagamentoFinal()');
+assert.ok(funcaoAprimorar.length > 100, 'função visual foi removida por engano');
+assert.ok(funcaoAprimorar.includes('badge.textContent') || funcaoAprimorar.includes('innerHTML'), 'função visual não parece intacta');
+assert.ok(!update.includes('observerTabelaPagamentoFinal.observe(tbody, { childList: true, subtree: true });'), 'observer legado ainda existe no arquivo');
+
+// 4) A proteção tardia do atualizador fica apenas como segunda barreira e deve ser seletiva.
 const inicioGuard = atualizador.indexOf('  (() => {', atualizador.indexOf('// v248'));
 const fimGuard = atualizador.indexOf('\n\n  const LOCAL_RELEASE', inicioGuard);
-assert.ok(inicioGuard >= 0 && fimGuard > inicioGuard, 'não foi possível extrair a proteção 248');
+assert.ok(inicioGuard >= 0 && fimGuard > inicioGuard, 'não foi possível extrair a defesa secundária 248');
 const fonteGuard = atualizador.slice(inicioGuard, fimGuard).trim();
 
 class NativeMutationObserver {
-  static instances = [];
-  constructor(callback) {
-    this.callback = callback;
-    this.observeCalls = [];
-    NativeMutationObserver.instances.push(this);
-  }
-  observe(target, options) {
-    this.observeCalls.push({ target, options });
-  }
+  constructor(callback) { this.callback = callback; this.observeCalls = []; }
+  observe(target, options) { this.observeCalls.push({ target, options }); }
   disconnect() {}
-  takeRecords() { return []; }
 }
-
-const mensagens = [];
 const contexto = {
   window: { MutationObserver: NativeMutationObserver },
-  console: { info: (...args) => mensagens.push(args.join(' ')), warn() {}, error() {} },
+  console: { info() {}, warn() {}, error() {} },
   Object
 };
 vm.runInNewContext(fonteGuard, contexto);
-
 const Protegido = contexto.window.MutationObserver;
-assert.notEqual(Protegido, NativeMutationObserver, 'MutationObserver não foi protegido');
+const tabela = new Protegido(() => {});
+tabela.observe({ id: 'listaEntregasPagamento' }, { childList: true, subtree: true });
+assert.equal(tabela.observeCalls.length, 0, 'defesa secundária não bloqueou a tabela de Pagamentos');
+const manejo = new Protegido(() => {});
+manejo.observe({ id: 'listaManejo' }, { childList: true, subtree: true });
+assert.equal(manejo.observeCalls.length, 1, 'defesa secundária bloqueou observer de outra área');
 
-const observerTabela = new Protegido(() => {});
-observerTabela.observe({ id: 'listaEntregasPagamento' }, { childList: true, subtree: true });
-assert.equal(observerTabela.observeCalls.length, 0, 'observer legado da tabela deveria ter sido bloqueado');
-assert.ok(mensagens.some(item => item.includes('Observer legado da tabela Pagamentos bloqueado')));
-
-const observerOutraArea = new Protegido(() => {});
-observerOutraArea.observe({ id: 'listaManejo' }, { childList: true, subtree: true });
-assert.equal(observerOutraArea.observeCalls.length, 1, 'observer de outra área foi bloqueado indevidamente');
-
-const observerAtributoTabela = new Protegido(() => {});
-observerAtributoTabela.observe({ id: 'listaEntregasPagamento' }, { attributes: true });
-assert.equal(observerAtributoTabela.observeCalls.length, 1, 'observer não-childList da tabela foi bloqueado indevidamente');
-
-// Executar a proteção novamente deve ser idempotente.
-const protegidoAntes = contexto.window.MutationObserver;
-vm.runInNewContext(fonteGuard, contexto);
-assert.equal(contexto.window.MutationObserver, protegidoAntes, 'proteção não é idempotente');
-
-// 4) A recuperação da 247 não pode continuar lendo/escrevendo o banco a cada abertura.
+// 5) A recuperação estrutural da 247 precisa estar encerrada: zero acesso ao Firebase.
 for (const proibido of [
   'firebasejs', 'getDocs(', 'getDoc(', 'writeBatch(', 'setDoc(', 'updateDoc(',
   'runTransaction(', 'collection(', 'entregasPagamento', 'serverTimestamp('
@@ -84,10 +86,8 @@ for (const proibido of [
   assert.ok(!recuperacao.includes(proibido), `recuperação 248 ainda contém acesso ao banco: ${proibido}`);
 }
 
-// 5) Versão coerente e guard específico.
+// 6) Versão coerente.
 assert.equal(release.version, '2026-08-25-pagamentos-eventloop-248');
 assert.match(atualizador, /__CORPONU_PAGAMENTOS_TABLE_OBSERVER_GUARD_248__/);
-assert.match(atualizador, /target\?\.id\s*===\s*"listaEntregasPagamento"/);
-assert.match(atualizador, /options\?\.childList\s*===\s*true/);
 
-console.log('TESTE_EVENTLOOP_248_OK — observer da tabela bloqueado; demais observers preservados; recuperação sem Firebase.');
+console.log('TESTE_EVENTLOOP_248_OK — observer autoalimentado removido na origem; demais observers preservados; recuperação sem Firebase.');
