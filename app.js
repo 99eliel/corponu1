@@ -413,7 +413,6 @@ document.addEventListener("DOMContentLoaded", () => {
   configurarRastreamento();
   configurarModalMovimentacao();
   configurarModalChegadaMovimentacao();
-  configurarChegadaManualFaccao();
   configurarPagamentos();
   configurarRelatorios();
   configurarUsuarios();
@@ -11349,7 +11348,6 @@ window.toggleMenuAcoesManejo = toggleMenuAcoesManejo;
 window.fecharMenusAcoesManejo = fecharMenusAcoesManejo;
 window.abrirModalAjusteMigracao = abrirModalAjusteMigracao;
 window.abrirRastreamentoOP = abrirRastreamentoOP;
-window.abrirModalChegadaManualFaccao = abrirModalChegadaManualFaccao;
 window.registrarChegadaMovimentacao = registrarChegadaMovimentacao;
 window.encaminharMovimentacao = encaminharMovimentacao;
 window.reenviarMovimentacaoParaFaccao = reenviarMovimentacaoParaFaccao;
