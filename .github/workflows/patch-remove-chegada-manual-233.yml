@@ -1,0 +1,85 @@
+name: Patch remover chegada manual 233
+on:
+  push:
+    branches:
+      - fix/remover-chegada-manual-faccao-233
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/remover-chegada-manual-faccao-233
+          fetch-depth: 0
+      - name: Remover chegada manual preservando fluxo normal
+        shell: python
+        run: |
+          from pathlib import Path
+          import json
+
+          index = Path('index.html')
+          html = index.read_text(encoding='utf-8')
+
+          botao = '<button class="btn btn-success" id="btnAbrirChegadaManualFaccao" type="button">Chegada manual</button>'
+          linha_botao = '              ' + botao + '\n'
+          if linha_botao not in html:
+              raise SystemExit('Botão de chegada manual não encontrado; abortando para não alterar trecho errado.')
+          html = html.replace(linha_botao, '', 1)
+
+          inicio = '  <div class="modal-backdrop hidden" id="modalChegadaManualFaccao">'
+          proximo = '  <div class="modal-backdrop hidden" id="modalChegadaMovimentacao">'
+          if inicio not in html or proximo not in html:
+              raise SystemExit('Marcadores dos modais não encontrados; abortando.')
+          a = html.index(inicio)
+          b = html.index(proximo, a)
+          html = html[:a] + html[b:]
+          index.write_text(html, encoding='utf-8')
+
+          app = Path('app.js')
+          js = app.read_text(encoding='utf-8')
+          chamada = '  configurarChegadaManualFaccao();\n'
+          exportacao = 'window.abrirModalChegadaManualFaccao = abrirModalChegadaManualFaccao;\n'
+          if chamada not in js:
+              raise SystemExit('Chamada configurarChegadaManualFaccao não encontrada; abortando.')
+          if exportacao not in js:
+              raise SystemExit('Exportação global da chegada manual não encontrada; abortando.')
+          js = js.replace(chamada, '', 1)
+          js = js.replace(exportacao, '', 1)
+          app.write_text(js, encoding='utf-8')
+
+          release = {
+            'version': '2026-08-25-remover-chegada-manual-faccao-233',
+            'updatedAt': '2026-08-25T09:35:00-03:00',
+            'notes': 'PRODUÇÃO. Remove da interface e do fluxo acionável a função Chegada manual da aba Facções. A Saída Manual permanece e o usuário deve concluir a chegada pelo fluxo normal da movimentação, garantindo processo, facção, quantidade e cálculo financeiro consistentes. Registros históricos criados pela antiga chegada manual são preservados. Não altera dados antigos, preços, Pagamentos, Manejo, Sutiã/Calcinha, cálculos existentes ou regras do Firebase.'
+          }
+          Path('corponu-release.json').write_text(json.dumps(release, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+      - name: Validar remoção e preservação do fluxo normal
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -q 'btnAbrirChegadaManualFaccao' index.html
+          ! grep -q 'modalChegadaManualFaccao' index.html
+          ! grep -q 'formChegadaManualFaccao' index.html
+          ! grep -q 'configurarChegadaManualFaccao();' app.js
+          ! grep -q 'window.abrirModalChegadaManualFaccao' app.js
+          grep -q 'modalChegadaMovimentacao' index.html
+          grep -q 'function registrarChegadaMovimentacao' app.js
+          grep -q 'function confirmarChegadaMovimentacao' app.js
+          node --check app.js
+          python -m json.tool corponu-release.json >/dev/null
+      - name: Commitar patch
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html app.js corponu-release.json
+          if git diff --cached --quiet; then
+            echo 'Sem alterações para commit.'
+            exit 0
+          fi
+          git commit -m 'fix: remover chegada manual e manter fluxo completo v233'
+          git push origin HEAD:fix/remover-chegada-manual-faccao-233
