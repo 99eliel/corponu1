@@ -122,6 +122,17 @@ function paginaAtivaAtual() {
 function renderPaginaAtiva() {
   const page = paginaAtivaAtual();
 
+  // Manejo Calcinha 232: durante o salvamento de uma linha, o listener
+  // do Firestore continua atualizando state.ordens, mas não reconstrói
+  // toda a tabela. A própria linha já contém os valores editados e a
+  // camada 223 encerra o estado visual após a confirmação autoritativa.
+  // Isso evita mudança de layout, filtros, scroll e identidade das linhas.
+  const travaRenderCalcinha = window.__CORPONU_MANEJO_CALCINHA_RENDER_LOCK_232__;
+  if (page === "manejo" && travaRenderCalcinha?.ativo === true) {
+    travaRenderCalcinha.pendente = true;
+    return;
+  }
+
   if (page === "produtos") {
     renderProdutos();
     renderProdutosPendentes();
