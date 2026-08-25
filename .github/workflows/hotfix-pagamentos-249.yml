@@ -1,0 +1,107 @@
+name: Hotfix Pagamentos 249
+
+on:
+  push:
+    branches:
+      - hotfix/pagamentos-emergencia-249
+    paths:
+      - .github/workflows/hotfix-pagamentos-249.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+        with:
+          ref: hotfix/pagamentos-emergencia-249
+          fetch-depth: 0
+
+      - name: Remover observer autoalimentado de Pagamentos
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('update.js')
+          src = path.read_text(encoding='utf-8')
+          assinatura = 'function instalarObserverTabelaPagamentoFinal()'
+          inicio = src.find(assinatura)
+          if inicio < 0:
+              raise SystemExit('Função instalarObserverTabelaPagamentoFinal não encontrada')
+          abre = src.find('{', inicio)
+          if abre < 0:
+              raise SystemExit('Abertura da função não encontrada')
+          nivel = 0
+          quote = None
+          escape = False
+          fim = None
+          for i in range(abre, len(src)):
+              c = src[i]
+              if escape:
+                  escape = False
+                  continue
+              if c == '\\':
+                  escape = True
+                  continue
+              if quote:
+                  if c == quote:
+                      quote = None
+                  continue
+              if c in ('"', "'", '`'):
+                  quote = c
+                  continue
+              if c == '{':
+                  nivel += 1
+              elif c == '}':
+                  nivel -= 1
+                  if nivel == 0:
+                      fim = i + 1
+                      break
+          if fim is None:
+              raise SystemExit('Fechamento da função não encontrado')
+
+          bloco = src[inicio:fim]
+          if 'v249: observer de Pagamentos desativado' in bloco:
+              print('PATCH_249_JA_APLICADO')
+          else:
+              novo = '''function instalarObserverTabelaPagamentoFinal() {
+    // v249: observer de Pagamentos desativado.
+    // O observer antigo observava childList/subtree da própria tabela e o callback
+    // alterava textContent/innerHTML dentro dela, gerando mutações recursivas e
+    // congelando o navegador após a tabela aparecer.
+    if (observerTabelaPagamentoFinal) observerTabelaPagamentoFinal.disconnect();
+    observerTabelaPagamentoFinal = null;
+  }'''
+              src = src[:inicio] + novo + src[fim:]
+              path.write_text(src, encoding='utf-8')
+              print('PATCH_249_APLICADO')
+
+      - name: Validar correção
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module --check < update.js
+          grep -F 'v249: observer de Pagamentos desativado' update.js
+          if grep -F 'observerTabelaPagamentoFinal.observe(tbody, { childList: true, subtree: true });' update.js; then
+            echo 'Observer recursivo ainda está presente' >&2
+            exit 1
+          fi
+
+      - name: Commitar patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- update.js; then
+            echo 'update.js já estava corrigido.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add update.js
+          git commit -m 'fix: remover loop legado da tabela Pagamentos 249'
+          git push origin HEAD:hotfix/pagamentos-emergencia-249
