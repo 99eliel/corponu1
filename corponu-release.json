@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-24-manejo-calcinha-antipisca-231",
-  "updatedAt": "2026-08-24T21:56:00-03:00",
-  "notes": "PRODUÇÃO. Mantém integralmente o salvamento coordenado da versão 230 e a persistência autoritativa da Fase pela 223. Corrige somente a piscada visual após salvar no Manejo Calcinha: durante o salvamento, preserva visualmente a tabela atual enquanto os snapshots do Firestore atualizam o DOM por baixo e revela a tabela real apenas quando o estado final está estável. O congelamento é temporário e restrito ao wrapper da tabela, sem observer global, sem refresh e sem alterar Firestore, Fase, Sutiã, Pagamentos, Facções, OPs, cálculos ou regras."
+  "version": "2026-08-25-manejo-calcinha-interface-estavel-232",
+  "updatedAt": "2026-08-25T08:20:00-03:00",
+  "notes": "PRODUÇÃO. Mantém o salvamento coordenado da versão 230 e a persistência autoritativa da Fase pela 223. Substitui a máscara visual da 231 por uma trava localizada na origem do problema: enquanto uma linha do Manejo Calcinha está salvando, o listener do Firestore continua atualizando o estado em memória, mas renderPaginaAtiva não reconstrói a tabela inteira. Assim a mesma linha DOM, filtros, scroll, largura e estrutura visual permanecem durante e após o salvamento. Não cria clone da tabela, não usa observer global, não faz refresh e não altera Sutiã, Pagamentos, Facções, cálculos ou regras. Validado por Playwright com duas tentativas de rerender durante o mesmo salvamento, preservando identidade da linha, filtro, scroll, Fase e botão."
 }
