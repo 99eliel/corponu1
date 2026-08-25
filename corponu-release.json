@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-25-ajuste-local-calcinha-rapido-236",
-  "updatedAt": "2026-08-25T11:37:00-03:00",
-  "notes": "PRODUÇÃO. Otimiza exclusivamente o botão Salvar correção do modal Ajustar OP migrada quando o setor ativo é Calcinha. A correção, o histórico de ajustes, a movimentação necessária e o log de auditoria passam a ser confirmados em um único writeBatch do Firestore, eliminando a segunda gravação serial de log e removendo renderizações forçadas de Rastreamento e Manejo após o commit. O estado final continua chegando pelos listeners normais do Firestore. Mantém intactos o salvamento normal das linhas, Manejo Sutiã, Pagamentos/Restantes 233, Facções, cálculos e regras do Firebase."
+  "version": "2026-08-25-pagamentos-emergencia-249",
+  "updatedAt": "2026-08-25T18:40:00-03:00",
+  "notes": "PRODUÇÃO DE EMERGÊNCIA. Parte da v236 e restaura o carregamento de Pagamentos para o estado anterior à 233. O runtime volta ao loader da v232, portanto a lógica Restantes 233 não é mais carregada. O próprio arquivo 233 também foi neutralizado para proteger clientes com cache antigo. Além disso, remove somente o MutationObserver legado da tabela listaEntregasPagamento em update.js que observava a própria tabela e alterava seu DOM em seguida, criando um ciclo de mutações capaz de congelar o navegador após os pagamentos aparecerem. Não executa migração, reparo, varredura ou recalculo no Firestore. Não altera app.js, valores, status, quantidades, regras, Facções ou a tabela de preços."
 }
