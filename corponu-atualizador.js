@@ -1,7 +1,38 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-25-restantes-pagamento-automatico-245";
+  // v248 — proteção instalada imediatamente porque este arquivo é executado
+  // pelo HTML antes de update.js. O legado de update.js cria um MutationObserver
+  // em #listaEntregasPagamento e, dentro do callback, altera child nodes da mesma
+  // tabela. Isso retroalimenta o observer e monopoliza o event loop do navegador.
+  (() => {
+    const NativeMutationObserver = window.MutationObserver;
+    const GUARD = "__CORPONU_PAGAMENTOS_TABLE_OBSERVER_GUARD_248__";
+    if (typeof NativeMutationObserver !== "function" || window[GUARD]) return;
+    window[GUARD] = true;
+
+    function CorpoNuMutationObserverSeguro(callback) {
+      const observer = new NativeMutationObserver(callback);
+      const observeNativo = observer.observe.bind(observer);
+      observer.observe = (target, options) => {
+        if (
+          target?.id === "listaEntregasPagamento" &&
+          options?.childList === true
+        ) {
+          console.info("[CorpoNu 248] Observer legado da tabela Pagamentos bloqueado.");
+          return undefined;
+        }
+        return observeNativo(target, options);
+      };
+      return observer;
+    }
+
+    CorpoNuMutationObserverSeguro.prototype = NativeMutationObserver.prototype;
+    try { Object.setPrototypeOf(CorpoNuMutationObserverSeguro, NativeMutationObserver); } catch (error) {}
+    window.MutationObserver = CorpoNuMutationObserverSeguro;
+  })();
+
+  const LOCAL_RELEASE = "2026-08-25-pagamentos-eventloop-248";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -84,7 +115,7 @@
       ["corponu-verificacao-sutia-completo.js", "verificacao-sutia-completo-segura", "Não foi possível carregar a verificação segura do Sutiã Completo."],
       ["corponu-valores-pendentes-financeiro.js", "valores-pendentes-financeiro", "Não foi possível carregar a área de Valores pendentes."],
       ["corponu-valores-pendentes-auth-214.js", "valores-pendentes-auth-214", "Não foi possível estabilizar a autenticação de Valores pendentes."],
-      ["corponu-restantes-pagamento-automatico-245.js", "restantes-pagamento-automatico-245", "Não foi possível ativar o cálculo seguro dos Restantes 245."],
+      ["corponu-restantes-pagamento-automatico-245.js", "restantes-pagamento-automatico-245", "Não foi possível ativar a compatibilidade de Pagamentos 248."],
       ["corponu-manejo-calcinha-fase-definitivo-216.js", "manejo-calcinha-fase-lista-real-219", "Não foi possível carregar o seletor estável da Fase do Manejo Calcinha."]
     ];
     modulos.forEach(([arquivo, marcador, erro]) => carregarScript(arquivo, marcador, erro));
