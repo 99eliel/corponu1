@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-25-restantes-pontual-239",
-  "updatedAt": "2026-08-25T14:28:00-03:00",
-  "notes": "PRODUÇÃO. Remove completamente as rotinas 237/238 que varriam pagamentos ao abrir a aba e podiam congelar o navegador. O recebimento de Restantes passa a calcular apenas o lançamento confirmado naquele momento. Para processos comuns, usa o preço ativo por REF + PROCESSO com normalização de referência e aliases. Para SUTIÃ COMPLETO, reutiliza o valor unitário já calculado na movimentação/pagamento original da mesma OP, preservando a memória do cálculo quando disponível. Não há reparo histórico automático, setInterval, varredura de pagamentos nem recarga global da aba. Após salvar, atualiza somente a lista de Restantes. Mantém Manejo, Facções, Pagamentos normais e regras do Firebase intactos."
+  "version": "2026-08-25-pagamentos-estabilidade-240",
+  "updatedAt": "2026-08-25T15:47:00-03:00",
+  "notes": "PRODUÇÃO. Estabiliza a aba Pagamentos removendo leituras e varreduras duplicadas que cresceram em camadas antigas. O app.js permanece como única fonte principal de entregasPagamento em tempo real. O módulo Pagamentos seguro deixa de fazer uma segunda leitura completa e de registrar service worker; o multifiltro deixa de carregar toda a coleção novamente; o alerta sem valor deixa de manter cache/observer próprio; e a conferência visual de duplicidades deixa de percorrer a tabela a cada 1,6 s. Nenhum pagamento, OP, movimentação, preço ou regra do Firebase é alterado. O recebimento pontual de Restantes 239 permanece ativo."
 }
