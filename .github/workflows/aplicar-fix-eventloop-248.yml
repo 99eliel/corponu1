@@ -21,6 +21,7 @@ jobs:
         with:
           ref: fix/pagamentos-eventloop-248
           fetch-depth: 0
+
       - name: Remover observer autoalimentado
         shell: python
         run: |
@@ -28,37 +29,75 @@ jobs:
 
           arquivo = Path('update.js')
           texto = arquivo.read_text(encoding='utf-8')
+          assinatura = 'function instalarObserverTabelaPagamentoFinal()'
 
-          antigo = '''  function instalarObserverTabelaPagamentoFinal() {
-            const tbody = document.getElementById("listaEntregasPagamento");
-            if (!tbody) {
-              setTimeout(instalarObserverTabelaPagamentoFinal, 400);
-              return;
-            }
-            if (observerTabelaPagamentoFinal) observerTabelaPagamentoFinal.disconnect();
-            observerTabelaPagamentoFinal = new MutationObserver(() => {
-              queueMicrotask(() => aprimorarTabelaEntregasPagamentoFinal());
-            });
-            observerTabelaPagamentoFinal.observe(tbody, { childList: true, subtree: true });
-          }'''
+          if texto.count(assinatura) != 1:
+            raise SystemExit(f'Esperava exatamente 1 função {assinatura!r}, encontrei {texto.count(assinatura)}. Nenhuma alteração feita.')
 
-          novo = '''  function instalarObserverTabelaPagamentoFinal() {
-            // v248: desativado. O observer antigo observava childList+subtree desta
-            // tabela e o próprio callback alterava textContent/innerHTML dentro dela,
-            // gerando novas mutações em ciclo e congelando o navegador.
-            if (observerTabelaPagamentoFinal) observerTabelaPagamentoFinal.disconnect();
-            observerTabelaPagamentoFinal = null;
-          }'''
+          inicio = texto.index(assinatura)
+          abre = texto.index('{', inicio)
+          nivel = 0
+          fim = None
+          quote = None
+          escape = False
 
-          if novo in texto:
+          for pos in range(abre, len(texto)):
+            ch = texto[pos]
+            if escape:
+              escape = False
+              continue
+            if ch == '\\':
+              escape = True
+              continue
+            if quote:
+              if ch == quote:
+                quote = None
+              continue
+            if ch in ('"', "'", '`'):
+              quote = ch
+              continue
+            if ch == '{':
+              nivel += 1
+            elif ch == '}':
+              nivel -= 1
+              if nivel == 0:
+                fim = pos + 1
+                break
+
+          if fim is None:
+            raise SystemExit('Não foi possível localizar o fechamento da função. Nenhuma alteração feita.')
+
+          bloco = texto[inicio:fim]
+          marcadores = [
+            'listaEntregasPagamento',
+            'new MutationObserver',
+            'queueMicrotask',
+            'observerTabelaPagamentoFinal.observe'
+          ]
+
+          if 'v248: desativado' in bloco:
             print('PATCH_248_JA_APLICADO')
           else:
-            ocorrencias = texto.count(antigo)
-            if ocorrencias != 1:
-              raise SystemExit(f'Esperava exatamente 1 bloco legado, encontrei {ocorrencias}. Nenhuma alteração feita.')
-            texto = texto.replace(antigo, novo, 1)
+            faltando = [item for item in marcadores if item not in bloco]
+            if faltando:
+              raise SystemExit(f'A função encontrada não corresponde ao observer esperado. Marcadores ausentes: {faltando}')
+
+            linha_inicio = texto.rfind('\n', 0, inicio) + 1
+            indent = texto[linha_inicio:inicio]
+            interno = indent + '  '
+            novo = (
+              'function instalarObserverTabelaPagamentoFinal() {\n'
+              f'{interno}// v248: desativado. O observer antigo observava childList+subtree desta\n'
+              f'{interno}// tabela e o próprio callback alterava textContent/innerHTML dentro dela,\n'
+              f'{interno}// gerando novas mutações em ciclo e congelando o navegador.\n'
+              f'{interno}if (observerTabelaPagamentoFinal) observerTabelaPagamentoFinal.disconnect();\n'
+              f'{interno}observerTabelaPagamentoFinal = null;\n'
+              f'{indent}}}'
+            )
+            texto = texto[:inicio] + novo + texto[fim:]
             arquivo.write_text(texto, encoding='utf-8')
-            print('PATCH_248_APLICADO_EXATAMENTE_UMA_VEZ')
+            print('PATCH_248_APLICADO_EXATAMENTE_NA_FUNCAO')
+
       - name: Validar patch
         shell: bash
         run: |
@@ -69,6 +108,7 @@ jobs:
             echo 'Observer legado ainda presente' >&2
             exit 1
           fi
+
       - name: Commitar patch na branch
         shell: bash
         run: |
