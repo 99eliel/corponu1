@@ -46,14 +46,13 @@ assert.match(funcaoObserver, /observerTabelaPagamentoFinal\s*=\s*null/);
 assert.ok(!funcaoObserver.includes('new MutationObserver'), 'a função ainda cria MutationObserver');
 assert.ok(!funcaoObserver.includes('queueMicrotask'), 'a função ainda agenda o callback autoalimentado');
 assert.ok(!funcaoObserver.includes('.observe('), 'a função ainda observa a tabela');
-
-// 3) Mantemos a função visual; removemos apenas o observer que a chamava em ciclo.
-const funcaoAprimorar = extrairFuncao(update, 'function aprimorarTabelaEntregasPagamentoFinal()');
-assert.ok(funcaoAprimorar.length > 100, 'função visual foi removida por engano');
-assert.ok(funcaoAprimorar.includes('badge.textContent') || funcaoAprimorar.includes('innerHTML'), 'função visual não parece intacta');
 assert.ok(!update.includes('observerTabelaPagamentoFinal.observe(tbody, { childList: true, subtree: true });'), 'observer legado ainda existe no arquivo');
 
-// 4) A proteção tardia do atualizador fica apenas como segunda barreira e deve ser seletiva.
+// 3) A lógica visual continua no arquivo; só o observer autoalimentado foi desligado.
+assert.ok(update.includes('aprimorarTabelaEntregasPagamentoFinal'), 'lógica visual da tabela foi removida por engano');
+assert.ok(update.includes('badge.textContent') || update.includes('innerHTML'), 'update.js perdeu a lógica visual esperada');
+
+// 4) A proteção tardia do atualizador fica como segunda barreira e deve ser seletiva.
 const inicioGuard = atualizador.indexOf('  (() => {', atualizador.indexOf('// v248'));
 const fimGuard = atualizador.indexOf('\n\n  const LOCAL_RELEASE', inicioGuard);
 assert.ok(inicioGuard >= 0 && fimGuard > inicioGuard, 'não foi possível extrair a defesa secundária 248');
