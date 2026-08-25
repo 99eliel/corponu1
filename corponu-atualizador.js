@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-25-manejo-calcinha-dedicado-252";
+  const LOCAL_RELEASE = "2026-08-25-manejo-calcinha-filtros-253";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -100,18 +100,10 @@
   ];
 
   const MODULOS_APOS_LOGIN = [
-    ["corponu-calcinha-planejamento-opcional-129.js", "calcinha-planejamento-opcional-129", "Não foi possível tornar serviço e facção opcionais nas OPs de calcinha."],
+    ["corponu-dual-mode.js", "dual-mode", "Não foi possível carregar o modo Sutiã/Calcinha."],
     ["corponu-dual-ready-bridge.js", "dual-ready-bridge", "Não foi possível sincronizar o carregamento do modo Sutiã/Calcinha."],
-    ["corponu-manejo-calcinha-dedicado-252.js", "manejo-calcinha-dedicado-252", "Não foi possível carregar o Manejo Calcinha dedicado."]
+    ["corponu-manejo-calcinha-dedicado-253.js", "manejo-calcinha-filtros-253", "Não foi possível carregar o Manejo Calcinha 253."]
   ];
-
-  function reservarModoCalcinhaOpcional() {
-    if (document.querySelector('script[data-corponu-dual-mode="1"]')) return;
-    const marcador = document.createElement("script");
-    marcador.dataset.corponuDualMode = "1";
-    marcador.dataset.corponuDualOpcionalGuard = LOCAL_RELEASE;
-    document.head.appendChild(marcador);
-  }
 
   function carregarScript(nomeArquivo, marcador, mensagemErro) {
     const existente = [...document.scripts].find(script => String(script.src || "").includes(nomeArquivo));
@@ -121,6 +113,7 @@
     script.src = `./${nomeArquivo}?v=${encodeURIComponent(LOCAL_RELEASE)}`;
     script.async = false;
     script.dataset.corponuModulo = marcador;
+    if (nomeArquivo === "corponu-dual-mode.js") script.dataset.corponuDualMode = "1";
     script.onerror = () => console.error(mensagemErro);
     document.head.appendChild(script);
     return script;
@@ -267,7 +260,6 @@
   }
 
   async function iniciar() {
-    reservarModoCalcinhaOpcional();
     carregarModulos();
     instalarCarregamentoSobDemanda();
     instalarCarregamentoAposLogin();
@@ -284,7 +276,6 @@
     window.addEventListener("online", verificarRelease);
   }
 
-  reservarModoCalcinhaOpcional();
   carregarModulos();
   instalarCarregamentoSobDemanda();
 

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-07-28-calcinha-sem-silk-envio-historico-2";
+  const VERSION = "2026-08-25-calcinha-faccao-livre-253";
   const FIREBASE_VERSION = "10.12.5";
   const HISTORY_URL = `calcinhas-historico-2026.json?v=${encodeURIComponent(VERSION)}`;
   const TYPES = Object.freeze({ sutia: "Sutiã", calcinha: "Calcinha" });
@@ -356,7 +356,7 @@
       const description = document.querySelector("#formOrdem .panel-header p");
       if (title) title.textContent = type === "calcinha" ? "Adicionar OP de calcinha" : "Adicionar OP de sutiã";
       if (description) description.textContent = type === "calcinha"
-        ? "Informe necessidade, serviço e facção no planejamento. Cotton Line/Corpo Nu será preenchido no Manejo."
+        ? "Informe a necessidade. Serviço é opcional e a facção será escolhida livremente no momento do envio. Cotton Line/Corpo Nu será preenchido no Manejo."
         : "Cadastre a OP de sutiã mantendo o fluxo atual.";
       updateOrderProductDatalist();
       setTimeout(updateOrderProductPreview, 0);
@@ -371,12 +371,12 @@
     wrapper.id = "ordemCalcinhaPlanejamento";
     wrapper.className = "corponu-calcinha-field";
     wrapper.innerHTML = `
-      <div class="notice small"><strong>Planejamento da calcinha:</strong> a linha Cotton Line/Corpo Nu ficará em branco e será informada depois no Manejo.</div>
+      <div class="notice small"><strong>Planejamento da calcinha:</strong> a facção não fica presa à OP. Serviço pode ser sugerido aqui e a facção será escolhida no momento do envio. A linha Cotton Line/Corpo Nu será informada no Manejo.</div>
       <div class="corponu-dual-grid">
         <label class="corponu-dual-field">Início da necessidade<input id="ordemCalcinhaNecessidadeInicio" type="date"></label>
         <label class="corponu-dual-field">Final da necessidade<input id="ordemCalcinhaNecessidadeFim" type="date"></label>
-        <label class="corponu-dual-field">Serviço<select id="ordemCalcinhaProcesso"><option value="">Selecione</option>${CALCINHA_PROCESSES.map(item => `<option value="${item}">${item}</option>`).join("")}</select></label>
-        <label class="corponu-dual-field">Facção<select id="ordemCalcinhaFaccao" disabled><option value="">Primeiro selecione o serviço</option></select></label>
+        <label class="corponu-dual-field">Serviço sugerido (opcional)<select id="ordemCalcinhaProcesso"><option value="">Definir no envio</option>${CALCINHA_PROCESSES.map(item => `<option value="${item}">${item}</option>`).join("")}</select></label>
+        <label class="corponu-dual-field">Facção sugerida (opcional)<select id="ordemCalcinhaFaccao" disabled><option value="">Será escolhida no envio</option></select></label>
       </div>
     `;
     if (observationLabel) form.insertBefore(wrapper, observationLabel);
@@ -389,10 +389,10 @@
     if (!grid || document.getElementById("pdfCalcinhaProcesso")) return;
     const processLabel = document.createElement("label");
     processLabel.className = "pro-field corponu-pdf-calcinha-field";
-    processLabel.innerHTML = `<span>Serviço da calcinha</span><select id="pdfCalcinhaProcesso"><option value="">Selecione</option>${CALCINHA_PROCESSES.map(item => `<option value="${item}">${item}</option>`).join("")}</select>`;
+    processLabel.innerHTML = `<span>Serviço sugerido da calcinha (opcional)</span><select id="pdfCalcinhaProcesso"><option value="">Definir no envio</option>${CALCINHA_PROCESSES.map(item => `<option value="${item}">${item}</option>`).join("")}</select>`;
     const factionLabel = document.createElement("label");
     factionLabel.className = "pro-field corponu-pdf-calcinha-field";
-    factionLabel.innerHTML = `<span>Facção de destino</span><select id="pdfCalcinhaFaccao" disabled><option value="">Primeiro selecione o serviço</option></select>`;
+    factionLabel.innerHTML = `<span>Facção sugerida (opcional)</span><select id="pdfCalcinhaFaccao" disabled><option value="">Será escolhida no envio</option></select>`;
     grid.append(processLabel, factionLabel);
     document.getElementById("pdfCalcinhaProcesso")?.addEventListener("change", () => fillFactionSelect("pdfCalcinhaProcesso", "pdfCalcinhaFaccao"));
     document.getElementById("pdfTipoPeca")?.addEventListener("change", updatePdfFieldsVisibility);
@@ -426,14 +426,14 @@
     if (!select) return;
     if (!process) {
       select.disabled = true;
-      select.innerHTML = `<option value="">Primeiro selecione o serviço</option>`;
+      select.innerHTML = `<option value="">Será escolhida no envio</option>`;
       return;
     }
     const factions = factionsForProcess(process);
     const fallback = FALLBACK_FACTIONS[normalize(process)] || [];
     const names = factions.length ? factions.map(item => item.nome || item.razaoSocial || item.id) : fallback;
     select.disabled = false;
-    select.innerHTML = `<option value="">Selecione a facção</option>${[...new Set(names.map(item => String(item || "").trim()).filter(Boolean))].map(name => `<option value="${escapeHtml(normalize(name))}">${escapeHtml(normalize(name))}</option>`).join("")}`;
+    select.innerHTML = `<option value="">Sem facção fixa — escolher no envio</option>${[...new Set(names.map(item => String(item || "").trim()).filter(Boolean))].map(name => `<option value="${escapeHtml(normalize(name))}">${escapeHtml(normalize(name))}</option>`).join("")}`;
     if (selected) select.value = normalize(selected);
   }
 
@@ -467,12 +467,12 @@
     modal.innerHTML = `
       <div class="corponu-history-send-card" role="dialog" aria-modal="true" aria-labelledby="corponuHistoricoEnvioTitulo">
         <div class="corponu-history-send-head">
-          <h3 id="corponuHistoricoEnvioTitulo">Enviar calcinha histórica para facção</h3>
+          <h3 id="corponuHistoricoEnvioTitulo">Escolher serviço e facção para o envio</h3>
           <p id="corponuHistoricoEnvioResumo">Escolha o serviço e a facção para esta movimentação.</p>
         </div>
         <form id="corponuHistoricoEnvioForm">
           <div class="corponu-history-send-body">
-            <div class="notice small"><strong>Registro importado:</strong> como esta OP veio da planilha antiga, o planejamento de serviço e facção será definido agora.</div>
+            <div class="notice small"><strong>Facção livre:</strong> escolha o serviço e a facção para este envio. A facção não fica bloqueada na OP e pode ser diferente em cada novo envio.</div>
             <label>Serviço
               <select id="corponuHistoricoEnvioProcesso" required>
                 <option value="">Selecione o serviço</option>
@@ -515,7 +515,7 @@
     return modal;
   }
 
-  function chooseHistoricalPantyDestination(order) {
+  function chooseHistoricalPantyDestination(order, suggestedProcess = "") {
     if (historicalSendResolver) {
       toast("Finalize a escolha de serviço/facção que já está aberta.", "error");
       return Promise.resolve(null);
@@ -525,12 +525,16 @@
     const factionSelect = document.getElementById("corponuHistoricoEnvioFaccao");
     const summary = document.getElementById("corponuHistoricoEnvioResumo");
     if (summary) summary.textContent = `OP ${order?.numeroOP || "-"} • Ref. ${order?.referencia || "-"} • ${order?.cor || "-"}`;
-    if (processSelect) processSelect.value = "";
+    const processoInicial = CALCINHA_PROCESSES.includes(normalize(suggestedProcess)) ? normalize(suggestedProcess) : "";
+    if (processSelect) processSelect.value = processoInicial;
     if (factionSelect) {
       factionSelect.value = "";
-      factionSelect.disabled = true;
-      factionSelect.innerHTML = '<option value="">Primeiro selecione o serviço</option>';
+      factionSelect.disabled = !processoInicial;
+      factionSelect.innerHTML = processoInicial
+        ? '<option value="">Escolha a facção deste envio</option>'
+        : '<option value="">Primeiro selecione o serviço</option>';
     }
+    if (processoInicial) fillFactionSelect("corponuHistoricoEnvioProcesso", "corponuHistoricoEnvioFaccao");
     modal.classList.add("show");
     document.body.style.overflow = "hidden";
     setTimeout(() => processSelect?.focus(), 50);
@@ -734,10 +738,6 @@
       toast("Informe um intervalo de necessidade válido.", "error");
       return;
     }
-    if (!CALCINHA_PROCESSES.includes(process) || !faction) {
-      toast("Selecione o serviço e a facção planejada.", "error");
-      return;
-    }
     const product = [...state.maps.produtos.values()].find(item => typeOfData(item) === "calcinha" && normalize(item.referencia) === reference);
     if (!product) {
       toast(`Cadastre a referência ${reference} na aba Produtos → Calcinha antes de salvar a OP.`, "error");
@@ -775,7 +775,7 @@
       linhaCalcinha: old.linhaCalcinha || "",
       processoPlanejado: process,
       faccaoPlanejada: faction,
-      planejamentoCalcinhaPendente: false,
+      planejamentoCalcinhaPendente: !CALCINHA_PROCESSES.includes(process),
       possuiAlca: false,
       possuiBojo: false,
       possuiRenda: false,
@@ -790,7 +790,7 @@
     try {
       await setDoc(doc(state.db, "ordensProducao", documentId), data, { merge: true });
       state.maps.ordens.set(documentId, { id: documentId, ...old, ...data });
-      await registerLog(currentId ? "ordem_atualizada" : "ordem_criada", "ordemProducao", documentId, `Calcinha | OP ${opNumber} | Ref. ${reference} | ${process} | ${faction}`);
+      await registerLog(currentId ? "ordem_atualizada" : "ordem_criada", "ordemProducao", documentId, `Calcinha | OP ${opNumber} | Ref. ${reference} | ${process || "SERVIÇO A DEFINIR NO ENVIO"} | FACÇÃO LIVRE NO ENVIO`);
       form.reset();
       document.getElementById("ordemId").value = "";
       document.getElementById("ordemNumero").readOnly = false;
@@ -1072,22 +1072,24 @@
     }
     const historical = isHistoricalPanty(order);
     let process = normalize(order.processoPlanejado);
-    let faction = normalize(order.faccaoPlanejada);
-    const rowData = readManejoRow(orderId);
+    let faction = "";
+    const managementData = order?.manejosSetores?.calcinha || {};
+    const rowData = dedicatedCalcinhaActive()
+      ? {
+          linhaCalcinha: order.linhaCalcinha || managementData.linhaCalcinha || "",
+          fase: managementData.fase || order.fase || "",
+          necessidade: managementData.necessidadeTexto || managementData.necessidade || order.necessidadeTexto || order.necessidade || ""
+        }
+      : readManejoRow(orderId);
     const line = lineValue(rowData.linhaCalcinha || order.linhaCalcinha);
     if (!line) {
       toast("Antes de enviar, escolha Cotton Line ou Corpo Nu na coluna Linha e salve.", "error");
       return;
     }
-    if (historical) {
-      const choice = await chooseHistoricalPantyDestination(order);
-      if (!choice) return;
-      process = choice.process;
-      faction = choice.faction;
-    } else if (!CALCINHA_PROCESSES.includes(process) || !faction) {
-      toast("Esta nova OP não possui serviço/facção planejados. Edite a OP na aba Ordens → Calcinha.", "error");
-      return;
-    }
+    const choice = await chooseHistoricalPantyDestination(order, process);
+    if (!choice) return;
+    process = choice.process;
+    faction = choice.faction;
     const duplicate = [...state.maps.movimentacoes.values()].find(item => item.opId === order.id && typeOfData(item) === "calcinha" && item.tipoDestino === "faccao" && !["finalizado", "retornou", "encaminhado"].includes(item.status));
     if (duplicate) {
       toast(`A OP ${order.numeroOP} já possui uma movimentação de calcinha em andamento.`, "error");
@@ -1134,7 +1136,7 @@
         linhaCalcinhaLabel: lineLabel(line),
         faccao: faction,
         processo: process,
-        origemEnvio: historical ? "historico_escolha_no_envio" : "planejamento_op",
+        origemEnvio: "escolha_no_envio",
         status: "organizada",
         atualizadoPor: user?.uid || "",
         atualizadoEm: serverTimestamp()
@@ -1207,11 +1209,8 @@
       toast("Informe um intervalo de necessidade válido.", "error");
       return;
     }
-    if (!CALCINHA_PROCESSES.includes(process) || !faction) {
-      toast("Selecione o serviço e a facção de destino das calcinhas.", "error");
-      return;
-    }
-    if (!confirm(`Importar ${records.length} OP(s) de calcinha para ${faction}, serviço ${process}? A linha Cotton Line/Corpo Nu ficará em branco para preenchimento no Manejo.`)) return;
+    const sugestaoImportacao = process ? ` Serviço sugerido: ${process}.` : "";
+    if (!confirm(`Importar ${records.length} OP(s) de calcinha?${sugestaoImportacao} A facção será escolhida no envio e a linha Cotton Line/Corpo Nu ficará em branco para preenchimento no Manejo.`)) return;
     const user = currentUser();
     const { doc, writeBatch, serverTimestamp } = state.firebase;
     const needText = parseNeedFromDates(needStart, needEnd);
@@ -1270,13 +1269,15 @@
           linhaCalcinha: "",
           processoPlanejado: process,
           faccaoPlanejada: faction,
-          planejamentoCalcinhaPendente: false,
+          planejamentoCalcinhaPendente: !CALCINHA_PROCESSES.includes(process),
           possuiAlca: false,
           possuiBojo: false,
           possuiRenda: false,
           status: "aberta",
           origem: "pdf_externo",
-          observacoes: `Importada do PDF como calcinha. Serviço: ${process}. Facção: ${faction}. Linha a definir no Manejo.`,
+          observacoes: process
+            ? `Importada do PDF como calcinha. Serviço sugerido: ${process}. Facção livre no envio. Linha a definir no Manejo.`
+            : "Importada do PDF como calcinha. Serviço e facção serão definidos no envio. Linha a definir no Manejo.",
           criadoPor: user?.uid || "",
           criadoEm: serverTimestamp(),
           atualizadoPor: user?.uid || "",
@@ -1292,7 +1293,7 @@
         }
       }
       if (operations) await batch.commit();
-      await registerLog("pdf_importado", "importacao", "pdf-calcinha", `${imported} OPs de calcinha importadas. Serviço ${process}; facção ${faction}; ignoradas ${skipped}.`);
+      await registerLog("pdf_importado", "importacao", "pdf-calcinha", `${imported} OPs de calcinha importadas. ${process ? `Serviço sugerido ${process}` : "Serviço a definir no envio"}; facção livre no envio; ignoradas ${skipped}.`);
       document.getElementById("pdfImportResumo")?.classList.add("hidden");
       document.getElementById("pdfPreviewWrap")?.classList.add("hidden");
       document.getElementById("pdfPreviewBody").innerHTML = "";
