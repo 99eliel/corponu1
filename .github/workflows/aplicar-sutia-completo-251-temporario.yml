@@ -1,0 +1,95 @@
+name: Aplicar Sutiã Completo 251 Temporário
+
+on:
+  push:
+    branches:
+      - fix/sutia-completo-automatico-251
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+        with:
+          ref: fix/sutia-completo-automatico-251
+
+      - name: Aplicar patch financeiro isolado
+        id: patch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          mudou = False
+
+          # 1) Regra financeira: Sutiã Completo não é valor-total manual.
+          p = Path('corponu-pagamentos-seguro.js')
+          s = p.read_text(encoding='utf-8')
+          antigo = 'return processo === "SUTIA MONTAGEM" || processo === "SUTIA COMPLETO";'
+          novo = 'return processo === "SUTIA MONTAGEM";'
+          if antigo in s:
+              if s.count(antigo) != 1:
+                  raise SystemExit(f'ERRO: esperado 1 trecho financeiro; encontrados {s.count(antigo)}.')
+              s = s.replace(antigo, novo, 1)
+              p.write_text(s, encoding='utf-8')
+              mudou = True
+          elif novo not in s:
+              raise SystemExit('ERRO: regra financeira esperada não encontrada.')
+
+          # 2) Quebra de cache somente do módulo alterado.
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          import re
+          padrao = r'(src=["\']\./corponu-pagamentos-seguro\.js\?v=)[^"\']+(["\'])'
+          novo_s, n = re.subn(padrao, r'\g<1>2026-08-25-sutia-completo-automatico-251\2', s, count=1)
+          if n != 1:
+              raise SystemExit(f'ERRO: esperado 1 script de pagamentos-seguro no index; encontrados {n}.')
+          if novo_s != s:
+              p.write_text(novo_s, encoding='utf-8')
+              mudou = True
+
+          # 3) Release sem tocar no loader 250.
+          p = Path('corponu-release.json')
+          dados = json.loads(p.read_text(encoding='utf-8'))
+          if dados.get('version') != '2026-08-25-sutia-completo-automatico-251':
+              dados['version'] = '2026-08-25-sutia-completo-automatico-251'
+              dados['updatedAt'] = '2026-08-25T19:45:00-03:00'
+              dados['notes'] = ('PRODUÇÃO. Correção isolada sobre a base estável 250: SUTIÃ COMPLETO deixa de ser classificado pela Central Financeira como valor total manual da OP. '
+                                 'SUTIÃ MONTAGEM continua com valor total manual. O cálculo automático já existente do Sutiã Completo continua sendo a fonte de valor e só permanece sem_valor quando o próprio cálculo indicar informação/preço faltante. '
+                                 'Não altera app.js, corponu-atualizador.js, runtime lazy 250, update.js, Firebase, regras, dados históricos ou outras áreas. Apenas altera a regra de classificação, o cache do módulo financeiro e o manifesto de release.')
+              p.write_text(json.dumps(dados, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+              mudou = True
+
+          Path('/tmp/mudou').write_text('1' if mudou else '0')
+          PY
+          echo "changed=$(cat /tmp/mudou)" >> "$GITHUB_OUTPUT"
+
+      - name: Validar alteração
+        shell: bash
+        run: |
+          node --check corponu-pagamentos-seguro.js
+          node --check corponu-atualizador.js
+          node --check corponu-auto-update-runtime-203.js
+          python3 -m json.tool corponu-release.json >/dev/null
+          grep -F 'return processo === "SUTIA MONTAGEM";' corponu-pagamentos-seguro.js
+          if grep -F 'return processo === "SUTIA MONTAGEM" || processo === "SUTIA COMPLETO";' corponu-pagamentos-seguro.js; then
+            echo 'ERRO: regra antiga ainda presente.'
+            exit 1
+          fi
+          grep -F 'corponu-pagamentos-seguro.js?v=2026-08-25-sutia-completo-automatico-251' index.html
+
+      - name: Commitar patch
+        if: steps.patch.outputs.changed == '1'
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add corponu-pagamentos-seguro.js index.html corponu-release.json
+          git commit -m 'fix: Sutiã Completo usa cálculo automático 251'
+          git push origin HEAD:fix/sutia-completo-automatico-251
