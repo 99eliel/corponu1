@@ -6711,16 +6711,11 @@
   }
 
   function instalarObserverTabelaPagamentoFinal() {
-    const tbody = document.getElementById("listaEntregasPagamento");
-    if (!tbody) {
-      setTimeout(instalarObserverTabelaPagamentoFinal, 400);
-      return;
-    }
+    // v248: desativado. O observer antigo observava childList+subtree desta
+    // tabela e o próprio callback alterava textContent/innerHTML dentro dela,
+    // gerando novas mutações em ciclo e congelando o navegador.
     if (observerTabelaPagamentoFinal) observerTabelaPagamentoFinal.disconnect();
-    observerTabelaPagamentoFinal = new MutationObserver(() => {
-      queueMicrotask(() => aprimorarTabelaEntregasPagamentoFinal());
-    });
-    observerTabelaPagamentoFinal.observe(tbody, { childList: true, subtree: true });
+    observerTabelaPagamentoFinal = null;
   }
 
   function textoFiltrosRelatorioPagamentoFinal() {
