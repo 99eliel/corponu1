@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-25-restantes-calculo-definitivo-237",
-  "updatedAt": "2026-08-25T13:21:00-03:00",
-  "notes": "PRODUÇÃO. Corrige o cálculo automático dos pagamentos criados por Restantes pendentes. Para processos comuns, a busca de preço passa a aceitar referências equivalentes (inclusive zeros à esquerda) e aliases de processo, mantendo a regra REF + PROCESSO. Para SUTIÃ COMPLETO, deixa de exigir uma linha de preço direta e passa a restaurar a conferência da movimentação original/pagamento anterior e acionar a calculadora oficial do Sutiã Completo, que usa valor-base e descontos de Lateral, Bojo, Fecho e Ponto de Luz. Também tenta corrigir de forma restrita pagamentos complementares já existentes que ainda estejam sem valor, preservando pagos/cancelados/excluídos. Não altera Pagamentos normais, Facções, Manejo ou regras do Firebase."
+  "version": "2026-08-25-restantes-origem-calculo-238",
+  "updatedAt": "2026-08-25T14:23:00-03:00",
+  "notes": "PRODUÇÃO. Corrige definitivamente o fluxo Restantes pendentes no ponto de origem do pagamento. A nova rotina intercepta o recebimento antes da regra 233 gravar sem_valor, procura a mesma OP/processo/facção e reaproveita o valor unitário já calculado na entrega original; para processos comuns continua priorizando o preço ativo por REF + PROCESSO com normalização de referência e aliases. SUTIÃ COMPLETO passa a herdar a memória/valor unitário da primeira chegada, evitando cair em Valor pendente por não existir preço direto de SUTIÃ COMPLETO. Pagamentos complementares já existentes em Valor pendente também são reparados de forma restrita quando houver uma base automática válida. Pagos, cancelados e excluídos são preservados. Não altera Pagamentos normais, Facções, Manejo ou regras do Firebase."
 }
