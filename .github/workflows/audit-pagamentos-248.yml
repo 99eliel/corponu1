@@ -1,0 +1,24 @@
+name: Auditar Pagamentos 248
+
+on:
+  push:
+    branches:
+      - fix/pagamentos-eventloop-248
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Auditar scripts ativos
+        run: node tests/audit-eventloop-248.mjs
