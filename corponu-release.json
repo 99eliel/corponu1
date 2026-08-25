@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-25-manejo-calcinha-controlador-estavel-242",
-  "updatedAt": "2026-08-25T16:18:00-03:00",
-  "notes": "PRODUÇÃO. Reconstrói a estabilização da aba Manejo Calcinha sem alterar app.js, Pagamentos, Facções ou regras. A Fase passa a usar um único select com o mesmo ID do campo original, portanto o salvar nativo do sistema continua sendo a única gravação no Firestore. Remove a segunda gravação de Fase, wrappers empilhados, setInterval e pausa de observer global das versões 223/230. Rascunhos locais de Fase, Linha e Necessidade são preservados de forma síncrona quando um snapshot antigo reconstruir a tabela e só são descartados quando o estado renderizado confirmar o salvamento. Mantém Silk/Tecido ocultos na Calcinha com uma camada de layout leve."
+  "version": "2026-08-25-pagamentos-rollback-233-243",
+  "updatedAt": "2026-08-25T16:55:00-03:00",
+  "notes": "PRODUÇÃO. Remove a camada adicional criada na versão 233 sobre Pagamentos e restaura o fluxo nativo existente antes dela, preservando integralmente a correção do Manejo Calcinha 242. O módulo 233 deixa de ser carregado pelo runtime e permanece no repositório apenas como compatibilidade neutra para clientes com loader antigo em cache: não intercepta formulários, não usa listeners globais, não executa transações próprias e não altera registros históricos no Firestore. Nenhuma migração reversa automática é executada nesta versão para evitar modificar valores reais já gravados sem validação."
 }
