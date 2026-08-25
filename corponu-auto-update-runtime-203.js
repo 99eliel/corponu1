@@ -270,3 +270,16 @@
   script.onerror = () => console.error("Não foi possível carregar a correção automática dos pagamentos de Restantes pendentes 233.");
   (document.head || document.documentElement).appendChild(script);
 })();
+
+(() => {
+  "use strict";
+
+  if (document.querySelector('script[data-corponu-restantes-sutia-completo="234"]')) return;
+
+  const script = document.createElement("script");
+  script.src = `./corponu-restantes-sutia-completo-234.js?v=2026-08-25-restantes-sutia-completo-234&t=${Date.now()}`;
+  script.async = false;
+  script.dataset.corponuRestantesSutiaCompleto = "234";
+  script.onerror = () => console.error("Não foi possível carregar a reconciliação dos Restantes de Sutiã Completo 234.");
+  (document.head || document.documentElement).appendChild(script);
+})();
