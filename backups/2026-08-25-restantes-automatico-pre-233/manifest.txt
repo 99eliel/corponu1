@@ -1,0 +1,15 @@
+Backup pré-release 233 — 2026-08-25
+
+Produção: 99eliel/corponu1 / main
+Release anterior: 2026-08-25-manejo-calcinha-interface-estavel-232
+corponu-release.json blob: a595e0d54481e14ddb7335358f31210d6b01ae65
+corponu-auto-update-runtime-203.js blob: 4c4522da36e8ccd4ff7cc700e088e58af3f47b7b
+corponu-pagamentos-manual.js blob: f3987bff81a2655a25d2cf5dc37a936cef849c2e
+app.js blob: 6034c007e79b2dc86e8d622612c98ed7877a02ab
+
+Objetivo da 233:
+- Restantes pendentes recebidos pela aba Pagamentos deixam de gerar pagamento manual sem valor.
+- O valor passa a usar REF + PROCESSO da tabela precosReferencia, igual ao fluxo normal de chegada.
+- Se realmente não existir preço configurado, cria pendência legítima de preço, sem marcar como lançamento manual.
+- Remover/bloquear a Chegada Manual da aba Facções sem alterar registros históricos.
+- Não alterar app.js nem corponu-pagamentos-manual.js; correção isolada e reversível por loader.
