@@ -20,5 +20,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Validar sintaxe da correção
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module --check < corponu-atualizador.js
+          node --input-type=module --check < corponu-restantes-pagamento-automatico-245.js
+          node --check tests/test-eventloop-fix-248.mjs
+      - name: Testar bloqueio do loop
+        run: node tests/test-eventloop-fix-248.mjs
       - name: Auditar scripts ativos
         run: node tests/audit-eventloop-248.mjs
