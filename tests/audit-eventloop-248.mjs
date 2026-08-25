@@ -57,10 +57,34 @@ for (const arquivo of [...vistos].sort()) {
 resultado.sort((a,b) => b.risco - a.risco || b.linhas - a.linhas);
 console.log('=== AUDITORIA EVENT LOOP PAGAMENTOS 248 ===');
 console.log(`Arquivos alcançáveis: ${vistos.size}`);
-for (const r of resultado) console.log(JSON.stringify(r));
+for (const r of resultado.slice(0, 20)) console.log(JSON.stringify(r));
 
 console.log('\n=== ARQUIVOS COM ENTREGASPAGAMENTO ===');
 for (const r of resultado.filter(r => r.entregas)) console.log(`${r.arquivo}: entregas=${r.entregas} onSnapshot=${r.onSnapshot} getDocs=${r.getDocs} observer=${r.mutationObserver} interval=${r.setInterval} render=${r.renderPagamentos}`);
 
-console.log('\n=== OBSERVERS / INTERVALOS ALCANÇÁVEIS ===');
-for (const r of resultado.filter(r => r.mutationObserver || r.setInterval)) console.log(`${r.arquivo}: observer=${r.mutationObserver} interval=${r.setInterval} timeout=${r.setTimeout} dispatch=${r.dispatchEvent} click=${r.clickProgramatico}`);
+function extrairFuncao(texto, nome) {
+  const inicio = texto.indexOf(`function ${nome}`);
+  if (inicio < 0) return null;
+  const abre = texto.indexOf('{', inicio);
+  let nivel = 0;
+  let quote = null;
+  let escape = false;
+  for (let i = abre; i < texto.length; i++) {
+    const c = texto[i];
+    if (escape) { escape = false; continue; }
+    if (c === '\\') { escape = true; continue; }
+    if (quote) { if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'" || c === '`') { quote = c; continue; }
+    if (c === '{') nivel++;
+    if (c === '}') { nivel--; if (nivel === 0) return texto.slice(inicio, i + 1); }
+  }
+  return null;
+}
+
+const update = ler('update.js');
+for (const nome of ['aprimorarTabelaEntregasPagamentoFinal', 'instalarObserverTabelaPagamentoFinal']) {
+  const fonte = extrairFuncao(update, nome);
+  const pos = update.indexOf(`function ${nome}`);
+  console.log(`\n=== ${nome} linha ${pos >= 0 ? update.slice(0,pos).split(/\r?\n/).length : '-'} ===`);
+  console.log(fonte || 'NAO_ENCONTRADA');
+}
