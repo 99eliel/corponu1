@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-25-pagamentos-lazy-loader-250",
-  "updatedAt": "2026-08-25T18:55:00-03:00",
-  "notes": "PRODUÇÃO. Adota a arquitetura de carregamento que passou no teste real de Pagamentos do repositório corpunuteste com Chromium e Firebase de homologação. O runtime 203 vira somente um shim de compatibilidade: sem timers, sem troca de documento e sem injeção paralela de scripts. O corponu-atualizador passa a carregar somente um módulo crítico no boot e os demais módulos são carregados sob demanda ao entrar em Manejo, Pagamentos, Facções ou Processos. Mantém app.js, Firebase de produção, dados, valores, status e regras intactos. Mantém também o update.js da produção com o observer recursivo de Pagamentos já removido e continua sem carregar a lógica Restantes 233."
+  "version": "2026-08-25-sutia-completo-automatico-251",
+  "updatedAt": "2026-08-25T19:45:00-03:00",
+  "notes": "PRODUÇÃO. Correção isolada sobre a base estável 250: SUTIÃ COMPLETO deixa de ser classificado pela Central Financeira como valor total manual da OP. SUTIÃ MONTAGEM continua com valor total manual. O cálculo automático já existente do Sutiã Completo continua sendo a fonte de valor e só permanece sem_valor quando o próprio cálculo indicar informação/preço faltante. Não altera app.js, corponu-atualizador.js, runtime lazy 250, update.js, Firebase, regras, dados históricos ou outras áreas. Apenas altera a regra de classificação, o cache do módulo financeiro e o manifesto de release."
 }
