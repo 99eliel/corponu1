@@ -22,7 +22,7 @@ window.cancelAnimationFrame = id => clearTimeout(id);
 if (!window.CSS) window.CSS = {};
 if (!window.CSS.escape) window.CSS.escape = value => String(value).replace(/[^a-zA-Z0-9_-]/g, ch => '\\' + ch);
 
-const ordens = new Map([
+const ordens = new window.Map([
   ['1', { id:'1', numeroOP:'1001', referencia:'900', cor:'PRETO', quantidade:100, tipoPeca:'calcinha', linhaCalcinha:'cotton_line', necessidade:'URGENTE', manejosSetores:{calcinha:{fase:'COSTURA', linhaCalcinha:'cotton_line', status:'organizada'}} }],
   ['2', { id:'2', numeroOP:'1002', referencia:'901', cor:'BRANCO', quantidade:200, tipoPeca:'calcinha', linhaCalcinha:'corpo_nu', necessidade:'AMANHÃ', manejosSetores:{calcinha:{fase:'ACABAMENTO', linhaCalcinha:'corpo_nu', status:'organizada'}} }],
   ['3', { id:'3', numeroOP:'1003', referencia:'902', cor:'AZUL', quantidade:300, tipoPeca:'calcinha', linhaCalcinha:'cotton_line', necessidade:'NORMAL', manejosSetores:{calcinha:{fase:'CORTE', linhaCalcinha:'cotton_line', status:'organizada'}} }]
@@ -38,7 +38,7 @@ const state = {
     updateDoc: async () => {},
     serverTimestamp: () => 'SERVER_TIMESTAMP'
   },
-  maps: { ordens, movimentacoes: new Map(), faccoes: new Map() }
+  maps: { ordens, movimentacoes: new window.Map(), faccoes: new window.Map() }
 };
 window.corponuDualMode = { state, refresh: async () => state.maps };
 window.mandarParaFaccao = async id => { envios += 1; return id; };
