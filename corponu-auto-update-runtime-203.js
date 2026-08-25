@@ -257,16 +257,3 @@
   script.onerror = () => console.error("Não foi possível carregar o antipisca do Manejo Calcinha 231.");
   (document.head || document.documentElement).appendChild(script);
 })();
-
-(() => {
-  "use strict";
-
-  if (document.querySelector('script[data-corponu-restantes-pagamento-automatico="233"]')) return;
-
-  const script = document.createElement("script");
-  script.src = `./corponu-restantes-pagamento-automatico-233.js?v=2026-08-25-restantes-pagamento-automatico-233&t=${Date.now()}`;
-  script.async = false;
-  script.dataset.corponuRestantesPagamentoAutomatico = "233";
-  script.onerror = () => console.error("Não foi possível carregar a correção automática dos pagamentos de Restantes pendentes 233.");
-  (document.head || document.documentElement).appendChild(script);
-})();
