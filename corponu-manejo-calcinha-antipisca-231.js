@@ -290,3 +290,15 @@
 
   console.info(`[CorpoNu] Ajuste de local rápido do Manejo Calcinha ativo: ${VERSION}`);
 })();
+
+(() => {
+  "use strict";
+
+  if (document.querySelector('script[data-corponu-restantes-calculo-definitivo="237"]')) return;
+  const script = document.createElement("script");
+  script.src = `./corponu-restantes-calculo-definitivo-237.js?v=2026-08-25-restantes-calculo-definitivo-237&t=${Date.now()}`;
+  script.async = false;
+  script.dataset.corponuRestantesCalculoDefinitivo = "237";
+  script.onerror = () => console.error("Não foi possível carregar o cálculo definitivo dos Restantes 237.");
+  (document.head || document.documentElement).appendChild(script);
+})();
