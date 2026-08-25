@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Teste Manejo Calcinha Interface Estável 232</title>
+  <style>
+    .table-wrap{width:520px;height:170px;overflow:auto;border:1px solid #ddd}
+    table{width:900px;border-collapse:collapse}
+    td{padding:12px;border:1px solid #ddd}
+  </style>
+</head>
+<body>
+  <div id="appShell">
+    <section id="manejo" class="page active">
+      <button type="button" class="manejo-setor-btn active" data-setor="calcinha">Calcinha</button>
+      <input id="buscaManejoLinha" value="12345">
+      <div class="table-wrap" id="manejoWrap">
+        <table class="manejo-inline-table">
+          <tbody id="listaManejoInline">
+            <tr data-manejo-row="1" data-identidade="original">
+              <td style="min-width:700px"><input id="manejo-op1-fase" list="manejoFasesListCalcinha" value="FASE A"></td>
+              <td><button class="btn-save-manejo" type="button" onclick="salvarManejoLinha('op1')">✓</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <datalist id="manejoFasesListCalcinha">
+    <option value="FASE A"></option>
+    <option value="FASE B"></option>
+  </datalist>
+  <div id="toast" class="hidden"></div>
+
+  <script>
+    window.__originalCalls = 0;
+    window.__mockUpdateDocCalls = 0;
+    window.__renderTentativas = 0;
+    window.__rendersExecutados = 0;
+    window.__rendersSuprimidos = 0;
+    window.__rowOriginal = document.querySelector('#listaManejoInline tr');
+
+    function paginaAtivaAtual(){
+      return document.querySelector('.page.active')?.id || 'manejo';
+    }
+
+    window.renderPaginaAtiva = function renderPaginaAtiva(){
+      window.__renderTentativas += 1;
+      const page = paginaAtivaAtual();
+      const trava = window.__CORPONU_MANEJO_CALCINHA_RENDER_LOCK_232__;
+      if (page === 'manejo' && trava?.ativo === true) {
+        trava.pendente = true;
+        window.__rendersSuprimidos += 1;
+        return;
+      }
+
+      window.__rendersExecutados += 1;
+      const fase = document.querySelector('.corponu-fase-calcinha-select-223')?.value ||
+        document.querySelector('#listaManejoInline input[id$="-fase"]')?.value || 'FASE A';
+      document.getElementById('listaManejoInline').innerHTML = `
+        <tr data-manejo-row="1" data-identidade="reconstruida">
+          <td style="min-width:700px"><input id="manejo-op1-fase" list="manejoFasesListCalcinha" value="${fase}"></td>
+          <td><button class="btn-save-manejo" type="button" onclick="salvarManejoLinha('op1')">✓</button></td>
+        </tr>`;
+      document.getElementById('buscaManejoLinha').value = '';
+      document.getElementById('manejoWrap').scrollLeft = 0;
+    };
+
+    window.salvarManejoLinha = async function salvarOriginal(){
+      window.__originalCalls += 1;
+      await new Promise(resolve => setTimeout(resolve, 25));
+      window.renderPaginaAtiva();
+      await new Promise(resolve => setTimeout(resolve, 25));
+      return true;
+    };
+
+    const observadorFake = {
+      disconnect(){},
+      observe(){},
+      takeRecords(){ return []; }
+    };
+
+    window.corponuDualMode = {
+      state: {
+        observers: [observadorFake],
+        maps: {
+          ordens: new Map([["op1", {
+            id: "op1",
+            tipoPeca: "calcinha",
+            manejosSetores: { calcinha: { fase: "FASE A" } }
+          }]])
+        }
+      }
+    };
+  </script>
+
+  <script src="/corponu-manejo-calcinha-estavel-204.js"></script>
+  <script src="/corponu-manejo-calcinha-fase-definitivo-216.js"></script>
+  <script src="/corponu-manejo-calcinha-antipisca-231.js"></script>
+</body>
+</html>
