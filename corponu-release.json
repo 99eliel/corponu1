@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-25-manejo-calcinha-estavel-235",
-  "updatedAt": "2026-08-25T10:44:00-03:00",
-  "notes": "PRODUÇÃO. Estabiliza o Manejo de Calcinha após auditoria da cadeia de salvamento. Remove exclusivamente a trava de renderização introduzida na 232 e neutraliza o módulo antipisca 231/232, restaurando o comportamento efetivo ao conjunto 223+230 já validado: lista oficial de Fase, confirmação autoritativa, proteção contra salvamento duplicado e botão de salvar coordenado. Elimina o descarte de renderização pendente, a espera fixa de 180 ms e o congelamento adicional da tabela. Mantém integralmente a correção de Pagamentos/Restantes 233, demais abas, cálculos, Facções e regras do Firebase."
+  "version": "2026-08-25-ajuste-local-calcinha-rapido-236",
+  "updatedAt": "2026-08-25T11:37:00-03:00",
+  "notes": "PRODUÇÃO. Otimiza exclusivamente o botão Salvar correção do modal Ajustar OP migrada quando o setor ativo é Calcinha. A correção, o histórico de ajustes, a movimentação necessária e o log de auditoria passam a ser confirmados em um único writeBatch do Firestore, eliminando a segunda gravação serial de log e removendo renderizações forçadas de Rastreamento e Manejo após o commit. O estado final continua chegando pelos listeners normais do Firestore. Mantém intactos o salvamento normal das linhas, Manejo Sutiã, Pagamentos/Restantes 233, Facções, cálculos e regras do Firebase."
 }
