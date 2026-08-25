@@ -1,0 +1,32 @@
+name: Testar Manejo Calcinha Interface 232
+
+on:
+  push:
+    branches:
+      - fix/manejo-calcinha-interface-estavel-232
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Iniciar servidor local
+        run: |
+          python3 -m http.server 4173 > /tmp/corponu-http.log 2>&1 &
+          echo $! > /tmp/corponu-http.pid
+          sleep 1
+
+      - name: Testar save sem reconstruir interface
+        run: node tests/manejo-calcinha-interface-estavel-232.mjs
