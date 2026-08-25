@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-25-ajuste-local-calcinha-rapido-236",
-  "updatedAt": "2026-08-25T11:37:00-03:00",
-  "notes": "PRODUÇÃO. Otimiza exclusivamente o botão Salvar correção do modal Ajustar OP migrada quando o setor ativo é Calcinha. A correção, o histórico de ajustes, a movimentação necessária e o log de auditoria passam a ser confirmados em um único writeBatch do Firestore, eliminando a segunda gravação serial de log e removendo renderizações forçadas de Rastreamento e Manejo após o commit. O estado final continua chegando pelos listeners normais do Firestore. Mantém intactos o salvamento normal das linhas, Manejo Sutiã, Pagamentos/Restantes 233, Facções, cálculos e regras do Firebase."
+  "version": "2026-08-25-restantes-calculo-definitivo-237",
+  "updatedAt": "2026-08-25T13:21:00-03:00",
+  "notes": "PRODUÇÃO. Corrige o cálculo automático dos pagamentos criados por Restantes pendentes. Para processos comuns, a busca de preço passa a aceitar referências equivalentes (inclusive zeros à esquerda) e aliases de processo, mantendo a regra REF + PROCESSO. Para SUTIÃ COMPLETO, deixa de exigir uma linha de preço direta e passa a restaurar a conferência da movimentação original/pagamento anterior e acionar a calculadora oficial do Sutiã Completo, que usa valor-base e descontos de Lateral, Bojo, Fecho e Ponto de Luz. Também tenta corrigir de forma restrita pagamentos complementares já existentes que ainda estejam sem valor, preservando pagos/cancelados/excluídos. Não altera Pagamentos normais, Facções, Manejo ou regras do Firebase."
 }
