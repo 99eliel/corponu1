@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-24-manejo-calcinha-salvamento-coordenado-230",
-  "updatedAt": "2026-08-24T20:57:00-03:00",
-  "notes": "PRODUÇÃO. Corrige a cadeia de salvamento do Manejo Calcinha após teste automatizado em Chromium. Remove a gravação Firestore redundante da proteção antiga de Fase e impede que a camada visual 205 se embrulhe novamente ao redor dos wrappers externos. Isso evita que uma camada interna interprete o próprio salvamento como duplicado e aborte salvarManejoLinha. Mantém a confirmação autoritativa da Fase pela proteção 223, sem fast path, sem bloquear renderização e sem refresh forçado. Testado: um clique chama uma vez o salvamento original e uma vez a confirmação da Fase; após os timers não há empilhamento; o botão volta a habilitar; Sutiã permanece fora da lógica. Não altera app.js, Pagamentos, Facções, cálculos, OPs ou regras do Firebase."
+  "version": "2026-08-25-pagamentos-loader-estavel-244",
+  "updatedAt": "2026-08-25T16:49:00-03:00",
+  "notes": "PRODUÇÃO. Recuperação de estabilidade da aba Pagamentos baseada no último rollback explicitamente estável do histórico. Mantém app.js, corponu-pagamentos-seguro.js, corponu-pagamentos-manual.js, interface, multifiltro e módulos operacionais; retira da inicialização as camadas auxiliares posteriores que fazem leituras próprias, observers e conferências paralelas sobre Pagamentos: filtro OP auxiliar, alerta sem valor, alerta de duplicidades, pendências de valor, verificação de Sutiã Completo e Valores pendentes bilateral. Não altera nenhum documento do Firestore nem executa migração automática. A nova release também força cache-busting dos assets pelo atualizador automático."
 }
