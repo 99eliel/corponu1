@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-24-manejo-calcinha-salvamento-coordenado-230",
-  "updatedAt": "2026-08-24T20:57:00-03:00",
-  "notes": "PRODUÇÃO. Corrige a cadeia de salvamento do Manejo Calcinha após teste automatizado em Chromium. Remove a gravação Firestore redundante da proteção antiga de Fase e impede que a camada visual 205 se embrulhe novamente ao redor dos wrappers externos. Isso evita que uma camada interna interprete o próprio salvamento como duplicado e aborte salvarManejoLinha. Mantém a confirmação autoritativa da Fase pela proteção 223, sem fast path, sem bloquear renderização e sem refresh forçado. Testado: um clique chama uma vez o salvamento original e uma vez a confirmação da Fase; após os timers não há empilhamento; o botão volta a habilitar; Sutiã permanece fora da lógica. Não altera app.js, Pagamentos, Facções, cálculos, OPs ou regras do Firebase."
+  "version": "2026-08-24-manejo-calcinha-antipisca-231",
+  "updatedAt": "2026-08-24T21:56:00-03:00",
+  "notes": "PRODUÇÃO. Mantém integralmente o salvamento coordenado da versão 230 e a persistência autoritativa da Fase pela 223. Corrige somente a piscada visual após salvar no Manejo Calcinha: durante o salvamento, preserva visualmente a tabela atual enquanto os snapshots do Firestore atualizam o DOM por baixo e revela a tabela real apenas quando o estado final está estável. O congelamento é temporário e restrito ao wrapper da tabela, sem observer global, sem refresh e sem alterar Firestore, Fase, Sutiã, Pagamentos, Facções, OPs, cálculos ou regras."
 }
