@@ -1,0 +1,30 @@
+name: Testar Restantes Sutiã Completo 234
+
+on:
+  push:
+    branches:
+      - fix/restantes-sutia-completo-234
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  testar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validar módulo 234
+        run: node --input-type=module --check < corponu-restantes-sutia-completo-234.js
+
+      - name: Rodar cenários críticos 234
+        run: node teste-restantes-sutia-completo-234.cjs
