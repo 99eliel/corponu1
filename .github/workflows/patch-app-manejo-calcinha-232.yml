@@ -1,0 +1,72 @@
+name: Patch app Manejo Calcinha 232
+
+on:
+  push:
+    branches:
+      - fix/manejo-calcinha-interface-estavel-232
+
+permissions:
+  contents: write
+
+jobs:
+  patch-app:
+    if: ${{ !contains(github.event.head_commit.message, '[skip-app-patch-232]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+        with:
+          ref: fix/manejo-calcinha-interface-estavel-232
+          fetch-depth: 0
+
+      - name: Aplicar trava localizada no render do Manejo
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('app.js')
+          text = path.read_text(encoding='utf-8')
+          marker = '__CORPONU_MANEJO_CALCINHA_RENDER_LOCK_232__'
+          if marker in text:
+              print('Patch 232 já aplicado.')
+              raise SystemExit(0)
+
+          old = '''function renderPaginaAtiva() {
+            const page = paginaAtivaAtual();
+
+            if (page === "produtos") {'''
+          new = '''function renderPaginaAtiva() {
+            const page = paginaAtivaAtual();
+
+            // Manejo Calcinha 232: durante o salvamento de uma linha, o listener
+            // do Firestore continua atualizando state.ordens, mas não reconstrói
+            // toda a tabela. A própria linha já contém os valores editados e a
+            // camada 223 encerra o estado visual após a confirmação autoritativa.
+            // Isso evita mudança de layout, filtros, scroll e identidade das linhas.
+            const travaRenderCalcinha = window.__CORPONU_MANEJO_CALCINHA_RENDER_LOCK_232__;
+            if (page === "manejo" && travaRenderCalcinha?.ativo === true) {
+              travaRenderCalcinha.pendente = true;
+              return;
+            }
+
+            if (page === "produtos") {'''
+
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'Trecho de renderPaginaAtiva inesperado: {count} ocorrência(s).')
+
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          print('Patch 232 aplicado em app.js.')
+          PY
+
+      - name: Commitar patch na branch
+        run: |
+          if git diff --quiet -- app.js; then
+            echo "Nada para commitar."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.js
+          git commit -m "fix: impedir rerender total durante save Calcinha 232 [skip-app-patch-232]"
+          git push origin HEAD:fix/manejo-calcinha-interface-estavel-232
