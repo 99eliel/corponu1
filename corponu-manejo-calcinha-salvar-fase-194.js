@@ -1,12 +1,11 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-24-fase-calcinha-antipisca-231";
+  const VERSION = "2026-08-24-fase-calcinha-validacao-coordenada-230";
   const DATALIST_FASES_CALCINHA = "manejoFasesListCalcinha";
-  const SNAPSHOT_ATTR = "corponuAntipiscaCalcinha231";
 
-  if (window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_231__ === VERSION) return;
-  window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_231__ = VERSION;
+  if (window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_230__ === VERSION) return;
+  window.__CORPONU_MANEJO_CALCINHA_SALVAR_FASE_230__ = VERSION;
 
   let instalado = false;
 
@@ -84,8 +83,8 @@
     if (toast) {
       toast.textContent = mensagem;
       toast.classList.remove("hidden");
-      window.clearTimeout(window.__faseCalcinha231Toast);
-      window.__faseCalcinha231Toast = window.setTimeout(() => toast.classList.add("hidden"), 6500);
+      window.clearTimeout(window.__faseCalcinha230Toast);
+      window.__faseCalcinha230Toast = window.setTimeout(() => toast.classList.add("hidden"), 6500);
       return;
     }
     window.alert(mensagem);
@@ -104,119 +103,6 @@
     }
   }
 
-  function removerIdsEEventosDoClone(clone) {
-    [clone, ...clone.querySelectorAll("*")].forEach(elemento => {
-      elemento.removeAttribute?.("id");
-      elemento.removeAttribute?.("onclick");
-      elemento.removeAttribute?.("onchange");
-      elemento.removeAttribute?.("oninput");
-      elemento.removeAttribute?.("tabindex");
-    });
-  }
-
-  function tabelaManejoAtual() {
-    return document.getElementById("listaManejoInline")?.closest("table") || null;
-  }
-
-  function congelarTabelaManejo() {
-    const tabela = tabelaManejoAtual();
-    if (!(tabela instanceof HTMLElement)) return null;
-
-    const wrapper = tabela.closest(".table-wrap") || tabela.parentElement;
-    if (!(wrapper instanceof HTMLElement)) return null;
-
-    wrapper.querySelectorAll(`[data-${SNAPSHOT_ATTR.replace(/[A-Z]/g, letra => `-${letra.toLowerCase()}`)}="1"]`).forEach(item => item.remove());
-
-    const tabelaRect = tabela.getBoundingClientRect();
-    const wrapperRect = wrapper.getBoundingClientRect();
-    if (!tabelaRect.width || !tabelaRect.height) return null;
-
-    const clone = tabela.cloneNode(true);
-    if (!(clone instanceof HTMLElement)) return null;
-
-    removerIdsEEventosDoClone(clone);
-    clone.dataset[SNAPSHOT_ATTR] = "1";
-    clone.setAttribute("aria-hidden", "true");
-
-    const posicaoCalculada = window.getComputedStyle(wrapper).position;
-    const posicaoInlineAnterior = wrapper.style.position;
-    const alterouPosicao = posicaoCalculada === "static";
-    if (alterouPosicao) wrapper.style.position = "relative";
-
-    const left = tabelaRect.left - wrapperRect.left + wrapper.scrollLeft;
-    const top = tabelaRect.top - wrapperRect.top + wrapper.scrollTop;
-
-    Object.assign(clone.style, {
-      position: "absolute",
-      left: `${left}px`,
-      top: `${top}px`,
-      width: `${tabelaRect.width}px`,
-      minWidth: `${tabelaRect.width}px`,
-      height: `${tabelaRect.height}px`,
-      margin: "0",
-      pointerEvents: "none",
-      userSelect: "none",
-      zIndex: "2147482000",
-      visibility: "visible"
-    });
-
-    const visibilidadeAnterior = tabela.style.visibility;
-    tabela.style.visibility = "hidden";
-    wrapper.appendChild(clone);
-
-    const esconderTabelaNova = () => {
-      const atual = tabelaManejoAtual();
-      if (atual instanceof HTMLElement && atual !== clone) {
-        atual.style.visibility = "hidden";
-      }
-    };
-
-    const observador = new MutationObserver(esconderTabelaNova);
-    observador.observe(wrapper, { childList: true, subtree: true });
-
-    return {
-      wrapper,
-      clone,
-      tabela,
-      visibilidadeAnterior,
-      posicaoInlineAnterior,
-      alterouPosicao,
-      observador
-    };
-  }
-
-  function esperarQuadrosFinais() {
-    return new Promise(resolve => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          window.setTimeout(resolve, 60);
-        });
-      });
-    });
-  }
-
-  async function liberarTabelaManejo(congelamento) {
-    if (!congelamento) return;
-
-    await esperarQuadrosFinais();
-    congelamento.observador?.disconnect?.();
-
-    const tabelaAtual = tabelaManejoAtual();
-    if (tabelaAtual instanceof HTMLElement) {
-      tabelaAtual.style.visibility = "";
-    }
-
-    if (congelamento.tabela?.isConnected) {
-      congelamento.tabela.style.visibility = congelamento.visibilidadeAnterior || "";
-    }
-
-    congelamento.clone?.remove?.();
-
-    if (congelamento.alterouPosicao && congelamento.wrapper?.isConnected) {
-      congelamento.wrapper.style.position = congelamento.posicaoInlineAnterior || "";
-    }
-  }
-
   function instalarProtecao() {
     if (instalado) return true;
     const atual = window.salvarManejoLinha;
@@ -229,9 +115,7 @@
 
     const original = atual;
 
-    async function salvarManejoLinhaComFaseCalcinhaValidada231(orderId) {
-      let deveCongelar = false;
-
+    async function salvarManejoLinhaComFaseCalcinhaValidada230(orderId) {
       if (calcinhaAtiva()) {
         const validacao = faseOficialDaLinha(orderId);
 
@@ -259,35 +143,27 @@
           validacao.campo.value = validacao.oficial;
           validacao.campo.setAttribute("list", DATALIST_FASES_CALCINHA);
         }
-        deveCongelar = true;
       }
 
-      const congelamento = deveCongelar ? congelarTabelaManejo() : null;
-      try {
-        // A gravação permanece exatamente no fluxo validado da 230/223.
-        // Esta versão apenas mantém uma cópia visual da tabela enquanto os
-        // snapshots do Firestore reconstruem o DOM por baixo.
-        return await original.apply(this, arguments);
-      } finally {
-        if (congelamento) await liberarTabelaManejo(congelamento);
-      }
+      // Esta camada faz apenas validação/normalização. A gravação normal continua
+      // no fluxo existente e a confirmação final autoritativa permanece na 223.
+      // Assim eliminamos um updateDoc serial redundante sem alterar o clique.
+      return await original.apply(this, arguments);
     }
 
-    Object.defineProperty(salvarManejoLinhaComFaseCalcinhaValidada231, "__corponuFaseCalcinhaValidacaoCoordenada230", {
-      value: true,
-      configurable: false,
-      enumerable: false
-    });
-    Object.defineProperty(salvarManejoLinhaComFaseCalcinhaValidada231, "__corponuFaseCalcinhaAntipisca231", {
+    Object.defineProperty(salvarManejoLinhaComFaseCalcinhaValidada230, "__corponuFaseCalcinhaValidacaoCoordenada230", {
       value: true,
       configurable: false,
       enumerable: false
     });
 
-    propagarMarca(salvarManejoLinhaComFaseCalcinhaValidada231, original, "__corponuFaseCalcinhaSemPiscar223");
-    propagarMarca(salvarManejoLinhaComFaseCalcinhaValidada231, original, "__corponuCalcinhaFluido205");
+    // Muito importante: wrappers antigos se identificam por marcas na função.
+    // Ao preservar as marcas da camada interna, evitamos que 205 e 223 a envolvam
+    // de novo a cada timer, o que multiplicava confirmações e deixava o salvar lento.
+    propagarMarca(salvarManejoLinhaComFaseCalcinhaValidada230, original, "__corponuFaseCalcinhaSemPiscar223");
+    propagarMarca(salvarManejoLinhaComFaseCalcinhaValidada230, original, "__corponuCalcinhaFluido205");
 
-    window.salvarManejoLinha = salvarManejoLinhaComFaseCalcinhaValidada231;
+    window.salvarManejoLinha = salvarManejoLinhaComFaseCalcinhaValidada230;
     instalado = true;
     return true;
   }
