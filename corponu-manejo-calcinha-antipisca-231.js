@@ -1,9 +1,9 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-24-manejo-calcinha-antipisca-231";
-  const GUARD = "__CORPONU_MANEJO_CALCINHA_ANTIPISCA_231__";
-  const SNAPSHOT_ATTR = "corponuAntipiscaCalcinha231";
+  const VERSION = "2026-08-25-manejo-calcinha-interface-estavel-232";
+  const GUARD = "__CORPONU_MANEJO_CALCINHA_INTERFACE_ESTAVEL_232__";
+  const LOCK_KEY = "__CORPONU_MANEJO_CALCINHA_RENDER_LOCK_232__";
 
   if (window[GUARD] === VERSION) return;
   window[GUARD] = VERSION;
@@ -17,114 +17,59 @@
     return pagina === "manejo" && Boolean(setor);
   }
 
-  function tabelaManejoAtual() {
-    return document.getElementById("listaManejoInline")?.closest("table") || null;
+  function obterTrava() {
+    let trava = window[LOCK_KEY];
+    if (!trava || typeof trava !== "object") {
+      trava = {
+        ativo: false,
+        contador: 0,
+        pendente: false,
+        ordens: new Set(),
+        inicio: 0
+      };
+      window[LOCK_KEY] = trava;
+    }
+    if (!(trava.ordens instanceof Set)) trava.ordens = new Set();
+    return trava;
   }
 
-  function seletorSnapshot() {
-    return '[data-corponu-antipisca-calcinha231="1"]';
+  function iniciarTrava(orderId) {
+    const trava = obterTrava();
+    trava.contador = Math.max(0, Number(trava.contador || 0)) + 1;
+    trava.ativo = true;
+    trava.pendente = false;
+    trava.inicio = Date.now();
+    if (orderId) trava.ordens.add(String(orderId));
+    return trava;
   }
 
-  function limparClone(clone) {
-    [clone, ...clone.querySelectorAll("*")].forEach(elemento => {
-      elemento.removeAttribute?.("id");
-      elemento.removeAttribute?.("onclick");
-      elemento.removeAttribute?.("onchange");
-      elemento.removeAttribute?.("oninput");
-      elemento.removeAttribute?.("tabindex");
-      elemento.removeAttribute?.("name");
-    });
-  }
-
-  function congelarTabela() {
-    const tabela = tabelaManejoAtual();
-    if (!(tabela instanceof HTMLElement)) return null;
-
-    const wrapper = tabela.closest(".table-wrap") || tabela.parentElement;
-    if (!(wrapper instanceof HTMLElement)) return null;
-
-    wrapper.querySelectorAll(seletorSnapshot()).forEach(item => item.remove());
-
-    const tabelaRect = tabela.getBoundingClientRect();
-    const wrapperRect = wrapper.getBoundingClientRect();
-    if (!tabelaRect.width || !tabelaRect.height) return null;
-
-    const clone = tabela.cloneNode(true);
-    if (!(clone instanceof HTMLElement)) return null;
-    limparClone(clone);
-    clone.dataset[SNAPSHOT_ATTR] = "1";
-    clone.setAttribute("aria-hidden", "true");
-
-    const posicaoCalculada = window.getComputedStyle(wrapper).position;
-    const posicaoInlineAnterior = wrapper.style.position;
-    const alterouPosicao = posicaoCalculada === "static";
-    if (alterouPosicao) wrapper.style.position = "relative";
-
-    const left = tabelaRect.left - wrapperRect.left + wrapper.scrollLeft;
-    const top = tabelaRect.top - wrapperRect.top + wrapper.scrollTop;
-
-    Object.assign(clone.style, {
-      position: "absolute",
-      left: `${left}px`,
-      top: `${top}px`,
-      width: `${tabelaRect.width}px`,
-      minWidth: `${tabelaRect.width}px`,
-      height: `${tabelaRect.height}px`,
-      margin: "0",
-      pointerEvents: "none",
-      userSelect: "none",
-      zIndex: "2147482000",
-      visibility: "visible"
-    });
-
-    const visibilidadeAnterior = tabela.style.visibility;
-    tabela.style.visibility = "hidden";
-    wrapper.appendChild(clone);
-
-    const esconderTabelaReal = () => {
-      const atual = tabelaManejoAtual();
-      if (atual instanceof HTMLElement) atual.style.visibility = "hidden";
-    };
-
-    const observer = new MutationObserver(esconderTabelaReal);
-    observer.observe(wrapper, { childList: true, subtree: true });
-
-    return {
-      wrapper,
-      tabela,
-      clone,
-      observer,
-      visibilidadeAnterior,
-      posicaoInlineAnterior,
-      alterouPosicao
-    };
-  }
-
-  function aguardarEstadoVisualFinal() {
+  function aguardarCallbacksTardios() {
     return new Promise(resolve => {
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => window.setTimeout(resolve, 70));
+        requestAnimationFrame(() => {
+          window.setTimeout(resolve, 180);
+        });
       });
     });
   }
 
-  async function liberarTabela(congelamento) {
-    if (!congelamento) return;
+  async function finalizarTrava(orderId, trava) {
+    // O setDoc/updateDoc pode resolver instantes antes do onSnapshot associado.
+    // Mantemos a trava por mais dois frames + uma margem curta para capturar esse
+    // callback tardio sem provocar qualquer nova renderização da tabela.
+    await aguardarCallbacksTardios();
 
-    await aguardarEstadoVisualFinal();
-    congelamento.observer?.disconnect?.();
+    const atual = obterTrava();
+    if (atual !== trava) return;
 
-    const atual = tabelaManejoAtual();
-    if (atual instanceof HTMLElement) atual.style.visibility = "";
+    if (orderId) atual.ordens.delete(String(orderId));
+    atual.contador = Math.max(0, Number(atual.contador || 0) - 1);
 
-    if (congelamento.tabela?.isConnected) {
-      congelamento.tabela.style.visibility = congelamento.visibilidadeAnterior || "";
-    }
-
-    congelamento.clone?.remove?.();
-
-    if (congelamento.alterouPosicao && congelamento.wrapper?.isConnected) {
-      congelamento.wrapper.style.position = congelamento.posicaoInlineAnterior || "";
+    if (atual.contador === 0) {
+      atual.ativo = false;
+      atual.pendente = false;
+      atual.inicio = 0;
+      atual.ordens.clear();
     }
   }
 
@@ -146,46 +91,51 @@
 
     const atual = window.salvarManejoLinha;
     if (typeof atual !== "function") return false;
-    if (atual.__corponuManejoCalcinhaAntipisca231 === true) {
+    if (atual.__corponuManejoCalcinhaInterfaceEstavel232 === true) {
       instalado = true;
       return true;
     }
 
-    // O antipisca precisa ficar POR FORA da 223 para cobrir também o updateDoc
-    // autoritativo da Fase. Se a 223 ainda não entrou na cadeia, aguardamos.
+    // A trava precisa ficar por fora da camada 223 para cobrir o salvamento normal
+    // e também a confirmação autoritativa da Fase. Se a 223 ainda não carregou,
+    // apenas aguardamos; não alteramos a cadeia parcialmente.
     if (atual.__corponuFaseCalcinhaSemPiscar223 !== true) return false;
 
     const interno = atual;
 
-    const wrapper = async function corponuSalvarManejoCalcinhaAntipisca231(...args) {
+    const wrapper = async function corponuSalvarManejoCalcinhaInterfaceEstavel232(...args) {
       if (!calcinhaAtiva()) return interno.apply(this, args);
 
-      const congelamento = congelarTabela();
+      const orderId = String(args[0] || "");
+      const trava = iniciarTrava(orderId);
       try {
         return await interno.apply(this, args);
       } finally {
-        await liberarTabela(congelamento);
+        await finalizarTrava(orderId, trava);
       }
     };
 
-    Object.defineProperty(wrapper, "__corponuManejoCalcinhaAntipisca231", {
+    Object.defineProperty(wrapper, "__corponuManejoCalcinhaInterfaceEstavel232", {
       value: true,
       configurable: false,
       enumerable: false
     });
 
+    // Preservar as marcas evita que timers antigos reembrulhem a função e
+    // multipliquem salvamentos/confirmações.
     propagarMarca(wrapper, interno, "__corponuFaseCalcinhaSemPiscar223");
     propagarMarca(wrapper, interno, "__corponuCalcinhaFluido205");
     propagarMarca(wrapper, interno, "__corponuFaseCalcinhaValidacaoCoordenada230");
 
     window.salvarManejoLinha = wrapper;
     instalado = true;
+
     if (timer) {
       clearInterval(timer);
       timer = 0;
     }
 
-    console.info(`[CorpoNu] Antipisca Manejo Calcinha ativo: ${VERSION}`);
+    console.info(`[CorpoNu] Interface estável do Manejo Calcinha ativa: ${VERSION}`);
     return true;
   }
 
