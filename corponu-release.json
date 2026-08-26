@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-25-manejo-calcinha-filtros-253",
-  "updatedAt": "2026-08-25T20:46:41-03:00",
-  "notes": "PRODUÇÃO. Refatoração nativa da Calcinha 253. A facção deixa de ficar presa à OP: o Dual Mode agora é carregado diretamente, sem o patch runtime 129, e a facção é escolhida no momento de cada envio. O Manejo Calcinha não mostra destino planejado como pendência. A tela dedicada ganha filtro acumulativo de Fases com seleção múltipla; várias fases selecionadas funcionam como OU entre si e são combinadas com busca, Linha e Status por E. Linha, Fase e Necessidade continuam salvas em uma única atualização. O envio dedicado lê os dados da própria OP e não depende mais da tabela legada escondida. Não altera Pagamentos, Sutiã Completo, app.js, regras Firebase ou dados históricos."
+  "version": "2026-08-26-faccoes-lateral-alca-254-prod",
+  "updatedAt": "2026-08-26T09:10:00-03:00",
+  "notes": "PRODUÇÃO CONTROLADA. Limpeza estrutural de Facções > Lateral e Alça baseada no corpunuteste. Um único módulo nativo passa a controlar saída, andamento, chegada e pagamento de LATERAL/ALÇA. Os loaders/hotfixes antigos de Corte, integração, rótulo e exclusão de Lateral/Alça deixam de ser carregados. Facções e processos usam a fonte consolidada de grupos. LATERAL mantém pagamento por referência e ALÇA mantém quantidade recebida x 2 x valor padrão. Campos legados são preservados para compatibilidade com históricos. Calcinha 253, app.js, update.js e regras Firebase não foram alterados. Backup de retorno: backup/pre-faccoes-lateral-alca-254-prod."
 }
