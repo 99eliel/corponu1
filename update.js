@@ -9757,26 +9757,23 @@
 
   function criarPainelProcessosFaccoes() {
     let painel = document.getElementById("painelProcessosFaccoes");
-    if (painel) return painel;
+    const area = garantirAreaProcessosDentroGerenciarFaccoes();
+    const mount = area?.querySelector("#mountProcessosDentroGerenciarFaccoes");
+    if (!mount) return painel || null;
 
-    const cardsResumo = document.querySelector("#faccoes .faccoes-cards");
-    if (!cardsResumo) return null;
+    if (painel) {
+      if (painel.parentElement !== mount) mount.appendChild(painel);
+      return painel;
+    }
 
     painel = document.createElement("section");
     painel.id = "painelProcessosFaccoes";
     painel.className = "processos-faccoes-painel";
     painel.innerHTML = `
-      <div class="processos-faccoes-cabecalho">
-        <div>
-          <h3>Processos das facções</h3>
-          <p>Clique em um processo para ver quais facções realizam esse serviço.</p>
-        </div>
-        <span class="processos-faccoes-aviso-admin">O gerenciamento fica em <strong>Gerenciar facções</strong>.</span>
-      </div>
       <div id="gradeProcessosFaccoes" class="processos-faccoes-grade"></div>
       <div id="detalheProcessoFaccao" class="processos-faccoes-detalhe hidden"></div>
     `;
-    cardsResumo.insertAdjacentElement("afterend", painel);
+    mount.appendChild(painel);
     return painel;
   }
 
@@ -9956,25 +9953,19 @@
   }
 
   function posicionarProcessosDentroGerenciarFaccoes(dentro) {
+    const area = garantirAreaProcessosDentroGerenciarFaccoes();
+    const mount = area?.querySelector("#mountProcessosDentroGerenciarFaccoes");
     const painelProcessos = criarPainelProcessosFaccoes();
-    if (!painelProcessos) return;
+    if (!mount || !painelProcessos) return;
 
-    if (dentro) {
-      const area = garantirAreaProcessosDentroGerenciarFaccoes();
-      const mount = area?.querySelector("#mountProcessosDentroGerenciarFaccoes");
-      if (mount && painelProcessos.parentElement !== mount) mount.appendChild(painelProcessos);
-      return;
+    if (painelProcessos.parentElement !== mount) mount.appendChild(painelProcessos);
+
+    if (!dentro) {
+      painelProcessos.dataset.gerenciandoProcessosFaccoes = "0";
+      const botao = document.getElementById("btnGerenciarProcessosFaccoes");
+      if (botao) botao.textContent = "Gerenciar processos";
+      renderDetalheProcessoFaccao();
     }
-
-    const cardsResumo = document.querySelector("#faccoes .faccoes-cards");
-    if (cardsResumo && painelProcessos.previousElementSibling !== cardsResumo) {
-      cardsResumo.insertAdjacentElement("afterend", painelProcessos);
-    }
-
-    painelProcessos.dataset.gerenciandoProcessosFaccoes = "0";
-    const botao = document.getElementById("btnGerenciarProcessosFaccoes");
-    if (botao) botao.textContent = "Gerenciar processos";
-    renderDetalheProcessoFaccao();
   }
 
   function sincronizarLocalProcessosFaccoes() {

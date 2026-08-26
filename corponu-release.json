@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-26-faccoes-lateral-alca-254-prod",
-  "updatedAt": "2026-08-26T09:10:00-03:00",
-  "notes": "PRODUÇÃO CONTROLADA. Limpeza estrutural de Facções > Lateral e Alça baseada no corpunuteste. Um único módulo nativo passa a controlar saída, andamento, chegada e pagamento de LATERAL/ALÇA. Os loaders/hotfixes antigos de Corte, integração, rótulo e exclusão de Lateral/Alça deixam de ser carregados. Facções e processos usam a fonte consolidada de grupos. LATERAL mantém pagamento por referência e ALÇA mantém quantidade recebida x 2 x valor padrão. Campos legados são preservados para compatibilidade com históricos. Calcinha 253, app.js, update.js e regras Firebase não foram alterados. Backup de retorno: backup/pre-faccoes-lateral-alca-254-prod."
+  "version": "2026-08-26-faccoes-processos-somente-gerenciar-255",
+  "updatedAt": "2026-08-26T10:08:00-03:00",
+  "notes": "Limpeza estrutural de Facções. O painel de processos não é mais criado na área operacional. A configuração e os cards de processos existem somente dentro de Gerenciar facções. O update.js não move mais o painel para depois dos cards-resumo ao fechar o gerenciamento. APIs de processos/facções, Lateral/Alça 254, pagamentos e Calcinha 253 permanecem intactos. Sem CSS de ocultação, MutationObserver de remoção ou patch pós-render. Backup: backup/pre-remover-painel-processos-255."
 }

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-26-faccoes-lateral-alca-254-prod";
+  const LOCAL_RELEASE = "2026-08-26-faccoes-processos-somente-gerenciar-255";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
