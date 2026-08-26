@@ -1,0 +1,143 @@
+name: Remover painel Processos Faccoes 255
+
+on:
+  push:
+    branches:
+      - cleanup/faccoes-processos-painel-255
+    paths:
+      - .github/workflows/remover-painel-processos-faccoes-255.yml
+
+permissions:
+  contents: write
+
+jobs:
+  limpar:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanup/faccoes-processos-painel-255
+          fetch-depth: 0
+
+      - name: Remover painel na fonte
+        shell: python
+        run: |
+          from pathlib import Path
+          import re, json
+
+          p = Path('corponu-faccoes-grupos-processos.js')
+          s = p.read_text(encoding='utf-8')
+
+          # Localiza o bloco pelo texto visível e remove a função que o cria/renderiza.
+          # Se a estrutura não for exatamente a esperada, falha sem alterar produção.
+          if 'Processos das facções' not in s:
+              raise SystemExit('Painel Processos das facções não encontrado')
+
+          # Descobrir a função que contém o título.
+          pos = s.index('Processos das facções')
+          inicio = s.rfind('\n  function ', 0, pos)
+          if inicio < 0:
+              inicio = s.rfind('\n  async function ', 0, pos)
+          if inicio < 0:
+              raise SystemExit('Função do painel não localizada')
+
+          prox1 = s.find('\n  function ', pos)
+          prox2 = s.find('\n  async function ', pos)
+          candidatos = [x for x in (prox1, prox2) if x > pos]
+          fim = min(candidatos) if candidatos else -1
+          if fim < 0:
+              raise SystemExit('Fim da função do painel não localizado')
+
+          bloco = s[inicio:fim]
+          m = re.search(r'(?:async\s+)?function\s+([A-Za-z0-9_$]+)\s*\(', bloco)
+          if not m:
+              raise SystemExit('Nome da função do painel não localizado')
+          nome_funcao = m.group(1)
+
+          s = s[:inicio] + '\n' + s[fim:]
+
+          # Remove somente chamadas diretas dessa função.
+          s = re.sub(rf'^\s*{re.escape(nome_funcao)}\([^;]*\);\s*$', '', s, flags=re.M)
+
+          # O texto visual precisa sumir, mas APIs/gerenciador continuam.
+          if 'Processos das facções' in s:
+              raise SystemExit('Título do painel ainda existe após remoção')
+          if 'Clique em um processo para ver quais facções realizam esse serviço.' in s:
+              raise SystemExit('Subtítulo do painel ainda existe após remoção')
+
+          obrigatorios = [
+              'listarFaccoesPorProcesso',
+              'listarProcessosOficiais',
+              'garantirGerenciador',
+              'renderProcessosFormulario',
+              'salvarGrupo',
+          ]
+          faltando = [x for x in obrigatorios if x not in s]
+          if faltando:
+              raise SystemExit('Proteção: função essencial removida: ' + ', '.join(faltando))
+
+          p.write_text(s, encoding='utf-8')
+
+          a = Path('corponu-atualizador.js')
+          t = a.read_text(encoding='utf-8')
+          old = 'const LOCAL_RELEASE = "2026-08-26-faccoes-lateral-alca-254-prod";'
+          new = 'const LOCAL_RELEASE = "2026-08-26-faccoes-sem-painel-processos-255";'
+          if old not in t:
+              raise SystemExit('Release 254 não encontrada no atualizador')
+          a.write_text(t.replace(old, new, 1), encoding='utf-8')
+
+          idx = Path('index.html')
+          h = idx.read_text(encoding='utf-8')
+          old_tag = '<script src="./corponu-atualizador.js?v=2026-08-26-faccoes-lateral-alca-254-prod"></script>'
+          new_tag = '<script src="./corponu-atualizador.js?v=2026-08-26-faccoes-sem-painel-processos-255"></script>'
+          if old_tag not in h:
+              raise SystemExit('Tag 254 do atualizador não encontrada')
+          idx.write_text(h.replace(old_tag, new_tag, 1), encoding='utf-8')
+
+          r = Path('corponu-release.json')
+          data = json.loads(r.read_text(encoding='utf-8'))
+          data['version'] = '2026-08-26-faccoes-sem-painel-processos-255'
+          data['updatedAt'] = '2026-08-26T09:45:00-03:00'
+          data['notes'] = ('Limpeza estrutural de Facções. O painel visual completo "Processos das facções" foi removido na fonte. '
+                           'Catálogo de processos, grupos de facções, permissões, formulário de gerenciamento e APIs usadas por Lateral/Alça permanecem ativos. '
+                           'Sem CSS de ocultação, observer ou remendo de runtime. Backup: backup/pre-remover-painel-processos-255.')
+          r.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+      - name: Validar
+        run: |
+          node --check corponu-faccoes-grupos-processos.js
+          node --check corponu-atualizador.js
+          ! grep -q 'Processos das facções' corponu-faccoes-grupos-processos.js
+          grep -q 'listarFaccoesPorProcesso' corponu-faccoes-grupos-processos.js
+          grep -q 'listarProcessosOficiais' corponu-faccoes-grupos-processos.js
+          grep -q 'salvarGrupo' corponu-faccoes-grupos-processos.js
+          grep -q 'corponu-manejo-calcinha-dedicado-253.js' corponu-atualizador.js
+          grep -q 'corponu-faccoes-lateral-alca-254.js' corponu-atualizador.js
+          git diff --check
+
+      - name: Conferir diff
+        shell: python
+        run: |
+          import subprocess
+          permitidos = {
+              'corponu-faccoes-grupos-processos.js',
+              'corponu-atualizador.js',
+              'index.html',
+              'corponu-release.json',
+          }
+          tracked = set(subprocess.check_output(['git','diff','--name-only'], text=True).splitlines())
+          untracked = set(subprocess.check_output(['git','ls-files','--others','--exclude-standard'], text=True).splitlines())
+          arquivos = tracked | untracked
+          extras = arquivos - permitidos
+          if extras:
+              raise SystemExit('Arquivos inesperados: ' + ', '.join(sorted(extras)))
+          print('Diff controlado:', ', '.join(sorted(arquivos)))
+
+      - name: Commitar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add corponu-faccoes-grupos-processos.js corponu-atualizador.js index.html corponu-release.json
+          git commit -m "refactor: remover painel Processos das faccoes 255"
+          git push origin HEAD:cleanup/faccoes-processos-painel-255
