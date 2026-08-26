@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-26-faccoes-processos-somente-gerenciar-255",
-  "updatedAt": "2026-08-26T10:08:00-03:00",
-  "notes": "Limpeza estrutural de Facções. O painel de processos não é mais criado na área operacional. A configuração e os cards de processos existem somente dentro de Gerenciar facções. O update.js não move mais o painel para depois dos cards-resumo ao fechar o gerenciamento. APIs de processos/facções, Lateral/Alça 254, pagamentos e Calcinha 253 permanecem intactos. Sem CSS de ocultação, MutationObserver de remoção ou patch pós-render. Backup: backup/pre-remover-painel-processos-255."
+  "version": "2026-08-26-manejo-calcinha-filtros-identidade-256",
+  "updatedAt": "2026-08-26T19:39:00-03:00",
+  "notes": "Produção. O Manejo Calcinha separa estruturalmente a busca por OP da busca por referência: cada campo consulta somente sua própria identidade, evitando que uma referência numérica traga OPs apenas por coincidência de número. A busca de detalhes permanece separada para cor, produto, fase e necessidade. Foram preservados o multifiltro de Fase, chips, Linha, Status, Limpar filtros, salvamento e envio do módulo 253 ativo. Nenhum módulo de correção por sobreposição foi criado."
 }
