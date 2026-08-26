@@ -1,4 +1,4 @@
-name: Diagnosticar painel Processos Faccoes 255
+name: Limpar painel Processos Faccoes 255
 
 on:
   push:
@@ -8,10 +8,11 @@ on:
       - .github/workflows/remover-painel-processos-faccoes-255.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnosticar:
+  limpar:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,13 +20,166 @@ jobs:
           ref: cleanup/faccoes-processos-painel-255
           fetch-depth: 0
 
-      - name: Localizar fonte do painel
+      - name: Refatorar origem do painel
+        shell: python
         run: |
-          echo '=== TEXTO EXATO ==='
-          grep -RniI --exclude-dir=.git --exclude='remover-painel-processos-faccoes-255.yml' 'Processos das facções' . || true
-          echo '=== SUBTITULO ==='
-          grep -RniI --exclude-dir=.git --exclude='remover-painel-processos-faccoes-255.yml' 'Clique em um processo' . || true
-          echo '=== QUEM REALIZA ==='
-          grep -RniI --exclude-dir=.git --exclude='remover-painel-processos-faccoes-255.yml' 'Quem realiza este processo' . || true
-          echo '=== VARIANTES / IDS ==='
-          grep -RniI --exclude-dir=.git --exclude='remover-painel-processos-faccoes-255.yml' -E 'processos.*fac(c|ç)(o|õ)es|fac(c|ç)(o|õ)es.*processos|gerenciamento fica em' . | head -200 || true
+          from pathlib import Path
+          import re, json
+
+          p = Path('update.js')
+          s = p.read_text(encoding='utf-8')
+
+          # O painel de processos deixa de nascer na área operacional de Facções.
+          # Ele passa a existir somente dentro de Gerenciar facções.
+          pattern_criar = r'''  function criarPainelProcessosFaccoes\(\) \{.*?\n  \}\n\n(?=  function criarHtmlNovoProcessoFaccao\(\))'''
+          novo_criar = '''  function criarPainelProcessosFaccoes() {
+    let painel = document.getElementById("painelProcessosFaccoes");
+    const area = garantirAreaProcessosDentroGerenciarFaccoes();
+    const mount = area?.querySelector("#mountProcessosDentroGerenciarFaccoes");
+    if (!mount) return painel || null;
+
+    if (painel) {
+      if (painel.parentElement !== mount) mount.appendChild(painel);
+      return painel;
+    }
+
+    painel = document.createElement("section");
+    painel.id = "painelProcessosFaccoes";
+    painel.className = "processos-faccoes-painel";
+    painel.innerHTML = `
+      <div id="gradeProcessosFaccoes" class="processos-faccoes-grade"></div>
+      <div id="detalheProcessoFaccao" class="processos-faccoes-detalhe hidden"></div>
+    `;
+    mount.appendChild(painel);
+    return painel;
+  }
+
+'''
+          s2, n = re.subn(pattern_criar, novo_criar, s, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit(f'criarPainelProcessosFaccoes: esperado 1 bloco, encontrado {n}')
+          s = s2
+
+          # Ao fechar Gerenciar facções, nunca devolve o painel para a tela operacional.
+          pattern_posicionar = r'''  function posicionarProcessosDentroGerenciarFaccoes\(dentro\) \{.*?\n  \}\n\n(?=  function sincronizarLocalProcessosFaccoes\(\))'''
+          novo_posicionar = '''  function posicionarProcessosDentroGerenciarFaccoes(dentro) {
+    const area = garantirAreaProcessosDentroGerenciarFaccoes();
+    const mount = area?.querySelector("#mountProcessosDentroGerenciarFaccoes");
+    const painelProcessos = criarPainelProcessosFaccoes();
+    if (!mount || !painelProcessos) return;
+
+    if (painelProcessos.parentElement !== mount) mount.appendChild(painelProcessos);
+
+    if (!dentro) {
+      painelProcessos.dataset.gerenciandoProcessosFaccoes = "0";
+      const botao = document.getElementById("btnGerenciarProcessosFaccoes");
+      if (botao) botao.textContent = "Gerenciar processos";
+      renderDetalheProcessoFaccao();
+    }
+  }
+
+'''
+          s2, n = re.subn(pattern_posicionar, novo_posicionar, s, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit(f'posicionarProcessosDentroGerenciarFaccoes: esperado 1 bloco, encontrado {n}')
+          s = s2
+
+          # Garantias: não pode mais existir inserção do painel depois dos cards-resumo.
+          proibidos = [
+              'cardsResumo.insertAdjacentElement("afterend", painel)',
+              'cardsResumo.insertAdjacentElement("afterend", painelProcessos)',
+              '<h3>Processos das facções</h3>',
+              '<p>Clique em um processo para ver quais facções realizam esse serviço.</p>',
+          ]
+          restantes = [x for x in proibidos if x in s]
+          if restantes:
+              raise SystemExit('Trechos visuais antigos ainda presentes: ' + ' | '.join(restantes))
+
+          # Garantias de negócio: configuração e APIs continuam intactas.
+          obrigatorios = [
+              'function getNomesProcessosFaccoesAtivos',
+              'function getFaccoesGerenciadasPorProcesso',
+              'function salvarConfiguracaoProcessosFaccoes',
+              'function aplicarFaccoesGerenciadasNoDestinoMovimentacao',
+              'function garantirAreaProcessosDentroGerenciarFaccoes',
+              'mount.appendChild(painel)',
+          ]
+          faltando = [x for x in obrigatorios if x not in s]
+          if faltando:
+              raise SystemExit('Proteção: lógica essencial ausente: ' + ' | '.join(faltando))
+
+          p.write_text(s, encoding='utf-8')
+
+          # Quebra de cache somente dos arquivos necessários.
+          idx = Path('index.html')
+          h = idx.read_text(encoding='utf-8')
+          old_update = '<script src="update.js?v=2026-08-12-precos-selecao-estavel-187"></script>'
+          new_update = '<script src="update.js?v=2026-08-26-faccoes-processos-somente-gerenciar-255"></script>'
+          if old_update not in h:
+              raise SystemExit('Tag esperada de update.js não encontrada')
+          h = h.replace(old_update, new_update, 1)
+
+          old_loader = '<script src="./corponu-atualizador.js?v=2026-08-26-faccoes-lateral-alca-254-prod"></script>'
+          new_loader = '<script src="./corponu-atualizador.js?v=2026-08-26-faccoes-processos-somente-gerenciar-255"></script>'
+          if old_loader not in h:
+              raise SystemExit('Tag 254 do atualizador não encontrada')
+          h = h.replace(old_loader, new_loader, 1)
+          idx.write_text(h, encoding='utf-8')
+
+          loader = Path('corponu-atualizador.js')
+          t = loader.read_text(encoding='utf-8')
+          old_release = 'const LOCAL_RELEASE = "2026-08-26-faccoes-lateral-alca-254-prod";'
+          new_release = 'const LOCAL_RELEASE = "2026-08-26-faccoes-processos-somente-gerenciar-255";'
+          if old_release not in t:
+              raise SystemExit('Release 254 não encontrada no atualizador')
+          loader.write_text(t.replace(old_release, new_release, 1), encoding='utf-8')
+
+          release = Path('corponu-release.json')
+          data = json.loads(release.read_text(encoding='utf-8'))
+          data['version'] = '2026-08-26-faccoes-processos-somente-gerenciar-255'
+          data['updatedAt'] = '2026-08-26T09:58:00-03:00'
+          data['notes'] = (
+              'Limpeza estrutural de Facções. O painel de processos não é mais criado na área operacional. '
+              'A configuração e os cards de processos existem somente dentro de Gerenciar facções. '
+              'O update.js não move mais o painel para depois dos cards-resumo ao fechar o gerenciamento. '
+              'APIs de processos/facções, Lateral/Alça 254, pagamentos e Calcinha 253 permanecem intactos. '
+              'Sem CSS de ocultação, MutationObserver de remoção ou patch pós-render. Backup: backup/pre-remover-painel-processos-255.'
+          )
+          release.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+      - name: Validar estrutura e sintaxe
+        run: |
+          node --check update.js
+          node --check corponu-atualizador.js
+          ! grep -q 'cardsResumo.insertAdjacentElement("afterend", painel)' update.js
+          ! grep -q 'cardsResumo.insertAdjacentElement("afterend", painelProcessos)' update.js
+          ! grep -q '<h3>Processos das facções</h3>' update.js
+          grep -q 'function getNomesProcessosFaccoesAtivos' update.js
+          grep -q 'function getFaccoesGerenciadasPorProcesso' update.js
+          grep -q 'function salvarConfiguracaoProcessosFaccoes' update.js
+          grep -q 'mount.appendChild(painel)' update.js
+          grep -q 'corponu-faccoes-lateral-alca-254.js' corponu-atualizador.js
+          grep -q 'corponu-manejo-calcinha-dedicado-253.js' corponu-atualizador.js
+          git diff --check
+
+      - name: Conferir diff permitido
+        shell: python
+        run: |
+          import subprocess
+          permitidos = {'update.js','index.html','corponu-atualizador.js','corponu-release.json'}
+          arquivos = set(subprocess.check_output(['git','diff','--name-only'], text=True).splitlines())
+          extras = arquivos - permitidos
+          if extras:
+              raise SystemExit('Arquivos inesperados: ' + ', '.join(sorted(extras)))
+          faltando = {'update.js','index.html','corponu-atualizador.js','corponu-release.json'} - arquivos
+          if faltando:
+              raise SystemExit('Arquivos esperados sem alteração: ' + ', '.join(sorted(faltando)))
+          print('Diff funcional controlado:', ', '.join(sorted(arquivos)))
+
+      - name: Commitar candidata
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add update.js index.html corponu-atualizador.js corponu-release.json
+          git commit -m "refactor: processos somente em Gerenciar faccoes 255"
+          git push origin HEAD:cleanup/faccoes-processos-painel-255
