@@ -43,7 +43,6 @@ jobs:
               raise SystemExit('Release 253 esperada não encontrada no atualizador')
           text = text.replace(old_release, new_release, 1)
 
-          # Retira somente as camadas antigas que tentavam controlar Lateral/Alça por cima.
           antigos = [
               'corponu-faccoes-corte.js',
               'corponu-faccoes-grupos-processos-integracao.js',
@@ -70,14 +69,12 @@ jobs:
               raise SystemExit('Módulo 254 já estava no loader antes da integração')
           text = text.replace(anchor, anchor + novos, 1)
 
-          # A área de Calcinha recém-estabilizada precisa permanecer exatamente no loader.
           if 'corponu-manejo-calcinha-dedicado-253.js' not in text:
               raise SystemExit('Proteção: Calcinha 253 saiu do loader')
           if 'corponu-faccoes-exclusao-pagamento-vinculado.js' not in text:
               raise SystemExit('Proteção: vínculo de exclusão/pagamento saiu do loader')
           updater.write_text(text, encoding='utf-8')
 
-          # Quebra cache somente do atualizador; app.js e update.js não são tocados.
           index = Path('index.html')
           html = index.read_text(encoding='utf-8')
           velho = '<script src="./corponu-atualizador.js?v=2026-07-30-rastreamento-enviar-manejo-17"></script>'
@@ -133,7 +130,9 @@ jobs:
               'corponu-release.json',
               'index.html',
           }
-          arquivos = set(subprocess.check_output(['git','diff','--name-only'], text=True).splitlines())
+          rastreados = set(subprocess.check_output(['git','diff','--name-only'], text=True).splitlines())
+          novos = set(subprocess.check_output(['git','ls-files','--others','--exclude-standard'], text=True).splitlines())
+          arquivos = rastreados | novos
           extras = arquivos - permitidos
           if extras:
               raise SystemExit('Arquivos inesperados alterados: ' + ', '.join(sorted(extras)))
