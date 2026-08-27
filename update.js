@@ -160,9 +160,8 @@
   }
 
   // =========================================================
-  // HOTFIX: CHEGADA MANUAL DE FACÇÃO
-  // Fluxo: OP -> REF/quantidade -> processo -> facções permitidas
-  // Esta correção não altera o salvamento existente no app.js.
+  // UTILITÁRIOS COMPARTILHADOS DE PROCESSOS E FACÇÕES
+  // Normalização, vínculos e avisos usados pelos fluxos oficiais.
   // =========================================================
 
   const FACCOES_POR_PROCESSO = Object.freeze({
@@ -214,199 +213,14 @@
     if (toastPrincipal) {
       toastPrincipal.textContent = mensagem;
       toastPrincipal.classList.remove("hidden");
-      clearTimeout(window.__toastTimerChegadaManual);
-      window.__toastTimerChegadaManual = setTimeout(() => {
+      clearTimeout(window.__toastTimerFormulario);
+      window.__toastTimerFormulario = setTimeout(() => {
         toastPrincipal.classList.add("hidden");
       }, 4500);
       return;
     }
     showUpdateToast(mensagem);
   }
-
-  function copiarAtributosBasicos(origem, destino) {
-    destino.id = origem.id;
-    destino.className = origem.className;
-    destino.required = origem.required;
-    destino.disabled = origem.disabled;
-    destino.setAttribute("aria-label", origem.getAttribute("aria-label") || "");
-  }
-
-  function criarSelectProcesso(inputAtual) {
-    if (!inputAtual || inputAtual.tagName === "SELECT") return inputAtual;
-
-    const select = document.createElement("select");
-    copiarAtributosBasicos(inputAtual, select);
-    select.required = true;
-    select.innerHTML = `
-      <option value="">Selecione o processo realizado</option>
-      ${(typeof getNomesProcessosFaccoesAtivos === "function" ? getNomesProcessosFaccoesAtivos() : Object.keys(FACCOES_POR_PROCESSO))
-        .map(processo => `<option value="${processo}">${processo}</option>`)
-        .join("")}
-    `;
-    inputAtual.replaceWith(select);
-    return select;
-  }
-
-  function criarSelectFaccao(inputAtual) {
-    if (!inputAtual || inputAtual.tagName === "SELECT") return inputAtual;
-
-    const select = document.createElement("select");
-    copiarAtributosBasicos(inputAtual, select);
-    select.required = true;
-    select.disabled = true;
-    select.innerHTML = '<option value="">Escolha o processo primeiro</option>';
-    inputAtual.replaceWith(select);
-    return select;
-  }
-
-  function preencherFaccoesDoProcesso(processoSelect, faccaoSelect, grupoFaccao, ajudaFaccao) {
-    const processo = processoCanonico(processoSelect?.value);
-    const faccoes = typeof getFaccoesGerenciadasPorProcesso === "function"
-      ? getFaccoesGerenciadasPorProcesso(processo)
-      : (FACCOES_POR_PROCESSO[processo] || []);
-
-    faccaoSelect.innerHTML = "";
-    faccaoSelect.value = "";
-
-    if (!processo) {
-      faccaoSelect.disabled = true;
-      faccaoSelect.innerHTML = '<option value="">Escolha o processo primeiro</option>';
-      if (grupoFaccao) grupoFaccao.style.display = "none";
-      if (ajudaFaccao) ajudaFaccao.textContent = "";
-      return;
-    }
-
-    if (grupoFaccao) grupoFaccao.style.display = "block";
-
-    if (!faccoes.length) {
-      faccaoSelect.disabled = true;
-      faccaoSelect.innerHTML = '<option value="">Nenhuma facção cadastrada para este processo</option>';
-      if (ajudaFaccao) {
-        ajudaFaccao.textContent = "Nenhuma facção está vinculada ao processo selecionado.";
-      }
-      return;
-    }
-
-    faccaoSelect.disabled = false;
-    faccaoSelect.innerHTML = `
-      <option value="">Selecione quem realizou o processo</option>
-      ${faccoes.map(nome => `<option value="${nome}">${nome}</option>`).join("")}
-    `;
-
-    if (ajudaFaccao) {
-      ajudaFaccao.textContent = `${faccoes.length} facção(ões) disponível(is) para ${processo}.`;
-    }
-  }
-
-  function iniciarHotfixChegadaManual() {
-    const form = document.getElementById("formChegadaManualFaccao");
-    if (!form || form.dataset.hotfixCondicional === APP_VERSION) return;
-
-    const inputProcesso = document.getElementById("chegadaManualProcesso");
-    const inputFaccao = document.getElementById("chegadaManualFaccao");
-    if (!inputProcesso || !inputFaccao) return;
-
-    const grupoProcesso = inputProcesso.closest("label");
-    const grupoFaccao = inputFaccao.closest("label");
-    const processoSelect = criarSelectProcesso(inputProcesso);
-    const faccaoSelect = criarSelectFaccao(inputFaccao);
-
-    if (!processoSelect || !faccaoSelect || !grupoFaccao) return;
-
-    form.dataset.hotfixCondicional = APP_VERSION;
-    grupoFaccao.id = "grupoChegadaManualFaccao";
-    grupoFaccao.style.display = "none";
-
-    if (grupoProcesso && !document.getElementById("chegadaManualAjudaProcesso")) {
-      const ajudaProcesso = document.createElement("small");
-      ajudaProcesso.id = "chegadaManualAjudaProcesso";
-      ajudaProcesso.className = "muted";
-      ajudaProcesso.style.display = "block";
-      ajudaProcesso.style.marginTop = "6px";
-      ajudaProcesso.textContent = "Ao escolher o processo, aparecerão somente as facções que fazem esse serviço.";
-      grupoProcesso.appendChild(ajudaProcesso);
-    }
-
-    let ajudaFaccao = document.getElementById("chegadaManualAjudaFaccao");
-    if (!ajudaFaccao) {
-      ajudaFaccao = document.createElement("small");
-      ajudaFaccao.id = "chegadaManualAjudaFaccao";
-      ajudaFaccao.className = "muted";
-      ajudaFaccao.style.display = "block";
-      ajudaFaccao.style.marginTop = "6px";
-      grupoFaccao.appendChild(ajudaFaccao);
-    }
-
-    const atualizarFaccoes = () => {
-      preencherFaccoesDoProcesso(processoSelect, faccaoSelect, grupoFaccao, ajudaFaccao);
-    };
-
-    const resetarCondicionais = () => {
-      processoSelect.value = "";
-      faccaoSelect.value = "";
-      atualizarFaccoes();
-    };
-
-    processoSelect.addEventListener("change", atualizarFaccoes);
-
-    const botaoAbrir = document.getElementById("btnAbrirChegadaManualFaccao");
-    if (botaoAbrir) {
-      botaoAbrir.addEventListener("click", () => {
-        // O app.js reseta e abre o formulário primeiro; depois aplicamos o estado condicional.
-        setTimeout(resetarCondicionais, 0);
-      });
-    }
-
-    form.addEventListener("reset", () => setTimeout(resetarCondicionais, 0));
-
-    // Validação em captura: roda antes do submit já existente no app.js.
-    form.addEventListener("submit", event => {
-      const processo = processoCanonico(processoSelect.value);
-      const faccao = String(faccaoSelect.value || "").trim();
-      const permitidas = typeof getFaccoesGerenciadasPorProcesso === "function"
-        ? getFaccoesGerenciadasPorProcesso(processo)
-        : (FACCOES_POR_PROCESSO[processo] || []);
-      const faccaoPermitida = permitidas.some(
-        nome => normalizarComparacao(nome) === normalizarComparacao(faccao)
-      );
-
-      if (!processo) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        mostrarAvisoFormulario("Selecione o processo realizado antes de continuar.");
-        processoSelect.focus();
-        return;
-      }
-
-      if (!faccao || !faccaoPermitida) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        mostrarAvisoFormulario("Selecione uma das facções permitidas para o processo escolhido.");
-        faccaoSelect.focus();
-        return;
-      }
-
-      // Entrega os nomes canônicos para a lógica original do app.js.
-      processoSelect.value = processo;
-      faccaoSelect.value = permitidas.find(
-        nome => normalizarComparacao(nome) === normalizarComparacao(faccao)
-      ) || faccao;
-
-      const botaoSalvar = form.querySelector('button[type="submit"]');
-      if (botaoSalvar && !botaoSalvar.disabled) {
-        const textoOriginal = botaoSalvar.textContent;
-        botaoSalvar.disabled = true;
-        botaoSalvar.textContent = "Salvando...";
-        setTimeout(() => {
-          botaoSalvar.disabled = false;
-          botaoSalvar.textContent = textoOriginal;
-        }, 5000);
-      }
-    }, true);
-
-    resetarCondicionais();
-  }
-
 
   // =========================================================
   // HOTFIX: NECESSIDADE REPROCESSADA E CONFERIDA
@@ -2921,7 +2735,7 @@
   }
 
   function movimentoManualUsuario(mov) {
-    return Boolean(mov?.origemManual || mov?.origem === "chegada_manual_faccao");
+    return Boolean(mov?.origemManual);
   }
 
   function movimentoPertenceAoUsuario(mov, uid) {
@@ -3031,8 +2845,7 @@
 
   function criarBotaoMovUsuario() {
     if (document.getElementById("btnMovimentacoesRegistradasUsuario")) return;
-    const btnChegada = document.getElementById("btnAbrirChegadaManualFaccao");
-    const actions = btnChegada?.parentElement;
+    const actions = document.querySelector("#faccoes .panel-header .actions");
     if (!actions) {
       setTimeout(criarBotaoMovUsuario, 400);
       return;
@@ -3043,7 +2856,9 @@
     botao.className = "btn btn-primary";
     botao.textContent = "Movimentações registradas";
     botao.addEventListener("click", alternarPainelMovUsuario);
-    btnChegada.insertAdjacentElement("afterend", botao);
+    const gerenciar = document.getElementById("btnToggleGerenciarFaccoes");
+    if (gerenciar?.parentElement === actions) actions.insertBefore(botao, gerenciar);
+    else actions.appendChild(botao);
   }
 
   function criarPainelMovUsuario() {
@@ -3786,62 +3601,15 @@
     }
   }
 
-  async function marcarChegadaManualAposSalvar(dadosEsperados, tentativa = 0) {
-    if (!contextoMovUsuario?.user) return;
-    const { firestore, db, user } = contextoMovUsuario;
-    try {
-      const snapshot = await firestore.getDocs(
-        firestore.query(
-          firestore.collection(db, "movimentacoesProducao"),
-          firestore.where("criadoPor", "==", user.uid)
-        )
-      );
-      const candidatos = snapshot.docs
-        .map(item => ({ id: item.id, ...item.data() }))
-        .filter(item => movimentoManualUsuario(item) && item.dataChegada)
-        .filter(item => normalizarTextoMovUsuario(item.numeroOP) === normalizarTextoMovUsuario(dadosEsperados.numeroOP))
-        .filter(item => normalizarTextoMovUsuario(item.processo) === normalizarTextoMovUsuario(dadosEsperados.processo))
-        .filter(item => normalizarTextoMovUsuario(item.destino) === normalizarTextoMovUsuario(dadosEsperados.faccao))
-        .filter(item => String(item.dataChegada || "") === String(dadosEsperados.dataChegada || ""));
-      for (const item of candidatos) {
-        await firestore.setDoc(firestore.doc(db, "movimentacoesProducao", item.id), {
-          chegadaRegistradaPor: user.uid,
-          chegadaRegistradaEm: item.chegadaRegistradaEm || firestore.serverTimestamp(),
-          atualizadoPor: user.uid,
-          atualizadoEm: firestore.serverTimestamp()
-        }, { merge: true });
-      }
-      if (!candidatos.length && tentativa < 5) {
-        setTimeout(() => marcarChegadaManualAposSalvar(dadosEsperados, tentativa + 1), 500);
-      }
-    } catch (error) {
-      console.warn("Não foi possível identificar automaticamente a chegada manual.", error);
-    }
-  }
-
   function instalarCapturaResponsavelChegada() {
     const formNormal = document.getElementById("formChegadaMovimentacao");
-    if (formNormal && !formNormal.dataset.capturaResponsavelChegada) {
-      formNormal.dataset.capturaResponsavelChegada = APP_VERSION;
-      formNormal.addEventListener("submit", () => {
-        const id = document.getElementById("chegadaMovimentacaoId")?.value || "";
-        const data = document.getElementById("chegadaData")?.value || "";
-        setTimeout(() => marcarChegadaNormalAposSalvar(id, data), 700);
-      }, true);
-    }
-    const formManual = document.getElementById("formChegadaManualFaccao");
-    if (formManual && !formManual.dataset.capturaResponsavelChegada) {
-      formManual.dataset.capturaResponsavelChegada = APP_VERSION;
-      formManual.addEventListener("submit", () => {
-        const dados = {
-          numeroOP: document.getElementById("chegadaManualOP")?.value || "",
-          processo: document.getElementById("chegadaManualProcesso")?.value || "",
-          faccao: document.getElementById("chegadaManualFaccao")?.value || "",
-          dataChegada: document.getElementById("chegadaManualDataChegada")?.value || ""
-        };
-        setTimeout(() => marcarChegadaManualAposSalvar(dados), 900);
-      }, true);
-    }
+    if (!formNormal || formNormal.dataset.capturaResponsavelChegada) return;
+    formNormal.dataset.capturaResponsavelChegada = APP_VERSION;
+    formNormal.addEventListener("submit", () => {
+      const id = document.getElementById("chegadaMovimentacaoId")?.value || "";
+      const data = document.getElementById("chegadaData")?.value || "";
+      setTimeout(() => marcarChegadaNormalAposSalvar(id, data), 700);
+    }, true);
   }
 
   async function configurarUsuarioMovUsuario(user) {
@@ -6091,55 +5859,6 @@
     };
   }
 
-  function dadosChegadaManualParaTrava() {
-    const numeroOP = String(document.getElementById("chegadaManualOP")?.value || "").trim();
-    const referencia = String(document.getElementById("chegadaManualRef")?.value || "").trim();
-    const quantidade = Math.max(0, Number(document.getElementById("chegadaManualQuantidade")?.value || 0));
-    const processo = String(document.getElementById("chegadaManualProcesso")?.value || "").trim();
-    const faccao = String(document.getElementById("chegadaManualFaccao")?.value || "").trim();
-    const dataChegada = String(document.getElementById("chegadaManualDataChegada")?.value || "").trim();
-
-    if (!numeroOP || !referencia || quantidade <= 0 || !processo || !faccao || !dataChegada) {
-      return { deveVerificar: false };
-    }
-
-    const corresponde = mov =>
-      normalizarComparacao(mov.tipoDestino) === "FACCAO" &&
-      movimentoValidoParaDuplicidade(mov) &&
-      normalizarComparacao(mov.numeroOP) === normalizarComparacao(numeroOP) &&
-      normalizarComparacao(mov.referencia) === normalizarComparacao(referencia) &&
-      normalizarComparacao(mov.destino) === normalizarComparacao(faccao) &&
-      normalizarComparacao(mov.processo) === normalizarComparacao(processo) &&
-      String(mov.dataChegada || "") === dataChegada &&
-      Number(mov.quantidadeRecebida || mov.quantidadeEnviada || 0) === quantidade;
-
-    const verificarDuplicidade = async () => {
-      const movimentos = await carregarMovimentacoesServidorDuplicidade({ numeroOP });
-      const duplicado = movimentos.find(corresponde);
-      if (!duplicado) return { duplicado: false };
-
-      const pagamentos = await carregarPagamentosMovimentacaoDuplicidade(duplicado.id);
-      return {
-        duplicado: true,
-        mensagem: pagamentos.length
-          ? `Esta chegada manual já existe e já possui pagamento (OP ${numeroOP}, ${faccao}, ${processo}, ${quantidade} peças em ${dataChegada}). Use Movimentações registradas para corrigir.`
-          : `Esta chegada manual já existe (OP ${numeroOP}, ${faccao}, ${processo}, ${quantidade} peças em ${dataChegada}). Não será criado outro registro; corrija em Movimentações registradas.`
-      };
-    };
-
-    return {
-      deveVerificar: true,
-      tipoTrava: "chegada-manual-faccao",
-      chaveTrava: textoChaveTrava(numeroOP, referencia, faccao, processo, dataChegada, quantidade),
-      detalhesTrava: { numeroOP, referencia, faccao, processo, dataChegada, quantidade },
-      verificarDuplicidade,
-      confirmarConclusao: async () => {
-        const movimentos = await carregarMovimentacoesServidorDuplicidade({ numeroOP });
-        return movimentos.some(corresponde);
-      }
-    };
-  }
-
   function extrairNumeroOPPagamentoDuplicidade(valor) {
     const texto = String(valor || "").trim();
     if (!texto) return "";
@@ -6222,10 +5941,6 @@
       dadosChegadaNormalParaTrava
     );
     instalarTravaEmFormulario(
-      document.getElementById("formChegadaManualFaccao"),
-      dadosChegadaManualParaTrava
-    );
-    instalarTravaEmFormulario(
       document.getElementById("formEntregaPagamento"),
       dadosPagamentoManualParaTrava
     );
@@ -6235,7 +5950,6 @@
     setTimeout(() => {
       instalarTravaEmFormulario(document.getElementById("formMovimentacaoProducao"), dadosEnvioFaccaoParaTrava);
       instalarTravaEmFormulario(document.getElementById("formChegadaMovimentacao"), dadosChegadaNormalParaTrava);
-      instalarTravaEmFormulario(document.getElementById("formChegadaManualFaccao"), dadosChegadaManualParaTrava);
       instalarTravaEmFormulario(document.getElementById("formEntregaPagamento"), dadosPagamentoManualParaTrava);
     }, 1200);
   }
@@ -10137,20 +9851,6 @@
     }
   }
 
-  function atualizarSelectChegadaManualComProcessosGerenciados() {
-    const select = document.getElementById("chegadaManualProcesso");
-    if (!select || select.tagName !== "SELECT") return;
-    const valorAtual = processoCanonico(select.value);
-    const nomes = getNomesProcessosFaccoesAtivos();
-    select.innerHTML = `<option value="">Selecione o processo realizado</option>` + nomes.map(nome =>
-      `<option value="${escapeHtmlProcessosFaccoes(nome)}">${escapeHtmlProcessosFaccoes(nome)}</option>`
-    ).join("");
-    if (valorAtual && nomes.some(nome => chaveNormalizadaProcessosFaccoes(nome) === chaveNormalizadaProcessosFaccoes(valorAtual))) {
-      select.value = valorAtual;
-    }
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  }
-
   function setorAtualMovimentacaoProcessosFaccoes() {
     try {
       if (typeof setorAtualFiltroExcelManejo === "function") {
@@ -10327,7 +10027,6 @@
           ? mesclarProcessosFaccoes([], snapshot.data()?.processos || [])
           : [];
         renderGradeProcessosFaccoes();
-        atualizarSelectChegadaManualComProcessosGerenciados();
         aplicarProcessosGerenciadosNoModalMovimentacao();
         criarConfiguracaoInicialProcessosFaccoesSeNecessario();
       },
@@ -10409,978 +10108,6 @@
     conectarFirebaseProcessosFaccoes();
     renderGradeProcessosFaccoes();
     sincronizarLocalProcessosFaccoes();
-  }
-
-
-
-
-  // =========================================================
-  // CHEGADA MANUAL SIMPLIFICADA PELA OP
-  // - O usuário informa somente a OP; REF, cor, quantidade e setor vêm do Firestore.
-  // - O usuário escolhe processo, facção, falta e desconto em reais.
-  // - Movimentação, pagamento e log são gravados no mesmo batch.
-  // - Sem MutationObserver e sem alterar o app.js.
-  // =========================================================
-  let chegadaManualSimplificadaOPCarregada = null;
-  let chegadaManualSimplificadaBuscando = false;
-  let chegadaManualSimplificadaSalvando = false;
-  let chegadaManualSimplificadaTimer = null;
-  const cacheOPsChegadaManualSimplificada = new Map();
-
-  function escapeHtmlChegadaManualSimplificada(valor) {
-    return String(valor ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  function textoOPChegadaManualSimplificada(valor) {
-    return String(valor || "")
-      .trim()
-      .toUpperCase()
-      .replace(/^OP\s*[-:]?\s*/i, "");
-  }
-
-  function numeroChegadaManualSimplificada(valor) {
-    const convertido = Number(String(valor ?? "").replace(",", "."));
-    return Number.isFinite(convertido) ? convertido : 0;
-  }
-
-  function quantidadeOPChegadaManualSimplificada(op) {
-    const candidatos = [
-      op?.quantidade,
-      op?.quantidadeTotal,
-      op?.quantidadePecas,
-      op?.qtd,
-      op?.total,
-      op?.pecas,
-      op?.quantidadeSutia,
-      op?.quantidadeCalcinha
-    ];
-    for (const valor of candidatos) {
-      const numero = numeroChegadaManualSimplificada(valor);
-      if (numero > 0) return numero;
-    }
-    return 0;
-  }
-
-  function setorOPChegadaManualSimplificada(op) {
-    const valor = normalizarComparacao(
-      op?.tipoPeca || op?.tipo || op?.setor || op?.tipoPecaLabel || ""
-    );
-    return valor.includes("CALCINHA") ? "calcinha" : "sutia";
-  }
-
-  function labelSetorChegadaManualSimplificada(setor) {
-    return setor === "calcinha" ? "Calcinha" : "Sutiã";
-  }
-
-  function hojeISOChegadaManualSimplificada() {
-    const agora = new Date();
-    const local = new Date(agora.getTime() - (agora.getTimezoneOffset() * 60000));
-    return local.toISOString().slice(0, 10);
-  }
-
-  function dataEnvioDaOPChegadaManualSimplificada(op, setor) {
-    const manejo = op?.manejosSetores?.[setor] || op?.manejo || {};
-    const candidatos = [
-      manejo?.dataEnvio,
-      manejo?.data,
-      op?.dataEnvioFaccao,
-      op?.dataEnvio,
-      op?.dataOriginalLigia
-    ];
-    for (const valor of candidatos) {
-      const texto = String(valor || "").trim();
-      if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) return texto;
-    }
-    return "";
-  }
-
-  function idSeguroChegadaManualSimplificada(valor) {
-    return String(valor || "")
-      .trim()
-      .replace(/[^a-zA-Z0-9_-]+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 180);
-  }
-
-  function formatarMoedaChegadaManualSimplificada(valor) {
-    return numeroChegadaManualSimplificada(valor).toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL"
-    });
-  }
-
-  function elementosChegadaManualSimplificada() {
-    return {
-      form: document.getElementById("formChegadaManualFaccao"),
-      op: document.getElementById("chegadaManualOP"),
-      resumo: document.getElementById("chegadaManualResumoOPAutomatico"),
-      status: document.getElementById("chegadaManualStatusOPAutomatico"),
-      processo: document.getElementById("chegadaManualProcesso"),
-      faccao: document.getElementById("chegadaManualFaccao"),
-      falta: document.getElementById("chegadaManualFalta"),
-      desconto: document.getElementById("chegadaManualDesconto"),
-      lateral: document.getElementById("chegadaManualLateralPronta"),
-      bojo: document.getElementById("chegadaManualBojoPronto"),
-      recebido: document.getElementById("chegadaManualQuantidadeRecebidaCalculada"),
-      submit: document.querySelector('#formChegadaManualFaccao button[type="submit"]')
-    };
-  }
-
-  function definirStatusOPChegadaManualSimplificada(mensagem, tipo = "normal") {
-    const status = document.getElementById("chegadaManualStatusOPAutomatico");
-    if (!status) return;
-    status.textContent = mensagem || "";
-    status.dataset.tipo = tipo;
-  }
-
-  function limparOPChegadaManualSimplificada({ preservarNumero = false } = {}) {
-    chegadaManualSimplificadaOPCarregada = null;
-    const el = elementosChegadaManualSimplificada();
-    if (!preservarNumero && el.op) el.op.value = "";
-    if (el.resumo) {
-      el.resumo.classList.add("hidden");
-      el.resumo.innerHTML = "";
-    }
-    if (el.processo) {
-      el.processo.innerHTML = '<option value="">Busque uma OP primeiro</option>';
-      el.processo.disabled = true;
-    }
-    if (el.faccao) {
-      el.faccao.innerHTML = '<option value="">Escolha o processo primeiro</option>';
-      el.faccao.disabled = true;
-    }
-    if (el.falta) {
-      el.falta.value = "0";
-      el.falta.max = "";
-      el.falta.disabled = true;
-    }
-    if (el.desconto) {
-      el.desconto.value = "0";
-      el.desconto.disabled = true;
-    }
-    [el.lateral, el.bojo].forEach(campo => {
-      if (!campo) return;
-      campo.value = "";
-      campo.disabled = true;
-      campo.required = false;
-    });
-    document.getElementById("grupoComponentesSutiaChegadaManual")?.classList.add("hidden");
-    if (el.recebido) el.recebido.textContent = "-";
-    if (el.submit) el.submit.disabled = true;
-    definirStatusOPChegadaManualSimplificada("Digite a OP para carregar os dados automaticamente.");
-  }
-
-  async function buscarOPServidorChegadaManualSimplificada(numeroOP) {
-    const chave = textoOPChegadaManualSimplificada(numeroOP);
-    if (!chave) return null;
-    if (cacheOPsChegadaManualSimplificada.has(chave)) {
-      return cacheOPsChegadaManualSimplificada.get(chave);
-    }
-
-    const { firestore, db } = await obterContextoTravasDuplicidade();
-    const colecao = firestore.collection(db, "ordensProducao");
-    const encontrados = new Map();
-
-    try {
-      const direto = await firestore.getDoc(firestore.doc(db, "ordensProducao", chave));
-      if (direto.exists()) encontrados.set(direto.id, { id: direto.id, ...direto.data() });
-    } catch (error) {
-      console.warn("Não foi possível consultar a OP pelo ID.", error);
-    }
-
-    const valores = [chave];
-    if (/^\d+(?:[.,]\d+)?$/.test(chave)) {
-      const num = Number(chave.replace(",", "."));
-      if (Number.isFinite(num)) valores.push(num);
-    }
-
-    const campos = ["numeroOP", "numeroOPExterno", "op"];
-    for (const campo of campos) {
-      for (const valor of [...new Set(valores)]) {
-        try {
-          const snap = await firestore.getDocs(
-            firestore.query(colecao, firestore.where(campo, "==", valor))
-          );
-          snap.docs.forEach(item => encontrados.set(item.id, { id: item.id, ...item.data() }));
-        } catch (error) {
-          console.warn(`Consulta alternativa da OP falhou em ${campo}.`, error);
-        }
-      }
-    }
-
-    if (!encontrados.size) {
-      // Fallback compatível com documentos antigos que não possuem os campos padronizados.
-      const snap = await firestore.getDocs(colecao);
-      snap.docs.forEach(item => {
-        const dados = { id: item.id, ...item.data() };
-        const numeros = [dados.id, dados.numeroOP, dados.numeroOPExterno, dados.op]
-          .map(textoOPChegadaManualSimplificada);
-        if (numeros.includes(chave)) encontrados.set(item.id, dados);
-      });
-    }
-
-    const lista = [...encontrados.values()].filter(item => item?.excluida !== true && item?.excluido !== true);
-    const ordem = lista[0] || null;
-    cacheOPsChegadaManualSimplificada.set(chave, ordem);
-    return ordem;
-  }
-
-  function processosDisponiveisChegadaManualSimplificada(op) {
-    const setor = setorOPChegadaManualSimplificada(op);
-    let processos = [];
-    try {
-      processos = getNomesProcessosFaccoesAtivos(setor) || [];
-    } catch (error) {
-      console.warn("Lista gerenciada de processos ainda não disponível.", error);
-    }
-    if (!processos.length) {
-      processos = Object.keys(FACCOES_POR_PROCESSO).filter(nome => {
-        const normalizado = normalizarComparacao(nome);
-        return setor === "calcinha"
-          ? normalizado.includes("CALCINHA")
-          : !normalizado.includes("CALCINHA");
-      });
-    }
-    return [...new Set(processos.map(normalizarNomeProcessoGerenciado).filter(Boolean))];
-  }
-
-  function faccoesDisponiveisChegadaManualSimplificada(processo) {
-    let nomes = [];
-    try {
-      nomes = getRegistroProcessoFaccao(processo)?.faccoes || [];
-    } catch (error) {
-      console.warn("Vínculos gerenciados ainda não disponíveis.", error);
-    }
-    if (!nomes.length) nomes = FACCOES_POR_PROCESSO[processo] || [];
-    if (!nomes.length && Array.isArray(faccoesCadastroProcessos)) {
-      nomes = faccoesCadastroProcessos
-        .filter(item => item?.ativo !== false && !item?.cadastroPendente)
-        .filter(item => (item?.processosPermitidos || []).some(p =>
-          normalizarComparacao(p) === normalizarComparacao(processo)
-        ))
-        .map(item => item.nome);
-    }
-    return ordenarNomesFaccoesProcessos(nomes);
-  }
-
-  function atualizarFaccoesChegadaManualSimplificada() {
-    const el = elementosChegadaManualSimplificada();
-    const processo = normalizarNomeProcessoGerenciado(el.processo?.value || "");
-    const faccoes = processo ? faccoesDisponiveisChegadaManualSimplificada(processo) : [];
-    if (!el.faccao) return;
-
-    el.faccao.innerHTML = processo
-      ? '<option value="">Selecione quem realizou o processo</option>'
-      : '<option value="">Escolha o processo primeiro</option>';
-    faccoes.forEach(nome => {
-      const option = document.createElement("option");
-      option.value = nome;
-      option.textContent = nome;
-      el.faccao.appendChild(option);
-    });
-    el.faccao.disabled = !processo || !faccoes.length;
-    if (processo && !faccoes.length) {
-      el.faccao.innerHTML = '<option value="">Nenhuma facção vinculada a este processo</option>';
-      definirStatusOPChegadaManualSimplificada(
-        "O processo não possui facção vinculada. Ajuste em Facções → Gerenciar processos.",
-        "erro"
-      );
-    } else if (chegadaManualSimplificadaOPCarregada) {
-      definirStatusOPChegadaManualSimplificada("Dados da OP carregados. Complete o lançamento abaixo.", "sucesso");
-    }
-  }
-
-  function recalcularRecebidoChegadaManualSimplificada() {
-    const el = elementosChegadaManualSimplificada();
-    const total = quantidadeOPChegadaManualSimplificada(chegadaManualSimplificadaOPCarregada);
-    const falta = Math.max(0, numeroChegadaManualSimplificada(el.falta?.value));
-    const recebido = Math.max(total - falta, 0);
-    if (el.recebido) el.recebido.textContent = recebido.toLocaleString("pt-BR");
-    if (el.falta) el.falta.setCustomValidity(falta > total ? "A falta não pode ser maior que a quantidade da OP." : "");
-    return recebido;
-  }
-
-  function preencherOPChegadaManualSimplificada(op) {
-    chegadaManualSimplificadaOPCarregada = op;
-    const el = elementosChegadaManualSimplificada();
-    const setor = setorOPChegadaManualSimplificada(op);
-    const quantidade = quantidadeOPChegadaManualSimplificada(op);
-    const referencia = String(op?.referencia || op?.ref || "").trim();
-    const cor = String(op?.cor || "").trim();
-    const numeroOP = textoOPChegadaManualSimplificada(op?.numeroOP || op?.numeroOPExterno || op?.op || op?.id);
-
-    document.getElementById("chegadaManualRef").value = referencia;
-    document.getElementById("chegadaManualCor").value = cor;
-    document.getElementById("chegadaManualQuantidade").value = quantidade;
-    document.getElementById("chegadaManualDataEnvio").value = dataEnvioDaOPChegadaManualSimplificada(op, setor);
-    document.getElementById("chegadaManualDataChegada").value = hojeISOChegadaManualSimplificada();
-
-    if (el.op) el.op.value = numeroOP;
-    if (el.resumo) {
-      el.resumo.innerHTML = `
-        <div><span>OP</span><strong>${escapeHtmlChegadaManualSimplificada(numeroOP || "-")}</strong></div>
-        <div><span>Referência</span><strong>${escapeHtmlChegadaManualSimplificada(referencia || "-")}</strong></div>
-        <div><span>Cor</span><strong>${escapeHtmlChegadaManualSimplificada(cor || "-")}</strong></div>
-        <div><span>Quantidade da OP</span><strong>${quantidade.toLocaleString("pt-BR")}</strong></div>
-        <div><span>Peça</span><strong>${escapeHtmlChegadaManualSimplificada(labelSetorChegadaManualSimplificada(setor))}</strong></div>
-      `;
-      el.resumo.classList.remove("hidden");
-    }
-
-    const processos = processosDisponiveisChegadaManualSimplificada(op);
-    if (el.processo) {
-      el.processo.innerHTML = '<option value="">Selecione o processo realizado</option>';
-      processos.forEach(nome => {
-        const option = document.createElement("option");
-        option.value = nome;
-        option.textContent = nome;
-        el.processo.appendChild(option);
-      });
-      el.processo.disabled = !processos.length;
-    }
-    if (el.faccao) {
-      el.faccao.innerHTML = '<option value="">Escolha o processo primeiro</option>';
-      el.faccao.disabled = true;
-    }
-    if (el.falta) {
-      el.falta.value = "0";
-      el.falta.max = String(quantidade);
-      el.falta.disabled = false;
-    }
-    if (el.desconto) {
-      el.desconto.value = "0";
-      el.desconto.disabled = false;
-    }
-    if (el.submit) el.submit.disabled = !referencia || !cor || quantidade <= 0 || !processos.length;
-    recalcularRecebidoChegadaManualSimplificada();
-
-    if (!referencia || !cor || quantidade <= 0) {
-      definirStatusOPChegadaManualSimplificada(
-        "A OP foi encontrada, mas está sem referência, cor ou quantidade válida. Corrija o cadastro da OP antes de continuar.",
-        "erro"
-      );
-      if (el.submit) el.submit.disabled = true;
-    } else if (!processos.length) {
-      definirStatusOPChegadaManualSimplificada(
-        "Nenhum processo foi configurado para este tipo de peça.",
-        "erro"
-      );
-    } else {
-      definirStatusOPChegadaManualSimplificada("Dados da OP carregados automaticamente.", "sucesso");
-    }
-  }
-
-  async function carregarOPChegadaManualSimplificada() {
-    if (chegadaManualSimplificadaBuscando) return;
-    const el = elementosChegadaManualSimplificada();
-    const numero = textoOPChegadaManualSimplificada(el.op?.value);
-    if (!numero) {
-      limparOPChegadaManualSimplificada({ preservarNumero: true });
-      return;
-    }
-
-    chegadaManualSimplificadaBuscando = true;
-    if (el.submit) el.submit.disabled = true;
-    definirStatusOPChegadaManualSimplificada("Buscando a OP no sistema...");
-    try {
-      const op = await buscarOPServidorChegadaManualSimplificada(numero);
-      if (!op) {
-        limparOPChegadaManualSimplificada({ preservarNumero: true });
-        definirStatusOPChegadaManualSimplificada("OP não encontrada. Confira o número digitado.", "erro");
-        el.op?.focus();
-        return;
-      }
-      preencherOPChegadaManualSimplificada(op);
-    } catch (error) {
-      console.error("Erro ao buscar OP para chegada manual.", error);
-      limparOPChegadaManualSimplificada({ preservarNumero: true });
-      definirStatusOPChegadaManualSimplificada("Não foi possível buscar a OP. Verifique a internet e tente novamente.", "erro");
-    } finally {
-      chegadaManualSimplificadaBuscando = false;
-    }
-  }
-
-  async function consultarDuplicidadeChegadaManualSimplificada(dados) {
-    const movimentos = await carregarMovimentacoesServidorDuplicidade({ numeroOP: dados.numeroOP });
-    const mesmaEtapa = movimentos.find(mov =>
-      movimentoValidoParaDuplicidade(mov) &&
-      normalizarComparacao(mov.tipoDestino) === "FACCAO" &&
-      normalizarComparacao(mov.numeroOP) === normalizarComparacao(dados.numeroOP) &&
-      normalizarComparacao(mov.referencia) === normalizarComparacao(dados.referencia) &&
-      normalizarComparacao(mov.destino) === normalizarComparacao(dados.faccao) &&
-      normalizarComparacao(mov.processo) === normalizarComparacao(dados.processo)
-    );
-
-    if (!mesmaEtapa) return { duplicado: false };
-    const status = normalizarComparacao(mesmaEtapa.status);
-    if (mesmaEtapa.dataChegada || ["RETORNOU", "FINALIZADO", "ENCAMINHADO"].includes(status)) {
-      return {
-        duplicado: true,
-        mensagem: "Já existe uma chegada para esta OP, processo e facção. Use Movimentações registradas para corrigir, sem gerar outro pagamento."
-      };
-    }
-    return {
-      duplicado: true,
-      mensagem: "Esta OP já foi enviada para essa facção e processo. Registre a chegada pela movimentação existente, em vez de usar Chegada manual."
-    };
-  }
-
-  async function buscarPrecoChegadaManualSimplificada(firestore, db, referencia, processo) {
-    if (processoPagamentoInterlock(processo)) return precoPadraoInterlock();
-    if (processoPagamentoAlca(processo)) {
-      return buscarPrecoPadraoAlca(firestore, db);
-    }
-    const snap = await firestore.getDocs(firestore.collection(db, "precosReferencia"));
-    return snap.docs
-      .map(item => ({ id: item.id, ...item.data() }))
-      .find(item =>
-        item?.ativo !== false &&
-        normalizarComparacao(item.referencia) === normalizarComparacao(referencia) &&
-        normalizarComparacao(item.processo || item.servicoNome) === normalizarComparacao(processo)
-      ) || null;
-  }
-
-  async function salvarChegadaManualSimplificada(event) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    if (chegadaManualSimplificadaSalvando) return;
-
-    const el = elementosChegadaManualSimplificada();
-    const numeroDigitado = textoOPChegadaManualSimplificada(el.op?.value);
-    if (!chegadaManualSimplificadaOPCarregada ||
-        textoOPChegadaManualSimplificada(
-          chegadaManualSimplificadaOPCarregada.numeroOP ||
-          chegadaManualSimplificadaOPCarregada.numeroOPExterno ||
-          chegadaManualSimplificadaOPCarregada.op ||
-          chegadaManualSimplificadaOPCarregada.id
-        ) !== numeroDigitado) {
-      await carregarOPChegadaManualSimplificada();
-    }
-
-    const op = chegadaManualSimplificadaOPCarregada;
-    if (!op) {
-      mostrarAvisoFormulario("Informe uma OP válida antes de salvar.");
-      return;
-    }
-
-    const numeroOP = textoOPChegadaManualSimplificada(op.numeroOP || op.numeroOPExterno || op.op || op.id);
-    const referencia = String(op.referencia || op.ref || "").trim().toUpperCase();
-    const cor = String(op.cor || "").trim().toUpperCase();
-    const setor = setorOPChegadaManualSimplificada(op);
-    const quantidadeEnviada = quantidadeOPChegadaManualSimplificada(op);
-    const processo = normalizarNomeProcessoGerenciado(el.processo?.value || "");
-    const faccao = normalizarNomeFaccaoGerenciada(el.faccao?.value || "");
-    const falta = Math.max(0, numeroChegadaManualSimplificada(el.falta?.value));
-    const descontoDefeito = Math.max(0, numeroChegadaManualSimplificada(el.desconto?.value));
-    const exigeComponentesSutia = processoExigeComponentesSutia(processo);
-    const lateralResposta = String(el.lateral?.value || "");
-    const bojoResposta = String(el.bojo?.value || "");
-    const lateralPronta = respostaComponenteSutiaBooleano(lateralResposta);
-    const bojoPronto = respostaComponenteSutiaBooleano(bojoResposta);
-    const quantidadeRecebida = Math.max(quantidadeEnviada - falta, 0);
-    const dataChegada = hojeISOChegadaManualSimplificada();
-    const dataEnvio = dataEnvioDaOPChegadaManualSimplificada(op, setor);
-
-    if (!numeroOP || !referencia || !cor || quantidadeEnviada <= 0) {
-      mostrarAvisoFormulario("A OP não possui referência, cor ou quantidade válida.");
-      return;
-    }
-    if (!processo) {
-      mostrarAvisoFormulario("Selecione o processo realizado.");
-      el.processo?.focus();
-      return;
-    }
-    const faccoesPermitidas = faccoesDisponiveisChegadaManualSimplificada(processo);
-    if (!faccao || !faccoesPermitidas.some(nome => normalizarComparacao(nome) === normalizarComparacao(faccao))) {
-      mostrarAvisoFormulario("Selecione uma facção vinculada ao processo escolhido.");
-      el.faccao?.focus();
-      return;
-    }
-    if (exigeComponentesSutia && !respostaLateralSutiaValida(lateralResposta)) {
-      mostrarAvisoFormulario("Selecione a situação da lateral: Sim, Não ou Não informado.");
-      el.lateral?.focus();
-      return;
-    }
-    if (exigeComponentesSutia && !respostaComponenteSutiaValida(bojoResposta)) {
-      mostrarAvisoFormulario("Informe se o bojo foi pronto.");
-      el.bojo?.focus();
-      return;
-    }
-    if (falta > quantidadeEnviada) {
-      mostrarAvisoFormulario("A quantidade faltante não pode ser maior que a quantidade da OP.");
-      el.falta?.focus();
-      return;
-    }
-    if (quantidadeRecebida <= 0) {
-      mostrarAvisoFormulario("Nenhuma peça foi recebida. Não registre chegada quando toda a quantidade estiver faltando.");
-      el.falta?.focus();
-      return;
-    }
-
-    const dadosChave = { numeroOP, referencia, faccao, processo };
-    chegadaManualSimplificadaSalvando = true;
-    if (el.submit) {
-      el.submit.disabled = true;
-      el.submit.dataset.textoOriginal = el.submit.textContent;
-      el.submit.textContent = "Salvando...";
-    }
-    let trava = null;
-
-    try {
-      const duplicidade = await consultarDuplicidadeChegadaManualSimplificada(dadosChave);
-      if (duplicidade.duplicado) {
-        mostrarAvisoFormulario(duplicidade.mensagem);
-        return;
-      }
-
-      trava = await adquirirTravaTemporariaDuplicidade(
-        "chegada-manual-faccao",
-        textoChaveTrava(numeroOP, referencia, faccao, processo),
-        { numeroOP, referencia, faccao, processo, quantidadeEnviada, falta, descontoDefeito }
-      );
-
-      const reconferencia = await consultarDuplicidadeChegadaManualSimplificada(dadosChave);
-      if (reconferencia.duplicado) {
-        mostrarAvisoFormulario(reconferencia.mensagem);
-        return;
-      }
-
-      const { firestore, db, auth } = await obterContextoTravasDuplicidade();
-      const user = auth.currentUser;
-      if (!user) throw new Error("Usuário não autenticado.");
-
-      const valorTotalManualFinanceiro = processoValorTotalManualFinanceiro(processo);
-      const pagamentoAlca = processoPagamentoAlca(processo);
-      const preco = valorTotalManualFinanceiro
-        ? null
-        : await buscarPrecoChegadaManualSimplificada(firestore, db, referencia, processo);
-      const chaveMov = textoChaveTrava(numeroOP, referencia, faccao, processo, dataChegada);
-      const movimentacaoId = idSeguroChegadaManualSimplificada(`manual-chegada-${hashTravaDuplicidade(chaveMov)}`);
-      const movimentoRef = firestore.doc(db, "movimentacoesProducao", movimentacaoId);
-      const movimentoExistente = await firestore.getDoc(movimentoRef);
-      if (movimentoExistente.exists() && movimentoValidoParaDuplicidade(movimentoExistente.data())) {
-        mostrarAvisoFormulario("Esta chegada manual já foi salva. Use Movimentações registradas para corrigir.");
-        return;
-      }
-
-      const valorUnitarioAlca = pagamentoAlca && preco
-        ? numeroChegadaManualSimplificada(preco.valor)
-        : 0;
-      const valorUnitario = valorTotalManualFinanceiro
-        ? 0
-        : (pagamentoAlca ? valorUnitarioAlca * 2 : numeroChegadaManualSimplificada(preco?.valor));
-      const subtotal = valorTotalManualFinanceiro ? 0 : quantidadeRecebida * valorUnitario;
-      const total = valorTotalManualFinanceiro ? 0 : Math.max(subtotal - descontoDefeito, 0);
-      const pagamentoId = idSeguroChegadaManualSimplificada(
-        valorTotalManualFinanceiro
-          ? `mov-${movimentacaoId}-valor-total-manual`
-          : (preco ? `mov-${movimentacaoId}-${preco.id}` : `mov-${movimentacaoId}-sem-valor`)
-      );
-      const pagamentoRef = firestore.doc(db, "entregasPagamento", pagamentoId);
-      const pagamentoExistente = await firestore.getDoc(pagamentoRef);
-      if (pagamentoExistente.exists() && pagamentoExistente.data()?.excluido !== true) {
-        mostrarAvisoFormulario("O pagamento desta chegada já existe. A operação foi bloqueada para evitar duplicidade.");
-        return;
-      }
-
-      const agoraServidor = firestore.serverTimestamp();
-      const restanteMovimentacaoId = falta > 0 ? idRestanteFaccao(movimentacaoId, 1) : '';
-      const movimentacao = {
-        id: movimentacaoId,
-        origem: "chegada_manual_faccao",
-        origemManual: true,
-        tipoDestino: "faccao",
-        tipoDestinoLabel: "Facção",
-        opId: op.id || "",
-        numeroOP,
-        referencia,
-        cor,
-        produtoNome: op.produtoNome || op.nomeProduto || op.nome || "",
-        setor,
-        setorLabel: labelSetorChegadaManualSimplificada(setor),
-        destino: faccao,
-        processo,
-        quantidadeEnviada,
-        quantidadeRecebida,
-        temRestantePendente: falta > 0,
-        quantidadeRestantePendente: falta,
-        restanteStatus: falta > 0 ? 'pendente' : 'concluido',
-        restanteMovimentacaoId,
-        restanteAtualizadoPor: user.uid,
-        restanteAtualizadoEm: agoraServidor,
-        dataEnvio,
-        dataEnvioNaoInformada: !dataEnvio,
-        dataChegada,
-        falta,
-        descontoDefeito,
-        defeito: descontoDefeito,
-        ...(exigeComponentesSutia ? {
-          lateralPronta,
-          lateralProntaStatus: lateralResposta,
-          bojoPronto,
-          lateralProntaChegada: lateralPronta,
-          lateralProntaChegadaStatus: lateralResposta,
-          bojoProntoChegada: bojoPronto,
-          componentesSutiaInformadosNaChegada: true,
-          componentesSutiaChegadaPor: user.uid,
-          componentesSutiaChegadaEm: agoraServidor
-        } : {}),
-        status: "retornou",
-        observacoes: `Chegada manual pela OP. Recebido: ${quantidadeRecebida}; falta: ${falta}; desconto: ${formatarMoedaChegadaManualSimplificada(descontoDefeito)}.`,
-        criadoPor: user.uid,
-        criadoEm: agoraServidor,
-        atualizadoPor: user.uid,
-        atualizadoEm: agoraServidor,
-        versaoRegistro: APP_VERSION
-      };
-
-      const pagamento = {
-        origem: "movimentacao",
-        movimentacaoId,
-        movimentacaoOrigemId: "",
-        pagamentoReenvio: false,
-        opId: op.id || "",
-        numeroOP,
-        referencia,
-        cor,
-        produtoNome: op.produtoNome || op.nomeProduto || op.nome || "",
-        faccao,
-        precoReferenciaId: valorTotalManualFinanceiro ? "" : (preco?.id || ""),
-        processo,
-        processoMovimentacao: processo,
-        servicoId: valorTotalManualFinanceiro ? "" : (preco?.id || ""),
-        servicoNome: processo,
-        setor: valorTotalManualFinanceiro ? setor : (preco?.setor || setor),
-        setorLabel: labelSetorChegadaManualSimplificada(valorTotalManualFinanceiro ? setor : (preco?.setor || setor)),
-        dataEntrega: dataChegada,
-        quantidade: quantidadeRecebida,
-        quantidadeAlcas: pagamentoAlca ? quantidadeRecebida * 2 : 0,
-        multiplicadorAlcas: pagamentoAlca ? 2 : 0,
-        valorUnitarioAlca,
-        falta,
-        descontoDefeito,
-        ...(exigeComponentesSutia ? {
-          lateralPronta,
-          lateralProntaStatus: lateralResposta,
-          bojoPronto,
-          lateralProntaChegada: lateralPronta,
-          lateralProntaChegadaStatus: lateralResposta,
-          bojoProntoChegada: bojoPronto
-        } : {}),
-        subtotal: valorTotalManualFinanceiro ? 0 : (preco ? subtotal : 0),
-        valorUnitario: valorTotalManualFinanceiro ? 0 : (preco ? valorUnitario : 0),
-        total: valorTotalManualFinanceiro ? 0 : (preco ? total : 0),
-        statusPagamento: valorTotalManualFinanceiro ? "sem_valor" : (preco ? "pendente" : "sem_valor"),
-        valorPendente: valorTotalManualFinanceiro || !preco,
-        valorManualFinanceiroPendente: valorTotalManualFinanceiro,
-        valorTotalDefinidoManualmente: false,
-        formaValorPagamento: valorTotalManualFinanceiro
-          ? "total_manual_op"
-          : (pagamentoAlca ? "valor_padrao_alca_x2" : "valor_unitario_base"),
-        motivoValorPendente: valorTotalManualFinanceiro
-          ? "processo_exige_total_manual"
-          : (!preco
-            ? (pagamentoAlca ? "valor_padrao_alca_nao_cadastrado" : "preco_base_nao_cadastrado")
-            : ""),
-        avisoPagamento: valorTotalManualFinanceiro
-          ? "Financeiro deve informar o valor total final desta OP."
-          : (preco
-            ? ""
-            : (pagamentoAlca
-              ? "Cadastrar o valor padrão de cada alça. O sistema multiplicará por 2 para cada sutiã."
-              : `Adicionar valor para Ref. ${referencia} + ${processo}.`)),
-        observacoes: valorTotalManualFinanceiro
-          ? "Sutiã Montagem/Sutiã Completo: valor total da OP deve ser informado manualmente pelo financeiro."
-          : (preco
-            ? (pagamentoAlca
-              ? `Alça calculada automaticamente: ${quantidadeRecebida} sutiã(s) × 2 alças × valor padrão.`
-              : "Gerado automaticamente pela chegada manual simplificada.")
-            : (pagamentoAlca
-              ? "Pagamento de Alça ficou em aberto porque o valor padrão global ainda não foi cadastrado."
-              : "Pagamento ficou em aberto porque não existe valor cadastrado para REF + PROCESSO.")),
-        atualizadoPor: user.uid,
-        atualizadoEm: agoraServidor,
-        criadoPor: user.uid,
-        criadoEm: agoraServidor,
-        versaoRegistro: APP_VERSION
-      };
-
-      const logRef = firestore.doc(firestore.collection(db, "logsAlteracoes"));
-      const batch = firestore.writeBatch(db);
-      batch.set(movimentoRef, movimentacao, { merge: false });
-      if (falta > 0) {
-        batch.set(
-          firestore.doc(db, 'movimentacoesProducao', restanteMovimentacaoId),
-          criarDocumentoRestanteFaccao({
-            movimentoOrigem: movimentacao,
-            restanteId: restanteMovimentacaoId,
-            quantidade: falta,
-            sequencia: 1,
-            user,
-            firestore,
-            dataGeracao: dataChegada
-          }),
-          { merge: true }
-        );
-      }
-      batch.set(pagamentoRef, pagamento, { merge: false });
-      batch.set(logRef, {
-        acao: "chegada_manual_faccao_simplificada",
-        entidade: "movimentacaoProducao",
-        entidadeId: movimentacaoId,
-        detalhes: `OP ${numeroOP} | ${faccao} | ${processo} | OP ${quantidadeEnviada} | falta ${falta} | recebido ${quantidadeRecebida} | desconto ${formatarMoedaChegadaManualSimplificada(descontoDefeito)}${exigeComponentesSutia ? ` | lateral ${respostaComponenteSutiaTexto(lateralPronta)} | bojo ${respostaComponenteSutiaTexto(bojoPronto)}` : ""}`,
-        usuarioId: user.uid,
-        usuarioEmail: user.email || "",
-        versao: APP_VERSION,
-        criadoEm: agoraServidor
-      });
-      await batch.commit();
-
-      cachePagamentoFinal.expiraEm = 0;
-      document.getElementById("modalChegadaManualFaccao")?.classList.add("hidden");
-      el.form?.reset();
-      limparOPChegadaManualSimplificada();
-      mostrarAvisoFormulario(
-        valorTotalManualFinanceiro
-          ? `Chegada salva. ${quantidadeRecebida.toLocaleString("pt-BR")} peças recebidas; o financeiro deverá informar o valor total desta OP.`
-          : (preco
-            ? `Chegada salva. ${quantidadeRecebida.toLocaleString("pt-BR")} peças recebidas e pagamento de ${formatarMoedaChegadaManualSimplificada(total)} gerado.${pagamentoAlca ? ` Foram consideradas ${(quantidadeRecebida * 2).toLocaleString("pt-BR")} alças.` : ""}`
-            : (pagamentoAlca
-              ? `Chegada salva. Cadastre o valor padrão da alça; o pagamento considerará duas alças por sutiã.`
-              : `Chegada salva. ${quantidadeRecebida.toLocaleString("pt-BR")} peças recebidas; o pagamento ficou pendente de valor.`))
-      );
-    } catch (error) {
-      console.error("Erro ao salvar chegada manual simplificada.", error);
-      if (error?.codigoTravaDuplicidade === "EM_USO") {
-        mostrarAvisoFormulario("Outra pessoa já está registrando esta mesma chegada. Aguarde alguns segundos.");
-      } else if (String(error?.code || "").includes("permission-denied")) {
-        mostrarAvisoFormulario("Sem permissão para salvar a chegada ou o pagamento. Confira as regras do Firebase.");
-      } else {
-        mostrarAvisoFormulario("Não foi possível salvar. Nenhuma parte da operação foi gravada; tente novamente.");
-      }
-    } finally {
-      if (trava) await liberarTravaTemporariaDuplicidade(trava);
-      chegadaManualSimplificadaSalvando = false;
-      if (el.submit) {
-        el.submit.disabled = !chegadaManualSimplificadaOPCarregada;
-        el.submit.textContent = el.submit.dataset.textoOriginal || "Salvar chegada manual";
-        delete el.submit.dataset.textoOriginal;
-      }
-    }
-  }
-
-  function construirFormularioChegadaManualSimplificada(form) {
-    form.className = "form movimentacao-form chegada-manual-simplificada";
-    form.innerHTML = `
-      <div class="movimentacao-op-info">
-        Informe somente a OP. Referência, cor, quantidade e tipo de peça serão carregados automaticamente.
-      </div>
-
-      <label>
-        Nº OP
-        <div class="chegada-manual-op-linha">
-          <input id="chegadaManualOP" type="text" inputmode="numeric" placeholder="Ex: 58193" autocomplete="off" required />
-          <button class="btn" id="btnBuscarOPChegadaManual" type="button">Buscar OP</button>
-        </div>
-        <small id="chegadaManualStatusOPAutomatico" class="chegada-manual-status-op"></small>
-      </label>
-
-      <div id="chegadaManualResumoOPAutomatico" class="chegada-manual-resumo-op hidden"></div>
-
-      <input id="chegadaManualRef" type="hidden" />
-      <input id="chegadaManualCor" type="hidden" />
-      <input id="chegadaManualQuantidade" type="hidden" />
-      <input id="chegadaManualDataEnvio" type="hidden" />
-      <input id="chegadaManualDataChegada" type="hidden" />
-      <input id="chegadaManualObs" type="hidden" />
-
-      <label>
-        O que foi feito / processo
-        <select id="chegadaManualProcesso" required disabled>
-          <option value="">Busque uma OP primeiro</option>
-        </select>
-      </label>
-
-      <label>
-        Quem fez / facção
-        <select id="chegadaManualFaccao" required disabled>
-          <option value="">Escolha o processo primeiro</option>
-        </select>
-      </label>
-
-      <div id="grupoComponentesSutiaChegadaManual" class="componentes-sutia-box hidden">
-        ${htmlCamposComponentesSutia(
-          "chegadaManual",
-          "Componentes do Sutiã",
-          "Obrigatório para Sutiã Montagem e Sutiã Completo. Será exibido ao financeiro."
-        )}
-      </div>
-
-      <div class="form-grid two">
-        <label>
-          Quantidade faltando
-          <input id="chegadaManualFalta" type="number" min="0" step="1" value="0" disabled required />
-          <small>A quantidade recebida será calculada automaticamente.</small>
-        </label>
-        <label>
-          Desconto por defeito (R$)
-          <input id="chegadaManualDesconto" type="number" min="0" step="0.01" value="0" disabled required />
-          <small>Informe 0 quando não houver desconto.</small>
-        </label>
-      </div>
-
-      <div class="chegada-manual-calculo">
-        <span>Quantidade que será considerada como recebida</span>
-        <strong id="chegadaManualQuantidadeRecebidaCalculada">-</strong>
-      </div>
-
-      <div class="notice small">
-        A chegada e o pagamento serão gravados juntos. Se já existir envio, chegada ou pagamento igual, o sistema bloqueará a duplicidade.
-      </div>
-
-      <div class="actions">
-        <button class="btn btn-success" type="submit" disabled>Salvar chegada manual</button>
-        <button class="btn" id="btnCancelarChegadaManualFaccao" type="button">Cancelar</button>
-      </div>
-    `;
-  }
-
-  function injetarEstilosChegadaManualSimplificada() {
-    if (document.getElementById("styleChegadaManualSimplificada")) return;
-    const style = document.createElement("style");
-    style.id = "styleChegadaManualSimplificada";
-    style.textContent = `
-      .chegada-manual-op-linha {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 10px;
-        align-items: center;
-      }
-      .chegada-manual-op-linha .btn { min-height: 44px; }
-      .chegada-manual-status-op {
-        display: block;
-        min-height: 18px;
-        margin-top: 6px;
-        color: #64748b;
-        line-height: 1.35;
-      }
-      .chegada-manual-status-op[data-tipo="erro"] { color: #b91c1c; font-weight: 700; }
-      .chegada-manual-status-op[data-tipo="sucesso"] { color: #15803d; font-weight: 700; }
-      .chegada-manual-resumo-op {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
-        gap: 10px;
-        padding: 12px;
-        border: 1px solid #bbf7d0;
-        border-radius: 14px;
-        background: #f0fdf4;
-      }
-      .chegada-manual-resumo-op.hidden { display: none !important; }
-      .chegada-manual-resumo-op div {
-        min-width: 0;
-        padding: 9px 10px;
-        border-radius: 10px;
-        background: #fff;
-      }
-      .chegada-manual-resumo-op span {
-        display: block;
-        color: #64748b;
-        font-size: 11px;
-        font-weight: 700;
-      }
-      .chegada-manual-resumo-op strong {
-        display: block;
-        margin-top: 3px;
-        color: #0f172a;
-        font-size: 14px;
-        overflow-wrap: anywhere;
-      }
-      .chegada-manual-calculo {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-        padding: 12px 14px;
-        border: 1px solid #bfdbfe;
-        border-radius: 12px;
-        background: #eff6ff;
-      }
-      .chegada-manual-calculo span { color: #334155; font-size: 13px; font-weight: 700; }
-      .chegada-manual-calculo strong { color: #1d4ed8; font-size: 20px; }
-      @media (max-width: 640px) {
-        .chegada-manual-op-linha { grid-template-columns: 1fr; }
-        .chegada-manual-op-linha .btn { width: 100%; }
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  function iniciarChegadaManualSimplificadaPelaOP() {
-    const formAntigo = document.getElementById("formChegadaManualFaccao");
-    if (!formAntigo || formAntigo.dataset.chegadaManualSimplificada === APP_VERSION) return;
-
-    injetarEstilosChegadaManualSimplificada();
-
-    // Clona o formulário para remover apenas os listeners antigos de submit.
-    // O modal, botões externos e demais telas permanecem intactos.
-    const form = formAntigo.cloneNode(false);
-    form.id = "formChegadaManualFaccao";
-    form.dataset.chegadaManualSimplificada = APP_VERSION;
-    construirFormularioChegadaManualSimplificada(form);
-    formAntigo.replaceWith(form);
-
-    const el = elementosChegadaManualSimplificada();
-    el.form?.addEventListener("submit", salvarChegadaManualSimplificada, true);
-    el.processo?.addEventListener("change", () => {
-      atualizarFaccoesChegadaManualSimplificada();
-      atualizarCamposComponentesSutiaChegadaManual();
-    });
-    el.falta?.addEventListener("input", recalcularRecebidoChegadaManualSimplificada);
-    document.getElementById("btnBuscarOPChegadaManual")?.addEventListener("click", carregarOPChegadaManualSimplificada);
-    el.op?.addEventListener("blur", carregarOPChegadaManualSimplificada);
-    el.op?.addEventListener("change", carregarOPChegadaManualSimplificada);
-    el.op?.addEventListener("input", () => {
-      clearTimeout(chegadaManualSimplificadaTimer);
-      const atual = textoOPChegadaManualSimplificada(el.op.value);
-      const carregada = textoOPChegadaManualSimplificada(
-        chegadaManualSimplificadaOPCarregada?.numeroOP ||
-        chegadaManualSimplificadaOPCarregada?.numeroOPExterno ||
-        chegadaManualSimplificadaOPCarregada?.op ||
-        chegadaManualSimplificadaOPCarregada?.id
-      );
-      if (carregada && atual !== carregada) limparOPChegadaManualSimplificada({ preservarNumero: true });
-      if (atual.length >= 4) {
-        chegadaManualSimplificadaTimer = setTimeout(carregarOPChegadaManualSimplificada, 500);
-      }
-    });
-    el.op?.addEventListener("keydown", event => {
-      if (event.key !== "Enter") return;
-      event.preventDefault();
-      carregarOPChegadaManualSimplificada();
-    });
-
-    document.getElementById("btnCancelarChegadaManualFaccao")?.addEventListener("click", () => {
-      document.getElementById("modalChegadaManualFaccao")?.classList.add("hidden");
-      form.reset();
-      limparOPChegadaManualSimplificada();
-    });
-
-    document.getElementById("btnAbrirChegadaManualFaccao")?.addEventListener("click", () => {
-      setTimeout(() => {
-        form.reset();
-        limparOPChegadaManualSimplificada();
-        document.getElementById("chegadaManualDataChegada").value = hojeISOChegadaManualSimplificada();
-        document.getElementById("chegadaManualOP")?.focus();
-      }, 0);
-    });
-
-    limparOPChegadaManualSimplificada();
   }
 
 
@@ -12543,42 +11270,6 @@
     }
   }
 
-  // ---------- CHEGADA MANUAL ----------
-  function garantirCamposComponentesSutiaChegadaManual() {
-    const form = document.getElementById('formChegadaManualFaccao');
-    if (!form) return null;
-    let bloco = document.getElementById('grupoComponentesSutiaChegadaManual');
-    if (bloco) return bloco;
-    bloco = document.createElement('div');
-    bloco.id = 'grupoComponentesSutiaChegadaManual';
-    bloco.className = 'componentes-sutia-box hidden';
-    bloco.innerHTML = htmlCamposComponentesSutia(
-      'chegadaManual',
-      'Componentes do Sutiã',
-      'Obrigatório para Sutiã Montagem e Sutiã Completo. Será exibido ao financeiro.'
-    );
-    const faccaoLabel = document.getElementById('chegadaManualFaccao')?.closest('label');
-    if (faccaoLabel) faccaoLabel.insertAdjacentElement('afterend', bloco);
-    else form.appendChild(bloco);
-    return bloco;
-  }
-
-  function atualizarCamposComponentesSutiaChegadaManual() {
-    const bloco = garantirCamposComponentesSutiaChegadaManual();
-    if (!bloco) return;
-    const processo = String(document.getElementById('chegadaManualProcesso')?.value || '');
-    const mostrar = processoExigeComponentesSutia(processo);
-    const lateral = document.getElementById('chegadaManualLateralPronta');
-    const bojo = document.getElementById('chegadaManualBojoPronto');
-    bloco.classList.toggle('hidden', !mostrar);
-    [lateral, bojo].forEach(campo => {
-      if (!campo) return;
-      campo.required = mostrar;
-      campo.disabled = !mostrar;
-      if (!mostrar) campo.value = '';
-    });
-  }
-
   function textoComponentesSutiaPagamento(item) {
     if (!processoExigeComponentesSutia(item?.processo || item?.processoMovimentacao || item?.servicoNome)) return '';
     const lateral = item?.lateralProntaStatus ?? item?.lateralProntaChegadaStatus ?? item?.lateralProntaEnvioStatus ?? item?.lateralPronta ?? item?.lateralProntaChegada ?? item?.lateralProntaEnvio;
@@ -12590,9 +11281,7 @@
     injetarEstilosComponentesSutia();
     garantirCamposComponentesSutiaEnvio();
     garantirCamposComponentesSutiaChegada();
-    garantirCamposComponentesSutiaChegadaManual();
     atualizarCamposComponentesSutiaEnvio();
-    atualizarCamposComponentesSutiaChegadaManual();
 
     const formEnvio = document.getElementById('formMovimentacaoProducao');
     if (formEnvio && formEnvio.dataset.componentesSutiaEventos !== APP_VERSION) {
@@ -12616,12 +11305,6 @@
     if (processoChegada && processoChegada.dataset.componentesSutiaChange !== APP_VERSION) {
       processoChegada.dataset.componentesSutiaChange = APP_VERSION;
       processoChegada.addEventListener('change', () => atualizarCamposComponentesSutiaChegada({ resetar: true }));
-    }
-
-    const processoManual = document.getElementById('chegadaManualProcesso');
-    if (processoManual && processoManual.dataset.componentesSutiaChange !== APP_VERSION) {
-      processoManual.dataset.componentesSutiaChange = APP_VERSION;
-      processoManual.addEventListener('change', atualizarCamposComponentesSutiaChegadaManual);
     }
 
     if (document.documentElement.dataset.componentesSutiaCliques !== APP_VERSION) {
@@ -13627,8 +12310,8 @@
 
   function criarBotaoRestantesFaccao() {
     if (document.getElementById('btnRestantesPendentesFaccoes')) return;
-    const referencia = document.getElementById('btnMovimentacoesRegistradasUsuario') || document.getElementById('btnAbrirChegadaManualFaccao');
-    const actions = referencia?.parentElement;
+    const referencia = document.getElementById('btnMovimentacoesRegistradasUsuario') || document.getElementById('btnToggleGerenciarFaccoes');
+    const actions = referencia?.parentElement || document.querySelector('#faccoes .panel-header .actions');
     if (!actions || !referencia) {
       setTimeout(criarBotaoRestantesFaccao, 400);
       return;
@@ -14162,7 +12845,6 @@
     iniciarComponentesSutiaFaccaoFinanceiro();
     iniciarRevisaoFinalPagamentos();
     iniciarTelaPagamentosSegura();
-    iniciarHotfixChegadaManual();
     iniciarHotfixNecessidade();
     iniciarGestaoSugestoesFases();
     iniciarGestaoSugestoesSeparadasSutiaCalcinha();
@@ -14175,7 +12857,6 @@
     iniciarAuditoriaCompletaOP();
     iniciarFiltrosExcelManejo();
     iniciarSemChegadaFaccaoRetornada();
-    iniciarChegadaManualSimplificadaPelaOP();
   }
 
   window.addEventListener("load", () => {
