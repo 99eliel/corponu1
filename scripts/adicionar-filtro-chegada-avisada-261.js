@@ -26,7 +26,6 @@ function replaceRegexOnce(text, regex, replacement, label) {
   return text.replace(regex, replacement);
 }
 
-// ---------------- index.html ----------------
 let index = read('index.html');
 if (index.includes('id="faccaoMovFiltroChegada"')) {
   throw new Error('O filtro de chegada já existe no index.html; abortando para evitar aplicação duplicada.');
@@ -41,7 +40,6 @@ index = index.replace(/<meta name="app-version" content="[^"]+"\s*\/>/, `<meta n
 index = index.split(OLD_VERSION).join(VERSION);
 write('index.html', index);
 
-// ---------------- app.js ----------------
 let app = read('app.js');
 if (app.includes('function situacaoChegadaFaccoes(') || app.includes('faccaoMovFiltroChegada')) {
   throw new Error('A lógica do filtro de chegada já existe no app.js; abortando para evitar sobreposição.');
@@ -72,9 +70,9 @@ app = replaceRegexOnce(
   'limpeza dos filtros de Facções'
 );
 
-const statusCondition = '    if (filtros.status && status !== filtros.status) return false;';
-const arrivalCondition = `${statusCondition}\n    if (filtros.chegada && situacaoChegadaFaccoes(mov) !== filtros.chegada) return false;`;
-app = replaceOnce(app, statusCondition, arrivalCondition, 'condição de Status em renderFaccoesMovimentacoes');
+const filtroFaccoesBlock = `    if (filtros.processo && String(mov.processo || "") !== filtros.processo) return false;\n    if (filtros.status && status !== filtros.status) return false;\n    if (filtros.dataInicio && (!dataFiltro || dataFiltro < filtros.dataInicio)) return false;`;
+const filtroFaccoesComChegada = `    if (filtros.processo && String(mov.processo || "") !== filtros.processo) return false;\n    if (filtros.status && status !== filtros.status) return false;\n    if (filtros.chegada && situacaoChegadaFaccoes(mov) !== filtros.chegada) return false;\n    if (filtros.dataInicio && (!dataFiltro || dataFiltro < filtros.dataInicio)) return false;`;
+app = replaceOnce(app, filtroFaccoesBlock, filtroFaccoesComChegada, 'bloco exclusivo de filtros em renderFaccoesMovimentacoes');
 
 const retornaramLine = '  const retornaram = movimentos.filter(mov => mov.status === "retornou" || mov.status === "encaminhado" || mov.status === "finalizado").length;';
 app = replaceOnce(
@@ -94,7 +92,6 @@ app = replaceOnce(
 
 write('app.js', app);
 
-// ---------------- versões ----------------
 let update = read('update.js');
 if (!update.includes(`const APP_VERSION = "${OLD_VERSION}";`)) {
   throw new Error('APP_VERSION esperado não encontrado no update.js');
@@ -123,7 +120,6 @@ write('version.json', JSON.stringify({
   notes: 'Versão alinhada ao release principal. Inclui filtro de Chegada em Facções para distinguir aviso aguardando baixa de baixa confirmada.'
 }, null, 2) + '\n');
 
-// ---------------- pós-condições ----------------
 const indexFinal = read('index.html');
 const appFinal = read('app.js');
 const obrigatoriosIndex = [
