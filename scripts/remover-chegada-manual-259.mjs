@@ -66,6 +66,9 @@ const blocoManual = removerEntre(
 if (!blocoManual.removido.includes("origemManual: true")) {
   falhar("app.js: o bloco localizado não contém a criação origemManual: true esperada; abortando para não remover código errado.");
 }
+if (!blocoManual.removido.includes('origem: "chegada_manual_faccao"')) {
+  falhar("app.js: o bloco localizado não contém a origem chegada_manual_faccao esperada.");
+}
 if (!blocoManual.removido.includes("async function confirmarChegadaManualFaccao")) {
   falhar("app.js: o bloco localizado não contém a confirmação da chegada manual esperada.");
 }
@@ -85,7 +88,7 @@ app = removerLinhaUnica(
 if (app.includes("ChegadaManualFaccao") || app.includes("chegadaManual")) {
   falhar("app.js: ainda existe referência da Chegada manual após remover o bloco, acionamento e export.");
 }
-if (app.includes("origemManual: true")) falhar("app.js: ainda existe criação direta origemManual: true.");
+if (app.includes('origem: "chegada_manual_faccao"')) falhar("app.js: ainda existe a origem específica do bypass chegada_manual_faccao.");
 if (!app.includes("function registrarChegadaMovimentacao(")) falhar("app.js: a chegada normal registrarChegadaMovimentacao foi removida indevidamente.");
 if (!app.includes("window.registrarChegadaMovimentacao = registrarChegadaMovimentacao;")) falhar("app.js: export da chegada normal não foi preservado.");
 fs.writeFileSync("app.js", app);
