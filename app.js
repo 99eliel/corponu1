@@ -402,7 +402,7 @@ document.addEventListener("DOMContentLoaded", () => {
   configurarRastreamento();
   configurarModalMovimentacao();
   configurarModalChegadaMovimentacao();
-  configurarChegadaManualFaccao();
+
   configurarPagamentos();
   configurarRelatorios();
   configurarUsuarios();
@@ -6596,174 +6596,6 @@ function configurarModalChegadaMovimentacao() {
 }
 
 
-function configurarChegadaManualFaccao() {
-  const btnAbrir = document.getElementById("btnAbrirChegadaManualFaccao");
-  if (btnAbrir) btnAbrir.addEventListener("click", abrirModalChegadaManualFaccao);
-
-  const form = document.getElementById("formChegadaManualFaccao");
-  if (form) form.addEventListener("submit", confirmarChegadaManualFaccao);
-
-  const btnFechar = document.getElementById("btnFecharModalChegadaManualFaccao");
-  if (btnFechar) btnFechar.addEventListener("click", fecharModalChegadaManualFaccao);
-
-  const btnCancelar = document.getElementById("btnCancelarChegadaManualFaccao");
-  if (btnCancelar) btnCancelar.addEventListener("click", fecharModalChegadaManualFaccao);
-
-  const modal = document.getElementById("modalChegadaManualFaccao");
-  if (modal) {
-    modal.addEventListener("click", event => {
-      if (event.target === modal) fecharModalChegadaManualFaccao();
-    });
-  }
-
-  const opInput = document.getElementById("chegadaManualOP");
-  if (opInput) {
-    opInput.addEventListener("blur", preencherChegadaManualPorOP);
-    opInput.addEventListener("change", preencherChegadaManualPorOP);
-  }
-}
-
-function preencherDatalistsChegadaManualFaccao() {
-  const faccaoList = document.getElementById("chegadaManualFaccaoList");
-  if (faccaoList) {
-    const nomes = new Set();
-    getFaccoesUnicas().forEach(faccao => {
-      if (faccao?.nome) nomes.add(nomeFaccaoCanonico(faccao.nome));
-    });
-    state.movimentacoesProducao
-      .filter(mov => mov.tipoDestino === "faccao" && mov.destino)
-      .forEach(mov => nomes.add(nomeFaccaoCanonico(mov.destino)));
-    faccaoList.innerHTML = [...nomes].sort().map(nome => `<option value="${escapeHtml(nome)}"></option>`).join("");
-  }
-
-  const processoList = document.getElementById("chegadaManualProcessoList");
-  if (processoList) {
-    const processos = new Set(["ENCAPAR BOJO", "SUTIÃ COMPLETO", "SUTIÃ MONTAGEM", "ALÇA"]);
-    state.precosReferencia.forEach(preco => {
-      const processo = normalizarNomeProcesso(preco.processo || preco.servicoNome || "");
-      if (processo) processos.add(processo);
-    });
-    state.movimentacoesProducao.forEach(mov => {
-      const processo = normalizarNomeProcesso(mov.processo || "");
-      if (processo) processos.add(processo);
-    });
-    processoList.innerHTML = [...processos].sort().map(processo => `<option value="${escapeHtml(processo)}"></option>`).join("");
-  }
-}
-
-function abrirModalChegadaManualFaccao() {
-  preencherDatalistsChegadaManualFaccao();
-
-  const form = document.getElementById("formChegadaManualFaccao");
-  if (form) form.reset();
-
-  const dataChegada = document.getElementById("chegadaManualDataChegada");
-  if (dataChegada) dataChegada.value = getDataHojeISO();
-
-  document.getElementById("modalChegadaManualFaccao")?.classList.remove("hidden");
-  document.getElementById("chegadaManualOP")?.focus();
-}
-
-function fecharModalChegadaManualFaccao() {
-  document.getElementById("modalChegadaManualFaccao")?.classList.add("hidden");
-  document.getElementById("formChegadaManualFaccao")?.reset();
-}
-
-function buscarOrdemPorNumeroOP(numeroOP) {
-  const numero = limparTexto(numeroOP);
-  if (!numero) return null;
-  return state.ordens.find(op => limparTexto(op.numeroOP || op.op || op.id) === numero) || null;
-}
-
-function preencherChegadaManualPorOP() {
-  const numeroOP = document.getElementById("chegadaManualOP")?.value || "";
-  const ordem = buscarOrdemPorNumeroOP(numeroOP);
-  if (!ordem) return;
-
-  const ref = document.getElementById("chegadaManualRef");
-  const cor = document.getElementById("chegadaManualCor");
-  const qtd = document.getElementById("chegadaManualQuantidade");
-
-  if (ref && !ref.value) ref.value = ordem.referencia || "";
-  if (cor && !cor.value) cor.value = ordem.cor || "";
-  if (qtd && !qtd.value) qtd.value = numeroQuantidadeOP(ordem) || "";
-}
-
-async function confirmarChegadaManualFaccao(event) {
-  event.preventDefault();
-
-  const numeroOP = limparTexto(document.getElementById("chegadaManualOP")?.value || "");
-  const referencia = normalizarReferencia(document.getElementById("chegadaManualRef")?.value || "");
-  const cor = normalizarCor(document.getElementById("chegadaManualCor")?.value || "");
-  const quantidade = Math.max(0, Number(document.getElementById("chegadaManualQuantidade")?.value || 0));
-  const processo = normalizarNomeProcesso(document.getElementById("chegadaManualProcesso")?.value || "");
-  const faccao = nomeFaccaoCanonico(document.getElementById("chegadaManualFaccao")?.value || "");
-  const dataEnvio = document.getElementById("chegadaManualDataEnvio")?.value || "";
-  const dataChegada = document.getElementById("chegadaManualDataChegada")?.value || "";
-  const observacao = document.getElementById("chegadaManualObs")?.value?.trim() || "";
-
-  if (!numeroOP || !referencia || !cor || !quantidade || !processo || !faccao || !dataChegada) {
-    toast("Preencha OP, REF, cor, quantidade, processo, facção e data de chegada.");
-    return;
-  }
-
-  const ordem = buscarOrdemPorNumeroOP(numeroOP);
-  const docId = docIdSeguro(`manual-chegada-faccao-${numeroOP}-${faccao}-${processo}-${dataChegada}-${Date.now()}`);
-
-  const movimentacao = {
-    id: docId,
-    origem: "chegada_manual_faccao",
-    origemManual: true,
-    tipoDestino: "faccao",
-    tipoDestinoLabel: "Facção",
-    opId: ordem?.id || "",
-    numeroOP,
-    referencia,
-    cor,
-    produtoNome: ordem?.produtoNome || ordem?.nomeProduto || "",
-    setor: ordem?.tipo || ordem?.setor || "sutia",
-    destino: faccao,
-    processo,
-    quantidadeEnviada: quantidade,
-    quantidadeRecebida: quantidade,
-    dataEnvio,
-    dataEnvioNaoInformada: !dataEnvio,
-    dataChegada,
-    falta: 0,
-    descontoDefeito: 0,
-    defeito: 0,
-    status: "retornou",
-    observacoes: observacao || "Chegada manual lançada pela aba Facções.",
-    criadoPor: state.currentUser.uid,
-    criadoEm: serverTimestamp(),
-    atualizadoPor: state.currentUser.uid,
-    atualizadoEm: serverTimestamp()
-  };
-
-  try {
-    await setDoc(doc(db, "movimentacoesProducao", docId), movimentacao, { merge: true });
-
-    const pagamento = await gerarPagamentoPorMovimentacao(movimentacao);
-
-    await registrarLog(
-      "chegada_manual_faccao",
-      "movimentacaoProducao",
-      docId,
-      `OP ${numeroOP} | ${faccao} | ${processo} | chegou ${quantidade} peças | lançamento manual`
-    );
-
-    fecharModalChegadaManualFaccao();
-    renderFaccoesMovimentacoes();
-
-    toast(pagamento.ok
-      ? `Chegada manual salva e pagamento gerado: ${formatarMoedaBR(pagamento.total)}.`
-      : `Chegada manual salva. ${pagamento.motivo || "Pagamento ficou pendente para conferência."}`);
-  } catch (error) {
-    console.error(error);
-    toast("Erro ao salvar chegada manual. Verifique permissões e tente novamente.");
-  }
-}
-
 function registrarChegadaMovimentacao(id) {
   const mov = state.movimentacoesProducao.find(item => item.id === id);
   if (!mov) return;
@@ -11338,7 +11170,6 @@ window.toggleMenuAcoesManejo = toggleMenuAcoesManejo;
 window.fecharMenusAcoesManejo = fecharMenusAcoesManejo;
 window.abrirModalAjusteMigracao = abrirModalAjusteMigracao;
 window.abrirRastreamentoOP = abrirRastreamentoOP;
-window.abrirModalChegadaManualFaccao = abrirModalChegadaManualFaccao;
 window.registrarChegadaMovimentacao = registrarChegadaMovimentacao;
 window.encaminharMovimentacao = encaminharMovimentacao;
 window.reenviarMovimentacaoParaFaccao = reenviarMovimentacaoParaFaccao;

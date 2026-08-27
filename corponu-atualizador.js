@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-26-pagamentos-detalhes-sutia-completo-258";
+  const LOCAL_RELEASE = "2026-08-26-faccoes-sem-chegada-manual-259";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -25,21 +25,16 @@
   ];
 
   const PACOTE_SUTIA_FACCOES = [
-    ["corponu-chegada-manual-sutia-pagamento-automatico.js", "chegada-manual-sutia-pagamento-automatico", "Não foi possível ativar o pagamento automático do Sutiã Completo na chegada manual."],
-    ["corponu-chegada-manual-trava-movimentacao.js", "chegada-manual-trava-movimentacao", "Não foi possível carregar a trava de movimentação da chegada manual."],
     ["corponu-componentes-consolidados-hotfix.js", "componentes-nao-informados", "Não foi possível proteger componentes ainda não informados."],
     ["corponu-reenvio-sutia-componentes.js", "reenvio-sutia-componentes", "Não foi possível conferir lateral e bojo no reenvio para Sutiã Completo."],
     ["corponu-sutia-912-fluxo-rapido.js", "sutia-912-fluxo-rapido", "Não foi possível ativar o fluxo rápido da referência 912."],
     ["corponu-sutia-completo-calculo.js", "sutia-completo-calculo", "Não foi possível carregar o cálculo automático do Sutiã Completo."],
     ["corponu-sutia-completo-chegada-rapida.js", "sutia-completo-chegada-rapida", "Não foi possível ativar a chegada rápida do Sutiã Completo."],
     ["corponu-sutia-completo-fallbacks-off.js", "sutia-completo-fallbacks-off", "Não foi possível desativar reconciliações antigas do Sutiã Completo."],
-    ["corponu-sutia-completo-reconciliacao-manual.js", "sutia-completo-reconciliacao-manual", "Não foi possível reconciliar a chegada manual do Sutiã Completo."],
     ["corponu-sutia-completo-referencia-especial-integral.js", "sutia-especial-integral", "Não foi possível aplicar o valor integral da referência especial."],
-    ["corponu-sutia-912-chegada-manual-sem-verificacoes.js", "sutia-912-sem-verificacoes", "Não foi possível remover verificações extras da referência 912."],
     ["corponu-sutia-completo-compatibilidade.js", "sutia-completo-compatibilidade", "Não foi possível carregar a compatibilidade do Sutiã Completo."],
     ["corponu-sutia-completo-ponto-luz-411-206.js", "sutia-ponto-luz-411", "Não foi possível carregar a regra de ponto de luz da referência 411."],
     ["corponu-chegada-sem-componentes-duplicados.js", "chegada-sem-componentes-duplicados", "Não foi possível remover a conferência duplicada de componentes."],
-    ["corponu-chegada-manual-sem-componentes-duplicados.js", "chegada-manual-sem-componentes-duplicados", "Não foi possível remover a conferência duplicada na chegada manual."],
     ["corponu-chegada-sutia-sync-legado.js", "chegada-sutia-definitiva", "Não foi possível carregar a chegada definitiva do Sutiã Completo."]
   ];
 
@@ -73,7 +68,6 @@
       MODULO_GRUPOS_FACCOES,
       ["corponu-faccoes-exclusao-pagamento-vinculado.js", "faccoes-exclusao-pagamento-vinculado", "Não foi possível vincular exclusão da facção ao pagamento."],
       ["corponu-faccao-cadastro-recolhido.js", "faccao-cadastro-recolhido", "Não foi possível carregar o cadastro recolhido de facção."],
-      ["corponu-chegada-manual-visual.js", "chegada-manual-visual", "Não foi possível carregar a aparência da chegada manual."],
       ["corponu-faccoes-lateral-alca-254.js", "faccoes-lateral-alca-254", "Não foi possível carregar a área nativa de Lateral e Alça."],
       ["corponu-faccoes-tres-abas-saida.js", "faccoes-tres-abas-saida", "Não foi possível carregar as abas de Facções."],
       ["corponu-revisao-lateral-bojo-fix.js", "revisao-lateral-bojo-fix", "Não foi possível proteger Revisão lateral e bojo."],

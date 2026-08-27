@@ -681,8 +681,7 @@
               <p>Acompanhe tudo que está nas facções externas. O cadastro fica separado em Gerenciar facções.</p>
             </div>
             <div class="actions">
-              <button class="btn btn-success" id="btnAbrirChegadaManualFaccao" type="button">Chegada manual</button>
-              <button class="btn" id="btnToggleGerenciarFaccoes" type="button">Gerenciar facções</button>
+                            <button class="btn" id="btnToggleGerenciarFaccoes" type="button">Gerenciar facções</button>
             </div>
           </div>
 
@@ -1895,84 +1894,6 @@
         <div class="actions">
           <button class="btn btn-primary" type="submit">Confirmar envio</button>
           <button class="btn" id="btnCancelarModalMovimentacao" type="button">Cancelar</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div class="modal-backdrop hidden" id="modalChegadaManualFaccao">
-    <div class="modal-card chegada-modal-card">
-      <div class="modal-header">
-        <div>
-          <h3>Chegada manual de facção</h3>
-          <p>Use quando a remessa chegou, mas o envio/chegada não foi lançado antes. O histórico será preservado.</p>
-        </div>
-        <button class="modal-close" id="btnFecharModalChegadaManualFaccao" type="button">×</button>
-      </div>
-
-      <form id="formChegadaManualFaccao" class="form movimentacao-form">
-        <div class="movimentacao-op-info">
-          Lançamento manual: cria uma movimentação de facção já marcada como chegada/retornada.
-        </div>
-
-        <label>
-          Nº OP
-          <input id="chegadaManualOP" type="text" inputmode="numeric" placeholder="Ex: 58193" required />
-        </label>
-
-        <div class="form-grid three">
-          <label>
-            REF
-            <input id="chegadaManualRef" type="text" placeholder="Ex: 912" required />
-          </label>
-
-          <label>
-            Cor
-            <input id="chegadaManualCor" type="text" placeholder="Ex: PRETO" required />
-          </label>
-
-          <label>
-            Quantidade recebida
-            <input id="chegadaManualQuantidade" type="number" min="1" step="1" required />
-          </label>
-        </div>
-
-        <label>
-          O que foi feito / processo
-          <input id="chegadaManualProcesso" type="text" list="chegadaManualProcessoList" placeholder="Ex: ENCAPAR BOJO" required />
-          <datalist id="chegadaManualProcessoList"></datalist>
-        </label>
-
-        <label>
-          Quem fez / facção
-          <input id="chegadaManualFaccao" type="text" list="chegadaManualFaccaoList" placeholder="Ex: NAGILA" required />
-          <datalist id="chegadaManualFaccaoList"></datalist>
-        </label>
-
-        <div class="form-grid two">
-          <label>
-            Data que foi para facção
-            <input id="chegadaManualDataEnvio" type="date" />
-          </label>
-
-          <label>
-            Data de chegada
-            <input id="chegadaManualDataChegada" type="date" required />
-          </label>
-        </div>
-
-        <label>
-          Observação
-          <textarea id="chegadaManualObs" rows="2" placeholder="Ex: Lançamento manual porque a remessa chegou sem registro anterior."></textarea>
-        </label>
-
-        <div class="notice small">
-          Esse lançamento não apaga nada. Ele apenas cria um histórico manual de chegada e, se houver preço cadastrado para REF + processo, gera o pagamento. Se não houver preço, fica pendente para adicionar valor.
-        </div>
-
-        <div class="actions">
-          <button class="btn btn-success" type="submit">Salvar chegada manual</button>
-          <button class="btn" id="btnCancelarChegadaManualFaccao" type="button">Cancelar</button>
         </div>
       </form>
     </div>
