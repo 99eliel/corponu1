@@ -1,74 +1,132 @@
 const fs = require('fs');
 
 const OLD_RELEASE = '2026-08-27-faccoes-filtro-chegada-avisada-261';
-const NEW_RELEASE = '2026-08-27-faccoes-aviso-chegada-nativo-262';
-const AVISO_VERSION = '2026-08-27-aviso-chegada-nativo-262';
+const NEW_RELEASE = '2026-08-27-faccoes-aviso-chegada-sutia-262';
+const AVISO_VERSION_ANTIGA = '2026-08-06-aviso-chegada-admin-130';
+const AVISO_VERSION_NOVA = '2026-08-27-aviso-chegada-sutia-262';
+const ABAS_VERSION_ANTIGA = '2026-08-26-faccoes-abas-sem-saida-lateral-254';
+const ABAS_VERSION_NOVA = '2026-08-27-faccoes-abas-aviso-sutia-262';
 
 function read(path) { return fs.readFileSync(path, 'utf8'); }
 function write(path, content) { fs.writeFileSync(path, content, 'utf8'); }
 function replaceOnce(text, search, replacement, label) {
   const first = text.indexOf(search);
   if (first < 0) throw new Error(`Bloco não encontrado: ${label}`);
-  if (text.indexOf(search, first + search.length) >= 0) throw new Error(`Bloco duplicado: ${label}`);
+  if (text.indexOf(search, first + search.length) >= 0) throw new Error(`Bloco duplicado inesperadamente: ${label}`);
   return text.slice(0, first) + replacement + text.slice(first + search.length);
 }
 
-// ---------------- app.js: tabela oficial de Facções ----------------
+// 1) app.js — o aviso passa a nascer na própria linha, exclusivamente para movimentações de Sutiã.
 let app = read('app.js');
-if (app.includes('function htmlChegadaAvisadaFaccoes(')) {
-  throw new Error('htmlChegadaAvisadaFaccoes já existe; abortando para não duplicar.');
+if (app.includes('function htmlChegadaAvisadaSutiaFaccoes(')) {
+  throw new Error('O aviso nativo de Sutiã já existe no app.js.');
 }
 
-const markerSituacao = `function getFiltrosFaccoesMovimentacoes() {`;
-const helperNativo = `function htmlChegadaAvisadaFaccoes(mov) {\n  if (situacaoChegadaFaccoes(mov) !== "avisada") return "";\n\n  const nome = String(mov?.chegadaInformadaPorNome || "usuário").trim() || "usuário";\n  const data = dataISOParaBR(mov?.chegadaInformadaData) || mov?.chegadaInformadaData || "";\n  const detalhe = [nome ? \`por \${nome}\` : "", data].filter(Boolean).join(" • ");\n\n  return \`\n    <span class="badge pending" data-chegada-avisada-nativa="1" title="Chegada avisada\${detalhe ? ` • ${escapeHtml(detalhe)}` : ""}">Chegada avisada</span>\n    \${detalhe ? `<small class="muted" style="display:block;margin-top:4px">${escapeHtml(detalhe)}</small>` : ""}\n  \`;\n}\n\n`;
-app = replaceOnce(app, markerSituacao, helperNativo + markerSituacao, 'helper nativo antes de getFiltrosFaccoesMovimentacoes');
+const markerFiltros = 'function getFiltrosFaccoesMovimentacoes() {';
+const helper = [
+  'function ehMovimentacaoSutiaFaccoes(mov) {',
+  '  const contexto = normalizarTexto([mov?.area, mov?.setor, mov?.areaLabel, mov?.setorLabel].filter(Boolean).join(" "));',
+  '  if (contexto.includes("calcinha") || contexto.includes("lateral") || contexto.includes("alca") || contexto.includes("corte")) return false;',
+  '  if (contexto.includes("sutia")) return true;',
+  '',
+  '  const processo = normalizarTexto(mov?.processo || "");',
+  '  return processo === "encapar bojo" || processo === "interlock" || processo.includes("sutia");',
+  '}',
+  '',
+  'function htmlChegadaAvisadaSutiaFaccoes(mov) {',
+  '  if (!ehMovimentacaoSutiaFaccoes(mov) || situacaoChegadaFaccoes(mov) !== "avisada") return "";',
+  '',
+  '  const nome = String(mov?.chegadaInformadaPorNome || "usuário").trim() || "usuário";',
+  '  const data = dataISOParaBR(mov?.chegadaInformadaData) || mov?.chegadaInformadaData || "";',
+  '  const detalhe = [`por ${nome}`, data].filter(Boolean).join(" • ");',
+  '',
+  '  return `',
+  '    <span class="badge pending chegada-avisada-sutia" data-chegada-avisada-nativa="1" title="Chegada avisada${detalhe ? ` • ${escapeHtml(detalhe)}` : ""}">Chegada avisada</span>',
+  '    ${detalhe ? `<small class="muted chegada-avisada-sutia" style="display:block;margin-top:4px">${escapeHtml(detalhe)}</small>` : ""}',
+  '  `;',
+  '}',
+  '',
+  ''
+].join('\n');
+app = replaceOnce(app, markerFiltros, helper + markerFiltros, 'helpers do aviso de Sutiã');
 
-const textoBusca = `      mov.dataEnvio,\n      mov.dataChegada\n    ].join(" "));`;
-const textoBuscaNovo = `      mov.dataEnvio,\n      mov.dataChegada,\n      situacaoChegadaFaccoes(mov) === "avisada" ? "chegada avisada aguardando baixa" : "",\n      mov.chegadaInformadaPorNome,\n      mov.chegadaInformadaData\n    ].join(" "));`;
-app = replaceOnce(app, textoBusca, textoBuscaNovo, 'texto de busca da tabela de Facções');
-
-const rowOpen = `  tbody.innerHTML = movimentos.map(mov => \`\n    <tr class="\${mov.status === "em_andamento" || !mov.status ? "mov-em-faccao" : ""}">`;
-const rowOpenNovo = `  tbody.innerHTML = movimentos.map(mov => \`\n    <tr class="\${mov.status === "em_andamento" || !mov.status ? "mov-em-faccao" : ""}" \${situacaoChegadaFaccoes(mov) === "avisada" ? 'data-chegada-avisada-nativa="1"' : ""}>`;
-app = replaceOnce(app, rowOpen, rowOpenNovo, 'abertura da linha de Facções');
-
-const statusCell = `      <td>\n        <span class="badge \${classeStatusMovimento(mov.status)}">\n          \${escapeHtml(labelStatusMovimento(mov.status))}\n        </span>\n      </td>`;
-const statusCellNovo = `      <td>\n        <span class="badge \${classeStatusMovimento(mov.status)}">\n          \${escapeHtml(labelStatusMovimento(mov.status))}\n        </span>\n        \${htmlChegadaAvisadaFaccoes(mov)}\n      </td>`;
+const statusCell = [
+  '      <td>',
+  '        <span class="badge ${classeStatusMovimento(mov.status)}">',
+  '          ${escapeHtml(labelStatusMovimento(mov.status))}',
+  '        </span>',
+  '      </td>'
+].join('\n');
+const statusCellNovo = [
+  '      <td>',
+  '        <span class="badge ${classeStatusMovimento(mov.status)}">',
+  '          ${escapeHtml(labelStatusMovimento(mov.status))}',
+  '        </span>',
+  '        ${htmlChegadaAvisadaSutiaFaccoes(mov)}',
+  '      </td>'
+].join('\n');
 app = replaceOnce(app, statusCell, statusCellNovo, 'célula Status da tabela de Facções');
+
+const textoBusca = [
+  '      mov.dataEnvio,',
+  '      mov.dataChegada',
+  '    ].join(" "));'
+].join('\n');
+const textoBuscaNovo = [
+  '      mov.dataEnvio,',
+  '      mov.dataChegada,',
+  '      ehMovimentacaoSutiaFaccoes(mov) && situacaoChegadaFaccoes(mov) === "avisada" ? "chegada avisada aguardando baixa" : "",',
+  '      mov.chegadaInformadaPorNome,',
+  '      mov.chegadaInformadaData',
+  '    ].join(" "));'
+].join('\n');
+app = replaceOnce(app, textoBusca, textoBuscaNovo, 'texto de busca da tabela de Facções');
 write('app.js', app);
 
-// ---------------- Lateral/Alça: também renderiza o aviso na própria linha ----------------
-let lateral = read('corponu-faccoes-lateral-alca-254.js');
-if (lateral.includes('function chegadaAvisadaNativa(')) {
-  throw new Error('chegadaAvisadaNativa já existe em Lateral/Alça.');
-}
+// 2) Abas de Facções — informa explicitamente qual aba está ativa e garante que o selo só possa aparecer em Sutiã.
+let abas = read('corponu-faccoes-tres-abas-saida.js');
+abas = replaceOnce(abas, `const V = "${ABAS_VERSION_ANTIGA}";`, `const V = "${ABAS_VERSION_NOVA}";`, 'versão das três abas');
 
-const markerLabelStatus = `  function labelStatus(item) {`;
-const lateralHelpers = `  function chegadaAvisadaNativa(item) {\n    const statusAviso = norm(item?.chegadaInformadaStatus || "");\n    return item?.chegadaInformada === true && statusAviso !== "CONFIRMADA_ADMIN" && !item?.dataChegada;\n  }\n\n  function htmlChegadaAvisadaNativa(item) {\n    if (!chegadaAvisadaNativa(item)) return "";\n    const nome = String(item?.chegadaInformadaPorNome || "usuário").trim() || "usuário";\n    const data = dataBR(item?.chegadaInformadaData || "");\n    const detalhe = [\`por \${nome}\`, data].filter(Boolean).join(" • ");\n    return \` <span class="corte-pill valor" data-chegada-avisada-nativa="1" title="\${html(detalhe)}">Chegada avisada</span>\`;\n  }\n\n`;
-lateral = replaceOnce(lateral, markerLabelStatus, lateralHelpers + markerLabelStatus, 'helper de aviso nativo de Lateral/Alça');
+const marcarInicio = [
+  '  function marcar(a) {',
+  '    const x = abas();',
+  '    const c = document.getElementById("abaFaccaoCorte");',
+  '    if (!x) return;'
+].join('\n');
+const marcarInicioNovo = [
+  '  function marcar(a) {',
+  '    const x = abas();',
+  '    const c = document.getElementById("abaFaccaoCorte");',
+  '    if (!x) return;',
+  '    x.p.dataset.faccaoAbaAtiva = a;'
+].join('\n');
+abas = replaceOnce(abas, marcarInicio, marcarInicioNovo, 'marcação da aba ativa');
 
-const lateralRow = `      return \`<tr data-movimentacao-id="\${html(item.id)}">`;
-const lateralRowNovo = `      return \`<tr data-movimentacao-id="\${html(item.id)}" \${chegadaAvisadaNativa(item) ? 'data-chegada-avisada-nativa="1"' : ""}>`;
-lateral = replaceOnce(lateral, lateralRow, lateralRowNovo, 'linha de Lateral/Alça');
+const cssTrecho = `s.textContent = \`#faccoes tr.\${CLASSE_TIPO_INCOMPATIVEL}{display:none!important}`;
+const cssTrechoNovo = `s.textContent = \`#faccoes:not([data-faccao-aba-ativa="sutia"]) .chegada-avisada-sutia{display:none!important}#faccoes tr.\${CLASSE_TIPO_INCOMPATIVEL}{display:none!important}`;
+abas = replaceOnce(abas, cssTrecho, cssTrechoNovo, 'CSS exclusivo do aviso na aba Sutiã');
+write('corponu-faccoes-tres-abas-saida.js', abas);
 
-const lateralStatus = `        <td>\${labelStatus(item)}\${pagamento && (pagamento.valorPendente === true || statusNormalizado(pagamento.statusPagamento) === "SEM_VALOR") ? ' <span class="corte-pill valor">Valor a definir</span>' : ""}</td>`;
-const lateralStatusNovo = `        <td>\${labelStatus(item)}\${htmlChegadaAvisadaNativa(item)}\${pagamento && (pagamento.valorPendente === true || statusNormalizado(pagamento.statusPagamento) === "SEM_VALOR") ? ' <span class="corte-pill valor">Valor a definir</span>' : ""}</td>`;
-lateral = replaceOnce(lateral, lateralStatus, lateralStatusNovo, 'Status de Lateral/Alça');
-write('corponu-faccoes-lateral-alca-254.js', lateral);
-
-// ---------------- módulo legado: não duplicar o badge quando a linha já o possui nativamente ----------------
+// 3) Módulo antigo — para de desenhar o badge transitório, mas preserva ações de reenvio e todo o fluxo usuário/admin.
 let aviso = read('corponu-aviso-chegada-admin-130.js');
-aviso = replaceOnce(
-  aviso,
-  'const VERSION = "2026-08-06-aviso-chegada-admin-130";',
-  `const VERSION = "${AVISO_VERSION}";`,
-  'versão do módulo de aviso'
-);
-const badgeStart = `  function badge(cel, m) {\n    if (!cel || !m) return;`;
-const badgeStartNovo = `  function badge(cel, m) {\n    if (!cel || !m) return;\n    const linha = cel.closest?.("tr");\n    if (linha?.querySelector?.('[data-chegada-avisada-nativa="1"]') || linha?.dataset?.chegadaAvisadaNativa === "1") return;`;
-aviso = replaceOnce(aviso, badgeStart, badgeStartNovo, 'proteção contra badge duplicado');
+aviso = replaceOnce(aviso, `const VERSION = "${AVISO_VERSION_ANTIGA}";`, `const VERSION = "${AVISO_VERSION_NOVA}";`, 'versão do módulo de aviso');
+
+const badgeCabecalho = [
+  '  function badge(cel, m) {',
+  '    if (!cel || !m) return;',
+  '    let b = cel.querySelector(`[data-aviso-chegada-badge="${CSS.escape(m.id)}"]`);',
+  '    if (!b) { b = document.createElement("span"); b.dataset.avisoChegadaBadge = m.id; b.style.cssText = "display:inline-flex;margin:3px 4px 3px 0;padding:5px 8px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:900;white-space:normal"; cel.prepend(b); }',
+  '    setText(b, `Chegada avisada por ${m.chegadaInformadaPorNome || "usuário"}${m.chegadaInformadaEm || m.chegadaInformadaData ? ` • ${dataBR(m.chegadaInformadaEm || m.chegadaInformadaData)}` : ""}`);'
+].join('\n');
+const badgeCabecalhoNovo = [
+  '  function badge(cel, m) {',
+  '    if (!cel || !m) return;',
+  '    cel.querySelector(`[data-aviso-chegada-badge="${CSS.escape(m.id)}"]`)?.remove();'
+].join('\n');
+aviso = replaceOnce(aviso, badgeCabecalho, badgeCabecalhoNovo, 'remoção do badge transitório antigo');
 write('corponu-aviso-chegada-admin-130.js', aviso);
 
-// ---------------- release/cache ----------------
+// 4) Release/cache.
 let index = read('index.html');
 if (!index.includes(OLD_RELEASE)) throw new Error('Release 261 não encontrado no index.html');
 index = index.split(OLD_RELEASE).join(NEW_RELEASE);
@@ -80,31 +138,28 @@ if (!update.includes(`const APP_VERSION = "${OLD_RELEASE}";`)) throw new Error('
 update = update.replace(`const APP_VERSION = "${OLD_RELEASE}";`, `const APP_VERSION = "${NEW_RELEASE}";`);
 write('update.js', update);
 
-let updater = read('corponu-atualizador.js');
-if (!updater.includes(`const LOCAL_RELEASE = "${OLD_RELEASE}";`)) throw new Error('LOCAL_RELEASE 261 não encontrado');
-updater = updater.replace(`const LOCAL_RELEASE = "${OLD_RELEASE}";`, `const LOCAL_RELEASE = "${NEW_RELEASE}";`);
-write('corponu-atualizador.js', updater);
+let atualizador = read('corponu-atualizador.js');
+if (!atualizador.includes(`const LOCAL_RELEASE = "${OLD_RELEASE}";`)) throw new Error('LOCAL_RELEASE 261 não encontrado');
+atualizador = atualizador.replace(`const LOCAL_RELEASE = "${OLD_RELEASE}";`, `const LOCAL_RELEASE = "${NEW_RELEASE}";`);
+write('corponu-atualizador.js', atualizador);
 
-const notes = 'Produção. Corrigido o aviso de chegada que aparecia e desaparecia na OP da aba Facções. O estado chegadaInformada agora é renderizado nativamente pela própria tabela oficial, junto ao Status da movimentação, incluindo quem avisou e a data quando disponíveis. A busca da tabela também reconhece chegada avisada. A área Lateral e Alça recebeu o mesmo tratamento nativo. O módulo legado de aviso foi mantido somente para compatibilidade do fluxo de usuário/admin, mas passou a não injetar badge quando a linha já contém o aviso nativo, eliminando concorrência visual e duplicidade. O filtro Chegada da versão 261 foi preservado. Nenhuma regra do Firebase foi alterada.';
-write('corponu-release.json', JSON.stringify({ version: NEW_RELEASE, updatedAt: '2026-08-27T17:30:00-03:00', notes }, null, 2) + '\n');
-write('version.json', JSON.stringify({ version: NEW_RELEASE, updatedAt: '2026-08-27T17:30:00-03:00', notes: 'Aviso de chegada agora é renderizado nativamente na OP e não depende de reinjeção visual posterior.' }, null, 2) + '\n');
+const notes = 'Produção. Corrigido o aviso de chegada da aba Sutiã em Facções. O selo Chegada avisada agora é renderizado pela própria linha da movimentação, portanto não some quando a tabela é redesenhada. O aviso visual é exclusivo da aba Sutiã e de movimentações identificadas como Sutiã (area/setor Sutiã ou processos Sutiã, ENCAPAR BOJO e INTERLOCK). Calcinha e Lateral/Alça não recebem esse selo. O módulo antigo deixou de injetar o badge transitório que causava o efeito de aparecer/sumir, mas preserva confirmação do administrador, aviso do usuário e reenvio. O filtro de Chegada da versão 261 permanece funcionando. Nenhuma regra do Firebase foi alterada.';
+write('corponu-release.json', JSON.stringify({ version: NEW_RELEASE, updatedAt: '2026-08-27T17:40:00-03:00', notes }, null, 2) + '\n');
+write('version.json', JSON.stringify({ version: NEW_RELEASE, updatedAt: '2026-08-27T17:40:00-03:00', notes: 'Aviso Chegada avisada estabilizado e restrito exclusivamente à aba Sutiã de Facções.' }, null, 2) + '\n');
 
-// ---------------- pós-condições ----------------
+// Pós-condições.
 const appFinal = read('app.js');
-const lateralFinal = read('corponu-faccoes-lateral-alca-254.js');
+const abasFinal = read('corponu-faccoes-tres-abas-saida.js');
 const avisoFinal = read('corponu-aviso-chegada-admin-130.js');
-for (const token of [
-  'function htmlChegadaAvisadaFaccoes(',
-  'data-chegada-avisada-nativa="1"',
-  '${htmlChegadaAvisadaFaccoes(mov)}',
-  'chegada avisada aguardando baixa'
-]) if (!appFinal.includes(token)) throw new Error(`Pós-condição app.js ausente: ${token}`);
-for (const token of ['function chegadaAvisadaNativa(', 'htmlChegadaAvisadaNativa(item)', 'data-chegada-avisada-nativa="1"']) {
-  if (!lateralFinal.includes(token)) throw new Error(`Pós-condição Lateral/Alça ausente: ${token}`);
+for (const token of ['function ehMovimentacaoSutiaFaccoes(', 'function htmlChegadaAvisadaSutiaFaccoes(', '${htmlChegadaAvisadaSutiaFaccoes(mov)}', 'chegada-avisada-sutia']) {
+  if (!appFinal.includes(token)) throw new Error(`Pós-condição app ausente: ${token}`);
 }
-if (!avisoFinal.includes(AVISO_VERSION) || !avisoFinal.includes('linha?.querySelector?.(\'[data-chegada-avisada-nativa="1"]\')')) {
-  throw new Error('Módulo legado não recebeu a proteção de duplicidade.');
+for (const token of ['data-faccao-aba-ativa="sutia"', 'x.p.dataset.faccaoAbaAtiva = a;', ABAS_VERSION_NOVA]) {
+  if (!abasFinal.includes(token)) throw new Error(`Pós-condição abas ausente: ${token}`);
 }
-if (!read('corponu-atualizador.js').includes(NEW_RELEASE) || !read('update.js').includes(NEW_RELEASE)) throw new Error('Release 262 não aplicado nos atualizadores');
+if (!avisoFinal.includes(AVISO_VERSION_NOVA)) throw new Error('Versão nova do módulo de aviso não aplicada');
+if (avisoFinal.includes('b.dataset.avisoChegadaBadge = m.id')) throw new Error('O módulo antigo ainda cria o badge transitório');
+if (!avisoFinal.includes('data-aviso-reenvio-badge')) throw new Error('A lógica de reenvio foi removida indevidamente');
+if (!read('corponu-atualizador.js').includes(NEW_RELEASE) || !read('update.js').includes(NEW_RELEASE)) throw new Error('Release 262 incompleto');
 
-console.log('Aviso de chegada nativo 262 aplicado com sucesso.');
+console.log('Aviso de chegada exclusivo e nativo da aba Sutiã aplicado com sucesso.');
