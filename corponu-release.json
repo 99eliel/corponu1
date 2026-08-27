@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-26-manejo-calcinha-filtros-identidade-256",
-  "updatedAt": "2026-08-26T19:39:00-03:00",
-  "notes": "Produção. O Manejo Calcinha separa estruturalmente a busca por OP da busca por referência: cada campo consulta somente sua própria identidade, evitando que uma referência numérica traga OPs apenas por coincidência de número. A busca de detalhes permanece separada para cor, produto, fase e necessidade. Foram preservados o multifiltro de Fase, chips, Linha, Status, Limpar filtros, salvamento e envio do módulo 253 ativo. Nenhum módulo de correção por sobreposição foi criado."
+  "version": "2026-08-26-pagamentos-detalhes-sutia-completo-258",
+  "updatedAt": "2026-08-26T21:10:00-03:00",
+  "notes": "Produção. A aba Pagamentos passa a exibir um ícone de informações somente nos lançamentos de SUTIÃ COMPLETO. O detalhe é somente leitura e mostra a memória histórica usada no cálculo: valor base por peça, descontos de Lateral, Bojo, Fecho e Ponto de Luz, valor final por peça, quantidade, subtotal, desconto por defeito e total final. Lançamentos antigos tentam usar a conferência histórica da movimentação; se não houver dados suficientes, o sistema informa a ausência sem recalcular com valores atuais. A funcionalidade foi incorporada ao carregamento oficial da página Pagamentos, sem alterar o cálculo, as regras do Firebase ou criar correções sobrepostas."
 }
