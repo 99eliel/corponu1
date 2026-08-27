@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "2026-08-06-aviso-chegada-admin-130";
+  const VERSION = "2026-08-27-aviso-chegada-sutia-262";
   const FB = "10.12.5";
   if (window.__CORPONU_AVISO_CHEGADA_ADMIN__ === VERSION) return;
   window.__CORPONU_AVISO_CHEGADA_ADMIN__ = VERSION;
@@ -87,9 +87,7 @@
   function idOnclick(btn) { return String(btn?.getAttribute("onclick") || "").match(/registrarChegadaMovimentacao\(\s*['\"]([^'\"]+)/)?.[1] || ""; }
   function badge(cel, m) {
     if (!cel || !m) return;
-    let b = cel.querySelector(`[data-aviso-chegada-badge="${CSS.escape(m.id)}"]`);
-    if (!b) { b = document.createElement("span"); b.dataset.avisoChegadaBadge = m.id; b.style.cssText = "display:inline-flex;margin:3px 4px 3px 0;padding:5px 8px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:900;white-space:normal"; cel.prepend(b); }
-    setText(b, `Chegada avisada por ${m.chegadaInformadaPorNome || "usuário"}${m.chegadaInformadaEm || m.chegadaInformadaData ? ` • ${dataBR(m.chegadaInformadaEm || m.chegadaInformadaData)}` : ""}`);
+    cel.querySelector(`[data-aviso-chegada-badge="${CSS.escape(m.id)}"]`)?.remove();
     if (m.reenviadoOperacionalmente || m.reenvioCriadoId) {
       let r = cel.querySelector(`[data-aviso-reenvio-badge="${CSS.escape(m.id)}"]`);
       if (!r) { r = document.createElement("span"); r.dataset.avisoReenvioBadge = m.id; r.style.cssText = "display:inline-flex;margin:3px;padding:5px 8px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:900"; cel.appendChild(r); }

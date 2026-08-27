@@ -5118,6 +5118,28 @@ function situacaoChegadaFaccoes(mov) {
   return "nao_avisada";
 }
 
+function ehMovimentacaoSutiaFaccoes(mov) {
+  const contexto = normalizarTexto([mov?.area, mov?.setor, mov?.areaLabel, mov?.setorLabel].filter(Boolean).join(" "));
+  if (contexto.includes("calcinha") || contexto.includes("lateral") || contexto.includes("alca") || contexto.includes("corte")) return false;
+  if (contexto.includes("sutia")) return true;
+
+  const processo = normalizarTexto(mov?.processo || "");
+  return processo === "encapar bojo" || processo === "interlock" || processo.includes("sutia");
+}
+
+function htmlChegadaAvisadaSutiaFaccoes(mov) {
+  if (!ehMovimentacaoSutiaFaccoes(mov) || situacaoChegadaFaccoes(mov) !== "avisada") return "";
+
+  const nome = String(mov?.chegadaInformadaPorNome || "usuário").trim() || "usuário";
+  const data = dataISOParaBR(mov?.chegadaInformadaData) || mov?.chegadaInformadaData || "";
+  const detalhe = [`por ${nome}`, data].filter(Boolean).join(" • ");
+
+  return `
+    <span class="badge pending chegada-avisada-sutia" data-chegada-avisada-nativa="1" title="Chegada avisada${detalhe ? ` • ${escapeHtml(detalhe)}` : ""}">Chegada avisada</span>
+    ${detalhe ? `<small class="muted chegada-avisada-sutia" style="display:block;margin-top:4px">${escapeHtml(detalhe)}</small>` : ""}
+  `;
+}
+
 function getFiltrosFaccoesMovimentacoes() {
   return {
     busca: normalizarTexto(document.getElementById("buscaFaccaoMovimentacoes")?.value || ""),
@@ -5213,7 +5235,10 @@ function renderFaccoesMovimentacoes() {
       status,
       labelStatusMovimento(status),
       mov.dataEnvio,
-      mov.dataChegada
+      mov.dataChegada,
+      ehMovimentacaoSutiaFaccoes(mov) && situacaoChegadaFaccoes(mov) === "avisada" ? "chegada avisada aguardando baixa" : "",
+      mov.chegadaInformadaPorNome,
+      mov.chegadaInformadaData
     ].join(" "));
 
     if (filtros.busca && !texto.includes(filtros.busca)) return false;
@@ -5271,6 +5296,7 @@ function renderFaccoesMovimentacoes() {
         <span class="badge ${classeStatusMovimento(mov.status)}">
           ${escapeHtml(labelStatusMovimento(mov.status))}
         </span>
+        ${htmlChegadaAvisadaSutiaFaccoes(mov)}
       </td>
       <td>
         ${mov.status === "encaminhado" ? `<span class="badge info">Saiu da facção</span>` : ""}

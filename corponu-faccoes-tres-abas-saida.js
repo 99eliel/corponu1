@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const V = "2026-08-26-faccoes-abas-sem-saida-lateral-254";
+  const V = "2026-08-27-faccoes-abas-aviso-sutia-262";
   const FB = "10.12.5";
   const PROCESSOS_SAIDA = Object.freeze({
     sutia: ["ENCAPAR BOJO", "SUTIÃ COMPLETO", "INTERLOCK"],
@@ -133,6 +133,7 @@
     const x = abas();
     const c = document.getElementById("abaFaccaoCorte");
     if (!x) return;
+    x.p.dataset.faccaoAbaAtiva = a;
     x.s.classList.toggle("active", a === "sutia");
     x.c.classList.toggle("active", a === "calcinha");
     c?.classList.toggle("active", a === "corte");
@@ -165,7 +166,7 @@
     if (document.getElementById("stFaccoes3")) return;
     const s = document.createElement("style");
     s.id = "stFaccoes3";
-    s.textContent = `#faccoes tr.${CLASSE_TIPO_INCOMPATIVEL}{display:none!important}#modalSaida3.hidden{display:none!important}#modalSaida3{position:fixed;inset:0;z-index:100080;background:#0f172a99;display:flex;align-items:center;justify-content:center;padding:18px}.s3card{width:min(760px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:18px;padding:20px;box-shadow:0 25px 70px #0f172a55}.s3head{display:flex;justify-content:space-between;gap:15px}.s3head h3{margin:0}.s3close{border:0;background:#f1f5f9;border-radius:10px;width:36px;height:36px;font-size:22px}.s3busca{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}.s3grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.s3prev{margin:12px 0;padding:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px}.s3prev.hidden,.s3campos.hidden{display:none!important}.s3info{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.s3info div{background:#fff;border:1px solid #e2e8f0;border-radius:9px;padding:9px}.s3info small{display:block;color:#64748b}.s3info strong{display:block;margin-top:3px}@media(max-width:760px){.s3grid,.s3info,.s3busca{grid-template-columns:1fr}}`;
+    s.textContent = `#faccoes:not([data-faccao-aba-ativa="sutia"]) .chegada-avisada-sutia{display:none!important}#faccoes tr.${CLASSE_TIPO_INCOMPATIVEL}{display:none!important}#modalSaida3.hidden{display:none!important}#modalSaida3{position:fixed;inset:0;z-index:100080;background:#0f172a99;display:flex;align-items:center;justify-content:center;padding:18px}.s3card{width:min(760px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:18px;padding:20px;box-shadow:0 25px 70px #0f172a55}.s3head{display:flex;justify-content:space-between;gap:15px}.s3head h3{margin:0}.s3close{border:0;background:#f1f5f9;border-radius:10px;width:36px;height:36px;font-size:22px}.s3busca{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}.s3grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.s3prev{margin:12px 0;padding:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px}.s3prev.hidden,.s3campos.hidden{display:none!important}.s3info{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.s3info div{background:#fff;border:1px solid #e2e8f0;border-radius:9px;padding:9px}.s3info small{display:block;color:#64748b}.s3info strong{display:block;margin-top:3px}@media(max-width:760px){.s3grid,.s3info,.s3busca{grid-template-columns:1fr}}`;
     document.head.appendChild(s);
   }
 

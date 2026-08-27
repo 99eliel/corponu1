@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-27-faccoes-filtro-chegada-avisada-261",
-  "updatedAt": "2026-08-27T17:08:00-03:00",
-  "notes": "Produção. A aba Facções ganhou um filtro próprio de Chegada, separado do Status da movimentação. O filtro permite ver Todas, Não avisada, Avisada • aguardando baixa e Baixa confirmada. A classificação usa os campos reais já gravados pelo fluxo de aviso de chegada (chegadaInformada, chegadaInformadaStatus, confirmacaoChegadaFinanceira e dataChegada) e trabalha somente sobre state.movimentacoesProducao já carregado, sem criar consultas adicionais ao Firestore, observers ou caminhos paralelos. O resumo do filtro também mostra quantas movimentações estão avisadas aguardando baixa do administrador. O fluxo usuário comum avisa → administrador confirma continua inalterado. version.json foi realinhado ao release atual para evitar divergência de cache/versão. Nenhuma regra do Firebase foi alterada."
+  "version": "2026-08-27-faccoes-aviso-chegada-sutia-262",
+  "updatedAt": "2026-08-27T17:40:00-03:00",
+  "notes": "Produção. Corrigido o aviso de chegada da aba Sutiã em Facções. O selo Chegada avisada agora é renderizado pela própria linha da movimentação, portanto não some quando a tabela é redesenhada. O aviso visual é exclusivo da aba Sutiã e de movimentações identificadas como Sutiã (area/setor Sutiã ou processos Sutiã, ENCAPAR BOJO e INTERLOCK). Calcinha e Lateral/Alça não recebem esse selo. O módulo antigo deixou de injetar o badge transitório que causava o efeito de aparecer/sumir, mas preserva confirmação do administrador, aviso do usuário e reenvio. O filtro de Chegada da versão 261 permanece funcionando. Nenhuma regra do Firebase foi alterada."
 }
