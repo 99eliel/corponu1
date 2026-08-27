@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const V = "2026-08-27-faccoes-abas-aviso-sutia-262";
+  const V = "2026-08-27-faccoes-abas-aviso-sutia-estavel-263";
   const FB = "10.12.5";
   const PROCESSOS_SAIDA = Object.freeze({
     sutia: ["ENCAPAR BOJO", "SUTIÃ COMPLETO", "INTERLOCK"],
@@ -139,6 +139,14 @@
     c?.classList.toggle("active", a === "corte");
   }
 
+  function aplicarAbaAtiva(a = aba) {
+    aba = a;
+    marcar(aba);
+    if (aba === "corte") mostrarCorte();
+    else mostrarGeral();
+    corrigirClassificacaoVisualMovimentacoes();
+  }
+
   function indiceProcessoDaTabela(tabela) {
     const cabecalhos = [...(tabela?.querySelectorAll("thead th") || [])];
     return cabecalhos.findIndex(th => norm(th.textContent) === "PROCESSO");
@@ -216,7 +224,7 @@
       ag.insertBefore(b, ag.firstChild);
     }
 
-    corrigirClassificacaoVisualMovimentacoes();
+    aplicarAbaAtiva(aba);
   }
 
   function abrir(a) {
@@ -525,31 +533,20 @@
     if (!t) return;
 
     if (t.closest('.nav-btn[data-page="faccoes"]')) {
-      setTimeout(() => {
-        preparar();
-        marcar(aba);
-        corrigirClassificacaoVisualMovimentacoes();
-      }, 0);
+      setTimeout(() => preparar(), 0);
     }
 
     const x = abas();
     if (t.closest("#abaFaccaoCorte")) {
       e.preventDefault();
       e.stopImmediatePropagation();
-      aba = "corte";
-      marcar(aba);
-      corrigirClassificacaoVisualMovimentacoes();
-      mostrarCorte();
+      aplicarAbaAtiva("corte");
       return;
     }
 
     if (x && (t.closest("button") === x.s || t.closest("button") === x.c)) {
-      aba = t.closest("button") === x.c ? "calcinha" : "sutia";
-      mostrarGeral();
-      setTimeout(() => {
-        marcar(aba);
-        corrigirClassificacaoVisualMovimentacoes();
-      }, 0);
+      const selecionada = t.closest("button") === x.c ? "calcinha" : "sutia";
+      setTimeout(() => aplicarAbaAtiva(selecionada), 0);
     }
 
     if (t.closest("#btnSaidaAbas")) abrir(aba);

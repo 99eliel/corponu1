@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-27-faccoes-aviso-chegada-sutia-262",
-  "updatedAt": "2026-08-27T17:40:00-03:00",
-  "notes": "Produção. Corrigido o aviso de chegada da aba Sutiã em Facções. O selo Chegada avisada agora é renderizado pela própria linha da movimentação, portanto não some quando a tabela é redesenhada. O aviso visual é exclusivo da aba Sutiã e de movimentações identificadas como Sutiã (area/setor Sutiã ou processos Sutiã, ENCAPAR BOJO e INTERLOCK). Calcinha e Lateral/Alça não recebem esse selo. O módulo antigo deixou de injetar o badge transitório que causava o efeito de aparecer/sumir, mas preserva confirmação do administrador, aviso do usuário e reenvio. O filtro de Chegada da versão 261 permanece funcionando. Nenhuma regra do Firebase foi alterada."
+  "version": "2026-08-27-faccoes-aviso-chegada-sutia-estavel-263",
+  "updatedAt": "2026-08-27T17:55:00-03:00",
+  "notes": "Produção. Corrigida estruturalmente a exibição do aviso de chegada na aba Sutiã de Facções. A aba ativa agora possui um único ponto de controle (aplicarAbaAtiva), usado tanto na inicialização quanto nas trocas entre Sutiã, Calcinha e Lateral/Alça, eliminando a condição em que o lazy loading carregava o módulo depois do clique e deixava o estado da aba indefinido. O aviso continua sendo renderizado nativamente pela própria linha da movimentação e agora exibe explicitamente “Chegada avisada por <nome>”, com a data abaixo quando disponível. O aviso visual permanece exclusivo de Sutiã. Não foram adicionados observers, timers, consultas Firestore, módulos paralelos nem regras novas. Nenhuma regra do Firebase foi alterada."
 }

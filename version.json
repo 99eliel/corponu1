@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-27-faccoes-aviso-chegada-sutia-262",
-  "updatedAt": "2026-08-27T17:40:00-03:00",
-  "notes": "Aviso Chegada avisada estabilizado e restrito exclusivamente à aba Sutiã de Facções."
+  "version": "2026-08-27-faccoes-aviso-chegada-sutia-estavel-263",
+  "updatedAt": "2026-08-27T17:55:00-03:00",
+  "notes": "Facções passou a ter estado de aba centralizado; aviso de Sutiã mostra Chegada avisada por <nome> de forma estável."
 }

@@ -5130,13 +5130,14 @@ function ehMovimentacaoSutiaFaccoes(mov) {
 function htmlChegadaAvisadaSutiaFaccoes(mov) {
   if (!ehMovimentacaoSutiaFaccoes(mov) || situacaoChegadaFaccoes(mov) !== "avisada") return "";
 
-  const nome = String(mov?.chegadaInformadaPorNome || "usuário").trim() || "usuário";
+  const nome = String(mov?.chegadaInformadaPorNome || "Usuário").trim() || "Usuário";
   const data = dataISOParaBR(mov?.chegadaInformadaData) || mov?.chegadaInformadaData || "";
-  const detalhe = [`por ${nome}`, data].filter(Boolean).join(" • ");
+  const mensagem = `Chegada avisada por ${nome}`;
+  const titulo = [mensagem, data].filter(Boolean).join(" • ");
 
   return `
-    <span class="badge pending chegada-avisada-sutia" data-chegada-avisada-nativa="1" title="Chegada avisada${detalhe ? ` • ${escapeHtml(detalhe)}` : ""}">Chegada avisada</span>
-    ${detalhe ? `<small class="muted chegada-avisada-sutia" style="display:block;margin-top:4px">${escapeHtml(detalhe)}</small>` : ""}
+    <span class="badge pending chegada-avisada-sutia" data-chegada-avisada-nativa="1" title="${escapeHtml(titulo)}">${escapeHtml(mensagem)}</span>
+    ${data ? `<small class="muted chegada-avisada-sutia" style="display:block;margin-top:4px">${escapeHtml(data)}</small>` : ""}
   `;
 }
 
