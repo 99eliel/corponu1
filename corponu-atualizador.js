@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-26-faccoes-sem-chegada-manual-259";
+  const LOCAL_RELEASE = "2026-08-26-faccoes-sem-chegada-manual-260";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
