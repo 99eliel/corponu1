@@ -5,7 +5,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-26-faccoes-lateral-alca-nativo-254";
+  const VERSION = "2026-08-26-faccoes-sem-chegada-manual-260-lateral-alca";
   const FB = "10.12.5";
   const CONFIG_ID = "processos-corte";
   const AREA = "corte"; // campo legado preservado para compatibilidade com movimentos/pagamentos existentes
@@ -272,7 +272,6 @@
         <div><h3>Lateral e Alça</h3><p>Acompanhe saídas e chegadas dos processos de Lateral e Alça.</p></div>
         <div class="corte-toolbar">
           <button class="btn btn-primary" id="btnCorteRegistrarSaida" type="button">Registrar saída</button>
-          <button class="btn btn-success" id="btnChegadaManualLateralAlca" type="button">Chegada manual</button>
           <button class="btn" id="btnCorteAtualizar" type="button">Atualizar</button>
           <button class="btn btn-print" id="btnCorteImprimir" type="button">Imprimir</button>
         </div>
@@ -361,22 +360,9 @@
     [...wrapper.children].forEach(child => document.body.appendChild(child));
   }
 
-  function garantirProcessosChegadaManual() {
-    const datalist = document.getElementById("chegadaManualProcessoList");
-    if (!(datalist instanceof HTMLDataListElement)) return;
-    ["LATERAL", "ALÇA"].forEach(processo => {
-      const existe = [...datalist.options].some(option => norm(option.value) === norm(processo));
-      if (existe) return;
-      const option = document.createElement("option");
-      option.value = processo;
-      datalist.appendChild(option);
-    });
-  }
-
   function injetarUI() {
     injetarEstilo();
     montarModais();
-    garantirProcessosChegadaManual();
 
     const page = document.getElementById("faccoes");
     const existing = page?.querySelector(":scope > .faccoes-operacional-panel");
@@ -1690,11 +1676,6 @@
       }
 
       if (target.closest("#btnCorteRegistrarSaida")) return abrirSaida();
-      if (target.closest("#btnChegadaManualLateralAlca")) {
-        garantirProcessosChegadaManual();
-        document.getElementById("btnAbrirChegadaManualFaccao")?.click();
-        return;
-      }
       if (target.closest("#btnCorteAtualizar")) return carregarTudoCorte(true);
       if (target.closest("#btnCorteImprimir")) return imprimirCorte();
       const close = target.closest("[data-fechar-corte]");
@@ -1766,7 +1747,7 @@
       if (form.id === "formPrecoCorte") return salvarPreco(event);
       if (form.id === "formRevisaoComponentes") atualizarOrigemAposRevisaoInterna();
       if (form.id === "formConfigRev") [1500, 3200, 5600].forEach(delay => setTimeout(recalcularTodasLateraisCorte, delay));
-      if (["formChegadaMovimentacao", "formChegadaManualFaccao", "formEntregaPagamento"].includes(form.id)) {
+      if (["formChegadaMovimentacao", "formEntregaPagamento"].includes(form.id)) {
         if (form.id === "formChegadaMovimentacao") {
           const movementId = document.getElementById("chegadaMovimentacaoId")?.value || "";
           if (movementId) {
@@ -1779,7 +1760,7 @@
             }, 700);
           }
         } else {
-          const opNumber = document.getElementById(form.id === "formEntregaPagamento" ? "entregaOP" : "chegadaManualOP")?.value || "";
+          const opNumber = document.getElementById("entregaOP")?.value || "";
           if (opNumber) [900, 2200, 4800].forEach(delay => setTimeout(async () => { const op = await buscarOP(opNumber); if (op) recalcularMontagemPorOP(op.id); }, delay));
         }
       }
