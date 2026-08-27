@@ -23,6 +23,12 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Mapear resíduos antes da remoção
+        shell: bash
+        run: |
+          echo '=== Referências de Chegada manual em update.js ==='
+          grep -n -B 4 -A 7 -E 'ChegadaManual|chegadaManual|CHEGADA MANUAL|chegada_manual_faccao' update.js || true
+
       - name: Remover resíduos da chegada manual
         run: node scripts/limpar-residuos-chegada-manual-260.mjs
 
@@ -35,7 +41,7 @@ jobs:
       - name: Confirmar remoção da raiz
         shell: bash
         run: |
-          ! grep -n -E 'formChegadaManualFaccao|modalChegadaManualFaccao|chegadaManualProcesso|chegadaManualFaccao|btnAbrirChegadaManualFaccao|iniciarHotfixChegadaManual|chegada_manual_faccao' update.js app.js index.html corponu-atualizador.js
+          ! grep -n -E 'ChegadaManual|chegadaManual|chegada_manual_faccao' update.js app.js index.html corponu-atualizador.js
           test ! -e corponu-chegada-manual-faccoes-processo-119-seguro.js
           test ! -e README-CHEGADA-MANUAL-FACCAO.txt
           test -e corponu-faccoes-tres-abas-saida.js
