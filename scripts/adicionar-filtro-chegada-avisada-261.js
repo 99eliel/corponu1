@@ -47,7 +47,6 @@ if (app.includes('function situacaoChegadaFaccoes(') || app.includes('faccaoMovF
   throw new Error('A lógica do filtro de chegada já existe no app.js; abortando para evitar sobreposição.');
 }
 
-// Listener oficial dos filtros.
 app = replaceRegexOnce(
   app,
   /(\s*"faccaoMovFiltroStatus",\s*\n)(\s*)"faccaoMovFiltroDataTipo"/,
@@ -77,18 +76,19 @@ const statusCondition = '    if (filtros.status && status !== filtros.status) re
 const arrivalCondition = `${statusCondition}\n    if (filtros.chegada && situacaoChegadaFaccoes(mov) !== filtros.chegada) return false;`;
 app = replaceOnce(app, statusCondition, arrivalCondition, 'condição de Status em renderFaccoesMovimentacoes');
 
-// Resumo: inclui a fila que mais importa ao admin sem nova leitura do Firestore.
-app = replaceRegexOnce(
+const retornaramLine = '  const retornaram = movimentos.filter(mov => mov.status === "retornou" || mov.status === "encaminhado" || mov.status === "finalizado").length;';
+app = replaceOnce(
   app,
-  /(const retornaram\s*=\s*movimentos\.filter\([^\n]+\)\.length;)/,
-  `$1\n  const avisadasAguardandoBaixa = movimentos.filter(mov => situacaoChegadaFaccoes(mov) === "avisada").length;`,
+  retornaramLine,
+  `${retornaramLine}\n  const avisadasAguardandoBaixa = movimentos.filter(mov => situacaoChegadaFaccoes(mov) === "avisada").length;`,
   'resumo de Facções - retornaram'
 );
 
-app = replaceRegexOnce(
+const resumoLinha = '    ${totalOps.toLocaleString("pt-BR")} OPs | ${totalPecas.toLocaleString("pt-BR")} peças ${nomeData} | ${totalRecebidas.toLocaleString("pt-BR")} recebidas | ${emAberto.toLocaleString("pt-BR")} em aberto | ${retornaram.toLocaleString("pt-BR")} retornadas/encaminhadas<br>';
+app = replaceOnce(
   app,
-  /(\$\{emAberto\} em aberto \| \$\{retornaram\} retornadas\/encaminhadas)/,
-  `$1 | \${avisadasAguardandoBaixa} avisadas aguardando baixa`,
+  resumoLinha,
+  '    ${totalOps.toLocaleString("pt-BR")} OPs | ${totalPecas.toLocaleString("pt-BR")} peças ${nomeData} | ${totalRecebidas.toLocaleString("pt-BR")} recebidas | ${emAberto.toLocaleString("pt-BR")} em aberto | ${retornaram.toLocaleString("pt-BR")} retornadas/encaminhadas | ${avisadasAguardandoBaixa.toLocaleString("pt-BR")} avisadas aguardando baixa<br>',
   'texto do resumo de Facções'
 );
 
