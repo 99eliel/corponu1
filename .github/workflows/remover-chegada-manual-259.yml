@@ -1,0 +1,69 @@
+name: Remover chegada manual 259
+
+on:
+  push:
+    paths:
+      - 'scripts/remover-chegada-manual-259.mjs'
+      - '.github/workflows/remover-chegada-manual-259.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  remover:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[remover-chegada-manual-259]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Remover chegada manual da raiz
+        run: node scripts/remover-chegada-manual-259.mjs
+
+      - name: Validar JavaScript alterado
+        run: |
+          node --check app.js
+          node --check corponu-atualizador.js
+
+      - name: Validar JSON
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('corponu-release.json','utf8')); console.log('JSON válido')"
+
+      - name: Confirmar fluxo obrigatório
+        shell: bash
+        run: |
+          ! grep -R -n -E 'btnAbrirChegadaManualFaccao|modalChegadaManualFaccao|formChegadaManualFaccao|configurarChegadaManualFaccao|abrirModalChegadaManualFaccao|chegadaManualNumeroOP' --include='*.js' --include='*.html' .
+          grep -q 'async function registrarChegadaMovimentacao' app.js
+          grep -q 'id="btnAbrirSaidaManualFaccao"' index.html
+          grep -q 'id="modalRegistrarChegada"' index.html
+          test ! -e corponu-chegada-manual-visual.js
+          test ! -e corponu-chegada-manual-sutia-pagamento-automatico.js
+          test ! -e corponu-chegada-manual-trava-movimentacao.js
+          test ! -e corponu-sutia-completo-reconciliacao-manual.js
+          test ! -e corponu-sutia-912-chegada-manual-sem-verificacoes.js
+          test ! -e corponu-chegada-manual-sem-componentes-duplicados.js
+
+      - name: Gravar remoção estrutural
+        shell: bash
+        run: |
+          git config user.name "99eliel"
+          git config user.email "131190282+99eliel@users.noreply.github.com"
+          git add -A app.js index.html corponu-atualizador.js \
+            corponu-chegada-manual-visual.js \
+            corponu-chegada-manual-sutia-pagamento-automatico.js \
+            corponu-chegada-manual-trava-movimentacao.js \
+            corponu-sutia-completo-reconciliacao-manual.js \
+            corponu-sutia-912-chegada-manual-sem-verificacoes.js \
+            corponu-chegada-manual-sem-componentes-duplicados.js
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração estrutural produzida."
+            exit 1
+          fi
+          git commit -m "refactor: remover chegada manual da raiz"
+          git push
