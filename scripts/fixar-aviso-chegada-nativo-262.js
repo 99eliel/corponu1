@@ -50,6 +50,11 @@ const helper = [
 ].join('\n');
 app = replaceOnce(app, markerFiltros, helper + markerFiltros, 'helpers do aviso de Sutiã');
 
+const renderInicio = app.indexOf('function renderFaccoesMovimentacoes() {');
+const renderFim = app.indexOf('\n\nfunction editarFaccao(', renderInicio);
+if (renderInicio < 0 || renderFim < 0) throw new Error('Não foi possível isolar renderFaccoesMovimentacoes().');
+let renderFaccoes = app.slice(renderInicio, renderFim);
+
 const statusCell = [
   '      <td>',
   '        <span class="badge ${classeStatusMovimento(mov.status)}">',
@@ -65,7 +70,7 @@ const statusCellNovo = [
   '        ${htmlChegadaAvisadaSutiaFaccoes(mov)}',
   '      </td>'
 ].join('\n');
-app = replaceOnce(app, statusCell, statusCellNovo, 'célula Status da tabela de Facções');
+renderFaccoes = replaceOnce(renderFaccoes, statusCell, statusCellNovo, 'Status dentro de renderFaccoesMovimentacoes');
 
 const textoBusca = [
   '      mov.dataEnvio,',
@@ -80,7 +85,8 @@ const textoBuscaNovo = [
   '      mov.chegadaInformadaData',
   '    ].join(" "));'
 ].join('\n');
-app = replaceOnce(app, textoBusca, textoBuscaNovo, 'texto de busca da tabela de Facções');
+renderFaccoes = replaceOnce(renderFaccoes, textoBusca, textoBuscaNovo, 'busca dentro de renderFaccoesMovimentacoes');
+app = app.slice(0, renderInicio) + renderFaccoes + app.slice(renderFim);
 write('app.js', app);
 
 // 2) Abas de Facções — informa explicitamente qual aba está ativa e garante que o selo só possa aparecer em Sutiã.
