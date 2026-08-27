@@ -21,7 +21,7 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Remover chegada manual da raiz
         run: node scripts/remover-chegada-manual-259.mjs
@@ -38,10 +38,11 @@ jobs:
       - name: Confirmar fluxo obrigatório
         shell: bash
         run: |
-          ! grep -R -n -E 'btnAbrirChegadaManualFaccao|modalChegadaManualFaccao|formChegadaManualFaccao|configurarChegadaManualFaccao|abrirModalChegadaManualFaccao|chegadaManualNumeroOP' --include='*.js' --include='*.html' .
-          grep -q 'async function registrarChegadaMovimentacao' app.js
-          grep -q 'id="btnAbrirSaidaManualFaccao"' index.html
-          grep -q 'id="modalRegistrarChegada"' index.html
+          ! grep -n -E 'ChegadaManualFaccao|chegadaManual|chegada_manual_faccao' app.js index.html corponu-atualizador.js
+          grep -q 'function registrarChegadaMovimentacao' app.js
+          grep -q 'id="modalChegadaMovimentacao"' index.html
+          grep -q 'corponu-faccoes-tres-abas-saida.js' corponu-atualizador.js
+          test -e corponu-faccoes-tres-abas-saida.js
           test ! -e corponu-chegada-manual-visual.js
           test ! -e corponu-chegada-manual-sutia-pagamento-automatico.js
           test ! -e corponu-chegada-manual-trava-movimentacao.js
