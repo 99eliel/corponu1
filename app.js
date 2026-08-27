@@ -4026,6 +4026,7 @@ function configurarFaccoes() {
     "faccaoMovFiltroNome",
     "faccaoMovFiltroProcesso",
     "faccaoMovFiltroStatus",
+    "faccaoMovFiltroChegada",
     "faccaoMovFiltroDataTipo",
     "faccaoMovFiltroDataInicio",
     "faccaoMovFiltroDataFim"
@@ -5101,12 +5102,29 @@ function preencherFiltrosFaccoesMovimentacoes(movimentosBase) {
   preencherSelectProcessos("faccaoMovFiltroProcesso", movimentosBase.map(mov => mov.processo), "Todos");
 }
 
+function situacaoChegadaFaccoes(mov) {
+  const statusAviso = String(mov?.chegadaInformadaStatus || "").trim().toLowerCase();
+  const avisadaAguardandoBaixa = mov?.chegadaInformada === true &&
+    statusAviso !== "confirmada_admin" &&
+    !mov?.dataChegada;
+
+  if (avisadaAguardandoBaixa) return "avisada";
+
+  const baixaConfirmada = Boolean(mov?.dataChegada) ||
+    mov?.confirmacaoChegadaFinanceira === true ||
+    statusAviso === "confirmada_admin";
+
+  if (baixaConfirmada) return "confirmada";
+  return "nao_avisada";
+}
+
 function getFiltrosFaccoesMovimentacoes() {
   return {
     busca: normalizarTexto(document.getElementById("buscaFaccaoMovimentacoes")?.value || ""),
     faccao: document.getElementById("faccaoMovFiltroNome")?.value || "",
     processo: document.getElementById("faccaoMovFiltroProcesso")?.value || "",
     status: document.getElementById("faccaoMovFiltroStatus")?.value || "",
+    chegada: document.getElementById("faccaoMovFiltroChegada")?.value || "",
     tipoData: document.getElementById("faccaoMovFiltroDataTipo")?.value || "envio",
     dataInicio: document.getElementById("faccaoMovFiltroDataInicio")?.value || "",
     dataFim: document.getElementById("faccaoMovFiltroDataFim")?.value || ""
@@ -5119,6 +5137,7 @@ function limparFiltrosFaccoesMovimentacoes() {
     "faccaoMovFiltroNome",
     "faccaoMovFiltroProcesso",
     "faccaoMovFiltroStatus",
+    "faccaoMovFiltroChegada",
     "faccaoMovFiltroDataInicio",
     "faccaoMovFiltroDataFim"
   ].forEach(id => {
@@ -5143,6 +5162,7 @@ function renderResumoFiltroFaccoes(movimentos, filtros) {
   const totalRecebidas = movimentos.reduce((soma, mov) => soma + Number(quantidadeRecebidaMovimentacao(mov) || 0), 0);
   const emAberto = movimentos.filter(mov => (mov.status || "em_andamento") === "em_andamento").length;
   const retornaram = movimentos.filter(mov => mov.status === "retornou" || mov.status === "encaminhado" || mov.status === "finalizado").length;
+  const avisadasAguardandoBaixa = movimentos.filter(mov => situacaoChegadaFaccoes(mov) === "avisada").length;
 
   const porDia = new Map();
   movimentos.forEach(mov => {
@@ -5166,7 +5186,7 @@ function renderResumoFiltroFaccoes(movimentos, filtros) {
   const nomeData = filtros.tipoData === "chegada" ? "chegaram" : "saíram para facção";
   box.innerHTML = `
     <strong>Resumo do filtro:</strong>
-    ${totalOps.toLocaleString("pt-BR")} OPs | ${totalPecas.toLocaleString("pt-BR")} peças ${nomeData} | ${totalRecebidas.toLocaleString("pt-BR")} recebidas | ${emAberto.toLocaleString("pt-BR")} em aberto | ${retornaram.toLocaleString("pt-BR")} retornadas/encaminhadas<br>
+    ${totalOps.toLocaleString("pt-BR")} OPs | ${totalPecas.toLocaleString("pt-BR")} peças ${nomeData} | ${totalRecebidas.toLocaleString("pt-BR")} recebidas | ${emAberto.toLocaleString("pt-BR")} em aberto | ${retornaram.toLocaleString("pt-BR")} retornadas/encaminhadas | ${avisadasAguardandoBaixa.toLocaleString("pt-BR")} avisadas aguardando baixa<br>
     <small>Período: ${escapeHtml(periodo)}${filtros.faccao ? ` | Facção: ${escapeHtml(filtros.faccao)}` : ""}${filtros.processo ? ` | Processo: ${escapeHtml(filtros.processo)}` : ""}</small>
     ${dias ? `<br><small><strong>Por dia:</strong> ${escapeHtml(dias)}</small>` : ""}
   `;
@@ -5200,6 +5220,7 @@ function renderFaccoesMovimentacoes() {
     if (filtros.faccao && String(mov.destino || "") !== filtros.faccao) return false;
     if (filtros.processo && String(mov.processo || "") !== filtros.processo) return false;
     if (filtros.status && status !== filtros.status) return false;
+    if (filtros.chegada && situacaoChegadaFaccoes(mov) !== filtros.chegada) return false;
     if (filtros.dataInicio && (!dataFiltro || dataFiltro < filtros.dataInicio)) return false;
     if (filtros.dataFim && (!dataFiltro || dataFiltro > filtros.dataFim)) return false;
 

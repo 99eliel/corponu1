@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-12-precos-selecao-estavel-187",
-  "updatedAt": "2026-08-12T16:21:00-03:00",
-  "notes": "Mantem o processo selecionado no gerenciamento de valores, remove a selecao automatica de ENCAPAR BOJO, evita reconstruir o seletor ao renderizar a tabela e libera a interface antes do log de auditoria."
+  "version": "2026-08-27-faccoes-filtro-chegada-avisada-261",
+  "updatedAt": "2026-08-27T17:08:00-03:00",
+  "notes": "Versão alinhada ao release principal. Inclui filtro de Chegada em Facções para distinguir aviso aguardando baixa de baixa confirmada."
 }

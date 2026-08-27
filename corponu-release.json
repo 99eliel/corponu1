@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-26-faccoes-sem-chegada-manual-260",
-  "updatedAt": "2026-08-26T22:08:00-03:00",
-  "notes": "Produção. A Chegada manual de Facções foi removida definitivamente da raiz e também da área Lateral e Alça. O módulo nativo de Lateral e Alça não possui mais botão, handler, datalist, listener nem dependência do formulário global antigo de Chegada manual. Permanece somente o Registro de saída como entrada operacional independente; a chegada continua possível exclusivamente sobre uma movimentação que já foi enviada, preservando o fluxo completo saída → retorno → pagamento. A limpeza anterior do app.js e update.js foi mantida, assim como Movimentações registradas, Restantes pendentes, componentes do Sutiã, proteção contra duplicidade e compatibilidade com dados históricos. Nenhuma regra do Firebase foi alterada."
+  "version": "2026-08-27-faccoes-filtro-chegada-avisada-261",
+  "updatedAt": "2026-08-27T17:08:00-03:00",
+  "notes": "Produção. A aba Facções ganhou um filtro próprio de Chegada, separado do Status da movimentação. O filtro permite ver Todas, Não avisada, Avisada • aguardando baixa e Baixa confirmada. A classificação usa os campos reais já gravados pelo fluxo de aviso de chegada (chegadaInformada, chegadaInformadaStatus, confirmacaoChegadaFinanceira e dataChegada) e trabalha somente sobre state.movimentacoesProducao já carregado, sem criar consultas adicionais ao Firestore, observers ou caminhos paralelos. O resumo do filtro também mostra quantas movimentações estão avisadas aguardando baixa do administrador. O fluxo usuário comum avisa → administrador confirma continua inalterado. version.json foi realinhado ao release atual para evitar divergência de cache/versão. Nenhuma regra do Firebase foi alterada."
 }
