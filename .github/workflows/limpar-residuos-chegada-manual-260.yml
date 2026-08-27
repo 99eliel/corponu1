@@ -1,4 +1,4 @@
-name: Limpar resíduos chegada manual 260
+name: Finalizar remoção chegada manual 260
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  limpar:
+  finalizar:
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[limpar-chegada-manual-260]')
     runs-on: ubuntu-latest
     steps:
@@ -23,22 +23,17 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Mapear resíduos antes da remoção
-        shell: bash
-        run: |
-          echo '=== Referências de Chegada manual em update.js ==='
-          grep -n -B 4 -A 7 -E 'ChegadaManual|chegadaManual|CHEGADA MANUAL|chegada_manual_faccao' update.js || true
-
-      - name: Remover resíduos da chegada manual
+      - name: Finalizar versão 260
         run: node scripts/limpar-residuos-chegada-manual-260.mjs
 
-      - name: Validar JavaScript
+      - name: Validar JavaScript e JSON
         run: |
           node --check update.js
           node --check app.js
           node --check corponu-atualizador.js
+          node -e "JSON.parse(require('fs').readFileSync('corponu-release.json','utf8')); console.log('JSON válido')"
 
-      - name: Confirmar remoção da raiz
+      - name: Confirmar fluxo obrigatório
         shell: bash
         run: |
           ! grep -n -E 'ChegadaManual|chegadaManual|chegada_manual_faccao' update.js app.js index.html corponu-atualizador.js
@@ -47,12 +42,17 @@ jobs:
           test -e corponu-faccoes-tres-abas-saida.js
           grep -q 'corponu-faccoes-tres-abas-saida.js' corponu-atualizador.js
           grep -q 'function registrarChegadaMovimentacao' app.js
+          grep -q '2026-08-26-faccoes-sem-chegada-manual-260' update.js
+          grep -q '2026-08-26-faccoes-sem-chegada-manual-260' corponu-atualizador.js
+          grep -q 'update.js?v=2026-08-26-faccoes-sem-chegada-manual-260' index.html
+          grep -q 'app.js?v=2026-08-26-faccoes-sem-chegada-manual-260' index.html
 
-      - name: Gravar limpeza final
+      - name: Gravar release e remover ferramentas temporárias
         shell: bash
         run: |
           git config user.name "99eliel"
           git config user.email "131190282+99eliel@users.noreply.github.com"
-          git add -A update.js corponu-chegada-manual-faccoes-processo-119-seguro.js README-CHEGADA-MANUAL-FACCAO.txt
-          git commit -m "refactor: remover resíduos finais da chegada manual"
+          git rm scripts/limpar-residuos-chegada-manual-260.mjs .github/workflows/limpar-residuos-chegada-manual-260.yml
+          git add update.js index.html corponu-atualizador.js corponu-release.json
+          git commit -m "release: remover chegada manual definitivamente 260"
           git push
