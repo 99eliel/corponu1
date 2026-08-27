@@ -1,0 +1,52 @@
+name: Limpar resíduos chegada manual 260
+
+on:
+  push:
+    paths:
+      - 'scripts/limpar-residuos-chegada-manual-260.mjs'
+      - '.github/workflows/limpar-residuos-chegada-manual-260.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  limpar:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[limpar-chegada-manual-260]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Remover resíduos da chegada manual
+        run: node scripts/limpar-residuos-chegada-manual-260.mjs
+
+      - name: Validar JavaScript
+        run: |
+          node --check update.js
+          node --check app.js
+          node --check corponu-atualizador.js
+
+      - name: Confirmar remoção da raiz
+        shell: bash
+        run: |
+          ! grep -n -E 'formChegadaManualFaccao|modalChegadaManualFaccao|chegadaManualProcesso|chegadaManualFaccao|btnAbrirChegadaManualFaccao|iniciarHotfixChegadaManual|chegada_manual_faccao' update.js app.js index.html corponu-atualizador.js
+          test ! -e corponu-chegada-manual-faccoes-processo-119-seguro.js
+          test ! -e README-CHEGADA-MANUAL-FACCAO.txt
+          test -e corponu-faccoes-tres-abas-saida.js
+          grep -q 'corponu-faccoes-tres-abas-saida.js' corponu-atualizador.js
+          grep -q 'function registrarChegadaMovimentacao' app.js
+
+      - name: Gravar limpeza final
+        shell: bash
+        run: |
+          git config user.name "99eliel"
+          git config user.email "131190282+99eliel@users.noreply.github.com"
+          git add -A update.js corponu-chegada-manual-faccoes-processo-119-seguro.js README-CHEGADA-MANUAL-FACCAO.txt
+          git commit -m "refactor: remover resíduos finais da chegada manual"
+          git push
