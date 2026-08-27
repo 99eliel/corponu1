@@ -46,19 +46,28 @@ function removerElementoPorId(texto, tag, id, contexto) {
   return texto.slice(0, posInicio) + texto.slice(fim);
 }
 
-// 1) Remove a regra de negócio que criava uma movimentação já retornada e gerava pagamento sem o fluxo completo.
+function removerLinhaUnica(texto, trecho, contexto) {
+  exigirOcorrencias(texto, trecho, 1, contexto);
+  const linhas = texto.split(/\r?\n/);
+  const filtradas = linhas.filter(linha => !linha.includes(trecho));
+  if (filtradas.length !== linhas.length - 1) falhar(`${contexto}: não foi possível remover exatamente uma linha.`);
+  return filtradas.join("\n");
+}
+
+// 1) Remove toda a regra de negócio do atalho: configuração, preenchimento por OP,
+// criação direta da movimentação como retornada e geração de pagamento.
 let app = fs.readFileSync("app.js", "utf8");
 const blocoManual = removerEntre(
   app,
-  "function abrirModalChegadaManualFaccao() {",
-  "async function registrarChegadaMovimentacao(",
+  "function configurarChegadaManualFaccao() {",
+  "function registrarChegadaMovimentacao(",
   "app.js/bloco-chegada-manual"
 );
 if (!blocoManual.removido.includes("origemManual: true")) {
   falhar("app.js: o bloco localizado não contém a criação origemManual: true esperada; abortando para não remover código errado.");
 }
-if (!blocoManual.removido.includes("configurarChegadaManualFaccao")) {
-  falhar("app.js: o bloco localizado não contém a configuração da chegada manual esperada.");
+if (!blocoManual.removido.includes("async function confirmarChegadaManualFaccao")) {
+  falhar("app.js: o bloco localizado não contém a confirmação da chegada manual esperada.");
 }
 app = blocoManual.texto;
 
@@ -67,28 +76,21 @@ const chamadas = [...app.matchAll(regexChamadaConfig)];
 if (chamadas.length !== 1) falhar(`app.js: esperado 1 acionamento de configurarChegadaManualFaccao(); fora do bloco, encontrado ${chamadas.length}.`);
 app = app.replace(regexChamadaConfig, "$1");
 
-const proibidosApp = [
-  "abrirModalChegadaManualFaccao",
-  "fecharModalChegadaManualFaccao",
-  "configurarChegadaManualFaccao",
-  "btnAbrirChegadaManualFaccao",
-  "btnFecharChegadaManualFaccao",
-  "btnCancelarChegadaManualFaccao",
-  "formChegadaManualFaccao",
-  "chegadaManualNumeroOP",
-  "chegadaManualProcesso",
-  "chegadaManualFaccao",
-  "chegadaManualDataSaida",
-  "chegadaManualDataChegada",
-  "origemManual: true"
-];
-for (const termo of proibidosApp) {
-  if (app.includes(termo)) falhar(`app.js: referência residual da chegada manual: ${termo}`);
+app = removerLinhaUnica(
+  app,
+  "window.abrirModalChegadaManualFaccao = abrirModalChegadaManualFaccao;",
+  "app.js/export-chegada-manual"
+);
+
+if (app.includes("ChegadaManualFaccao") || app.includes("chegadaManual")) {
+  falhar("app.js: ainda existe referência da Chegada manual após remover o bloco, acionamento e export.");
 }
-if (!app.includes("async function registrarChegadaMovimentacao(")) falhar("app.js: a chegada normal registrarChegadaMovimentacao foi removida indevidamente.");
+if (app.includes("origemManual: true")) falhar("app.js: ainda existe criação direta origemManual: true.");
+if (!app.includes("function registrarChegadaMovimentacao(")) falhar("app.js: a chegada normal registrarChegadaMovimentacao foi removida indevidamente.");
+if (!app.includes("window.registrarChegadaMovimentacao = registrarChegadaMovimentacao;")) falhar("app.js: export da chegada normal não foi preservado.");
 fs.writeFileSync("app.js", app);
 
-// 2) Remove a entrada e o modal do HTML, mas preserva Saída e a chegada normal de uma movimentação existente.
+// 2) Remove a entrada e o modal do HTML, preservando Saída e o modal usado pela chegada normal.
 let html = fs.readFileSync("index.html", "utf8");
 html = removerElementoPorId(html, "button", "btnAbrirChegadaManualFaccao", "index.html/botão-chegada-manual");
 const modalManual = removerEntre(
@@ -99,31 +101,17 @@ const modalManual = removerEntre(
 );
 html = modalManual.texto;
 
-const proibidosHtml = [
-  "btnAbrirChegadaManualFaccao",
-  "modalChegadaManualFaccao",
-  "formChegadaManualFaccao",
-  "chegadaManualNumeroOP",
-  "chegadaManualProcesso",
-  "chegadaManualFaccao",
-  "chegadaManualDataSaida",
-  "chegadaManualDataChegada"
-];
-for (const termo of proibidosHtml) {
-  if (html.includes(termo)) falhar(`index.html: referência residual da chegada manual: ${termo}`);
+if (html.includes("ChegadaManualFaccao") || html.includes("chegadaManual")) {
+  falhar("index.html: ainda existe entrada/campo/modal da Chegada manual.");
 }
 if (!html.includes('id="btnAbrirSaidaManualFaccao"')) falhar("index.html: o botão Saída não foi preservado.");
 if (!html.includes('id="modalRegistrarChegada"')) falhar("index.html: o modal da chegada normal não foi preservado.");
 fs.writeFileSync("index.html", html);
 
-// 3) Remove os módulos exclusivos do bypass e suas entradas do carregador oficial.
+// 3) Remove do carregador oficial todos os módulos que existiam exclusivamente para sustentar o bypass.
 let atualizador = fs.readFileSync("corponu-atualizador.js", "utf8");
 for (const arquivo of ARQUIVOS_MANUAIS) {
-  exigirOcorrencias(atualizador, arquivo, 1, `corponu-atualizador.js/${arquivo}`);
-  const linhas = atualizador.split(/\r?\n/);
-  const filtradas = linhas.filter(linha => !linha.includes(arquivo));
-  if (filtradas.length !== linhas.length - 1) falhar(`corponu-atualizador.js: não foi possível remover exatamente uma linha de ${arquivo}.`);
-  atualizador = filtradas.join("\n");
+  atualizador = removerLinhaUnica(atualizador, arquivo, `corponu-atualizador.js/${arquivo}`);
 }
 
 const regexRelease = /const LOCAL_RELEASE = "[^"]+";/;
@@ -134,28 +122,20 @@ for (const arquivo of ARQUIVOS_MANUAIS) {
 }
 fs.writeFileSync("corponu-atualizador.js", atualizador);
 
+// 4) Exclui os arquivos cuja única responsabilidade era a Chegada manual.
 for (const arquivo of ARQUIVOS_MANUAIS) {
   if (!fs.existsSync(arquivo)) falhar(`Arquivo manual esperado não existe antes da remoção: ${arquivo}`);
   fs.rmSync(arquivo);
 }
 
-// 4) Pós-condições de raiz: nenhum caminho da chegada manual pode continuar executável.
-const arquivosRaiz = fs.readdirSync(".").filter(nome => /\.(?:js|html)$/i.test(nome));
-const referenciasProibidasRaiz = [
-  "btnAbrirChegadaManualFaccao",
-  "modalChegadaManualFaccao",
-  "formChegadaManualFaccao",
-  "configurarChegadaManualFaccao",
-  "abrirModalChegadaManualFaccao",
-  "chegadaManualNumeroOP"
-];
-for (const nome of arquivosRaiz) {
+// 5) Pós-condições de raiz. Não varremos testes/scripts auxiliares: o que importa aqui é não haver caminho executável no app.
+const arquivosRuntime = ["app.js", "index.html", "corponu-atualizador.js"];
+for (const nome of arquivosRuntime) {
   const conteudo = fs.readFileSync(nome, "utf8");
-  for (const termo of referenciasProibidasRaiz) {
-    if (conteudo.includes(termo)) falhar(`${nome}: ainda contém referência executável da chegada manual (${termo}).`);
+  if (conteudo.includes("ChegadaManualFaccao") || conteudo.includes("chegadaManual")) {
+    falhar(`${nome}: ainda contém referência executável da Chegada manual.`);
   }
 }
-
 for (const arquivo of ARQUIVOS_MANUAIS) {
   if (fs.existsSync(arquivo)) falhar(`Arquivo exclusivo da chegada manual ainda existe: ${arquivo}`);
 }
