@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-27-pagamentos-carregamento-estavel-264",
-  "updatedAt": "2026-08-27T21:48:00-03:00",
-  "notes": "Produção. Estabilizado o primeiro carregamento da aba Pagamentos. O HTML financeiro continua sendo a única interface canônica; não foi criada tela paralela. O carregador sob demanda deixou de injetar os módulos complementares antes da navegação: a página agora é ativada e tem um ciclo de pintura antes de os scripts secundários entrarem, eliminando o intervalo em que apenas o título aparecia. Enquanto o listener oficial de entregas ainda aguarda o primeiro snapshot, a própria página mostra Carregando pagamentos; ao concluir, o aviso some pelo mesmo estado dadosCarregados.entregasPagamento. Em erro, o aviso informa a falha. Nenhuma consulta nova ao Firestore, observer novo ou regra Firebase foi criada."
+  "version": "2026-08-28-faccoes-relatorio-filtrado-265",
+  "updatedAt": "2026-08-28T11:24:00-03:00",
+  "notes": "Produção. A aba Facções ganhou impressão de relatório baseada no mesmo filtro canônico usado pela tabela. O relatório respeita busca, facção, processo, status, situação de chegada, tipo de data, período e a subaba ativa Sutiã/Calcinha. A impressão traz resumo com movimentações, peças enviadas e recebidas, faltas, abertas, retornadas/encaminhadas, chegadas avisadas aguardando baixa e desconto por defeito, seguido de todos os itens filtrados. A impressão usa state.movimentacoesProducao já carregado e não cria consultas, listeners ou observers no Firebase."
 }

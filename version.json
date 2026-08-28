@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-27-pagamentos-carregamento-estavel-264",
-  "updatedAt": "2026-08-27T21:48:00-03:00",
-  "notes": "Pagamentos abre e pinta antes dos módulos complementares e informa o carregamento dos dados."
+  "version": "2026-08-28-faccoes-relatorio-filtrado-265",
+  "updatedAt": "2026-08-28T11:24:00-03:00",
+  "notes": "Facções agora imprime resumo e todos os itens do filtro atual, respeitando também Sutiã/Calcinha."
 }
