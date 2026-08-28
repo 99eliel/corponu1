@@ -681,19 +681,39 @@ function carregarPrecosReferenciaSeNecessario() {
   }));
 }
 
+function atualizarEstadoCarregamentoPagamentos(estado = "automatico") {
+  const aviso = document.getElementById("pagamentosEstadoCarregamento");
+  if (!aviso) return;
+
+  if (estado === "erro") {
+    aviso.textContent = "Não foi possível carregar os pagamentos. Use Atualizar para tentar novamente.";
+    aviso.classList.remove("hidden");
+    aviso.classList.add("danger-notice");
+    return;
+  }
+
+  aviso.classList.remove("danger-notice");
+  const carregado = state.dadosCarregados.entregasPagamento === true;
+  aviso.textContent = carregado ? "" : "Carregando pagamentos...";
+  aviso.classList.toggle("hidden", carregado);
+}
+
 function carregarEntregasPagamentoSeNecessario() {
   if (!podeAcessarTela("pagamentos")) return;
   if (state.dadosCarregados.entregasPagamento || state.carregandoDados.entregasPagamento || state.listenersPorChave.entregasPagamento) return;
   state.carregandoDados.entregasPagamento = true;
+  atualizarEstadoCarregamentoPagamentos();
 
   const entregasPagamentoQuery = query(collection(db, "entregasPagamento"), orderBy("dataEntrega", "desc"));
 
   registrarListenerChave("entregasPagamento", onSnapshot(entregasPagamentoQuery, snapshot => {
     state.entregasPagamento = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     marcarCarregado("entregasPagamento");
+    atualizarEstadoCarregamentoPagamentos();
     renderPagamentos();
   }, error => {
     state.carregandoDados.entregasPagamento = false;
+    atualizarEstadoCarregamentoPagamentos("erro");
     console.error(error);
     toast("Erro ao carregar entregas de pagamento. Verifique as permissões.");
   }));
@@ -762,6 +782,7 @@ function carregarDadosDaPagina(page) {
   }
 
   if (page === "pagamentos") {
+    atualizarEstadoCarregamentoPagamentos();
     carregarEntregasPagamentoSeNecessario();
     carregarPrecosReferenciaSeNecessario();
     carregarFaccoesSeNecessario();

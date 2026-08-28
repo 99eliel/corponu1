@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-27-faccoes-aviso-chegada-sutia-estavel-263";
+  const LOCAL_RELEASE = "2026-08-27-pagamentos-carregamento-estavel-264";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -124,6 +124,25 @@
     carregarGrupo(modulos);
   }
 
+  // A navegação é prioritária. Módulos complementares entram somente depois
+  // de pelo menos um ciclo de pintura, evitando a tela ativa ficar visualmente
+  // vazia enquanto vários scripts de uma página são inicializados.
+  function carregarModulosDepoisDaNavegacao(pagina) {
+    const chave = String(pagina || "").trim();
+    if (!chave) return;
+
+    const executar = () => {
+      const paginaAtiva = document.querySelector(".nav-btn.active[data-page]")?.dataset?.page || "";
+      if (paginaAtiva === chave) carregarModulosDaPagina(chave);
+    };
+
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(executar));
+    } else {
+      window.setTimeout(executar, 0);
+    }
+  }
+
   function appAutenticadoVisivel() {
     const shell = document.getElementById("appShell");
     if (!shell || shell.hidden || shell.classList.contains("hidden")) return false;
@@ -165,7 +184,7 @@
     document.addEventListener("click", event => {
       const alvo = event.target instanceof Element ? event.target : null;
       const botaoPagina = alvo?.closest?.(".nav-btn[data-page]");
-      if (botaoPagina) carregarModulosDaPagina(botaoPagina.dataset.page);
+      if (botaoPagina) carregarModulosDepoisDaNavegacao(botaoPagina.dataset.page);
 
       const botaoAcao = alvo?.closest?.("button,[role='button'],a");
       const onclick = String(botaoAcao?.getAttribute?.("onclick") || "");
