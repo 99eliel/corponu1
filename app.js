@@ -5167,6 +5167,21 @@ function htmlChegadaAvisadaSutiaFaccoes(mov) {
   `;
 }
 
+function htmlAcaoChegadaFaccoes(mov) {
+  const status = String(mov?.status || "em_andamento").trim().toLowerCase();
+  if (mov?.dataChegada || status === "finalizado" || status === "encaminhado") return "";
+
+  if (ehAdmin()) {
+    return `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Confirmar chegada</button>`;
+  }
+
+  if (situacaoChegadaFaccoes(mov) === "avisada") {
+    return `<button class="btn btn-sm" type="button" disabled>Aviso enviado</button>`;
+  }
+
+  return `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Avisar que chegou</button>`;
+}
+
 function getFiltrosFaccoesMovimentacoes() {
   return {
     busca: normalizarTexto(document.getElementById("buscaFaccaoMovimentacoes")?.value || ""),
@@ -5506,7 +5521,7 @@ function renderFaccoesMovimentacoes() {
       </td>
       <td>
         ${mov.status === "encaminhado" ? `<span class="badge info">Saiu da facção</span>` : ""}
-        ${mov.status !== "finalizado" && mov.status !== "encaminhado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
+        ${htmlAcaoChegadaFaccoes(mov)}
         ${podeEncaminharMovimentacao(mov) ? `<button class="btn btn-sm" onclick="enviarMovimentacaoParaCelula('${mov.id}')">Mandar célula</button>` : ""}
         ${podeEncaminharMovimentacao(mov) ? `<button class="btn btn-sm" onclick="reenviarMovimentacaoParaFaccao('${mov.id}')">Reenviar facção</button>` : ""}
         ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : mov.status === "encaminhado" ? "" : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
@@ -6720,6 +6735,14 @@ function getPrecoReferenciaPorMovimento(mov) {
 }
 
 async function gerarPagamentoPorMovimentacao(mov) {
+  if (mov?.tipoDestino === "faccao" && !ehAdmin()) {
+    return {
+      ok: false,
+      semPermissao: true,
+      motivo: "Apenas administrador pode gerar pagamento pela chegada de facção."
+    };
+  }
+
   await garantirPrecosReferenciaCarregados();
 
   if (!mov || mov.tipoDestino !== "faccao" || !mov.dataChegada) {
@@ -6849,9 +6872,80 @@ function configurarModalChegadaMovimentacao() {
 }
 
 
+async function avisarChegadaMovimentacaoFaccao(id, movimentoRecebido = null) {
+  const mov = movimentoRecebido || state.movimentacoesProducao.find(item => String(item.id) === String(id));
+  if (!mov) {
+    toast("Movimentação não encontrada.");
+    return;
+  }
+
+  if (mov.tipoDestino !== "faccao") {
+    toast("O aviso de chegada é exclusivo para movimentações de facção.");
+    return;
+  }
+
+  if (ehAdmin()) {
+    registrarChegadaMovimentacao(id);
+    return;
+  }
+
+  if (mov.dataChegada || situacaoChegadaFaccoes(mov) === "confirmada") {
+    toast("Essa chegada já foi confirmada pelo administrador.");
+    return;
+  }
+
+  if (situacaoChegadaFaccoes(mov) === "avisada") {
+    toast("Essa chegada já foi avisada.");
+    return;
+  }
+
+  const status = String(mov.status || "em_andamento").trim().toLowerCase();
+  if (["finalizado", "cancelado", "cancelada", "excluido", "excluida"].includes(status)) {
+    toast("Essa movimentação não aceita aviso de chegada.");
+    return;
+  }
+
+  if (!confirm(`Avisar que a OP ${mov.numeroOP || "-"} voltou de ${mov.destino || "facção"}? Nenhum pagamento será gerado.`)) return;
+
+  const nomeUsuario = state.perfil?.nome || state.currentUser?.displayName || state.currentUser?.email || "Usuário";
+  const emailUsuario = state.perfil?.email || state.currentUser?.email || "";
+  const dadosAviso = {
+    chegadaInformada: true,
+    chegadaInformadaStatus: "aguardando_confirmacao_admin",
+    chegadaInformadaData: getDataHojeISO(),
+    chegadaInformadaEm: serverTimestamp(),
+    chegadaInformadaPor: state.currentUser.uid,
+    chegadaInformadaPorNome: nomeUsuario,
+    chegadaInformadaPorEmail: emailUsuario,
+    statusOperacional: "chegada_informada",
+    atualizadoPor: state.currentUser.uid,
+    atualizadoEm: serverTimestamp()
+  };
+
+  try {
+    await setDoc(doc(db, "movimentacoesProducao", String(id)), dadosAviso, { merge: true });
+    Object.assign(mov, dadosAviso);
+    await registrarLog(
+      "chegada_faccao_informada",
+      "movimentacaoProducao",
+      String(id),
+      `OP ${mov.numeroOP || "-"} | ${mov.destino || "-"} | ${mov.processo || "-"} | sem pagamento`
+    );
+    renderFaccoesMovimentacoes();
+    toast("Chegada avisada. O pagamento só será gerado quando o administrador confirmar.");
+  } catch (error) {
+    console.error(error);
+    toast("Não foi possível avisar a chegada.");
+  }
+}
+
 function registrarChegadaMovimentacao(id) {
   const mov = state.movimentacoesProducao.find(item => item.id === id);
   if (!mov) return;
+
+  if (mov.tipoDestino === "faccao" && !ehAdmin()) {
+    return avisarChegadaMovimentacaoFaccao(id, mov);
+  }
 
   chegadaModalMovimentacaoId = id;
 
@@ -6896,13 +6990,19 @@ function fecharModalChegadaMovimentacao() {
 }
 
 async function confirmarChegadaMovimentacao(event) {
-  event.preventDefault();
+  event?.preventDefault?.();
 
   const id = document.getElementById("chegadaMovimentacaoId")?.value || chegadaModalMovimentacaoId;
   const mov = state.movimentacoesProducao.find(item => item.id === id);
 
   if (!mov) {
     toast("Movimentação não encontrada.");
+    return;
+  }
+
+  if (mov.tipoDestino === "faccao" && !ehAdmin()) {
+    fecharModalChegadaMovimentacao();
+    toast("Apenas administrador pode confirmar a chegada e gerar pagamento.");
     return;
   }
 
@@ -6923,6 +7023,16 @@ async function confirmarChegadaMovimentacao(event) {
     return;
   }
 
+  const confirmacaoFinanceira = mov.tipoDestino === "faccao" ? {
+    chegadaInformada: false,
+    chegadaInformadaStatus: "confirmada_admin",
+    confirmacaoChegadaFinanceira: true,
+    chegadaConfirmadaPor: state.currentUser.uid,
+    chegadaConfirmadaPorNome: state.perfil?.nome || state.currentUser?.displayName || state.currentUser?.email || "Administrador",
+    chegadaConfirmadaEm: serverTimestamp(),
+    statusOperacional: "chegada_confirmada"
+  } : {};
+
   try {
     await setDoc(doc(db, "movimentacoesProducao", id), {
       dataChegada,
@@ -6931,6 +7041,7 @@ async function confirmarChegadaMovimentacao(event) {
       defeito: descontoDefeito,
       quantidadeRecebida,
       status: "retornou",
+      ...confirmacaoFinanceira,
       atualizadoPor: state.currentUser.uid,
       atualizadoEm: serverTimestamp()
     }, { merge: true });
@@ -6942,7 +7053,8 @@ async function confirmarChegadaMovimentacao(event) {
       descontoDefeito,
       defeito: descontoDefeito,
       quantidadeRecebida,
-      status: "retornou"
+      status: "retornou",
+      ...confirmacaoFinanceira
     };
 
     const pagamento = await gerarPagamentoPorMovimentacao(movAtualizada);

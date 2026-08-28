@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-28-faccoes-relatorio-filtrado-265",
-  "updatedAt": "2026-08-28T11:24:00-03:00",
-  "notes": "Facções agora imprime resumo e todos os itens do filtro atual, respeitando também Sutiã/Calcinha."
+  "version": "2026-08-28-chegada-usuario-somente-aviso-266",
+  "updatedAt": "2026-08-28T15:20:00-03:00",
+  "notes": "Chegada de facção protegida por perfil no núcleo: usuário comum apenas avisa; somente admin confirma e gera pagamento."
 }
