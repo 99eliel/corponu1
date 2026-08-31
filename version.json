@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-31-pagamentos-pix-destinoid-275",
-  "updatedAt": "2026-08-31T15:58:00-03:00",
-  "notes": "Produção. Corrige exclusivamente os dados cadastrais e PIX dos relatórios de Pagamentos. O filtro de lançamentos permanece inalterado. Para cada pagamento, o relatório usa primeiro um ID de facção já gravado; quando não houver, segue movimentacaoId até movimentacoesProducao e usa destinoId para localizar o cadastro exato da facção. Nome exato fica somente como compatibilidade para registros históricos sem vínculo. Relatório completo e simplificado compartilham a mesma identidade, impedindo CAMILA de receber PIX, titular, cidade ou telefone de CAMILA FIRMINO, CAMILA FURTADO ou outra facção. Somente movimentações únicas necessárias ao filtro atual são consultadas. Nenhum pagamento e nenhuma regra do Firebase foram alterados."
+  "version": "2026-08-31-pagamentos-relatorio-completo-seguro-276",
+  "updatedAt": "2026-08-31T16:15:00-03:00",
+  "notes": "Produção. Corrige o Relatório completo com PIX quando o filtro Processo está em Todos. O botão agora usa sempre o gerador financeiro seguro da versão 275, sem deixar o clique cair no relatório legado do app.js. Relatório completo e simplificado passam a compartilhar a mesma resolução de identidade da facção: ID gravado no pagamento, ou movimentacaoId -> destinoId -> cadastro exato; nome exato fica apenas como fallback histórico. Nenhum pagamento e nenhuma regra do Firebase foram alterados."
 }

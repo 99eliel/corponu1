@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-08-31-pagamentos-pix-destinoid-275";
+  const APP_VERSION = "2026-08-31-pagamentos-relatorio-completo-seguro-276";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 

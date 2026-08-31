@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-31-pagamentos-pix-destinoid-275";
+  const LOCAL_RELEASE = "2026-08-31-pagamentos-relatorio-completo-seguro-276";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 

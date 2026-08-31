@@ -1,6 +1,6 @@
 /*
  * CorpoNu — Pagamentos seguros + central financeira organizada
- * Versão: 2026-08-31-pagamentos-pix-destinoid-275
+ * Versão: 2026-08-31-pagamentos-relatorio-completo-seguro-276
  *
  * Inclui filtro agrupado por processo, confirmação forte, relatórios PIX,
  * central financeira organizada, exclusão segura e atualização automática.
@@ -10,7 +10,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-31-pagamentos-pix-destinoid-275";
+  const VERSION = "2026-08-31-pagamentos-relatorio-completo-seguro-276";
   const FIREBASE_VERSION = "10.12.5";
   const DATASET_KEY = "corponuPagamentosSeguro";
   const ID_BOTAO_RELATORIO = "btnRelatorioPagamentoSimplificado";
@@ -2208,9 +2208,13 @@
   }
 
 
-  function interceptarRelatorioCompletoAgrupado(event) {
+  function interceptarRelatorioCompletoSeguro(event) {
     const botao = event.target?.closest?.("#btnImprimirPagamento");
-    if (!botao || !obterFiltros().processo) return;
+    if (!botao) return;
+
+    // O relatório completo deve ter uma única origem de dados, inclusive quando
+    // o filtro Processo estiver em "Todos". Assim o clique nunca cai no relatório
+    // legado do app.js, que não possui a resolução financeira por destinoId.
     event.preventDefault();
     event.stopImmediatePropagation();
     gerarRelatorioCompletoDoProcesso();
@@ -3070,7 +3074,7 @@
 
     // Os listeners no window/captura executam antes das rotinas antigas instaladas no document.
     window.addEventListener("click", interceptarConfirmacaoPagamento, true);
-    window.addEventListener("click", interceptarRelatorioCompletoAgrupado, true);
+    window.addEventListener("click", interceptarRelatorioCompletoSeguro, true);
     window.addEventListener("click", interceptarConferenciaAgrupada, true);
 
     document.addEventListener("change", event => {
