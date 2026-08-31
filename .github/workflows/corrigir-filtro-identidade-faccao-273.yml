@@ -1,0 +1,71 @@
+name: Corrigir filtro identidade Facção 273
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/corrigir-filtro-identidade-faccao-273.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  corrigir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validar script de migração
+        run: node --check scripts/corrigir-filtro-identidade-faccao-273.js
+
+      - name: Aplicar correção direcionada
+        run: node scripts/corrigir-filtro-identidade-faccao-273.js
+
+      - name: Validar JavaScript
+        run: |
+          node --check app.js
+          node --check update.js
+          node --check corponu-atualizador.js
+
+      - name: Validar JSON e pós-condições
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e "JSON.parse(require('fs').readFileSync('corponu-release.json','utf8')); JSON.parse(require('fs').readFileSync('version.json','utf8'));"
+          grep -q 'function identidadeFaccaoMovimentacao(mov)' app.js
+          grep -q 'preencherFiltroFaccaoPorIdentidade(movimentosBase)' app.js
+          grep -q 'identidadeFaccao.chave !== faccaoFiltroIdentidade' app.js
+          grep -q 'nomeFaccaoResolvidoMovimentacao(mov)' app.js
+          grep -q 'app.js?v=2026-08-31-faccoes-filtro-identidade-273' index.html
+          grep -q '2026-08-31-faccoes-filtro-identidade-273' corponu-release.json
+          ! grep -q 'faccaoFiltroExata && chaveExataFaccoes(mov.destino)' app.js
+
+      - name: Conferir escopo do diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          ALTERADOS="$(git diff --name-only | sort)"
+          echo "$ALTERADOS"
+          ESPERADOS="app.js
+corponu-atualizador.js
+corponu-release.json
+index.html
+update.js
+version.json"
+          test "$ALTERADOS" = "$ESPERADOS"
+
+      - name: Publicar correção funcional
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "99eliel"
+          git config user.email "131190282+99eliel@users.noreply.github.com"
+          git add app.js corponu-atualizador.js corponu-release.json index.html update.js version.json
+          git diff --cached --quiet && { echo 'Nenhuma alteração funcional para publicar.'; exit 1; }
+          git commit -m "fix: separar Camila de outras facções no relatório 273"
+          git push origin HEAD:main
