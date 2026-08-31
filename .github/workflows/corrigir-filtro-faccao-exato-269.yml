@@ -1,0 +1,55 @@
+name: Corrigir filtro exato Facções 269
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/corrigir-filtro-faccao-exato-269.js'
+      - '.github/workflows/corrigir-filtro-faccao-exato-269.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Aplicar correção canônica
+        run: node scripts/corrigir-filtro-faccao-exato-269.js
+
+      - name: Validar JavaScript
+        run: |
+          node --check app.js
+          node --check update.js
+          node --check corponu-atualizador.js
+
+      - name: Validar JSON e invariantes
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('corponu-release.json','utf8')); JSON.parse(require('fs').readFileSync('version.json','utf8'));"
+          grep -q 'function resolverFaccaoExataNaBusca' app.js
+          grep -q 'const faccaoBuscaExata = resolverFaccaoExataNaBusca(movimentosBase, filtros.busca);' app.js
+          grep -q 'chaveExataFaccoes(mov.destino) !== faccaoBuscaExata' app.js
+          grep -q 'chaveExataFaccoes(mov.destino) !== faccaoFiltroExata' app.js
+
+      - name: Gravar alteração
+        run: |
+          if git diff --quiet; then
+            echo 'Nenhuma alteração necessária.'
+            exit 0
+          fi
+          git config user.name '99eliel'
+          git config user.email '131190282+99eliel@users.noreply.github.com'
+          git add app.js update.js corponu-atualizador.js index.html corponu-release.json version.json
+          git commit -m 'fix: separar facções com nomes semelhantes no relatório 269'
+          git push origin HEAD:main
