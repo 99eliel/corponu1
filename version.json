@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-31-faccoes-processos-estavel-272",
-  "updatedAt": "2026-08-31T12:20:00-03:00",
-  "notes": "Produção. Corrige estruturalmente a regressão visual da 271 sem adicionar hotfix visual. O dual-mode volta a ser o único dono da barra de abas e cria Sutiã, Calcinha e Lateral e Alça no mesmo momento, com o próprio CSS, evitando combinações de HTML/JS/CSS de versões diferentes. A V2 de Lateral e Alça passa a possuir a raiz do próprio painel operacional. O index.html volta a ser um shell neutro e não duplica abas nem painéis de recursos. Em Processos, o módulo 272 passa a possuir integralmente a estrutura, estilo, autenticação e persistência de Valores de Lateral e Alça: LATERAL continua por referência, ALÇA continua no documento valor-padrao-alca com duas alças por peça e CORTAGEM E MONTAGEM permanece fixo em R$ 0,0540 por peça. Nenhum dado histórico foi alterado e nenhuma regra do Firebase mudou."
+  "version": "2026-08-31-faccoes-filtro-identidade-273",
+  "updatedAt": "2026-08-31T14:44:00-03:00",
+  "notes": "Produção. Corrige exclusivamente o filtro e o relatório de Facções para identificar a facção pelo cadastro real da movimentação. Quando destinoId existe, ele passa a ser a chave principal; movimentações históricas sem destinoId usam correspondência exata de nome como compatibilidade. Isso impede Camila de absorver Camila Furtado ou outras facções com nome iniciado igual. O select, a tabela, a busca por nome exato e o relatório usam a mesma identidade canônica em memória, sem leituras extras e sem alterar documentos do Firebase. Nenhuma outra área do sistema foi modificada e nenhuma regra do Firebase mudou."
 }

@@ -5124,7 +5124,7 @@ function getDataMovimentacaoFaccoes(mov, tipoData) {
 }
 
 function preencherFiltrosFaccoesMovimentacoes(movimentosBase) {
-  preencherSelectProcessos("faccaoMovFiltroNome", movimentosBase.map(mov => mov.destino), "Todas");
+  preencherFiltroFaccaoPorIdentidade(movimentosBase);
   preencherSelectProcessos("faccaoMovFiltroProcesso", movimentosBase.map(mov => mov.processo), "Todos");
 }
 
@@ -5209,34 +5209,151 @@ function getAbaAtivaFaccoesRelatorio() {
 }
 
 function chaveExataFaccoes(valor) {
-  return normalizarTexto(String(valor ?? "").trim());
+  return normalizarTexto(String(valor ?? "").trim()).replace(/\s+/g, " ").trim();
+}
+
+function getFaccaoCadastroPorIdFiltro(id) {
+  const chave = String(id ?? "").trim();
+  if (!chave) return null;
+
+  const encontrada = (state.faccoes || []).find(faccao => String(faccao?.id || "").trim() === chave) || null;
+  if (!encontrada?.duplicadaDe) return encontrada;
+
+  return (state.faccoes || []).find(faccao => String(faccao?.id || "").trim() === String(encontrada.duplicadaDe)) || encontrada;
+}
+
+function getFaccaoCadastroPorNomeExatoFiltro(nome) {
+  const chave = chaveExataFaccoes(nome);
+  if (!chave) return null;
+
+  const candidatos = (state.faccoes || [])
+    .filter(faccao => chaveExataFaccoes(faccao?.nome) === chave)
+    .map(faccao => faccao?.duplicadaDe ? (getFaccaoCadastroPorIdFiltro(faccao.duplicadaDe) || faccao) : faccao)
+    .filter(Boolean);
+
+  if (!candidatos.length) return null;
+
+  const unicos = new Map();
+  candidatos.forEach(faccao => {
+    const id = String(faccao?.id || "").trim();
+    if (id && !unicos.has(id)) unicos.set(id, faccao);
+  });
+
+  const lista = [...unicos.values()];
+  const ativos = lista.filter(faccao => faccao?.ativo !== false && faccao?.statusImportacao !== "duplicada_consolidada");
+  return ativos[0] || lista[0] || null;
+}
+
+function identidadeFaccaoMovimentacao(mov) {
+  const destinoId = String(mov?.destinoId || "").trim();
+  const cadastroPorId = destinoId ? getFaccaoCadastroPorIdFiltro(destinoId) : null;
+
+  if (cadastroPorId?.id) {
+    return {
+      chave: `id:${String(cadastroPorId.id).trim()}`,
+      nome: String(cadastroPorId.nome || mov?.destino || "").trim(),
+      id: String(cadastroPorId.id).trim()
+    };
+  }
+
+  const cadastroPorNome = getFaccaoCadastroPorNomeExatoFiltro(mov?.destino);
+  if (cadastroPorNome?.id) {
+    return {
+      chave: `id:${String(cadastroPorNome.id).trim()}`,
+      nome: String(cadastroPorNome.nome || mov?.destino || "").trim(),
+      id: String(cadastroPorNome.id).trim()
+    };
+  }
+
+  const nome = String(mov?.destino || "").trim();
+  const chaveNome = chaveExataFaccoes(nome);
+  return {
+    chave: chaveNome ? `nome:${chaveNome}` : "",
+    nome,
+    id: ""
+  };
+}
+
+function nomeFaccaoResolvidoMovimentacao(mov) {
+  return identidadeFaccaoMovimentacao(mov).nome || String(mov?.destino || "").trim() || "-";
+}
+
+function valorFiltroFaccaoParaIdentidade(valor) {
+  const texto = String(valor ?? "").trim();
+  if (!texto) return "";
+  if (/^(?:id|nome):/i.test(texto)) return texto;
+
+  const cadastro = getFaccaoCadastroPorNomeExatoFiltro(texto);
+  if (cadastro?.id) return `id:${String(cadastro.id).trim()}`;
+
+  const chave = chaveExataFaccoes(texto);
+  return chave ? `nome:${chave}` : "";
+}
+
+function preencherFiltroFaccaoPorIdentidade(movimentosBase) {
+  const select = document.getElementById("faccaoMovFiltroNome");
+  if (!(select instanceof HTMLSelectElement)) return;
+
+  const valorAtual = select.value;
+  const textoAtual = String(select.options?.[select.selectedIndex]?.textContent || "").trim();
+  const mapa = new Map();
+
+  (movimentosBase || []).forEach(mov => {
+    const identidade = identidadeFaccaoMovimentacao(mov);
+    if (!identidade.chave || !identidade.nome) return;
+    if (!mapa.has(identidade.chave)) mapa.set(identidade.chave, identidade.nome);
+  });
+
+  const itens = [...mapa.entries()]
+    .map(([chave, nome]) => ({ chave, nome }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { numeric: true }));
+
+  select.innerHTML = '<option value="">Todas</option>' + itens.map(item => (
+    `<option value="${escapeHtml(item.chave)}">${escapeHtml(item.nome)}</option>`
+  )).join("");
+
+  if (itens.some(item => item.chave === valorAtual)) {
+    select.value = valorAtual;
+    return;
+  }
+
+  const chaveTextoAtual = chaveExataFaccoes(textoAtual);
+  if (!chaveTextoAtual || chaveTextoAtual === "todas") return;
+
+  const candidatos = itens.filter(item => chaveExataFaccoes(item.nome) === chaveTextoAtual);
+  if (candidatos.length === 1) select.value = candidatos[0].chave;
 }
 
 function resolverFaccaoExataNaBusca(movimentosBase, busca) {
   const chaveBusca = chaveExataFaccoes(busca);
   if (!chaveBusca) return "";
 
-  const nomes = new Set(
-    (movimentosBase || [])
-      .map(mov => chaveExataFaccoes(mov?.destino))
-      .filter(Boolean)
-  );
+  const identidades = new Set();
+  (movimentosBase || []).forEach(mov => {
+    const identidade = identidadeFaccaoMovimentacao(mov);
+    if (identidade.chave && chaveExataFaccoes(identidade.nome) === chaveBusca) {
+      identidades.add(identidade.chave);
+    }
+  });
 
-  return nomes.has(chaveBusca) ? chaveBusca : "";
+  return identidades.size === 1 ? [...identidades][0] : "";
 }
 
 function filtrarMovimentacoesFaccoes(movimentosBase, filtros, opcoes = {}) {
-  const faccaoFiltroExata = chaveExataFaccoes(filtros.faccao);
-  const faccaoBuscaExata = resolverFaccaoExataNaBusca(movimentosBase, filtros.busca);
+  const faccaoFiltroIdentidade = valorFiltroFaccaoParaIdentidade(filtros.faccao);
+  const faccaoBuscaIdentidade = resolverFaccaoExataNaBusca(movimentosBase, filtros.busca);
 
   let movimentos = (movimentosBase || []).filter(mov => {
     const status = mov.status || "em_andamento";
     const dataFiltro = getDataMovimentacaoFaccoes(mov, filtros.tipoData);
+    const identidadeFaccao = identidadeFaccaoMovimentacao(mov);
+    const nomeFaccao = identidadeFaccao.nome || mov.destino || "";
 
     const texto = normalizarTexto([
       mov.numeroOP,
       mov.referencia,
       mov.cor,
+      nomeFaccao,
       mov.destino,
       mov.processo,
       status,
@@ -5249,13 +5366,13 @@ function filtrarMovimentacoesFaccoes(movimentosBase, filtros, opcoes = {}) {
     ].join(" "));
 
     if (filtros.busca) {
-      if (faccaoBuscaExata) {
-        if (chaveExataFaccoes(mov.destino) !== faccaoBuscaExata) return false;
+      if (faccaoBuscaIdentidade) {
+        if (identidadeFaccao.chave !== faccaoBuscaIdentidade) return false;
       } else if (!texto.includes(filtros.busca)) {
         return false;
       }
     }
-    if (faccaoFiltroExata && chaveExataFaccoes(mov.destino) !== faccaoFiltroExata) return false;
+    if (faccaoFiltroIdentidade && identidadeFaccao.chave !== faccaoFiltroIdentidade) return false;
     if (filtros.processo && String(mov.processo || "").trim() !== String(filtros.processo || "").trim()) return false;
     if (filtros.status && status !== filtros.status) return false;
     if (filtros.chegada && situacaoChegadaFaccoes(mov) !== filtros.chegada) return false;
@@ -5337,7 +5454,7 @@ function imprimirRelatorioFaccoesFiltrado() {
       <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
       <td>${escapeHtml(mov.referencia || "-")}</td>
       <td>${escapeHtml(mov.cor || "-")}</td>
-      <td>${escapeHtml(mov.destino || "-")}</td>
+      <td>${escapeHtml(nomeFaccaoResolvidoMovimentacao(mov))}</td>
       <td>${escapeHtml(mov.processo || "-")}</td>
       <td class="num">${escapeHtml(Number(mov.quantidadeEnviada || 0).toLocaleString("pt-BR"))}</td>
       <td class="num">${escapeHtml(Number(quantidadeRecebidaMovimentacao(mov) || 0).toLocaleString("pt-BR"))}</td>
@@ -5484,7 +5601,7 @@ function renderResumoFiltroFaccoes(movimentos, filtros) {
   box.innerHTML = `
     <strong>Resumo do filtro:</strong>
     ${totalOps.toLocaleString("pt-BR")} OPs | ${totalPecas.toLocaleString("pt-BR")} peças ${nomeData} | ${totalRecebidas.toLocaleString("pt-BR")} recebidas | ${emAberto.toLocaleString("pt-BR")} em aberto | ${retornaram.toLocaleString("pt-BR")} retornadas/encaminhadas | ${avisadasAguardandoBaixa.toLocaleString("pt-BR")} avisadas aguardando baixa<br>
-    <small>Período: ${escapeHtml(periodo)}${filtros.faccao ? ` | Facção: ${escapeHtml(filtros.faccao)}` : ""}${filtros.processo ? ` | Processo: ${escapeHtml(filtros.processo)}` : ""}</small>
+    <small>Período: ${escapeHtml(periodo)}${filtros.faccao ? ` | Facção: ${escapeHtml(textoSelectFaccoesRelatorio("faccaoMovFiltroNome", filtros.faccao))}` : ""}${filtros.processo ? ` | Processo: ${escapeHtml(filtros.processo)}` : ""}</small>
     ${dias ? `<br><small><strong>Por dia:</strong> ${escapeHtml(dias)}</small>` : ""}
   `;
 }
@@ -5532,7 +5649,7 @@ function renderFaccoesMovimentacoes() {
       <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
       <td><strong>${escapeHtml(mov.referencia || "-")}</strong></td>
       <td>${escapeHtml(mov.cor || "-")}</td>
-      <td><strong>${escapeHtml(mov.destino || "-")}</strong></td>
+      <td><strong>${escapeHtml(nomeFaccaoResolvidoMovimentacao(mov))}</strong></td>
       <td>${escapeHtml(mov.processo || "-")}</td>
       <td><strong>${escapeHtml(Number(mov.quantidadeEnviada || 0).toLocaleString("pt-BR"))}</strong></td>
       <td>${escapeHtml(dataISOParaBR(mov.dataEnvio) || mov.dataEnvio || "-")}</td>
