@@ -1,6 +1,6 @@
 /*
  * CorpoNu — Pagamentos seguros + central financeira organizada
- * Versão: 2026-08-31-pagamentos-faccao-exata-274
+ * Versão: 2026-08-31-pagamentos-pix-destinoid-275
  *
  * Inclui filtro agrupado por processo, confirmação forte, relatórios PIX,
  * central financeira organizada, exclusão segura e atualização automática.
@@ -10,7 +10,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-31-pagamentos-faccao-exata-274";
+  const VERSION = "2026-08-31-pagamentos-pix-destinoid-275";
   const FIREBASE_VERSION = "10.12.5";
   const DATASET_KEY = "corponuPagamentosSeguro";
   const ID_BOTAO_RELATORIO = "btnRelatorioPagamentoSimplificado";
@@ -380,39 +380,83 @@
     return pontos;
   }
 
-  function localizarCadastroFaccao(nome, faccoes) {
+  function localizarCadastroFaccaoPorId(id, faccoes) {
+    const chave = String(id || "").trim();
+    if (!chave) return null;
+
+    const encontrada = (faccoes || []).find(item => String(item?.id || "").trim() === chave) || null;
+    if (!encontrada?.duplicadaDe) return encontrada;
+
+    return (faccoes || []).find(item => String(item?.id || "").trim() === String(encontrada.duplicadaDe || "").trim()) || encontrada;
+  }
+
+  function localizarCadastroFaccao(nome, faccoes, faccaoId = "") {
     const chave = normalizarNome(nome);
+    let faccao = localizarCadastroFaccaoPorId(faccaoId, faccoes);
 
-    // Dados financeiros nunca podem ser inferidos por correspondência parcial de nome.
-    // Ex.: CAMILA não pode herdar PIX/telefone de CAMILA FIRMINO ou CAMILA FURTADO.
-    // Mantemos apenas igualdade normalizada (acentos, caixa e espaços são ignorados).
-    const candidatas = (faccoes || [])
-      .filter(item => chave && normalizarNome(item?.nome) === chave)
-      .sort((a, b) => pontuarCadastroFaccao(b) - pontuarCadastroFaccao(a));
+    // O ID do cadastro é soberano. Nome exato é somente compatibilidade para histórico antigo.
+    if (!faccao) {
+      const candidatas = (faccoes || [])
+        .filter(item => chave && normalizarNome(item?.nome) === chave)
+        .sort((a, b) => pontuarCadastroFaccao(b) - pontuarCadastroFaccao(a));
+      faccao = candidatas[0] || {};
+    }
 
-    const faccao = candidatas[0] || {};
     const observacoes = String(faccao?.observacoes || "");
     const titularObservacao = observacoes.match(/Titular\s*PIX\s*:\s*([^|;\n]+)/i)?.[1]?.trim() || "";
     return {
+      id: String(faccao?.id || "").trim(),
       nome: String(faccao?.nome || nome || "SEM FACÇÃO").trim(),
-      chavePix: String(
-        faccao?.chavePix ||
-        faccao?.pix ||
-        faccao?.dadosPagamento?.pix ||
-        ""
-      ).trim(),
-      titularPix: String(
-        faccao?.titularPix ||
-        faccao?.titular ||
-        faccao?.nomeTitularPix ||
-        faccao?.dadosPagamento?.titular ||
-        titularObservacao ||
-        ""
-      ).trim(),
+      chavePix: String(faccao?.chavePix || faccao?.pix || faccao?.dadosPagamento?.pix || "").trim(),
+      titularPix: String(faccao?.titularPix || faccao?.titular || faccao?.nomeTitularPix || faccao?.dadosPagamento?.titular || titularObservacao || "").trim(),
       cidade: String(faccao?.cidade || "").trim(),
       celular: String(faccao?.celular || faccao?.telefone || faccao?.whatsapp || "").trim(),
       observacoes
     };
+  }
+
+  async function resolverIdentidadesFaccaoPagamentos(pagamentos, dados) {
+    const resultado = new Map();
+    const contexto = dados?.contexto || {};
+    const firestore = contexto.firestore;
+    const db = contexto.db;
+
+    const idsMovimentacao = [...new Set((pagamentos || [])
+      .filter(item => !(item?.faccaoId || item?.destinoId || item?.faccaoCadastroId || item?.destinoFaccaoId))
+      .map(item => String(item?.movimentacaoId || "").trim())
+      .filter(Boolean))];
+
+    const movimentacoes = new Map();
+    if (firestore && db && idsMovimentacao.length) {
+      await Promise.all(idsMovimentacao.map(async id => {
+        try {
+          const snap = await firestore.getDoc(firestore.doc(db, "movimentacoesProducao", id));
+          if (snap.exists()) movimentacoes.set(id, { id: snap.id, ...snap.data() });
+        } catch (error) {
+          console.warn("Não foi possível resolver a movimentação " + id + " para o relatório de pagamento.", error);
+        }
+      }));
+    }
+
+    for (const item of pagamentos || []) {
+      const movimento = movimentacoes.get(String(item?.movimentacaoId || "").trim()) || null;
+      const faccaoId = String(
+        item?.faccaoId ||
+        item?.destinoId ||
+        item?.faccaoCadastroId ||
+        item?.destinoFaccaoId ||
+        movimento?.destinoId ||
+        ""
+      ).trim();
+      const nomePagamento = String(item?.faccao || movimento?.destino || "SEM FACÇÃO").trim() || "SEM FACÇÃO";
+      const cadastro = localizarCadastroFaccao(nomePagamento, dados?.faccoes || [], faccaoId);
+      const chave = cadastro.id
+        ? "id:" + cadastro.id
+        : "nome:" + (normalizarNome(nomePagamento) || "SEM FACCAO");
+      resultado.set(String(item?.id || ""), { chave, cadastro, faccaoId });
+    }
+
+    return resultado;
   }
 
   function agruparPorFaccao(pagamentos) {
@@ -1025,18 +1069,20 @@
         return;
       }
 
+      const identidadesFaccao = await resolverIdentidadesFaccaoPagamentos(pagamentos, dados);
       const grupos = new Map();
       for (const item of pagamentos) {
-        const nome = String(item?.faccao || "SEM FACÇÃO").trim() || "SEM FACÇÃO";
-        const chave = normalizarNome(nome);
-        if (!grupos.has(chave)) grupos.set(chave, { nome, itens: [] });
+        const resolvida = identidadesFaccao.get(String(item?.id || ""));
+        const nome = String(resolvida?.cadastro?.nome || item?.faccao || "SEM FACÇÃO").trim() || "SEM FACÇÃO";
+        const chave = resolvida?.chave || "nome:" + (normalizarNome(nome) || "SEM FACCAO");
+        if (!grupos.has(chave)) grupos.set(chave, { nome, cadastro: resolvida?.cadastro || null, itens: [] });
         grupos.get(chave).itens.push(item);
       }
 
       const secoes = [...grupos.values()]
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }))
         .map(grupo => {
-          const cadastro = localizarCadastroFaccao(grupo.nome, dados.faccoes);
+          const cadastro = grupo.cadastro || localizarCadastroFaccao(grupo.nome, dados.faccoes);
           const total = grupo.itens.reduce((soma, item) =>
             soma + (statusPagamento(item) === "sem_valor" ? 0 : Number(item?.total || 0)), 0
           );
@@ -1167,14 +1213,24 @@
         return;
       }
 
-      const grupos = agruparPorFaccao(pagamentos).map(grupo => {
-        const cadastro = localizarCadastroFaccao(grupo.nome, dados.faccoes);
-        return {
-          nome: cadastro.nome || grupo.nome,
-          chavePix: cadastro.chavePix,
-          valor: grupo.valor
-        };
-      });
+      const identidadesFaccao = await resolverIdentidadesFaccaoPagamentos(pagamentos, dados);
+      const mapaGrupos = new Map();
+      for (const item of pagamentos) {
+        const resolvida = identidadesFaccao.get(String(item?.id || ""));
+        const nome = String(resolvida?.cadastro?.nome || item?.faccao || "SEM FACÇÃO").trim() || "SEM FACÇÃO";
+        const chave = resolvida?.chave || "nome:" + (normalizarNome(nome) || "SEM FACCAO");
+        if (!mapaGrupos.has(chave)) {
+          mapaGrupos.set(chave, {
+            nome,
+            chavePix: String(resolvida?.cadastro?.chavePix || "").trim(),
+            valor: 0
+          });
+        }
+        mapaGrupos.get(chave).valor += Number(item?.total || 0);
+      }
+      const grupos = [...mapaGrupos.values()].sort((a, b) =>
+        a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })
+      );
 
       const totalGeral = grupos.reduce((soma, grupo) => soma + Number(grupo.valor || 0), 0);
       const semPix = grupos.filter(grupo => !grupo.chavePix).length;
