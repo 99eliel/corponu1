@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - scripts/corrigir-relatorio-pix-por-destinoid-275.js
+      - scripts/aplicar-relatorio-pix-destinoid-275.js
 
 permissions:
   contents: write
@@ -17,8 +17,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - run: node --check scripts/corrigir-relatorio-pix-por-destinoid-275.js
-      - run: node scripts/corrigir-relatorio-pix-por-destinoid-275.js
+      - run: node --check scripts/aplicar-relatorio-pix-destinoid-275.js
+      - run: node scripts/aplicar-relatorio-pix-destinoid-275.js
       - run: node --check corponu-pagamentos-seguro.js && node --check update.js && node --check corponu-atualizador.js
       - run: node -e "JSON.parse(require('fs').readFileSync('corponu-release.json','utf8')); JSON.parse(require('fs').readFileSync('version.json','utf8'));"
       - run: git diff --check
