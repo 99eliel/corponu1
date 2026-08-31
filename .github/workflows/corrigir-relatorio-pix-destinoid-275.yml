@@ -1,6 +1,11 @@
 name: Relatorio PIX 275
 
-on: push
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - scripts/corrigir-relatorio-pix-por-destinoid-275.js
 
 permissions:
   contents: write
