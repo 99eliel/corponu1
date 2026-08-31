@@ -1,0 +1,76 @@
+name: Pagamentos faccao 274
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/corrigir-cadastro-pagamento-faccao-274.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  corrigir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validar script de migração
+        run: node --check scripts/corrigir-cadastro-pagamento-faccao-274.js
+
+      - name: Aplicar correção direcionada
+        run: node scripts/corrigir-cadastro-pagamento-faccao-274.js
+
+      - name: Validar JavaScript
+        run: |
+          node --check corponu-pagamentos-seguro.js
+          node --check update.js
+          node --check corponu-atualizador.js
+
+      - name: Validar JSON e regra exata
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e "JSON.parse(require('fs').readFileSync('corponu-release.json','utf8')); JSON.parse(require('fs').readFileSync('version.json','utf8'));"
+          node <<'NODE'
+          const fs = require('fs');
+          const s = fs.readFileSync('corponu-pagamentos-seguro.js', 'utf8');
+          const ini = s.indexOf('function localizarCadastroFaccao(nome, faccoes) {');
+          const fim = s.indexOf('function agruparPorFaccao(pagamentos) {', ini);
+          if (ini < 0 || fim <= ini) throw new Error('Resolvedor cadastral não localizado.');
+          const bloco = s.slice(ini, fim);
+          if (!bloco.includes('normalizarNome(item?.nome) === chave')) throw new Error('Nome exato não está obrigatório.');
+          if (bloco.includes('atual.includes(chave)') || bloco.includes('chave.includes(atual)')) throw new Error('Correspondência parcial ainda presente.');
+          NODE
+          grep -q 'corponu-pagamentos-seguro.js?v=2026-08-31-pagamentos-faccao-exata-274' index.html
+          grep -q '2026-08-31-pagamentos-faccao-exata-274' corponu-release.json
+
+      - name: Conferir escopo do diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          ALTERADOS="$(git diff --name-only | sort)"
+          echo "$ALTERADOS"
+          ESPERADOS="corponu-atualizador.js
+corponu-pagamentos-seguro.js
+corponu-release.json
+index.html
+update.js
+version.json"
+          test "$ALTERADOS" = "$ESPERADOS"
+
+      - name: Publicar correção funcional
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "99eliel"
+          git config user.email "131190282+99eliel@users.noreply.github.com"
+          git add corponu-atualizador.js corponu-pagamentos-seguro.js corponu-release.json index.html update.js version.json
+          git diff --cached --quiet && { echo 'Nenhuma alteração funcional para publicar.'; exit 1; }
+          git commit -m "fix: impedir PIX de outra facção no relatório 274"
+          git push origin HEAD:main
