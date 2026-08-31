@@ -1,0 +1,98 @@
+name: Promover Lateral e Alça V2 270
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/promover-lateral-alca-v2-270.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  promover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Obter exatamente o módulo homologado
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error \
+            'https://raw.githubusercontent.com/99eliel/corpunuteste/cfd5a502f84a8ef5d57486f83e113382680e1427/corponu-faccoes-corte-definitivo.js' \
+            --output corponu-faccoes-lateral-alca-v2-270.js
+          HASH="$(git hash-object corponu-faccoes-lateral-alca-v2-270.js)"
+          test "$HASH" = '4ab69d166303bef97db364e94894d955ad8f89ba'
+          echo "Módulo homologado confirmado pelo blob SHA: $HASH"
+
+      - name: Aplicar promoção estrutural
+        run: python scripts/promover-lateral-alca-v2-270.py
+
+      - name: Validar JavaScript e JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check corponu-faccoes-lateral-alca-v2-270.js
+          node --check corponu-faccoes-tres-abas-saida.js
+          node --check corponu-atualizador.js
+          node --check update.js
+          python -m json.tool corponu-release.json >/dev/null
+          python -m json.tool version.json >/dev/null
+          git diff --check
+
+      - name: Validar comportamento e ausência de remendos
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'const VALOR_FIXO_CORTAGEM_MONTAGEM = 0.0540' corponu-faccoes-lateral-alca-v2-270.js
+          grep -F 'nome: "CORTAGEM E MONTAGEM"' corponu-faccoes-lateral-alca-v2-270.js
+          grep -F 'faccaoProcesso: "ALÇA"' corponu-faccoes-lateral-alca-v2-270.js
+          grep -F 'chegadaInformadaStatus: "aguardando_confirmacao_admin"' corponu-faccoes-lateral-alca-v2-270.js
+          grep -F 'chegadaInformadaStatus: "confirmada_admin"' corponu-faccoes-lateral-alca-v2-270.js
+          grep -F 'c.fs.writeBatch(c.db)' corponu-faccoes-lateral-alca-v2-270.js
+          grep -F 'window.CorpoNuFaccoesLateralAlca = api' corponu-faccoes-lateral-alca-v2-270.js
+          grep -F 'corponu-faccoes-lateral-alca-v2-270.js' corponu-atualizador.js
+          test ! -e corponu-faccoes-lateral-alca-254.js
+          ! grep -F 'corponu-faccoes-lateral-alca-254.js' corponu-atualizador.js
+          ! grep -F 'new MutationObserver' corponu-faccoes-lateral-alca-v2-270.js
+          ! grep -F 'setInterval' corponu-faccoes-lateral-alca-v2-270.js
+          ! grep -F 'CONFIG_ID = "processos-corte"' corponu-faccoes-lateral-alca-v2-270.js
+
+      - name: Conferir escopo da alteração
+        shell: bash
+        run: |
+          set -euo pipefail
+          git status --short
+          ALTERADOS="$(git diff --name-only | sort)"
+          echo "$ALTERADOS"
+          if echo "$ALTERADOS" | grep -E '(^|/)(firebase|firestore).*(rules|json)$'; then
+            echo 'ERRO: arquivo de regra/configuração Firebase foi alterado.'
+            exit 1
+          fi
+          if echo "$ALTERADOS" | grep -E '^app\.js$'; then
+            echo 'ERRO: app.js não deve ser alterado por esta promoção.'
+            exit 1
+          fi
+
+      - name: Commit funcional único
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A -- \
+            corponu-faccoes-lateral-alca-v2-270.js \
+            corponu-faccoes-lateral-alca-254.js \
+            corponu-atualizador.js \
+            index.html \
+            update.js \
+            corponu-release.json \
+            version.json
+          git diff --cached --check
+          git commit -m 'refactor: promover Lateral e Alça V2 270'
+          git push origin main
