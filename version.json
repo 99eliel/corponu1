@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-31-bojo-confeccao-configuravel-267",
-  "updatedAt": "2026-08-31T06:20:00-03:00",
-  "notes": "Processos agora possui valor configurável para o desconto padrão do bojo feito pela confecção no Sutiã Completo; padrão inicial R$ 0,50."
+  "version": "2026-08-31-processos-sutia-singleflight-268",
+  "updatedAt": "2026-08-31T06:45:00-03:00",
+  "notes": "Processos: montagem da configuração do Sutiã Completo passou a ser single-flight. Removidos os timers/polling que podiam iniciar a mesma UI dezenas de vezes. Perfil e configuração agora deduplicam leituras concorrentes, há revalidação após autenticação e apenas uma instância do formulário pode ser criada. Nenhuma regra financeira ou do Firebase foi alterada."
 }

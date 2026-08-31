@@ -20,6 +20,9 @@
   window.__CORPONU_SUTIA_COMPLETO_CALCULO__ = VERSION;
 
   let firebasePromise = null;
+  let perfilPromise = null;
+  let configPromise = null;
+  let configProcessosPromise = null;
   let perfilAtual = null;
   let configAtual = { ...DEFAULTS };
   let precosCache = { expiraEm: 0, itens: [] };
@@ -117,16 +120,32 @@
 
   async function obterPerfil() {
     const ctx = await firebase();
-    const usuario = ctx.auth.currentUser;
-    if (!usuario) return null;
-    if (perfilAtual?.uid === usuario.uid) return perfilAtual;
+    const usuarioAtual = ctx.auth.currentUser;
+    if (usuarioAtual && perfilAtual?.uid === usuarioAtual.uid) return perfilAtual;
+    if (perfilPromise) return perfilPromise;
 
-    const snap = await ctx.fs.getDoc(ctx.fs.doc(ctx.db, "usuarios", usuario.uid));
-    perfilAtual = {
-      uid: usuario.uid,
-      ...(snap.exists() ? snap.data() : {})
-    };
-    return perfilAtual;
+    perfilPromise = (async () => {
+      if (!ctx.auth.currentUser && typeof ctx.auth.authStateReady === "function") {
+        await ctx.auth.authStateReady();
+      }
+
+      const usuario = ctx.auth.currentUser;
+      if (!usuario) return null;
+      if (perfilAtual?.uid === usuario.uid) return perfilAtual;
+
+      const snap = await ctx.fs.getDoc(ctx.fs.doc(ctx.db, "usuarios", usuario.uid));
+      perfilAtual = {
+        uid: usuario.uid,
+        ...(snap.exists() ? snap.data() : {})
+      };
+      return perfilAtual;
+    })();
+
+    try {
+      return await perfilPromise;
+    } finally {
+      perfilPromise = null;
+    }
   }
 
   function ehAdmin(perfil) {
@@ -134,21 +153,31 @@
   }
 
   async function carregarConfig() {
-    const ctx = await firebase();
-    const snap = await ctx.fs.getDoc(ctx.fs.doc(ctx.db, "configuracoes", CONFIG_DOC));
-    const dados = snap.exists() ? snap.data() : {};
+    if (configPromise) return configPromise;
 
-    configAtual = {
-      valorBaseGeral: Math.max(0, numero(dados.valorBaseGeral, DEFAULTS.valorBaseGeral)),
-      referenciaEspecial: referenciaNormalizada(dados.referenciaEspecial || DEFAULTS.referenciaEspecial),
-      valorBaseReferenciaEspecial: Math.max(0, numero(dados.valorBaseReferenciaEspecial, DEFAULTS.valorBaseReferenciaEspecial)),
-      descontoBojoConfeccao: Math.max(0, numero(dados.descontoBojoConfeccao, DEFAULTS.descontoBojoConfeccao)),
-      descontoFechoNaoFeito: Math.max(0, numero(dados.descontoFechoNaoFeito, DEFAULTS.descontoFechoNaoFeito)),
-      descontoPontoLuzNaoFeito: Math.max(0, numero(dados.descontoPontoLuzNaoFeito, DEFAULTS.descontoPontoLuzNaoFeito))
-    };
+    configPromise = (async () => {
+      const ctx = await firebase();
+      const snap = await ctx.fs.getDoc(ctx.fs.doc(ctx.db, "configuracoes", CONFIG_DOC));
+      const dados = snap.exists() ? snap.data() : {};
 
-    preencherFormularioConfig();
-    return configAtual;
+      configAtual = {
+        valorBaseGeral: Math.max(0, numero(dados.valorBaseGeral, DEFAULTS.valorBaseGeral)),
+        referenciaEspecial: referenciaNormalizada(dados.referenciaEspecial || DEFAULTS.referenciaEspecial),
+        valorBaseReferenciaEspecial: Math.max(0, numero(dados.valorBaseReferenciaEspecial, DEFAULTS.valorBaseReferenciaEspecial)),
+        descontoBojoConfeccao: Math.max(0, numero(dados.descontoBojoConfeccao, DEFAULTS.descontoBojoConfeccao)),
+        descontoFechoNaoFeito: Math.max(0, numero(dados.descontoFechoNaoFeito, DEFAULTS.descontoFechoNaoFeito)),
+        descontoPontoLuzNaoFeito: Math.max(0, numero(dados.descontoPontoLuzNaoFeito, DEFAULTS.descontoPontoLuzNaoFeito))
+      };
+
+      preencherFormularioConfig();
+      return configAtual;
+    })();
+
+    try {
+      return await configPromise;
+    } finally {
+      configPromise = null;
+    }
   }
 
   function injetarEstilos() {
@@ -203,13 +232,17 @@
     if (ref && document.activeElement !== ref) ref.value = configAtual.referenciaEspecial;
   }
 
-  async function injetarConfigProcessos() {
+  async function montarConfigProcessos() {
     injetarEstilos();
     const secao = document.getElementById("processos");
     if (!secao || document.getElementById("configSutiaCompleto51")) return;
 
     const perfil = await obterPerfil().catch(() => null);
     if (!ehAdmin(perfil)) return;
+
+    // A autenticação é assíncrona. Outra chamada pode ter concluído a montagem
+    // enquanto esta aguardava o perfil; revalidar aqui garante unicidade real.
+    if (document.getElementById("configSutiaCompleto51")) return;
 
     const form = document.createElement("form");
     form.id = "configSutiaCompleto51";
@@ -263,6 +296,18 @@
 
     form.addEventListener("submit", salvarConfiguracao);
     await carregarConfig().catch(error => console.warn("Configuração do Sutiã Completo não carregada.", error));
+  }
+
+  async function injetarConfigProcessos() {
+    if (document.getElementById("configSutiaCompleto51")) return;
+    if (configProcessosPromise) return configProcessosPromise;
+
+    configProcessosPromise = montarConfigProcessos();
+    try {
+      return await configProcessosPromise;
+    } finally {
+      configProcessosPromise = null;
+    }
   }
 
   async function salvarConfiguracao(event) {
@@ -1617,9 +1662,9 @@
       }
 
       if (alvo.closest('[data-page="processos"]')) {
-        [0, 250, 800].forEach(ms => window.setTimeout(() => {
-          injetarConfigProcessos().catch(() => {});
-        }, ms));
+        injetarConfigProcessos().catch(error => {
+          console.warn("Configuração do Sutiã Completo não montada em Processos.", error);
+        });
       }
 
       if (alvo.closest('[data-page="revisao-componentes"]')) {
@@ -1650,14 +1695,11 @@
     instalarEventosFormularios();
     esconderConfigAntigaRevisao();
 
-    let tentativas = 0;
-    const intervalo = window.setInterval(() => {
-      tentativas += 1;
-      instalarEventosFormularios();
-      esconderConfigAntigaRevisao();
-      injetarConfigProcessos().catch(() => {});
-      if (tentativas >= 30) window.clearInterval(intervalo);
-    }, 500);
+    if (document.getElementById("processos")?.classList.contains("active")) {
+      injetarConfigProcessos().catch(error => {
+        console.warn("Configuração do Sutiã Completo não montada na inicialização de Processos.", error);
+      });
+    }
 
     window.addEventListener("pageshow", () => {
       esconderConfigAntigaRevisao();
