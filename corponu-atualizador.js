@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-31-faccoes-filtro-exato-nome-269";
+  const LOCAL_RELEASE = "2026-08-31-lateral-alca-v2-270";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -68,7 +68,7 @@
       MODULO_GRUPOS_FACCOES,
       ["corponu-faccoes-exclusao-pagamento-vinculado.js", "faccoes-exclusao-pagamento-vinculado", "Não foi possível vincular exclusão da facção ao pagamento."],
       ["corponu-faccao-cadastro-recolhido.js", "faccao-cadastro-recolhido", "Não foi possível carregar o cadastro recolhido de facção."],
-      ["corponu-faccoes-lateral-alca-254.js", "faccoes-lateral-alca-254", "Não foi possível carregar a área nativa de Lateral e Alça."],
+      ["corponu-faccoes-lateral-alca-v2-270.js", "faccoes-lateral-alca-v2-270", "Não foi possível carregar a área Lateral e Alça V2."],
       ["corponu-faccoes-tres-abas-saida.js", "faccoes-tres-abas-saida", "Não foi possível carregar as abas de Facções."],
       ["corponu-revisao-lateral-bojo-fix.js", "revisao-lateral-bojo-fix", "Não foi possível proteger Revisão lateral e bojo."],
       ["corponu-revisao-responsaveis.js", "revisao-responsaveis", "Não foi possível carregar responsáveis da revisão."],

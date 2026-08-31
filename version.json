@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-31-faccoes-filtro-exato-nome-269",
-  "updatedAt": "2026-08-31T09:25:00-03:00",
-  "notes": "Facções: a busca pelo nome de uma facção agora resolve nomes completos de forma exata. Se existir CAMILA e CAMILA FIRMINO, buscar CAMILA retorna somente CAMILA; buscas parciais continuam amplas. O filtro dedicado de Facção também usa chave normalizada exata. Tela e relatório compartilham a mesma regra canônica, sem consultas adicionais ao Firebase."
+  "version": "2026-08-31-lateral-alca-v2-270",
+  "updatedAt": "2026-08-31T10:30:00-03:00",
+  "notes": "Produção. A área Lateral e Alça foi promovida da homologação para a V2 estrutural, substituindo o módulo 254 sem carregar dois fluxos em paralelo. LATERAL continua usando valor por referência e é o único processo que marca lateral pronta. ALÇA mantém o valor global existente com a regra de duas alças por peça. Dentro do grupo Alça foi incluído CORTAGEM E MONTAGEM com valor fixo de R$ 0,0540 por peça e as mesmas facções de Alça. Registros históricos de area=corte/movimentacaoCorte continuam sendo lidos sem migração, regravação ou exclusão; novos registros usam fluxoFaccoes=lateral_alca. Usuário comum informa chegada e o administrador confirma a baixa, com criação do pagamento na confirmação. A baixa usa batch atômico. A V2 remove observadores/timers e carregamentos completos repetidos da implementação anterior, usa cache de OP e renderização limitada. Nenhuma regra do Firebase foi alterada e nenhum dado histórico foi apagado."
 }
