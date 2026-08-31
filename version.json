@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-31-processos-sutia-singleflight-268",
-  "updatedAt": "2026-08-31T06:45:00-03:00",
-  "notes": "Processos: montagem da configuração do Sutiã Completo passou a ser single-flight. Removidos os timers/polling que podiam iniciar a mesma UI dezenas de vezes. Perfil e configuração agora deduplicam leituras concorrentes, há revalidação após autenticação e apenas uma instância do formulário pode ser criada. Nenhuma regra financeira ou do Firebase foi alterada."
+  "version": "2026-08-31-faccoes-filtro-exato-nome-269",
+  "updatedAt": "2026-08-31T09:25:00-03:00",
+  "notes": "Facções: a busca pelo nome de uma facção agora resolve nomes completos de forma exata. Se existir CAMILA e CAMILA FIRMINO, buscar CAMILA retorna somente CAMILA; buscas parciais continuam amplas. O filtro dedicado de Facção também usa chave normalizada exata. Tela e relatório compartilham a mesma regra canônica, sem consultas adicionais ao Firebase."
 }

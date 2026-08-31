@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-31-processos-sutia-singleflight-268",
-  "updatedAt": "2026-08-31T06:45:00-03:00",
-  "notes": "Produção. Corrigida estruturalmente a duplicação e lentidão da configuração do Sutiã Completo em Processos. A montagem agora é uma operação única (single-flight), com uma segunda checagem de existência após a autenticação assíncrona. Leituras concorrentes de perfil e configuração são deduplicadas. Foram removidas as três tentativas temporizadas no clique e o polling de 30 tentativas a cada 500 ms. A página deixa de criar formulários duplicados e de repetir trabalho/Firebase durante a abertura. Cálculos, valores, regra do bojo configurável e demais regras financeiras permanecem iguais. Nenhuma regra do Firebase foi alterada."
+  "version": "2026-08-31-faccoes-filtro-exato-nome-269",
+  "updatedAt": "2026-08-31T09:25:00-03:00",
+  "notes": "Produção. Corrigida colisão de nomes no filtro/relatório de Facções. A busca geral detecta quando o termo corresponde exatamente ao nome completo de uma facção e, nesse caso, restringe a movimentação àquela facção; por exemplo, CAMILA não inclui mais CAMILA FIRMINO. Termos parciais continuam funcionando como busca ampla. O seletor dedicado de Facção também compara por chave normalizada exata. A tela e a impressão usam a mesma função de filtragem e nenhum caminho paralelo ou leitura extra do Firebase foi criado. Nenhuma regra do Firebase foi alterada."
 }

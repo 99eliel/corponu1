@@ -5208,7 +5208,27 @@ function getAbaAtivaFaccoesRelatorio() {
   return ["sutia", "calcinha"].includes(aba) ? aba : "";
 }
 
+function chaveExataFaccoes(valor) {
+  return normalizarTexto(String(valor ?? "").trim());
+}
+
+function resolverFaccaoExataNaBusca(movimentosBase, busca) {
+  const chaveBusca = chaveExataFaccoes(busca);
+  if (!chaveBusca) return "";
+
+  const nomes = new Set(
+    (movimentosBase || [])
+      .map(mov => chaveExataFaccoes(mov?.destino))
+      .filter(Boolean)
+  );
+
+  return nomes.has(chaveBusca) ? chaveBusca : "";
+}
+
 function filtrarMovimentacoesFaccoes(movimentosBase, filtros, opcoes = {}) {
+  const faccaoFiltroExata = chaveExataFaccoes(filtros.faccao);
+  const faccaoBuscaExata = resolverFaccaoExataNaBusca(movimentosBase, filtros.busca);
+
   let movimentos = (movimentosBase || []).filter(mov => {
     const status = mov.status || "em_andamento";
     const dataFiltro = getDataMovimentacaoFaccoes(mov, filtros.tipoData);
@@ -5228,9 +5248,15 @@ function filtrarMovimentacoesFaccoes(movimentosBase, filtros, opcoes = {}) {
       mov.chegadaInformadaData
     ].join(" "));
 
-    if (filtros.busca && !texto.includes(filtros.busca)) return false;
-    if (filtros.faccao && String(mov.destino || "") !== filtros.faccao) return false;
-    if (filtros.processo && String(mov.processo || "") !== filtros.processo) return false;
+    if (filtros.busca) {
+      if (faccaoBuscaExata) {
+        if (chaveExataFaccoes(mov.destino) !== faccaoBuscaExata) return false;
+      } else if (!texto.includes(filtros.busca)) {
+        return false;
+      }
+    }
+    if (faccaoFiltroExata && chaveExataFaccoes(mov.destino) !== faccaoFiltroExata) return false;
+    if (filtros.processo && String(mov.processo || "").trim() !== String(filtros.processo || "").trim()) return false;
     if (filtros.status && status !== filtros.status) return false;
     if (filtros.chegada && situacaoChegadaFaccoes(mov) !== filtros.chegada) return false;
     if (filtros.dataInicio && (!dataFiltro || dataFiltro < filtros.dataInicio)) return false;
