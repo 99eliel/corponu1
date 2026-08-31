@@ -1,6 +1,6 @@
 /*
  * CorpoNu — Pagamentos seguros + central financeira organizada
- * Versão: 2026-07-30-recuperacao-pagamentos-autoupdate-5
+ * Versão: 2026-08-31-pagamentos-faccao-exata-274
  *
  * Inclui filtro agrupado por processo, confirmação forte, relatórios PIX,
  * central financeira organizada, exclusão segura e atualização automática.
@@ -10,7 +10,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-07-30-recuperacao-pagamentos-autoupdate-5";
+  const VERSION = "2026-08-31-pagamentos-faccao-exata-274";
   const FIREBASE_VERSION = "10.12.5";
   const DATASET_KEY = "corponuPagamentosSeguro";
   const ID_BOTAO_RELATORIO = "btnRelatorioPagamentoSimplificado";
@@ -382,16 +382,12 @@
 
   function localizarCadastroFaccao(nome, faccoes) {
     const chave = normalizarNome(nome);
+
+    // Dados financeiros nunca podem ser inferidos por correspondência parcial de nome.
+    // Ex.: CAMILA não pode herdar PIX/telefone de CAMILA FIRMINO ou CAMILA FURTADO.
+    // Mantemos apenas igualdade normalizada (acentos, caixa e espaços são ignorados).
     const candidatas = (faccoes || [])
-      .filter(item => {
-        const atual = normalizarNome(item?.nome);
-        if (!atual || !chave) return false;
-        if (atual === chave) return true;
-        if (atual.includes(chave) || chave.includes(atual)) {
-          return Math.abs(atual.length - chave.length) <= 18;
-        }
-        return false;
-      })
+      .filter(item => chave && normalizarNome(item?.nome) === chave)
       .sort((a, b) => pontuarCadastroFaccao(b) - pontuarCadastroFaccao(a));
 
     const faccao = candidatas[0] || {};

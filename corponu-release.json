@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-31-faccoes-filtro-identidade-273",
-  "updatedAt": "2026-08-31T14:44:00-03:00",
-  "notes": "Produção. Corrige exclusivamente o filtro e o relatório de Facções para identificar a facção pelo cadastro real da movimentação. Quando destinoId existe, ele passa a ser a chave principal; movimentações históricas sem destinoId usam correspondência exata de nome como compatibilidade. Isso impede Camila de absorver Camila Furtado ou outras facções com nome iniciado igual. O select, a tabela, a busca por nome exato e o relatório usam a mesma identidade canônica em memória, sem leituras extras e sem alterar documentos do Firebase. Nenhuma outra área do sistema foi modificada e nenhuma regra do Firebase mudou."
+  "version": "2026-08-31-pagamentos-faccao-exata-274",
+  "updatedAt": "2026-08-31T18:48:04.562Z",
+  "notes": "Produção. Corrige exclusivamente a resolução dos dados cadastrais de facção nos relatórios e na conferência de Pagamentos. O filtro de lançamentos permanece inalterado. O módulo financeiro deixou de usar correspondência parcial de nomes para buscar PIX, titular, cidade e telefone: agora somente um cadastro com nome normalizado exatamente igual pode fornecer esses dados. Assim CAMILA não pode mais herdar dados de CAMILA FIRMINO, CAMILA FURTADO ou qualquer outra facção com nome semelhante. Se um pagamento histórico não possuir cadastro com nome exato, o relatório mantém o nome do próprio pagamento e sinaliza PIX não cadastrado, em vez de associar dados de outra pessoa. Nenhum lançamento foi alterado, nenhuma leitura extra foi adicionada e nenhuma regra do Firebase mudou."
 }

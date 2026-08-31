@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-08-31-faccoes-filtro-identidade-273";
+  const APP_VERSION = "2026-08-31-pagamentos-faccao-exata-274";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
