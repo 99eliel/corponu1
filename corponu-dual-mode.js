@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-25-calcinha-faccao-livre-253";
+  const VERSION = "2026-08-31-faccoes-lateral-alca-nativa-271";
   const FIREBASE_VERSION = "10.12.5";
   const HISTORY_URL = `calcinhas-historico-2026.json?v=${encodeURIComponent(VERSION)}`;
   const TYPES = Object.freeze({ sutia: "Sutiã", calcinha: "Calcinha" });
@@ -252,11 +252,6 @@
     const style = document.createElement("style");
     style.id = "corponuDualStyles";
     style.textContent = `
-      .corponu-dual-tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 14px;padding:7px;background:#eef4fb;border:1px solid #cbd9e8;border-radius:14px}
-      .corponu-dual-tab{appearance:none;border:1px solid #b9c9da;background:#fff;color:#20344b;border-radius:10px;padding:9px 16px;font-weight:900;cursor:pointer;transition:.16s ease}
-      .corponu-dual-tab:hover{transform:translateY(-1px);border-color:#6c8caf}
-      .corponu-dual-tab.active{background:#173c69;color:#fff;border-color:#173c69;box-shadow:0 6px 14px rgba(23,60,105,.18)}
-      .corponu-dual-tab .count{display:inline-flex;min-width:22px;height:22px;align-items:center;justify-content:center;border-radius:999px;margin-left:7px;padding:0 6px;background:rgba(255,255,255,.18);font-size:11px}
       .corponu-dual-hint{font-size:12px;color:#52677e;margin:-5px 0 14px}
       .corponu-calcinha-field{display:none}
       body[data-corponu-form-type="calcinha"] .corponu-calcinha-field{display:block}
@@ -283,29 +278,39 @@
       .corponu-history-send-body{display:grid;gap:14px;padding:20px}.corponu-history-send-body label{display:grid;gap:6px;font-weight:900;color:#20344b}.corponu-history-send-body select{min-height:44px;border:1px solid #b8c7d8;border-radius:10px;padding:8px 10px;background:#fff}
       .corponu-history-send-actions{display:flex;justify-content:flex-end;gap:10px;padding:0 20px 20px}
       body[data-corponu-manejo-tipo="calcinha"] #avisoFiltrosExcelManejo{border-color:#a9c5e0;background:#eef6ff}
-      @media(max-width:720px){.corponu-dual-grid,.corponu-history-summary{grid-template-columns:1fr}.corponu-dual-tabs{position:sticky;top:0;z-index:15}.corponu-dual-tab{flex:1}.corponu-history-send-actions{flex-direction:column-reverse}.corponu-history-send-actions .btn{width:100%}}
+      @media(max-width:720px){.corponu-dual-grid,.corponu-history-summary{grid-template-columns:1fr}.corponu-history-send-actions{flex-direction:column-reverse}.corponu-history-send-actions .btn{width:100%}}
     `;
     document.head.appendChild(style);
   }
 
-  function makeTabs(pageId) {
-    const page = document.getElementById(pageId);
-    if (!page || page.querySelector(`.corponu-dual-tabs[data-page="${pageId}"]`)) return;
-    const anchor = page.querySelector(":scope > .panel, :scope > .grid-2") || page.firstElementChild;
-    const tabs = document.createElement("div");
-    tabs.className = "corponu-dual-tabs";
-    tabs.dataset.page = pageId;
-    tabs.innerHTML = `
-      <button type="button" class="corponu-dual-tab active" data-type="sutia">Sutiã <span class="count" data-count-type="sutia">0</span></button>
-      <button type="button" class="corponu-dual-tab" data-type="calcinha">Calcinha <span class="count" data-count-type="calcinha">0</span></button>
-    `;
+  function bindTabs(pageId, tabs) {
+    if (!tabs || tabs.dataset.corponuDualBound === "1") return;
+    tabs.dataset.corponuDualBound = "1";
     tabs.addEventListener("click", event => {
       const button = event.target.closest(".corponu-dual-tab");
-      if (!button) return;
-      setActiveType(pageId, button.dataset.type);
+      const type = button?.dataset?.type || "";
+      if (!type) return;
+      setActiveType(pageId, type);
     });
-    if (anchor) page.insertBefore(tabs, anchor);
-    else page.prepend(tabs);
+  }
+
+  function makeTabs(pageId) {
+    const page = document.getElementById(pageId);
+    if (!page) return;
+    let tabs = page.querySelector(`.corponu-dual-tabs[data-page="${pageId}"]`);
+    if (!tabs) {
+      const anchor = page.querySelector(":scope > .panel, :scope > .grid-2") || page.firstElementChild;
+      tabs = document.createElement("div");
+      tabs.className = "corponu-dual-tabs";
+      tabs.dataset.page = pageId;
+      tabs.innerHTML = `
+        <button type="button" class="corponu-dual-tab active" data-type="sutia">Sutiã <span class="count" data-count-type="sutia">0</span></button>
+        <button type="button" class="corponu-dual-tab" data-type="calcinha">Calcinha <span class="count" data-count-type="calcinha">0</span></button>
+      `;
+      if (anchor) page.insertBefore(tabs, anchor);
+      else page.prepend(tabs);
+    }
+    bindTabs(pageId, tabs);
   }
 
   function setActiveType(pageId, type, options = {}) {

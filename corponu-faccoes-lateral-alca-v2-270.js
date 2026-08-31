@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-31-lateral-alca-v2-270";
+  const VERSION = "2026-08-31-faccoes-lateral-alca-nativa-271";
   const FB = "10.12.5";
   const AREA_LEGADA = "corte";
   const FLUXO = "lateral_alca";
@@ -198,7 +198,6 @@
     if (perfil) return perfil;
     const snap = await c.fs.getDoc(c.fs.doc(c.db, "usuarios", usuario.uid));
     perfil = snap.exists() ? snap.data() : {};
-    atualizarVisibilidadeAdmin();
     return perfil;
   }
 
@@ -294,7 +293,6 @@
       carregadoEm = Date.now();
       limiteRender = LIMITE_RENDER_INICIAL;
       renderDados();
-      if (ehAdmin()) carregarValorGlobalAlca().catch(() => {});
     } catch (error) {
       console.error(error);
       toast("Não foi possível carregar Lateral e Alça.", "error");
@@ -449,7 +447,6 @@
     preencherFiltros();
     renderResumo();
     renderTabela();
-    atualizarVisibilidadeAdmin();
   }
 
   function renderProcessosSaida() {
@@ -472,7 +469,7 @@
     const style = document.createElement("style");
     style.id = "styleFaccoesLateralAlcaV2";
     style.textContent = `
-      #painelFaccoesCorte.hidden,.la2-modal.hidden,.la2-admin.hidden,#btnLA2MostrarMais.hidden{display:none!important}
+      #painelFaccoesCorte.hidden,.la2-modal.hidden,#btnLA2MostrarMais.hidden{display:none!important}
       #painelFaccoesCorte{display:grid;gap:15px}.la2-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.la2-head h3{margin:0}.la2-head p{margin:4px 0 0;color:#64748b}.la2-toolbar{display:flex;gap:8px;flex-wrap:wrap}
       .la2-cards{display:grid;grid-template-columns:repeat(4,minmax(145px,1fr));gap:10px}.la2-card{padding:13px;border:1px solid #e2e8f0;border-radius:14px;background:#fff}.la2-card span{display:block;color:#64748b;font-size:11px;font-weight:800}.la2-card strong{display:block;margin-top:4px;font-size:22px;color:#0f172a}
       .la2-filtros{display:grid;grid-template-columns:2fr repeat(5,minmax(130px,1fr)) auto;gap:9px;align-items:end}.la2-filtros label{margin:0}.la2-filtros input,.la2-filtros select{width:100%}
@@ -480,8 +477,7 @@
       .la2-actions{display:flex;gap:5px;flex-wrap:wrap}.la2-empty{text-align:center!important;padding:26px!important;color:#64748b}.la2-result{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#64748b;font-size:12px}
       .la2-modal{position:fixed;inset:0;z-index:100120;background:#0f172a99;display:flex;align-items:center;justify-content:center;padding:18px}.la2-modal-card{width:min(760px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:18px;padding:20px;box-shadow:0 25px 70px #0f172a55}.la2-modal-head{display:flex;justify-content:space-between;gap:12px}.la2-modal-head h3{margin:0}.la2-modal-close{border:0;background:#f1f5f9;border-radius:10px;width:36px;height:36px;font-size:22px}
       .la2-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.la2-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.la2-preview{margin:12px 0;padding:12px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:12px}.la2-preview.hidden,.la2-saida-campos.hidden{display:none!important}.la2-preview-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.la2-preview-grid div{padding:8px;background:#fff;border:1px solid #dbeafe;border-radius:9px}.la2-preview-grid small{display:block;color:#64748b}.la2-preview-grid strong{display:block;margin-top:3px}
-      .la2-admin-box{border:1px solid #e2e8f0;border-radius:14px;padding:15px;background:#f8fafc}.la2-admin-box h4{margin:0 0 10px}.la2-valores-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.la2-valor-card{padding:13px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}.la2-valor-card h5{margin:0 0 8px}.la2-valor-card p{margin:4px 0;color:#64748b;font-size:12px}.la2-fixed{font-size:20px;font-weight:900;color:#166534}
-      @media(max-width:1100px){.la2-filtros{grid-template-columns:repeat(3,minmax(0,1fr))}.la2-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.la2-valores-grid{grid-template-columns:1fr}}
+      @media(max-width:1100px){.la2-filtros{grid-template-columns:repeat(3,minmax(0,1fr))}.la2-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
       @media(max-width:700px){.la2-filtros,.la2-cards,.la2-grid-2,.la2-grid-3,.la2-preview-grid{grid-template-columns:1fr}.la2-head,.la2-result{flex-direction:column}}
     `;
     document.head.appendChild(style);
@@ -513,28 +509,7 @@
       </div>
       <div class="table-wrap"><table><thead><tr><th>OP</th><th>Ref.</th><th>Cor</th><th>Processo</th><th>Grupo</th><th>Facção</th><th>Qtd.</th><th>Saída</th><th>Chegada</th><th>Falta</th><th>Status</th><th>Ações</th></tr></thead><tbody id="listaFaccoesLateralAlcaV2"></tbody></table></div>
       <div class="la2-result"><span id="la2ResultadoInfo"></span><button id="btnLA2MostrarMais" class="btn hidden" type="button">Mostrar mais</button></div>
-      <div id="la2ValoresAdmin" class="la2-admin la2-admin-box hidden">
-        <h4>Valores de Lateral e Alça</h4>
-        <div class="la2-valores-grid">
-          <form id="formLA2ValorLateral" class="la2-valor-card">
-            <h5>Lateral por referência</h5>
-            <label>Referência<input id="la2ValorLateralRef" required></label>
-            <label>Valor por peça<input id="la2ValorLateralValor" type="number" min="0.0001" step="0.0001" required></label>
-            <button class="btn btn-primary" type="submit">Salvar valor</button>
-          </form>
-          <form id="formLA2ValorAlca" class="la2-valor-card">
-            <h5>Alça — valor global</h5>
-            <p>O valor cadastrado é por alça; o pagamento mantém a regra atual de 2 alças por peça.</p>
-            <label>Valor por alça<input id="la2ValorAlcaValor" type="number" min="0.0001" step="0.0001" required></label>
-            <button class="btn btn-primary" type="submit">Salvar valor</button>
-          </form>
-          <div class="la2-valor-card">
-            <h5>Alça • Cortagem e montagem</h5>
-            <p>Valor único e fixo por peça.</p>
-            <div class="la2-fixed">${dinheiro4(VALOR_FIXO_CORTAGEM_MONTAGEM)}</div>
-          </div>
-        </div>
-      </div>
+
     `;
   }
 
@@ -584,22 +559,15 @@
     montarModais();
     const pagina = document.getElementById("faccoes");
     const geral = pagina?.querySelector(":scope > .faccoes-operacional-panel");
-    if (!pagina || !geral) return false;
-    if (!document.getElementById("painelFaccoesCorte")) {
-      const painel = document.createElement("div");
-      painel.id = "painelFaccoesCorte";
-      painel.className = "panel hidden";
+    const painel = document.getElementById("painelFaccoesCorte");
+    if (!pagina || !geral || !painel) return false;
+    if (painel.dataset.la2Montado !== VERSION) {
       painel.innerHTML = montarPainel();
-      geral.insertAdjacentElement("afterend", painel);
+      painel.dataset.la2Montado = VERSION;
     }
     renderProcessosSaida();
-    atualizarVisibilidadeAdmin();
     ligarEventosLocais();
     return true;
-  }
-
-  function atualizarVisibilidadeAdmin() {
-    document.querySelectorAll(".la2-admin").forEach(el => el.classList.toggle("hidden", !ehAdmin()));
   }
 
   function abrirModal(id) {
@@ -1226,73 +1194,6 @@
     }
   }
 
-  async function carregarValorGlobalAlca() {
-    if (!ehAdmin()) return;
-    const c = await contexto();
-    const snap = await c.fs.getDoc(c.fs.doc(c.db, "precosReferencia", "valor-padrao-alca"));
-    const input = document.getElementById("la2ValorAlcaValor");
-    if (input && snap.exists()) input.value = num(snap.data().valor ?? snap.data().valorUnitario ?? snap.data().preco) || "";
-  }
-
-  async function salvarValorAlca(event) {
-    event.preventDefault();
-    if (!ehAdmin()) return;
-    const valor = arred4(document.getElementById("la2ValorAlcaValor")?.value);
-    if (valor <= 0) return toast("Informe um valor válido para Alça.", "error");
-    try {
-      const c = await contexto();
-      usuario = usuario || await aguardarUsuario();
-      await c.fs.setDoc(c.fs.doc(c.db, "precosReferencia", "valor-padrao-alca"), {
-        referencia: "PADRAO",
-        processo: "ALÇA",
-        setor: AREA_LEGADA,
-        setorLabel: "Lateral e Alça",
-        valor,
-        ativo: true,
-        atualizadoPor: usuario.uid,
-        atualizadoEm: c.fs.serverTimestamp(),
-        versaoLateralAlca: VERSION
-      }, { merge: true });
-      registrarLog("lateral_alca_valor_global_alca", "precoReferencia", "valor-padrao-alca", `ALÇA ${dinheiro4(valor)} por alça`).catch(() => {});
-      toast("Valor global da Alça salvo.", "ok");
-    } catch (error) {
-      console.error(error);
-      toast("Erro ao salvar valor da Alça.", "error");
-    }
-  }
-
-  async function salvarValorLateral(event) {
-    event.preventDefault();
-    if (!ehAdmin()) return;
-    const referencia = norm(document.getElementById("la2ValorLateralRef")?.value || "");
-    const valor = arred4(document.getElementById("la2ValorLateralValor")?.value);
-    if (!referencia || valor <= 0) return toast("Informe referência e valor válidos.", "error");
-    const id = `corte-${slug(referencia)}-lateral`;
-    try {
-      const c = await contexto();
-      usuario = usuario || await aguardarUsuario();
-      await c.fs.setDoc(c.fs.doc(c.db, "precosReferencia", id), {
-        referencia,
-        processo: "LATERAL",
-        processoCorteId: "lateral",
-        setor: AREA_LEGADA,
-        setorLabel: "Lateral e Alça",
-        area: AREA_LEGADA,
-        areaLabel: "Lateral e Alça",
-        valor,
-        ativo: true,
-        atualizadoPor: usuario.uid,
-        atualizadoEm: c.fs.serverTimestamp(),
-        versaoLateralAlca: VERSION
-      }, { merge: true });
-      registrarLog("lateral_alca_valor_lateral", "precoReferencia", id, `${referencia} | LATERAL | ${dinheiro4(valor)}`).catch(() => {});
-      toast("Valor de Lateral salvo.", "ok");
-    } catch (error) {
-      console.error(error);
-      toast("Erro ao salvar valor de Lateral.", "error");
-    }
-  }
-
   function limparFiltros() {
     ["la2Busca", "la2FiltroProcesso", "la2FiltroFaccao", "la2FiltroStatus", "la2FiltroInicio", "la2FiltroFim"].forEach(id => {
       const el = document.getElementById(id);
@@ -1342,9 +1243,6 @@
         renderTabela();
       }
     });
-
-    document.getElementById("formLA2ValorAlca")?.addEventListener("submit", salvarValorAlca);
-    document.getElementById("formLA2ValorLateral")?.addEventListener("submit", salvarValorLateral);
 
     const modalSaida = document.getElementById("modalLA2Saida");
     const modalChegada = document.getElementById("modalLA2Chegada");

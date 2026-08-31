@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-31-lateral-alca-v2-270";
+  const LOCAL_RELEASE = "2026-08-31-faccoes-lateral-alca-nativa-271";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -80,6 +80,7 @@
 
     processos: [
       ["corponu-processos-somente-valores.js", "processos-somente-valores", "Não foi possível simplificar Processos para gestão de valores."],
+      ["corponu-processos-valores-lateral-alca-271.js", "processos-valores-lateral-alca-271", "Não foi possível carregar os valores de Lateral e Alça em Processos."],
       ["corponu-sutia-completo-calculo.js", "sutia-completo-calculo", "Não foi possível carregar o cálculo do Sutiã Completo."],
       ["corponu-sutia-completo-referencia-especial-integral.js", "sutia-especial-integral", "Não foi possível carregar a regra da referência especial."]
     ]

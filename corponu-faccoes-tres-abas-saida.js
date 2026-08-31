@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const V = "2026-08-27-faccoes-abas-aviso-sutia-estavel-263";
+  const V = "2026-08-31-faccoes-lateral-alca-nativa-271";
   const FB = "10.12.5";
   const PROCESSOS_SAIDA = Object.freeze({
     sutia: ["ENCAPAR BOJO", "SUTIÃ COMPLETO", "INTERLOCK"],
@@ -203,16 +203,7 @@
     preencherProcessos(aba);
 
     const x = abas();
-    if (x && !document.getElementById("abaFaccaoCorte")) {
-      const b = x.c.cloneNode(true);
-      b.id = "abaFaccaoCorte";
-      [...b.attributes].forEach(a => {
-        if (a.name.startsWith("data-")) b.removeAttribute(a.name);
-      });
-      b.classList.remove("active");
-      b.innerHTML = `Lateral e Alça <span id="contCorte">0</span>`;
-      x.box.appendChild(b);
-    }
+    if (!x || !document.getElementById("abaFaccaoCorte")) return;
 
     const ag = painelGeral()?.querySelector(":scope > .panel-header .actions") || painelGeral()?.querySelector(".panel-header .actions");
     if (ag && !document.getElementById("btnSaidaAbas")) {
@@ -533,7 +524,7 @@
     if (!t) return;
 
     if (t.closest('.nav-btn[data-page="faccoes"]')) {
-      setTimeout(() => preparar(), 0);
+      preparar();
     }
 
     const x = abas();
@@ -546,7 +537,7 @@
 
     if (x && (t.closest("button") === x.s || t.closest("button") === x.c)) {
       const selecionada = t.closest("button") === x.c ? "calcinha" : "sutia";
-      setTimeout(() => aplicarAbaAtiva(selecionada), 0);
+      aplicarAbaAtiva(selecionada);
     }
 
     if (t.closest("#btnSaidaAbas")) abrir(aba);

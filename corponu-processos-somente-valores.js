@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-14-op-salvamento-rapido-199";
+  const VERSION = "2026-08-31-faccoes-lateral-alca-nativa-271";
   const PAGINA_ID = "processos";
   const CLASSE_OCULTA = "cn61-processos-oculto";
   const CABECALHO_CALCINHA = "corponu-manejo-cabecalho-calcinha-191.js";
@@ -151,6 +151,7 @@
 
       [
         document.getElementById("configSutiaCompleto51"),
+        document.getElementById("processosValoresLateralAlca"),
         document.getElementById("formPrecoReferencia"),
         document.getElementById("listaProcessosValores"),
         document.getElementById("tituloTabelaValores"),
