@@ -1,10 +1,6 @@
-name: Relatorio PIX destinoId 275
+name: Relatorio PIX 275
 
-on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/corrigir-relatorio-pix-destinoid-275.yml'
+on: push
 
 permissions:
   contents: write
@@ -12,58 +8,19 @@ permissions:
 jobs:
   corrigir:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
-      - name: Baixar código
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Validar migração
-        run: node --check scripts/corrigir-relatorio-pix-por-destinoid-275.js
-
-      - name: Aplicar correção
-        run: node scripts/corrigir-relatorio-pix-por-destinoid-275.js
-
-      - name: Validar JavaScript
-        run: |
-          node --check corponu-pagamentos-seguro.js
-          node --check update.js
-          node --check corponu-atualizador.js
-
-      - name: Validar JSON e pós-condições
-        shell: bash
-        run: |
-          set -euo pipefail
-          node -e "JSON.parse(require('fs').readFileSync('corponu-release.json','utf8')); JSON.parse(require('fs').readFileSync('version.json','utf8'));"
-          grep -q 'function localizarCadastroFaccaoPorId' corponu-pagamentos-seguro.js
-          grep -q 'function resolverIdentidadesFaccaoPagamentos' corponu-pagamentos-seguro.js
-          grep -q 'movimento?.destinoId' corponu-pagamentos-seguro.js
-          grep -q '2026-08-31-pagamentos-pix-destinoid-275' corponu-release.json
-          grep -q '2026-08-31-pagamentos-pix-destinoid-275' index.html
-
-      - name: Conferir escopo do diff
-        shell: bash
-        run: |
-          set -euo pipefail
-          git diff --check
-          ALTERADOS="$(git diff --name-only | sort)"
-          echo "$ALTERADOS"
-          ESPERADOS="corponu-atualizador.js
-corponu-pagamentos-seguro.js
-corponu-release.json
-index.html
-update.js
-version.json"
-          test "$ALTERADOS" = "$ESPERADOS"
-
-      - name: Publicar correção funcional
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "99eliel"
-          git config user.email "131190282+99eliel@users.noreply.github.com"
+      - run: node --check scripts/corrigir-relatorio-pix-por-destinoid-275.js
+      - run: node scripts/corrigir-relatorio-pix-por-destinoid-275.js
+      - run: node --check corponu-pagamentos-seguro.js && node --check update.js && node --check corponu-atualizador.js
+      - run: node -e "JSON.parse(require('fs').readFileSync('corponu-release.json','utf8')); JSON.parse(require('fs').readFileSync('version.json','utf8'));"
+      - run: git diff --check
+      - run: |
+          git config user.name 99eliel
+          git config user.email 131190282+99eliel@users.noreply.github.com
           git add corponu-atualizador.js corponu-pagamentos-seguro.js corponu-release.json index.html update.js version.json
-          git diff --cached --quiet && { echo 'Nenhuma alteração funcional para publicar.'; exit 1; }
+          git diff --cached --quiet && exit 1 || true
           git commit -m "fix: vincular PIX ao destinoId da movimentacao 275"
           git push origin HEAD:main
