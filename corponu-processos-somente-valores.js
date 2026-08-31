@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-31-faccoes-lateral-alca-nativa-271";
+  const VERSION = "2026-08-31-faccoes-processos-estavel-272";
   const PAGINA_ID = "processos";
   const CLASSE_OCULTA = "cn61-processos-oculto";
   const CABECALHO_CALCINHA = "corponu-manejo-cabecalho-calcinha-191.js";

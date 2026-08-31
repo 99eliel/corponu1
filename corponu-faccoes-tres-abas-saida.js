@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const V = "2026-08-31-faccoes-lateral-alca-nativa-271";
+  const V = "2026-08-31-faccoes-processos-estavel-272";
   const FB = "10.12.5";
   const PROCESSOS_SAIDA = Object.freeze({
     sutia: ["ENCAPAR BOJO", "SUTIÃ COMPLETO", "INTERLOCK"],

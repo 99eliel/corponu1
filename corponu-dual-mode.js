@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-31-faccoes-lateral-alca-nativa-271";
+  const VERSION = "2026-08-31-faccoes-processos-estavel-272";
   const FIREBASE_VERSION = "10.12.5";
   const HISTORY_URL = `calcinhas-historico-2026.json?v=${encodeURIComponent(VERSION)}`;
   const TYPES = Object.freeze({ sutia: "Sutiã", calcinha: "Calcinha" });
@@ -252,6 +252,11 @@
     const style = document.createElement("style");
     style.id = "corponuDualStyles";
     style.textContent = `
+      .corponu-dual-tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 14px;padding:7px;background:#eef4fb;border:1px solid #cbd9e8;border-radius:14px}
+      .corponu-dual-tab{appearance:none;border:1px solid #b9c9da;background:#fff;color:#20344b;border-radius:10px;padding:9px 16px;font-weight:900;cursor:pointer;transition:.16s ease}
+      .corponu-dual-tab:hover{transform:translateY(-1px);border-color:#6c8caf}
+      .corponu-dual-tab.active{background:#173c69;color:#fff;border-color:#173c69;box-shadow:0 6px 14px rgba(23,60,105,.18)}
+      .corponu-dual-tab .count{display:inline-flex;min-width:22px;height:22px;align-items:center;justify-content:center;border-radius:999px;margin-left:7px;padding:0 6px;background:rgba(255,255,255,.18);font-size:11px}
       .corponu-dual-hint{font-size:12px;color:#52677e;margin:-5px 0 14px}
       .corponu-calcinha-field{display:none}
       body[data-corponu-form-type="calcinha"] .corponu-calcinha-field{display:block}
@@ -297,19 +302,35 @@
   function makeTabs(pageId) {
     const page = document.getElementById(pageId);
     if (!page) return;
+
     let tabs = page.querySelector(`.corponu-dual-tabs[data-page="${pageId}"]`);
     if (!tabs) {
       const anchor = page.querySelector(":scope > .panel, :scope > .grid-2") || page.firstElementChild;
       tabs = document.createElement("div");
       tabs.className = "corponu-dual-tabs";
       tabs.dataset.page = pageId;
+      if (anchor) page.insertBefore(tabs, anchor);
+      else page.prepend(tabs);
+    }
+
+    const precisaFaccoesCompleta = pageId === "faccoes" && !tabs.querySelector("#abaFaccaoCorte");
+    const precisaPadrao = pageId !== "faccoes" && (!tabs.querySelector('[data-type="sutia"]') || !tabs.querySelector('[data-type="calcinha"]'));
+
+    if (precisaFaccoesCompleta) {
+      tabs.innerHTML = `
+        <button type="button" class="corponu-dual-tab active" data-type="sutia">Sutiã <span class="count" data-count-type="sutia">0</span></button>
+        <button type="button" class="corponu-dual-tab" data-type="calcinha">Calcinha <span class="count" data-count-type="calcinha">0</span></button>
+        <button type="button" class="corponu-dual-tab" id="abaFaccaoCorte">Lateral e Alça <span class="count" id="contCorte">0</span></button>
+      `;
+      delete tabs.dataset.corponuDualBound;
+    } else if (precisaPadrao) {
       tabs.innerHTML = `
         <button type="button" class="corponu-dual-tab active" data-type="sutia">Sutiã <span class="count" data-count-type="sutia">0</span></button>
         <button type="button" class="corponu-dual-tab" data-type="calcinha">Calcinha <span class="count" data-count-type="calcinha">0</span></button>
       `;
-      if (anchor) page.insertBefore(tabs, anchor);
-      else page.prepend(tabs);
+      delete tabs.dataset.corponuDualBound;
     }
+
     bindTabs(pageId, tabs);
   }
 

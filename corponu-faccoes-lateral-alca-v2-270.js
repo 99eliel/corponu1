@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-31-faccoes-lateral-alca-nativa-271";
+  const VERSION = "2026-08-31-faccoes-processos-estavel-272";
   const FB = "10.12.5";
   const AREA_LEGADA = "corte";
   const FLUXO = "lateral_alca";
@@ -559,8 +559,17 @@
     montarModais();
     const pagina = document.getElementById("faccoes");
     const geral = pagina?.querySelector(":scope > .faccoes-operacional-panel");
-    const painel = document.getElementById("painelFaccoesCorte");
-    if (!pagina || !geral || !painel) return false;
+    if (!pagina || !geral) return false;
+
+    let painel = document.getElementById("painelFaccoesCorte");
+    if (!painel) {
+      painel = document.createElement("div");
+      painel.id = "painelFaccoesCorte";
+      painel.className = "panel hidden";
+      painel.setAttribute("aria-label", "Lateral e Alça");
+      geral.insertAdjacentElement("afterend", painel);
+    }
+
     if (painel.dataset.la2Montado !== VERSION) {
       painel.innerHTML = montarPainel();
       painel.dataset.la2Montado = VERSION;
