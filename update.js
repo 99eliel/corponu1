@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-08-28-chegada-usuario-somente-aviso-266";
+  const APP_VERSION = "2026-08-31-bojo-confeccao-configuravel-267";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 

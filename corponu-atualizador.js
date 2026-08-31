@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-08-28-chegada-usuario-somente-aviso-266";
+  const LOCAL_RELEASE = "2026-08-31-bojo-confeccao-configuravel-267";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 

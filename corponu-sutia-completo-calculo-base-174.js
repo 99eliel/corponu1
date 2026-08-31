@@ -11,6 +11,7 @@
     valorBaseGeral: 5.5,
     referenciaEspecial: "912",
     valorBaseReferenciaEspecial: 6.5,
+    descontoBojoConfeccao: 0.5,
     descontoFechoNaoFeito: 0.25,
     descontoPontoLuzNaoFeito: 0.15
   });
@@ -141,6 +142,7 @@
       valorBaseGeral: Math.max(0, numero(dados.valorBaseGeral, DEFAULTS.valorBaseGeral)),
       referenciaEspecial: referenciaNormalizada(dados.referenciaEspecial || DEFAULTS.referenciaEspecial),
       valorBaseReferenciaEspecial: Math.max(0, numero(dados.valorBaseReferenciaEspecial, DEFAULTS.valorBaseReferenciaEspecial)),
+      descontoBojoConfeccao: Math.max(0, numero(dados.descontoBojoConfeccao, DEFAULTS.descontoBojoConfeccao)),
       descontoFechoNaoFeito: Math.max(0, numero(dados.descontoFechoNaoFeito, DEFAULTS.descontoFechoNaoFeito)),
       descontoPontoLuzNaoFeito: Math.max(0, numero(dados.descontoPontoLuzNaoFeito, DEFAULTS.descontoPontoLuzNaoFeito))
     };
@@ -189,6 +191,7 @@
     const campos = {
       sc51ValorBaseGeral: configAtual.valorBaseGeral,
       sc51ValorBase912: configAtual.valorBaseReferenciaEspecial,
+      sc51BojoConfeccao: configAtual.descontoBojoConfeccao,
       sc51Fecho: configAtual.descontoFechoNaoFeito,
       sc51PontoLuz: configAtual.descontoPontoLuzNaoFeito
     };
@@ -228,6 +231,9 @@
         <label>Valor da referência especial
           <input id="sc51ValorBase912" type="number" min="0" step="0.0001" required>
         </label>
+        <label>Desconto padrão do bojo feito pela confecção
+          <input id="sc51BojoConfeccao" type="number" min="0" step="0.0001" required>
+        </label>
         <label>Desconto do fecho não feito
           <input id="sc51Fecho" type="number" min="0" step="0.0001" required>
         </label>
@@ -236,7 +242,7 @@
         </label>
       </div>
       <div class="sc51-ajuda">
-        Lateral e Encapar Bojo continuam usando os valores ativos por referência já cadastrados nesta aba.
+        Lateral continua usando o valor ativo por referência. Quando o bojo do Sutiã Completo for marcado como feito pela confecção, o desconto usa o valor padrão configurado acima, independentemente da referência. O processo Encapar Bojo continua com seu valor próprio por referência fora deste cálculo.
         Sutiã Montagem não recebe estes descontos.
       </div>
       <label class="sc51-recalcular">
@@ -271,6 +277,7 @@
       valorBaseGeral: Math.max(0, numero(document.getElementById("sc51ValorBaseGeral")?.value)),
       referenciaEspecial: referenciaNormalizada(document.getElementById("sc51ReferenciaEspecial")?.value),
       valorBaseReferenciaEspecial: Math.max(0, numero(document.getElementById("sc51ValorBase912")?.value)),
+      descontoBojoConfeccao: Math.max(0, numero(document.getElementById("sc51BojoConfeccao")?.value)),
       descontoFechoNaoFeito: Math.max(0, numero(document.getElementById("sc51Fecho")?.value)),
       descontoPontoLuzNaoFeito: Math.max(0, numero(document.getElementById("sc51PontoLuz")?.value))
     };
@@ -286,6 +293,7 @@
       "",
       `Valor geral: ${moeda4(nova.valorBaseGeral)}`,
       `Referência ${nova.referenciaEspecial}: ${moeda4(nova.valorBaseReferenciaEspecial)}`,
+      `Bojo feito pela confecção: ${moeda4(nova.descontoBojoConfeccao)}`,
       `Fecho não feito: ${moeda4(nova.descontoFechoNaoFeito)}`,
       `Ponto de luz não feito: ${moeda4(nova.descontoPontoLuzNaoFeito)}`,
       recalcular ? "" : "\nOs pagamentos pendentes não serão recalculados agora.",
@@ -751,23 +759,30 @@
   async function calcularMemoria(referencia, contexto, dados) {
     const base = valorBaseParaReferencia(referencia);
     const precoLateral = dados.lateral.descontar ? await buscarPreco(PROCESSO_LATERAL, referencia) : null;
-    const precoBojo = dados.bojo.descontar ? await buscarPreco(PROCESSO_BOJO, referencia) : null;
     const faltantes = [];
 
     if (dados.lateral.indefinido) faltantes.push("definição da LATERAL");
     else if (dados.lateral.descontar && !precoLateral) faltantes.push(`${PROCESSO_LATERAL} da referência ${referencia}`);
     if (dados.bojo.indefinido) faltantes.push("definição do BOJO");
-    else if (dados.bojo.descontar && !precoBojo) faltantes.push(`${PROCESSO_BOJO} da referência ${referencia}`);
 
     const descontos = {
       lateral: dados.lateral.descontar && precoLateral ? arred4(precoLateral.valor) : 0,
-      bojo: dados.bojo.descontar && precoBojo ? arred4(precoBojo.valor) : 0,
+      bojo: dados.bojo.descontar ? arred4(configAtual.descontoBojoConfeccao) : 0,
       fecho: dados.fechoPronto ? 0 : arred4(configAtual.descontoFechoNaoFeito),
       pontoLuz: dados.pontoLuzPronto ? 0 : arred4(configAtual.descontoPontoLuzNaoFeito)
     };
 
     const valorUnitario = arred4(Math.max(base - descontos.lateral - descontos.bojo - descontos.fecho - descontos.pontoLuz, 0));
-    return { base, descontos, valorUnitario, faltantes, precoLateral, precoBojo };
+    return {
+      base,
+      descontos,
+      valorUnitario,
+      faltantes,
+      precoLateral,
+      precoBojo: null,
+      regraDescontoBojo: dados.bojo.descontar ? "PADRAO_CONFECCAO" : "SEM_DESCONTO",
+      descontoBojoConfigurado: arred4(configAtual.descontoBojoConfeccao)
+    };
   }
 
   async function atualizarResumoChegada(prefixo) {
@@ -786,7 +801,7 @@
       const partes = [
         `Base ${moeda4(memoria.base)}`,
         dados.lateral.indefinido ? "Lateral aguardando informação" : dados.lateral.descontar ? `Lateral − ${memoria.precoLateral ? moeda4(memoria.descontos.lateral) : "valor não cadastrado"}` : "Lateral sem desconto",
-        dados.bojo.indefinido ? "Bojo aguardando informação" : dados.bojo.descontar ? `Bojo − ${memoria.precoBojo ? moeda4(memoria.descontos.bojo) : "valor não cadastrado"}` : "Bojo sem desconto",
+        dados.bojo.indefinido ? "Bojo aguardando informação" : dados.bojo.descontar ? `Bojo − ${moeda4(memoria.descontos.bojo)} (padrão confecção)` : "Bojo sem desconto",
         dados.fechoPronto ? "Fecho sem desconto" : `Fecho − ${moeda4(memoria.descontos.fecho)}`,
         dados.pontoLuzPronto ? "Ponto de luz sem desconto" : `Ponto de luz − ${moeda4(memoria.descontos.pontoLuz)}`
       ];
@@ -932,7 +947,7 @@
         "",
         `Valor-base: ${moeda4(memoria.base)}`,
         `Lateral: ${dados.lateral.indefinido ? "não informada — pagamento aguardará definição" : dados.lateral.descontar ? (memoria.precoLateral ? `feita pela confecção — desconto ${moeda4(memoria.descontos.lateral)}` : "feita pela confecção, mas sem valor cadastrado") : "feita pela facção — sem desconto"}`,
-        `Bojo: ${dados.bojo.indefinido ? "não informado — pagamento aguardará definição" : dados.bojo.descontar ? (memoria.precoBojo ? `feito pela confecção — desconto ${moeda4(memoria.descontos.bojo)}` : "feito pela confecção, mas sem valor cadastrado") : "feito pela facção — sem desconto"}`,
+        `Bojo: ${dados.bojo.indefinido ? "não informado — pagamento aguardará definição" : dados.bojo.descontar ? `feito pela confecção — desconto padrão ${moeda4(memoria.descontos.bojo)}` : "feito pela facção — sem desconto"}`,
         `Fecho: ${dados.fechoPronto ? "veio pronto — sem desconto" : `não feito — desconto ${moeda4(memoria.descontos.fecho)}`}`,
         `Ponto de luz: ${dados.pontoLuzPronto ? "veio pronto — sem desconto" : `não feito — desconto ${moeda4(memoria.descontos.pontoLuz)}`}`,
         "",
@@ -1033,6 +1048,8 @@
         valorBase: memoria.base,
         descontoLateral: memoria.descontos.lateral,
         descontoBojo: memoria.descontos.bojo,
+        regraDescontoBojo: memoria.regraDescontoBojo,
+        descontoBojoConfigurado: memoria.descontoBojoConfigurado,
         descontoFecho: memoria.descontos.fecho,
         descontoPontoLuz: memoria.descontos.pontoLuz,
         valorUnitarioCalculado: memoria.valorUnitario,
@@ -1129,7 +1146,9 @@
       descontoSutiaCompletoFecho: arred4(memoria.descontos.fecho),
       descontoSutiaCompletoPontoLuz: arred4(memoria.descontos.pontoLuz),
       precoLateralReferenciaId: memoria.precoLateral?.id || "",
-      precoBojoReferenciaId: memoria.precoBojo?.id || "",
+      precoBojoReferenciaId: "",
+      regraDescontoSutiaCompletoBojo: memoria.regraDescontoBojo,
+      descontoBojoConfiguradoSutiaCompleto: memoria.descontoBojoConfigurado,
       lateralPronta: dados.lateral.pronto,
       lateralDescontada: dados.lateral.descontar === true,
       lateralFeitaPelaFaccao: dados.lateral.feitoPelaFaccao === true,
@@ -1170,6 +1189,8 @@
         descontoLateral: arred4(memoria.descontos.lateral),
         bojoPronto: dados.bojo.pronto,
         descontoBojo: arred4(memoria.descontos.bojo),
+        regraDescontoBojo: memoria.regraDescontoBojo,
+        descontoBojoConfigurado: memoria.descontoBojoConfigurado,
         fechoPronto: dados.fechoPronto,
         descontoFecho: arred4(memoria.descontos.fecho),
         pontoLuzPronto: dados.pontoLuzPronto,
