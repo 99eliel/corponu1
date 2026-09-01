@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-01-lateral-alca-processo-sem-valor-277",
-  "updatedAt": "2026-09-01T10:25:00-03:00",
-  "notes": "Produção. Ajuste visual da aba Facções > Lateral e Alça: o seletor operacional de processo passa a exibir apenas CORTAGEM E MONTAGEM, sem mostrar o valor financeiro. O valor fixo de R$ 0,0540 permanece preservado na regra interna, no registro da movimentação e no cálculo do pagamento. A configuração financeira continua pertencendo à aba Processos. Nenhum dado existente e nenhuma regra do Firebase foram alterados."
+  "version": "2026-09-01-lateral-alca-calcinha-com-alca-278",
+  "updatedAt": "2026-09-01T14:45:00-03:00",
+  "notes": "Produção. A aba Facções > Lateral e Alça passa a aceitar também OPs de Calcinha quando a própria OP estiver marcada com possuiAlca=true. Para Calcinha com alça, o seletor operacional oferece somente ALÇA e CORTAGEM E MONTAGEM; LATERAL continua exclusivo do fluxo de Sutiã. Calcinha sem alça é bloqueada. Novas movimentações registram tipoPecaOrigem e possuiAlcaOrigem para auditoria, sem migrar ou apagar histórico. Valores e pagamentos existentes não foram alterados e nenhuma regra do Firebase mudou."
 }

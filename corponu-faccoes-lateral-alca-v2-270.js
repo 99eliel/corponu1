@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-09-01-lateral-alca-processo-sem-valor-277";
+  const VERSION = "2026-09-01-lateral-alca-calcinha-com-alca-278";
   const FB = "10.12.5";
   const AREA_LEGADA = "corte";
   const FLUXO = "lateral_alca";
@@ -452,11 +452,15 @@
   function renderProcessosSaida() {
     const select = document.getElementById("la2SaidaProcesso");
     if (!select) return;
-    select.innerHTML = `
-      <option value="">Selecione</option>
+    const calcinhaComAlca = Boolean(opSaida) && tipoDaOP(opSaida) === "calcinha" && opPossuiAlca(opSaida);
+    const opcoesLateral = calcinhaComAlca ? "" : `
       <optgroup label="Lateral">
         <option value="lateral">LATERAL</option>
       </optgroup>
+    `;
+    select.innerHTML = `
+      <option value="">Selecione</option>
+      ${opcoesLateral}
       <optgroup label="Alça">
         <option value="alca">ALÇA</option>
         <option value="cortagem-montagem">CORTAGEM E MONTAGEM</option>
@@ -607,6 +611,13 @@
     return texto.includes("CALCINHA") ? "calcinha" : "sutia";
   }
 
+  function opPossuiAlca(op) {
+    const valor = op?.possuiAlca ?? op?.produtoPossuiAlca ?? op?.alca;
+    if (typeof valor === "boolean") return valor;
+    if (typeof valor === "number") return valor === 1;
+    return ["SIM", "S", "TRUE", "1", "YES"].includes(norm(valor));
+  }
+
   function quantidadeDaOP(op) {
     return Math.max(0, num(op?.quantidade ?? op?.quantidadeTotal ?? op?.qtd ?? op?.qti));
   }
@@ -679,7 +690,10 @@
     try {
       const op = await buscarOP(valor);
       if (!op) return toast("OP não encontrada.", "error");
-      if (tipoDaOP(op) !== "sutia") return toast("Lateral e Alça atende somente OP de Sutiã.", "error");
+      const tipo = tipoDaOP(op);
+      if (tipo === "calcinha" && !opPossuiAlca(op)) {
+        return toast("Essa OP de Calcinha não possui alça cadastrada.", "error");
+      }
       opSaida = op;
       const total = quantidadeDaOP(op);
       document.getElementById("la2SaidaPreview").innerHTML = `<div class="la2-preview-grid">
@@ -778,6 +792,8 @@
         referencia: opSaida.referencia || "",
         cor: opSaida.cor || "",
         produtoNome: opSaida.produtoNome || opSaida.nomeProduto || "",
+        tipoPecaOrigem: tipoDaOP(opSaida),
+        possuiAlcaOrigem: opPossuiAlca(opSaida),
         tipoDestino: "faccao_corte",
         tipoDestinoLabel: "Facção • Lateral e Alça",
         destino: faccao,
