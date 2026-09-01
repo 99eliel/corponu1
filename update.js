@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-08-31-pagamentos-relatorio-completo-seguro-276";
+  const APP_VERSION = "2026-09-01-lateral-alca-processo-sem-valor-277";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-31-faccoes-processos-estavel-272";
+  const VERSION = "2026-09-01-lateral-alca-processo-sem-valor-277";
   const FB = "10.12.5";
   const AREA_LEGADA = "corte";
   const FLUXO = "lateral_alca";
@@ -459,7 +459,7 @@
       </optgroup>
       <optgroup label="Alça">
         <option value="alca">ALÇA</option>
-        <option value="cortagem-montagem">CORTAGEM E MONTAGEM — ${dinheiro4(VALOR_FIXO_CORTAGEM_MONTAGEM)}</option>
+        <option value="cortagem-montagem">CORTAGEM E MONTAGEM</option>
       </optgroup>
     `;
   }

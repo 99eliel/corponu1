@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-31-pagamentos-relatorio-completo-seguro-276",
-  "updatedAt": "2026-08-31T16:15:00-03:00",
-  "notes": "Produção. Corrige o Relatório completo com PIX quando o filtro Processo está em Todos. O botão agora usa sempre o gerador financeiro seguro da versão 275, sem deixar o clique cair no relatório legado do app.js. Relatório completo e simplificado passam a compartilhar a mesma resolução de identidade da facção: ID gravado no pagamento, ou movimentacaoId -> destinoId -> cadastro exato; nome exato fica apenas como fallback histórico. Nenhum pagamento e nenhuma regra do Firebase foram alterados."
+  "version": "2026-09-01-lateral-alca-processo-sem-valor-277",
+  "updatedAt": "2026-09-01T10:25:00-03:00",
+  "notes": "Produção. Ajuste visual da aba Facções > Lateral e Alça: o seletor operacional de processo passa a exibir apenas CORTAGEM E MONTAGEM, sem mostrar o valor financeiro. O valor fixo de R$ 0,0540 permanece preservado na regra interna, no registro da movimentação e no cálculo do pagamento. A configuração financeira continua pertencendo à aba Processos. Nenhum dado existente e nenhuma regra do Firebase foram alterados."
 }
