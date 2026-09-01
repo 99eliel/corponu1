@@ -1,0 +1,50 @@
+name: Ajustar seletor Cortagem 277
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aplicar-ajuste-seletor-cortagem-277.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  corrigir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validar migrador
+        run: node --check scripts/remover-valor-seletor-cortagem-montagem-277.js
+
+      - name: Aplicar ajuste estrutural
+        run: node scripts/remover-valor-seletor-cortagem-montagem-277.js
+
+      - name: Validar JavaScript e JSON
+        run: |
+          node --check corponu-faccoes-lateral-alca-v2-270.js
+          node --check update.js
+          node --check corponu-atualizador.js
+          node -e "JSON.parse(require('fs').readFileSync('corponu-release.json','utf8')); JSON.parse(require('fs').readFileSync('version.json','utf8'));"
+
+      - name: Validar pós-condições
+        run: |
+          grep -q '<option value="cortagem-montagem">CORTAGEM E MONTAGEM</option>' corponu-faccoes-lateral-alca-v2-270.js
+          ! grep -q 'CORTAGEM E MONTAGEM —' corponu-faccoes-lateral-alca-v2-270.js
+          grep -q 'valorFixo: VALOR_FIXO_CORTAGEM_MONTAGEM' corponu-faccoes-lateral-alca-v2-270.js
+          grep -q 'origem: "fixo_cortagem_montagem"' corponu-faccoes-lateral-alca-v2-270.js
+          grep -q '2026-09-01-lateral-alca-processo-sem-valor-277' corponu-release.json
+          git diff --check
+
+      - name: Publicar ajuste
+        run: |
+          git config user.name 99eliel
+          git config user.email 131190282+99eliel@users.noreply.github.com
+          git add corponu-faccoes-lateral-alca-v2-270.js corponu-release.json version.json index.html update.js corponu-atualizador.js
+          git diff --cached --quiet && { echo 'Nenhuma alteração funcional.'; exit 1; }
+          git commit -m "fix: ocultar valor do processo no seletor Lateral e Alça 277"
+          git push origin HEAD:main
