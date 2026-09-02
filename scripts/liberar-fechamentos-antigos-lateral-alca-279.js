@@ -1,3 +1,4 @@
+// Disparo controlado da migração 279.
 const fs = require('fs');
 
 const TARGET = 'corponu-faccoes-lateral-alca-v2-270.js';
