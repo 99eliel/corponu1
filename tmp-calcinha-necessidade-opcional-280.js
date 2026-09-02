@@ -150,12 +150,22 @@ src = replaceInSection(
   'prioridade do texto livre da necessidade'
 );
 
-const manualTrueCount = count(src, '      necessidadeManual: true,');
-if (manualTrueCount !== 1) fail(`necessidadeManual manual: esperado 1, encontrado ${manualTrueCount}.`);
-src = src.replace('      necessidadeManual: true,', '      necessidadeManual: Boolean(needText),');
-const pdfTrueCount = count(src, '          necessidadeManual: true,');
-if (pdfTrueCount !== 1) fail(`necessidadeManual PDF: esperado 1, encontrado ${pdfTrueCount}.`);
-src = src.replace('          necessidadeManual: true,', '          necessidadeManual: Boolean(needText),');
+src = replaceInSection(
+  src,
+  '  async function handleOrderSubmit(event) {',
+  '  function wrapEditFunctions() {',
+  '      necessidadeManual: true,',
+  '      necessidadeManual: Boolean(needText),',
+  'necessidadeManual do cadastro manual'
+);
+src = replaceInSection(
+  src,
+  '  async function importCalcinhaPdf(event) {',
+  '  function injectHistoryImportPanel() {',
+  '          necessidadeManual: true,',
+  '          necessidadeManual: Boolean(needText),',
+  'necessidadeManual da importação PDF'
+);
 
 src = replaceOnce(
   src,
