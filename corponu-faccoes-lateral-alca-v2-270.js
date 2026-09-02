@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-09-01-lateral-alca-calcinha-com-alca-278";
+  const VERSION = "2026-09-02-lateral-alca-fechamentos-antigos-279";
   const FB = "10.12.5";
   const AREA_LEGADA = "corte";
   const FLUXO = "lateral_alca";
@@ -452,8 +452,8 @@
   function renderProcessosSaida() {
     const select = document.getElementById("la2SaidaProcesso");
     if (!select) return;
-    const calcinhaComAlca = Boolean(opSaida) && tipoDaOP(opSaida) === "calcinha" && opPossuiAlca(opSaida);
-    const opcoesLateral = calcinhaComAlca ? "" : `
+    const calcinha = Boolean(opSaida) && tipoDaOP(opSaida) === "calcinha";
+    const opcoesLateral = calcinha ? "" : `
       <optgroup label="Lateral">
         <option value="lateral">LATERAL</option>
       </optgroup>
@@ -691,9 +691,6 @@
       const op = await buscarOP(valor);
       if (!op) return toast("OP não encontrada.", "error");
       const tipo = tipoDaOP(op);
-      if (tipo === "calcinha" && !opPossuiAlca(op)) {
-        return toast("Essa OP de Calcinha não possui alça cadastrada.", "error");
-      }
       opSaida = op;
       const total = quantidadeDaOP(op);
       document.getElementById("la2SaidaPreview").innerHTML = `<div class="la2-preview-grid">

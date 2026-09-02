@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-09-01-lateral-alca-calcinha-com-alca-278";
+  const LOCAL_RELEASE = "2026-09-02-lateral-alca-fechamentos-antigos-279";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 

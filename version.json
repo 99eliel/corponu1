@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-01-lateral-alca-calcinha-com-alca-278",
-  "updatedAt": "2026-09-01T14:45:00-03:00",
-  "notes": "Produção. A aba Facções > Lateral e Alça passa a aceitar também OPs de Calcinha quando a própria OP estiver marcada com possuiAlca=true. Para Calcinha com alça, o seletor operacional oferece somente ALÇA e CORTAGEM E MONTAGEM; LATERAL continua exclusivo do fluxo de Sutiã. Calcinha sem alça é bloqueada. Novas movimentações registram tipoPecaOrigem e possuiAlcaOrigem para auditoria, sem migrar ou apagar histórico. Valores e pagamentos existentes não foram alterados e nenhuma regra do Firebase mudou."
+  "version": "2026-09-02-lateral-alca-fechamentos-antigos-279",
+  "updatedAt": "2026-09-02T07:39:00-03:00",
+  "notes": "Produção. Facções > Lateral e Alça passa a permitir lançamentos de OPs de Calcinha mesmo quando a referência atual não estiver marcada com possuiAlca, atendendo fechamentos antigos. Para qualquer Calcinha, o seletor continua oferecendo somente ALÇA e CORTAGEM E MONTAGEM; LATERAL permanece exclusivo do fluxo de Sutiã. O campo possuiAlcaOrigem continua sendo gravado apenas para auditoria e não bloqueia mais a operação. Nenhuma OP, referência, movimentação histórica, pagamento ou regra do Firebase foi alterada."
 }
