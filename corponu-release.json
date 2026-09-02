@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-02-lateral-alca-fechamentos-antigos-279",
-  "updatedAt": "2026-09-02T07:39:00-03:00",
-  "notes": "Produção. Facções > Lateral e Alça passa a permitir lançamentos de OPs de Calcinha mesmo quando a referência atual não estiver marcada com possuiAlca, atendendo fechamentos antigos. Para qualquer Calcinha, o seletor continua oferecendo somente ALÇA e CORTAGEM E MONTAGEM; LATERAL permanece exclusivo do fluxo de Sutiã. O campo possuiAlcaOrigem continua sendo gravado apenas para auditoria e não bloqueia mais a operação. Nenhuma OP, referência, movimentação histórica, pagamento ou regra do Firebase foi alterada."
+  "version": "2026-09-02-calcinha-necessidade-opcional-280",
+  "updatedAt": "2026-09-02T08:48:00-03:00",
+  "notes": "Produção. O cadastro de OP de Calcinha passa a tratar Necessidade como opcional na regra canônica do corponu-dual-mode. Ao selecionar Calcinha, o campo compartilhado deixa de ser required; ao voltar para Sutiã, a obrigatoriedade original é restaurada. Texto livre como URGENTE continua sendo preservado. As datas de necessidade podem ficar ambas vazias; se uma delas for informada, o intervalo precisa estar completo e válido. Quando nenhuma necessidade é informada, necessidade e necessidadeTexto ficam vazios e necessidadeManual=false, permitindo definição posterior no Manejo. A mesma regra foi aplicada à importação de OPs de Calcinha para manter o modelo consistente. Nenhum registro existente e nenhuma regra do Firebase foram alterados."
 }

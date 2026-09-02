@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-31-faccoes-processos-estavel-272";
+  const VERSION = "2026-09-02-calcinha-necessidade-opcional-280";
   const FIREBASE_VERSION = "10.12.5";
   const HISTORY_URL = `calcinhas-historico-2026.json?v=${encodeURIComponent(VERSION)}`;
   const TYPES = Object.freeze({ sutia: "Sutiã", calcinha: "Calcinha" });
@@ -382,8 +382,21 @@
       const description = document.querySelector("#formOrdem .panel-header p");
       if (title) title.textContent = type === "calcinha" ? "Adicionar OP de calcinha" : "Adicionar OP de sutiã";
       if (description) description.textContent = type === "calcinha"
-        ? "Informe a necessidade. Serviço é opcional e a facção será escolhida livremente no momento do envio. Cotton Line/Corpo Nu será preenchido no Manejo."
+        ? "Informe OP, referência, cor e quantidade. Necessidade, serviço e facção são opcionais; Cotton Line/Corpo Nu será preenchido no Manejo."
         : "Cadastre a OP de sutiã mantendo o fluxo atual.";
+      const needText = document.getElementById("ordemNecessidadeTexto");
+      if (needText) {
+        const obrigatoria = type !== "calcinha";
+        needText.required = obrigatoria;
+        needText.setAttribute("aria-required", obrigatoria ? "true" : "false");
+        needText.placeholder = type === "calcinha"
+          ? "Opcional. Ex: URGENTE ou deixe em branco"
+          : "Ex: URGENTE, 24/07, 24/07 a 30/07";
+        const help = needText.closest("label")?.querySelector(".field-help");
+        if (help) help.textContent = type === "calcinha"
+          ? "Opcional para Calcinha. Você pode preencher agora ou definir depois no Manejo."
+          : "Esse campo fica livre igual à planilha. Você pode trocar data por URGENTE ou outro texto sem mexer nos dados antigos.";
+      }
       updateOrderProductDatalist();
       setTimeout(updateOrderProductPreview, 0);
     }
@@ -397,10 +410,10 @@
     wrapper.id = "ordemCalcinhaPlanejamento";
     wrapper.className = "corponu-calcinha-field";
     wrapper.innerHTML = `
-      <div class="notice small"><strong>Planejamento da calcinha:</strong> a facção não fica presa à OP. Serviço pode ser sugerido aqui e a facção será escolhida no momento do envio. A linha Cotton Line/Corpo Nu será informada no Manejo.</div>
+      <div class="notice small"><strong>Planejamento da calcinha:</strong> necessidade, serviço e facção são opcionais. A necessidade pode ficar em branco e ser definida depois no Manejo; a linha Cotton Line/Corpo Nu também será informada no Manejo.</div>
       <div class="corponu-dual-grid">
-        <label class="corponu-dual-field">Início da necessidade<input id="ordemCalcinhaNecessidadeInicio" type="date"></label>
-        <label class="corponu-dual-field">Final da necessidade<input id="ordemCalcinhaNecessidadeFim" type="date"></label>
+        <label class="corponu-dual-field">Início da necessidade (opcional)<input id="ordemCalcinhaNecessidadeInicio" type="date"></label>
+        <label class="corponu-dual-field">Final da necessidade (opcional)<input id="ordemCalcinhaNecessidadeFim" type="date"></label>
         <label class="corponu-dual-field">Serviço sugerido (opcional)<select id="ordemCalcinhaProcesso"><option value="">Definir no envio</option>${CALCINHA_PROCESSES.map(item => `<option value="${item}">${item}</option>`).join("")}</select></label>
         <label class="corponu-dual-field">Facção sugerida (opcional)<select id="ordemCalcinhaFaccao" disabled><option value="">Será escolhida no envio</option></select></label>
       </div>
@@ -428,6 +441,14 @@
   function updatePdfFieldsVisibility() {
     const isCalcinha = document.getElementById("pdfTipoPeca")?.value === "calcinha";
     document.querySelectorAll(".corponu-pdf-calcinha-field").forEach(element => element.classList.toggle("corponu-dual-hidden", !isCalcinha));
+    ["pdfNecessidadeInicio", "pdfNecessidadeFim"].forEach((id, index) => {
+      const field = document.getElementById(id);
+      if (!field) return;
+      field.required = !isCalcinha;
+      field.setAttribute("aria-required", isCalcinha ? "false" : "true");
+      const label = field.closest("label")?.querySelector("span");
+      if (label) label.textContent = `${index === 0 ? "Início" : "Final"} da necessidade${isCalcinha ? " (opcional)" : ""}`;
+    });
   }
 
   function factionProcesses(faction) {
@@ -594,11 +615,11 @@
     }
     const info = document.getElementById("manejoSetorInfo");
     if (info) info.textContent = isCalcinha
-      ? "Mostrando OPs de calcinha. Informe Linha, Fase e Necessidade; Silk e Tecido não são utilizados para calcinha."
+      ? "Mostrando OPs de calcinha. Informe Linha e Fase; Necessidade é opcional e pode ser preenchida quando existir. Silk e Tecido não são utilizados para calcinha."
       : "Mostrando OPs de sutiã importadas do PDF. A separação vem automaticamente da importação.";
     const notice = document.querySelector("#manejo .notice.small");
     if (notice) notice.innerHTML = isCalcinha
-      ? "<strong>Funcionamento da calcinha:</strong> OP, referência, quantidade, cor e necessidade vêm da importação. No Manejo ficam Linha, Fase, localização e encaminhamento. Registros históricos perguntam serviço e facção no momento do envio; novas OPs usam o planejamento já definido."
+      ? "<strong>Funcionamento da calcinha:</strong> OP, referência, quantidade e cor vêm da importação. Necessidade pode ficar em branco e ser definida depois no Manejo. No Manejo também ficam Linha, Fase, localização e encaminhamento. Registros históricos perguntam serviço e facção no momento do envio; novas OPs usam o planejamento já definido."
       : "<strong>Funcionamento:</strong> Nº OP, REF, QTI, COR, NECESSIDADE e o tipo da peça vêm da importação. Aqui ficam Silk, Tecido, Fase e encaminhamentos. Use os botões para mandar a OP para Facção ou Célula.";
   }
 
@@ -741,6 +762,11 @@
     return `${formatDateBR(start)} a ${formatDateBR(end)}`;
   }
 
+  function intervaloNecessidadeOpcionalValido(start, end) {
+    if (!start && !end) return true;
+    return Boolean(start && end && start <= end);
+  }
+
   async function handleOrderSubmit(event) {
     const form = event.target;
     if (form?.id !== "formOrdem" || state.active.ordens !== "calcinha") return;
@@ -751,6 +777,7 @@
     const reference = normalize(document.getElementById("ordemReferencia")?.value);
     const color = normalize(document.getElementById("ordemCor")?.value);
     const quantity = Number(document.getElementById("ordemQuantidade")?.value || 0);
+    const needFreeText = normalize(document.getElementById("ordemNecessidadeTexto")?.value || "");
     const needStart = document.getElementById("ordemCalcinhaNecessidadeInicio")?.value || "";
     const needEnd = document.getElementById("ordemCalcinhaNecessidadeFim")?.value || "";
     const process = normalize(document.getElementById("ordemCalcinhaProcesso")?.value);
@@ -760,8 +787,8 @@
       toast("Informe OP, referência, cor e quantidade válida.", "error");
       return;
     }
-    if (!needStart || !needEnd || needStart > needEnd) {
-      toast("Informe um intervalo de necessidade válido.", "error");
+    if (!intervaloNecessidadeOpcionalValido(needStart, needEnd)) {
+      toast("Preencha as duas datas da necessidade corretamente ou deixe ambas em branco.", "error");
       return;
     }
     const product = [...state.maps.produtos.values()].find(item => typeOfData(item) === "calcinha" && normalize(item.referencia) === reference);
@@ -775,7 +802,7 @@
       return;
     }
     const user = currentUser();
-    const needText = parseNeedFromDates(needStart, needEnd);
+    const needText = needFreeText || parseNeedFromDates(needStart, needEnd);
     const year = Number(needStart.slice(0, 4)) || new Date().getFullYear();
     const documentId = currentId || `calcinha-${safeId(opNumber)}`;
     const { doc, setDoc, serverTimestamp } = state.firebase;
@@ -793,7 +820,7 @@
       necessidadeFim: needEnd,
       necessidade: needText,
       necessidadeTexto: needText,
-      necessidadeManual: true,
+      necessidadeManual: Boolean(needText),
       observacoes: observation,
       tipoPeca: "calcinha",
       tipoPecaPadrao: "calcinha",
@@ -1231,8 +1258,8 @@
       toast("Leia o PDF e confira a prévia antes de importar.", "error");
       return;
     }
-    if (!needStart || !needEnd || needStart > needEnd) {
-      toast("Informe um intervalo de necessidade válido.", "error");
+    if (!intervaloNecessidadeOpcionalValido(needStart, needEnd)) {
+      toast("Preencha as duas datas da necessidade corretamente ou deixe ambas em branco.", "error");
       return;
     }
     const sugestaoImportacao = process ? ` Serviço sugerido: ${process}.` : "";
@@ -1288,7 +1315,7 @@
           necessidadeFim: needEnd,
           necessidade: needText,
           necessidadeTexto: needText,
-          necessidadeManual: true,
+          necessidadeManual: Boolean(needText),
           tipoPeca: "calcinha",
           tipoPecaPadrao: "calcinha",
           tipoPecaLabel: "Calcinha",

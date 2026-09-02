@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-09-02-lateral-alca-fechamentos-antigos-279";
+  const APP_VERSION = "2026-09-02-calcinha-necessidade-opcional-280";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
