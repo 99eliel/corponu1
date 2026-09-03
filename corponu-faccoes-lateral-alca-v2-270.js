@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-09-02-lateral-alca-fechamentos-antigos-279";
+  const VERSION = "2026-09-03-alca-cortagem-montagem-x2-281";
   const FB = "10.12.5";
   const AREA_LEGADA = "corte";
   const FLUXO = "lateral_alca";
@@ -9,6 +9,7 @@
   const OP_CACHE_MS = 2 * 60 * 1000;
   const LIMITE_RENDER_INICIAL = 200;
   const VALOR_FIXO_CORTAGEM_MONTAGEM = 0.0540;
+  const MULTIPLICADOR_ALCAS_POR_PECA = 2;
 
   const PROCESSOS = Object.freeze([
     Object.freeze({
@@ -27,6 +28,7 @@
       grupoLabel: "Alça",
       faccaoProcesso: "ALÇA",
       tipoValor: "global_alca",
+      multiplicadorPorPeca: MULTIPLICADOR_ALCAS_POR_PECA,
       marcaLateralPronta: false
     }),
     Object.freeze({
@@ -37,6 +39,7 @@
       faccaoProcesso: "ALÇA",
       tipoValor: "fixo",
       valorFixo: VALOR_FIXO_CORTAGEM_MONTAGEM,
+      multiplicadorPorPeca: MULTIPLICADOR_ALCAS_POR_PECA,
       marcaLateralPronta: false
     })
   ]);
@@ -798,6 +801,7 @@
         processoCorteId: processo.id,
         marcaLateralPronta: processo.marcaLateralPronta === true,
         valorFixoUnitario: processo.tipoValor === "fixo" ? processo.valorFixo : null,
+        multiplicadorValorUnitario: processo.multiplicadorPorPeca || 1,
         setor: AREA_LEGADA,
         setorLabel: "Lateral e Alça",
         quantidadeEnviada: total,
@@ -944,7 +948,16 @@
     if (!processo) return { valor: 0, origem: "sem_processo", semValor: true };
 
     if (processo.tipoValor === "fixo") {
-      return { valor: arred4(processo.valorFixo), origem: "fixo_cortagem_montagem", semValor: false };
+      const valorBase = Math.max(0, num(processo.valorFixo));
+      const multiplicador = Math.max(1, num(processo.multiplicadorPorPeca, 1));
+      const valor = arred4(valorBase * multiplicador);
+      return {
+        valor,
+        valorBase: arred4(valorBase),
+        multiplicador,
+        origem: multiplicador === 2 ? "fixo_cortagem_montagem-x2" : "fixo_cortagem_montagem",
+        semValor: valor <= 0
+      };
     }
 
     const c = await contexto();
@@ -952,8 +965,15 @@
       const snap = await c.fs.getDoc(c.fs.doc(c.db, "precosReferencia", "valor-padrao-alca"));
       const dados = snap.exists() ? snap.data() : {};
       const base = Math.max(0, num(dados.valor ?? dados.valorUnitario ?? dados.preco));
-      const valor = arred4(base * 2);
-      return { valor, origem: "valor-padrao-alca-x2", semValor: valor <= 0 };
+      const multiplicador = Math.max(1, num(processo.multiplicadorPorPeca, 1));
+      const valor = arred4(base * multiplicador);
+      return {
+        valor,
+        valorBase: arred4(base),
+        multiplicador,
+        origem: multiplicador === 2 ? "valor-padrao-alca-x2" : "valor-padrao-alca",
+        semValor: valor <= 0
+      };
     }
 
     const referenciaTexto = String(item.referencia ?? "").trim();
@@ -1052,6 +1072,9 @@
         falta,
         descontoDefeito: defeito,
         valorUnitario: unitario,
+        valorBaseUnitario: arred4(resolucao.valorBase ?? unitario),
+        multiplicadorValor: Math.max(1, num(resolucao.multiplicador, 1)),
+        regraValor: Math.max(1, num(resolucao.multiplicador, 1)) === 2 ? "2_alcas_por_peca" : "valor_unitario_por_peca",
         subtotal,
         total,
         valorPendente: resolucao.semValor === true,
@@ -1332,7 +1355,9 @@
     mostrar: mostrarArea,
     ocultar: ocultarArea,
     processos: PROCESSOS.map(item => ({ ...item })),
-    valorFixoCortagemMontagem: VALOR_FIXO_CORTAGEM_MONTAGEM
+    valorFixoCortagemMontagem: VALOR_FIXO_CORTAGEM_MONTAGEM,
+    multiplicadorAlcasPorPeca: MULTIPLICADOR_ALCAS_POR_PECA,
+    valorEfetivoCortagemMontagem: arred4(VALOR_FIXO_CORTAGEM_MONTAGEM * MULTIPLICADOR_ALCAS_POR_PECA)
   };
   window.CorpoNuFaccoesLateralAlca = api;
   window.CorpoNuFaccoesCorte = api;

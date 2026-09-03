@@ -1,10 +1,11 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-31-faccoes-processos-estavel-272";
+  const VERSION = "2026-09-03-alca-cortagem-montagem-x2-281";
   const FB = "10.12.5";
   const AREA = "corte";
   const VALOR_FIXO_CORTAGEM_MONTAGEM = 0.0540;
+  const MULTIPLICADOR_ALCAS_POR_PECA = 2;
   const PAINEL_ID = "processosValoresLateralAlca";
   const STYLE_ID = "processosValoresLateralAlcaStyle272";
 
@@ -98,8 +99,8 @@
           </form>
           <div class="processos-la-valor-card">
             <h4>Alça • Cortagem e montagem</h4>
-            <p>Valor único e fixo por peça.</p>
-            <strong class="processos-la-valor-fixo">R$ 0,0540</strong>
+            <p>O valor fixo é por alça; o pagamento considera 2 alças por peça.</p>
+            <strong class="processos-la-valor-fixo">R$ 0,0540 × 2 = R$ 0,1080 por peça</strong>
           </div>
         </div>
       `;
@@ -281,7 +282,9 @@
     versao: VERSION,
     carregar: iniciar,
     garantirEstrutura,
-    valorFixoCortagemMontagem: VALOR_FIXO_CORTAGEM_MONTAGEM
+    valorFixoCortagemMontagem: VALOR_FIXO_CORTAGEM_MONTAGEM,
+    multiplicadorAlcasPorPeca: MULTIPLICADOR_ALCAS_POR_PECA,
+    valorEfetivoCortagemMontagem: arred4(VALOR_FIXO_CORTAGEM_MONTAGEM * MULTIPLICADOR_ALCAS_POR_PECA)
   });
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar, { once: true });

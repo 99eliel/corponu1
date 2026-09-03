@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-09-02-calcinha-necessidade-opcional-280";
+  const LOCAL_RELEASE = "2026-09-03-alca-cortagem-montagem-x2-281";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -48,6 +48,7 @@
       ["corponu-pagamentos-interface.js", "pagamentos-interface", "Não foi possível carregar a organização visual de Pagamentos."],
       ["corponu-pagamentos-interface-fix.js", "pagamentos-interface-fix", "Não foi possível estabilizar a interface de Pagamentos."],
       ["corponu-pagamentos-detalhes-sutia-completo-257.js", "pagamentos-detalhes-sutia-completo-257", "Não foi possível carregar a memória detalhada do pagamento do Sutiã Completo."],
+      ["corponu-pagamentos-reconciliacao-lateral-alca-281.js", "pagamentos-reconciliacao-lateral-alca-281", "Não foi possível reconciliar pagamentos antigos de Cortagem e montagem."],
       ["corponu-pagamentos-manual-op-auto.js", "pagamentos-manual-op-auto", "Não foi possível carregar a busca automática da OP."],
       ["corponu-pagamento-manual-componentes.js", "pagamento-manual-componentes", "Não foi possível carregar os componentes do lançamento manual."],
       ["corponu-pagamento-manual-sutia-completo.js", "pagamento-manual-sutia-completo", "Não foi possível carregar a conferência do Sutiã Completo no lançamento manual."],
