@@ -7,8 +7,13 @@
   const PROCESSO_COMPLETO = "SUTIÃ COMPLETO";
   const PROCESSO_LATERAL = "LATERAL";
   const PROCESSO_BOJO = "ENCAPAR BOJO";
+  const REFERENCIAS_ESPECIAIS_BASE = Object.freeze({
+    "912": 6.5,
+    "414": 5.8
+  });
   const DEFAULTS = Object.freeze({
     valorBaseGeral: 5.5,
+    referenciasEspeciaisBase: REFERENCIAS_ESPECIAIS_BASE,
     referenciaEspecial: "912",
     valorBaseReferenciaEspecial: 6.5,
     descontoBojoConfeccao: 0.5,
@@ -42,6 +47,24 @@
     .toUpperCase();
 
   const referenciaNormalizada = valor => texto(valor).replace(/\s+/g, "").toUpperCase();
+
+  function normalizarBasesEspeciais(dados = {}) {
+    const mapa = { ...REFERENCIAS_ESPECIAIS_BASE };
+    const refLegada = referenciaNormalizada(dados.referenciaEspecial || DEFAULTS.referenciaEspecial);
+    const valorLegado = Math.max(0, numero(dados.valorBaseReferenciaEspecial, DEFAULTS.valorBaseReferenciaEspecial));
+    if (refLegada && valorLegado > 0) mapa[refLegada] = valorLegado;
+
+    const salvas = dados.referenciasEspeciaisBase || dados.referenciasEspeciais;
+    if (salvas && typeof salvas === "object" && !Array.isArray(salvas)) {
+      Object.entries(salvas).forEach(([ref, valor]) => {
+        const chave = referenciaNormalizada(ref);
+        const base = Math.max(0, numero(valor));
+        if (chave && base > 0) mapa[chave] = base;
+      });
+    }
+    return mapa;
+  }
+
   const numero = (valor, padrao = 0) => {
     if (typeof valor === "number") return Number.isFinite(valor) ? valor : padrao;
     const bruto = texto(valor);
@@ -160,10 +183,13 @@
       const snap = await ctx.fs.getDoc(ctx.fs.doc(ctx.db, "configuracoes", CONFIG_DOC));
       const dados = snap.exists() ? snap.data() : {};
 
+      const referenciasEspeciaisBase = normalizarBasesEspeciais(dados);
+      const referenciaEspecialLegada = referenciaNormalizada(dados.referenciaEspecial || DEFAULTS.referenciaEspecial);
       configAtual = {
         valorBaseGeral: Math.max(0, numero(dados.valorBaseGeral, DEFAULTS.valorBaseGeral)),
-        referenciaEspecial: referenciaNormalizada(dados.referenciaEspecial || DEFAULTS.referenciaEspecial),
-        valorBaseReferenciaEspecial: Math.max(0, numero(dados.valorBaseReferenciaEspecial, DEFAULTS.valorBaseReferenciaEspecial)),
+        referenciasEspeciaisBase,
+        referenciaEspecial: referenciaEspecialLegada,
+        valorBaseReferenciaEspecial: Math.max(0, numero(referenciasEspeciaisBase[referenciaEspecialLegada], DEFAULTS.valorBaseReferenciaEspecial)),
         descontoBojoConfeccao: Math.max(0, numero(dados.descontoBojoConfeccao, DEFAULTS.descontoBojoConfeccao)),
         descontoFechoNaoFeito: Math.max(0, numero(dados.descontoFechoNaoFeito, DEFAULTS.descontoFechoNaoFeito)),
         descontoPontoLuzNaoFeito: Math.max(0, numero(dados.descontoPontoLuzNaoFeito, DEFAULTS.descontoPontoLuzNaoFeito))
@@ -219,7 +245,8 @@
   function preencherFormularioConfig() {
     const campos = {
       sc51ValorBaseGeral: configAtual.valorBaseGeral,
-      sc51ValorBase912: configAtual.valorBaseReferenciaEspecial,
+      sc51ValorBase912: configAtual.referenciasEspeciaisBase?.["912"] ?? configAtual.valorBaseReferenciaEspecial,
+      sc51ValorBase414: configAtual.referenciasEspeciaisBase?.["414"] ?? REFERENCIAS_ESPECIAIS_BASE["414"],
       sc51BojoConfeccao: configAtual.descontoBojoConfeccao,
       sc51Fecho: configAtual.descontoFechoNaoFeito,
       sc51PontoLuz: configAtual.descontoPontoLuzNaoFeito
@@ -228,8 +255,6 @@
       const input = document.getElementById(id);
       if (input && document.activeElement !== input) input.value = arred4(valor).toFixed(4);
     });
-    const ref = document.getElementById("sc51ReferenciaEspecial");
-    if (ref && document.activeElement !== ref) ref.value = configAtual.referenciaEspecial;
   }
 
   async function montarConfigProcessos() {
@@ -258,11 +283,11 @@
         <label>Valor geral do Sutiã Completo
           <input id="sc51ValorBaseGeral" type="number" min="0" step="0.0001" required>
         </label>
-        <label>Referência especial
-          <input id="sc51ReferenciaEspecial" type="text" maxlength="30" required>
-        </label>
-        <label>Valor da referência especial
+        <label>Valor base especial • Referência 912
           <input id="sc51ValorBase912" type="number" min="0" step="0.0001" required>
+        </label>
+        <label>Valor base especial • Referência 414
+          <input id="sc51ValorBase414" type="number" min="0" step="0.0001" required>
         </label>
         <label>Desconto padrão do bojo feito pela confecção
           <input id="sc51BojoConfeccao" type="number" min="0" step="0.0001" required>
@@ -275,8 +300,7 @@
         </label>
       </div>
       <div class="sc51-ajuda">
-        Lateral continua usando o valor ativo por referência. Quando o bojo do Sutiã Completo for marcado como feito pela confecção, o desconto usa o valor padrão configurado acima, independentemente da referência. O processo Encapar Bojo continua com seu valor próprio por referência fora deste cálculo.
-        Sutiã Montagem não recebe estes descontos.
+        As referências 912 e 414 possuem bases próprias. A referência 414 usa a base configurada acima e segue normalmente os descontos de Lateral, Bojo, Fecho e Ponto de luz. A referência 912 mantém sua regra especial integral já existente. Lateral continua usando o valor ativo por referência e o processo Encapar Bojo mantém seu valor próprio fora deste cálculo. Sutiã Montagem não recebe estes descontos.
       </div>
       <label class="sc51-recalcular">
         <input id="sc51RecalcularPendentes" type="checkbox">
@@ -318,17 +342,20 @@
       return;
     }
 
+    const valorBase912 = Math.max(0, numero(document.getElementById("sc51ValorBase912")?.value));
+    const valorBase414 = Math.max(0, numero(document.getElementById("sc51ValorBase414")?.value));
     const nova = {
       valorBaseGeral: Math.max(0, numero(document.getElementById("sc51ValorBaseGeral")?.value)),
-      referenciaEspecial: referenciaNormalizada(document.getElementById("sc51ReferenciaEspecial")?.value),
-      valorBaseReferenciaEspecial: Math.max(0, numero(document.getElementById("sc51ValorBase912")?.value)),
+      referenciasEspeciaisBase: { "912": valorBase912, "414": valorBase414 },
+      referenciaEspecial: "912",
+      valorBaseReferenciaEspecial: valorBase912,
       descontoBojoConfeccao: Math.max(0, numero(document.getElementById("sc51BojoConfeccao")?.value)),
       descontoFechoNaoFeito: Math.max(0, numero(document.getElementById("sc51Fecho")?.value)),
       descontoPontoLuzNaoFeito: Math.max(0, numero(document.getElementById("sc51PontoLuz")?.value))
     };
 
-    if (!nova.valorBaseGeral || !nova.referenciaEspecial || !nova.valorBaseReferenciaEspecial) {
-      avisar("Preencha os valores-base e a referência especial.", "erro");
+    if (!nova.valorBaseGeral || !valorBase912 || !valorBase414) {
+      avisar("Preencha o valor geral e as bases especiais das referências 912 e 414.", "erro");
       return;
     }
 
@@ -337,7 +364,8 @@
       "Confirmar a configuração do Sutiã Completo?",
       "",
       `Valor geral: ${moeda4(nova.valorBaseGeral)}`,
-      `Referência ${nova.referenciaEspecial}: ${moeda4(nova.valorBaseReferenciaEspecial)}`,
+      `Referência 912: ${moeda4(valorBase912)}`,
+      `Referência 414: ${moeda4(valorBase414)}`,
       `Bojo feito pela confecção: ${moeda4(nova.descontoBojoConfeccao)}`,
       `Fecho não feito: ${moeda4(nova.descontoFechoNaoFeito)}`,
       `Ponto de luz não feito: ${moeda4(nova.descontoPontoLuzNaoFeito)}`,
@@ -664,9 +692,9 @@
   }
 
   function valorBaseParaReferencia(referencia) {
-    return referenciaNormalizada(referencia) === referenciaNormalizada(configAtual.referenciaEspecial)
-      ? configAtual.valorBaseReferenciaEspecial
-      : configAtual.valorBaseGeral;
+    const chave = referenciaNormalizada(referencia);
+    const valorEspecial = Math.max(0, numero(configAtual.referenciasEspeciaisBase?.[chave]));
+    return valorEspecial > 0 ? valorEspecial : configAtual.valorBaseGeral;
   }
 
   function criarBlocoComponente(nome, info, prefixo) {

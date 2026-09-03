@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-09-03-alca-cortagem-montagem-x2-281";
+  const LOCAL_RELEASE = "2026-09-03-sutia-bases-especiais-282";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 

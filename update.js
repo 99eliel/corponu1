@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-09-03-alca-cortagem-montagem-x2-281";
+  const APP_VERSION = "2026-09-03-sutia-bases-especiais-282";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 

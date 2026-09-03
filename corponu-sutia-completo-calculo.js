@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOADER_VERSION = "2026-08-31-bojo-confeccao-configuravel-267";
+  const LOADER_VERSION = "2026-09-03-sutia-bases-especiais-282";
   const BASE_FILE = "corponu-sutia-completo-calculo-base-174.js";
   const GUARD = "__CORPONU_SUTIA_COMPLETO_ADMIN_LOADER_175B__";
 
@@ -38,7 +38,7 @@
 
     substituir(
       'const VERSION = "2026-08-11-componentes-opcionais-calculo-170";',
-      'const VERSION = "2026-08-31-bojo-confeccao-configuravel-267";',
+      'const VERSION = "2026-09-03-sutia-bases-especiais-282";',
       "versão interna"
     );
 
