@@ -1,0 +1,60 @@
+name: Aplicar bases especiais Sutia 282
+
+on:
+  push:
+    paths:
+      - '.github/workflows/aplicar-sutia-bases-especiais-282.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Baixar codigo
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Aplicar regra canonica
+        run: node scripts/aplicar-sutia-bases-especiais-282.js
+
+      - name: Validar JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module --check < corponu-sutia-completo-calculo-base-174.js
+          node --input-type=module --check < corponu-sutia-completo-calculo.js
+          node --input-type=module --check < corponu-atualizador.js
+          node --input-type=module --check < update.js
+
+      - name: Validar JSON e pos-condicoes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e "JSON.parse(require('fs').readFileSync('corponu-release.json','utf8')); JSON.parse(require('fs').readFileSync('version.json','utf8'));"
+          grep -F '"414": 5.8' corponu-sutia-completo-calculo-base-174.js
+          grep -F 'sc51ValorBase414' corponu-sutia-completo-calculo-base-174.js
+          grep -F 'referenciasEspeciaisBase' corponu-sutia-completo-calculo-base-174.js
+          grep -F '2026-09-03-sutia-bases-especiais-282' corponu-sutia-completo-calculo.js
+
+      - name: Conferir diff
+        run: git diff --check
+
+      - name: Commitar alteracoes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add corponu-sutia-completo-calculo-base-174.js corponu-sutia-completo-calculo.js corponu-atualizador.js update.js index.html corponu-release.json version.json
+          git diff --cached --quiet && { echo 'Nenhuma alteracao para commit.'; exit 1; }
+          git commit -m 'feat: adicionar base especial 414 no Sutia Completo 282'
+          git push origin HEAD:main
