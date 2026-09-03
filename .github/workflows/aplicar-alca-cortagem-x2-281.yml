@@ -1,0 +1,64 @@
+name: Aplicar Alca Cortagem x2 281
+
+on:
+  push:
+    paths:
+      - '.github/workflows/aplicar-alca-cortagem-x2-281.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Baixar codigo
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Aplicar correcao estrutural
+        run: node scripts/aplicar-alca-cortagem-x2-281.js
+
+      - name: Validar JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module --check < corponu-faccoes-lateral-alca-v2-270.js
+          node --input-type=module --check < corponu-processos-valores-lateral-alca-272.js
+          node --input-type=module --check < corponu-pagamentos-reconciliacao-lateral-alca-281.js
+          node --input-type=module --check < corponu-atualizador.js
+          node --input-type=module --check < update.js
+
+      - name: Validar JSON e pos-condicoes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e "JSON.parse(require('fs').readFileSync('corponu-release.json','utf8')); JSON.parse(require('fs').readFileSync('version.json','utf8'));"
+          grep -F 'fixo_cortagem_montagem-x2' corponu-faccoes-lateral-alca-v2-270.js
+          grep -F 'R$ 0,0540 × 2 = R$ 0,1080 por peça' corponu-processos-valores-lateral-alca-272.js
+          grep -F 'valorUnitarioAntesCorrecao' corponu-pagamentos-reconciliacao-lateral-alca-281.js
+          grep -F 'corponu-pagamentos-reconciliacao-lateral-alca-281.js' corponu-atualizador.js
+
+      - name: Conferir diff
+        run: git diff --check
+
+      - name: Commitar alteracoes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add corponu-faccoes-lateral-alca-v2-270.js \
+                  corponu-processos-valores-lateral-alca-272.js \
+                  corponu-pagamentos-reconciliacao-lateral-alca-281.js \
+                  corponu-atualizador.js update.js index.html corponu-release.json version.json
+          git diff --cached --quiet && { echo 'Nenhuma alteracao para commit.'; exit 1; }
+          git commit -m 'fix: aplicar multiplicador x2 na cortagem e montagem 281'
+          git push origin HEAD:main
