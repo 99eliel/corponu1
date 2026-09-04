@@ -1,0 +1,122 @@
+name: Organizar Facções Controlador Unificado 285 v2
+
+on:
+  push:
+    paths:
+      - '.github/workflows/organizar-faccoes-controlador-unificado-285-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  organizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Ajustar migrador para funções async
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/organizar-faccoes-controlador-unificado-285.js')
+          s = p.read_text(encoding='utf-8')
+          old = '''function replaceFunction(src, name, nextName, replacement) {
+            const startToken = `  function ${name}`;
+            const nextToken = `  function ${nextName}`;
+            const start = src.indexOf(startToken);
+            const end = src.indexOf(nextToken, start + startToken.length);
+            if (start < 0 || end < 0) throw new Error(`Função ${name} ou próxima ${nextName} não encontrada.`);
+            if (src.indexOf(startToken, start + 1) >= 0) throw new Error(`Função ${name} duplicada.`);
+            return src.slice(0, start) + replacement.trimEnd() + '\\n\\n' + src.slice(end);
+          }'''
+          # O arquivo não possui a indentação Python acima; normaliza o bloco antes de comparar.
+          old = '\n'.join(line[10:] if line.startswith('          ') else line for line in old.splitlines())
+          new = '''function functionStart(src, name, from = 0) {
+            const candidates = [
+              src.indexOf(`  function ${name}`, from),
+              src.indexOf(`  async function ${name}`, from)
+            ].filter(index => index >= 0);
+            return candidates.length ? Math.min(...candidates) : -1;
+          }
+
+          function replaceFunction(src, name, nextName, replacement) {
+            const start = functionStart(src, name);
+            const end = functionStart(src, nextName, start + 1);
+            if (start < 0 || end < 0) throw new Error(`Função ${name} ou próxima ${nextName} não encontrada.`);
+            return src.slice(0, start) + replacement.trimEnd() + '\\n\\n' + src.slice(end);
+          }'''
+          new = '\n'.join(line[10:] if line.startswith('          ') else line for line in new.splitlines())
+          if old not in s:
+              raise SystemExit('Bloco replaceFunction original não encontrado; abortando sem alterar produção.')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Aplicar reorganização estrutural
+        shell: bash
+        run: |
+          set +e
+          node scripts/organizar-faccoes-controlador-unificado-285.js > /tmp/faccoes-285.log 2>&1
+          status=$?
+          cat /tmp/faccoes-285.log
+          mkdir -p /tmp/faccoes-285-diag
+          cp /tmp/faccoes-285.log /tmp/faccoes-285-diag/migracao.log
+          exit $status
+
+      - name: Salvar diagnóstico
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: faccoes-285-diagnostico
+          path: /tmp/faccoes-285-diag
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Validar JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module --check < corponu-dual-mode.js
+          node --input-type=module --check < corponu-faccoes-tres-abas-saida.js
+          node --input-type=module --check < corponu-faccoes-lateral-alca-v2-270.js
+          node --input-type=module --check < corponu-atualizador.js
+          node --input-type=module --check < update.js
+
+      - name: Validar arquitetura de Facções
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e "JSON.parse(require('fs').readFileSync('corponu-release.json','utf8')); JSON.parse(require('fs').readFileSync('version.json','utf8'));"
+          grep -F 'function setActiveFaccoesType' corponu-dual-mode.js
+          grep -F 'data-type="lateral_alca"' corponu-dual-mode.js
+          grep -F 'corponu:movimentacoes-atualizadas' corponu-dual-mode.js
+          grep -F 'hidratarMovimentosCompartilhados' corponu-faccoes-lateral-alca-v2-270.js
+          grep -F 'preload: () => carregarTudo(false)' corponu-faccoes-lateral-alca-v2-270.js
+          grep -F 'corponu:faccoes-mode' corponu-faccoes-tres-abas-saida.js
+          ! grep -F 'stopImmediatePropagation()' corponu-faccoes-tres-abas-saida.js
+          ! grep -F 'abaFaccaoCorte' corponu-faccoes-tres-abas-saida.js
+          ! grep -F 'function carregarLegados()' corponu-faccoes-lateral-alca-v2-270.js
+          grep -F '2026-09-04-faccoes-controlador-unificado-285' corponu-release.json
+
+      - name: Conferir diff
+        run: git diff --check
+
+      - name: Commitar alterações
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add corponu-dual-mode.js corponu-faccoes-tres-abas-saida.js corponu-faccoes-lateral-alca-v2-270.js corponu-atualizador.js update.js index.html corponu-release.json version.json
+          git diff --cached --quiet && { echo 'Nenhuma alteração para commit.'; exit 1; }
+          git commit -m 'refactor: unificar controlador da aba Facções 285'
+          git push origin HEAD:main
