@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-09-03-alca-cortagem-montagem-x2-281";
+  const VERSION = "2026-09-04-faccoes-lateral-preload-285";
   const FB = "10.12.5";
   const AREA_LEGADA = "corte";
   const FLUXO = "lateral_alca";
@@ -51,7 +51,7 @@
   let usuario = null;
   let perfil = null;
   let movimentosArea = [];
-  let movimentosLegados = [];
+  let movimentosCompartilhados = [];
   let movimentos = [];
   let opSaida = null;
   let movimentoChegada = null;
@@ -59,6 +59,7 @@
   let listenerPrimeiroSnapshot = null;
   let carregadoEm = 0;
   let carregando = false;
+  let carregamentoPromise = null;
   let limiteRender = LIMITE_RENDER_INICIAL;
   let timerBusca = 0;
   const cacheOps = new Map();
@@ -206,23 +207,18 @@
 
   function unirMovimentos() {
     const mapa = new Map();
-    [...movimentosLegados, ...movimentosArea].forEach(item => {
+    [...movimentosCompartilhados, ...movimentosArea].forEach(item => {
       if (pertenceLateralAlca(item)) mapa.set(String(item.id), item);
     });
     movimentos = [...mapa.values()].sort((a, b) => momento(b) - momento(a));
   }
 
-  async function carregarLegados() {
-    const c = await contexto();
-    const consulta = c.fs.query(
-      c.fs.collection(c.db, "movimentacoesProducao"),
-      c.fs.where("processo", "in", ["LATERAL", "ALÇA", "ALCA", "ALÇAS", "CORTAGEM E MONTAGEM"])
-    );
-    const snap = await c.fs.getDocs(consulta);
-    movimentosLegados = snap.docs
-      .map(item => ({ id: item.id, ...item.data() }))
-      .filter(item => item.area !== AREA_LEGADA && item.movimentacaoCorte !== true && item.fluxoFaccoes !== FLUXO)
-      .filter(pertenceLateralAlca);
+  function hidratarMovimentosCompartilhados() {
+    const mapa = window.corponuDualMode?.state?.maps?.movimentacoes;
+    if (!(mapa instanceof Map)) return false;
+    movimentosCompartilhados = [...mapa.values()].filter(pertenceLateralAlca);
+    unirMovimentos();
+    return true;
   }
 
   function pararListenerArea() {
@@ -263,49 +259,62 @@
   }
 
   async function carregarTudo(forcar = false) {
-    if (carregando) return;
-    const cacheValido = !forcar && carregadoEm && Date.now() - carregadoEm < CACHE_MS && movimentos.length;
-    if (cacheValido) {
-      await iniciarListenerArea().catch(() => {});
-      renderDados();
-      return;
+    if (carregamentoPromise) {
+      if (!forcar) return carregamentoPromise;
+      await carregamentoPromise.catch(() => {});
     }
 
-    carregando = true;
-    const botao = document.getElementById("btnLA2Atualizar");
-    if (botao) {
-      botao.disabled = true;
-      botao.textContent = "Atualizando...";
-    }
-
-    try {
-      await carregarPerfil();
-      if (forcar || !movimentosLegados.length) await carregarLegados();
-      if (forcar) pararListenerArea();
-      try {
-        await iniciarListenerArea();
-      } catch (error) {
-        const c = await contexto();
-        const snap = await c.fs.getDocs(c.fs.query(
-          c.fs.collection(c.db, "movimentacoesProducao"),
-          c.fs.where("area", "==", AREA_LEGADA)
-        ));
-        movimentosArea = snap.docs.map(item => ({ id: item.id, ...item.data() })).filter(pertenceLateralAlca);
-        unirMovimentos();
+    carregamentoPromise = (async () => {
+      const cacheValido = !forcar && carregadoEm && Date.now() - carregadoEm < CACHE_MS;
+      if (cacheValido) {
+        hidratarMovimentosCompartilhados();
+        await iniciarListenerArea().catch(() => {});
+        renderDados();
+        return;
       }
-      carregadoEm = Date.now();
-      limiteRender = LIMITE_RENDER_INICIAL;
-      renderDados();
-    } catch (error) {
-      console.error(error);
-      toast("Não foi possível carregar Lateral e Alça.", "error");
-    } finally {
-      carregando = false;
+
+      carregando = true;
+      const botao = document.getElementById("btnLA2Atualizar");
       if (botao) {
-        botao.disabled = false;
-        botao.textContent = "Atualizar";
+        botao.disabled = true;
+        botao.textContent = "Atualizando...";
       }
-    }
+
+      try {
+        await carregarPerfil();
+        if (forcar && typeof window.corponuDualMode?.refresh === "function") {
+          await window.corponuDualMode.refresh().catch(error => console.warn("Atualização compartilhada de Facções falhou.", error));
+        }
+        hidratarMovimentosCompartilhados();
+        try {
+          await iniciarListenerArea();
+        } catch (error) {
+          const c = await contexto();
+          const snap = await c.fs.getDocs(c.fs.query(
+            c.fs.collection(c.db, "movimentacoesProducao"),
+            c.fs.where("area", "==", AREA_LEGADA)
+          ));
+          movimentosArea = snap.docs.map(item => ({ id: item.id, ...item.data() })).filter(pertenceLateralAlca);
+          unirMovimentos();
+        }
+        carregadoEm = Date.now();
+        limiteRender = LIMITE_RENDER_INICIAL;
+        renderDados();
+      } catch (error) {
+        console.error(error);
+        toast("Não foi possível carregar Lateral e Alça.", "error");
+      } finally {
+        carregando = false;
+        if (botao) {
+          botao.disabled = false;
+          botao.textContent = "Atualizar";
+        }
+      }
+    })().finally(() => {
+      carregamentoPromise = null;
+    });
+
+    return carregamentoPromise;
   }
 
   function statusMovimento(item) {
@@ -446,7 +455,17 @@
     }
   }
 
+  function contagemMovimentos() {
+    return movimentos.filter(item => !movimentoCancelado(item)).length;
+  }
+
+  function atualizarContagemAba() {
+    const alvo = document.querySelector('.corponu-dual-tabs[data-page="faccoes"] [data-count-type="lateral_alca"]');
+    if (alvo) alvo.textContent = contagemMovimentos().toLocaleString("pt-BR");
+  }
+
   function renderDados() {
+    atualizarContagemAba();
     preencherFiltros();
     renderResumo();
     renderTabela();
@@ -1314,7 +1333,7 @@
     document.getElementById("formLA2Chegada")?.addEventListener("submit", salvarChegada);
   }
 
-  async function mostrarArea() {
+  function mostrarArea() {
     injetarUI();
     const pagina = document.getElementById("faccoes");
     const geral = pagina?.querySelector(":scope > .faccoes-operacional-panel");
@@ -1322,29 +1341,49 @@
     if (!pagina || !geral || !painel) return false;
     geral.classList.add("hidden");
     painel.classList.remove("hidden");
-    await carregarTudo(false);
+    renderDados();
+    if (!carregadoEm) carregarTudo(false).catch(() => {});
     return true;
   }
 
   function ocultarArea() {
     document.getElementById("painelFaccoesCorte")?.classList.add("hidden");
-    pararListenerArea();
   }
 
   function iniciar() {
     injetarUI();
+
+    document.addEventListener("corponu:movimentacoes-atualizadas", () => {
+      if (!hidratarMovimentosCompartilhados()) return;
+      carregadoEm = Date.now();
+      renderDados();
+    });
+
+    document.addEventListener("corponu:faccoes-mode", event => {
+      const modo = event.detail?.mode || "";
+      if (modo === "lateral_alca") mostrarArea();
+      else ocultarArea();
+    });
+
     contexto().then(c => {
       c.onAuth(c.auth, current => {
         usuario = current;
         perfil = null;
         if (!current) {
           movimentosArea = [];
-          movimentosLegados = [];
+          movimentosCompartilhados = [];
           movimentos = [];
+          carregadoEm = 0;
           pararListenerArea();
+          renderDados();
           return;
         }
-        carregarPerfil().catch(() => {});
+        carregarPerfil()
+          .then(() => carregarTudo(false))
+          .then(() => {
+            if (window.corponuDualMode?.state?.active?.faccoes === "lateral_alca") mostrarArea();
+          })
+          .catch(error => console.warn("Pré-carga de Lateral e Alça não concluída.", error));
       });
     }).catch(error => console.warn("Lateral e Alça aguardando Firebase.", error));
   }
@@ -1352,8 +1391,11 @@
   const api = {
     versao: VERSION,
     atualizar: carregarTudo,
+    preload: () => carregarTudo(false),
     mostrar: mostrarArea,
     ocultar: ocultarArea,
+    render: renderDados,
+    contagem: contagemMovimentos,
     processos: PROCESSOS.map(item => ({ ...item })),
     valorFixoCortagemMontagem: VALOR_FIXO_CORTAGEM_MONTAGEM,
     multiplicadorAlcasPorPeca: MULTIPLICADOR_ALCAS_POR_PECA,

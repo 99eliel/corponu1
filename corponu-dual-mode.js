@@ -1,10 +1,11 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-09-02-calcinha-necessidade-opcional-280";
+  const VERSION = "2026-09-04-faccoes-controlador-unificado-285";
   const FIREBASE_VERSION = "10.12.5";
   const HISTORY_URL = `calcinhas-historico-2026.json?v=${encodeURIComponent(VERSION)}`;
   const TYPES = Object.freeze({ sutia: "Sutiã", calcinha: "Calcinha" });
+  const FACCOES_TYPES = Object.freeze({ sutia: "Sutiã", calcinha: "Calcinha", lateral_alca: "Lateral e Alça" });
   const CALCINHA_PROCESSES = Object.freeze(["CALCINHA MONTAGEM", "CALCINHA COMPLETA"]);
   const FALLBACK_FACTIONS = Object.freeze({
     "CALCINHA MONTAGEM": ["ANA FLAVIA", "KAUANE", "LIANA", "DAIANA", "LEIDIANE", "ANDREZA"],
@@ -31,6 +32,7 @@
     original: {},
     refreshPromise: null,
     refreshTimer: 0,
+    faccoesRefreshTimer: 0,
     applying: false,
     observers: [],
     historicalImporting: false
@@ -211,6 +213,9 @@
         }
       }));
       await loadProfile();
+      if (collections.includes("movimentacoesProducao")) {
+        document.dispatchEvent(new CustomEvent("corponu:movimentacoes-atualizadas", { detail: { source: "dual-mode" } }));
+      }
       return state.maps;
     })().finally(() => {
       state.refreshPromise = null;
@@ -295,6 +300,10 @@
       const button = event.target.closest(".corponu-dual-tab");
       const type = button?.dataset?.type || "";
       if (!type) return;
+      if (pageId === "faccoes") {
+        setActiveFaccoesType(type);
+        return;
+      }
       setActiveType(pageId, type);
     });
   }
@@ -320,7 +329,7 @@
       tabs.innerHTML = `
         <button type="button" class="corponu-dual-tab active" data-type="sutia">Sutiã <span class="count" data-count-type="sutia">0</span></button>
         <button type="button" class="corponu-dual-tab" data-type="calcinha">Calcinha <span class="count" data-count-type="calcinha">0</span></button>
-        <button type="button" class="corponu-dual-tab" id="abaFaccaoCorte">Lateral e Alça <span class="count" id="contCorte">0</span></button>
+        <button type="button" class="corponu-dual-tab" data-type="lateral_alca" id="abaFaccaoCorte">Lateral e Alça <span class="count" id="contCorte" data-count-type="lateral_alca">0</span></button>
       `;
       delete tabs.dataset.corponuDualBound;
     } else if (precisaPadrao) {
@@ -334,7 +343,36 @@
     bindTabs(pageId, tabs);
   }
 
+  function setActiveFaccoesType(type) {
+    if (!FACCOES_TYPES[type]) return;
+
+    state.active.faccoes = type;
+    const page = document.getElementById("faccoes");
+    const tabs = document.querySelector('.corponu-dual-tabs[data-page="faccoes"]');
+    const lateralAtiva = type === "lateral_alca";
+    const painelGeral = page?.querySelector(":scope > .faccoes-operacional-panel");
+    const painelLateral = document.getElementById("painelFaccoesCorte");
+
+    if (page) page.dataset.faccaoAbaAtiva = type;
+    tabs?.querySelectorAll(".corponu-dual-tab").forEach(button => {
+      button.classList.toggle("active", button.dataset.type === type);
+    });
+
+    painelGeral?.classList.toggle("hidden", lateralAtiva);
+    painelLateral?.classList.toggle("hidden", !lateralAtiva);
+
+    if (lateralAtiva) window.CorpoNuFaccoesLateralAlca?.mostrar?.();
+    else window.CorpoNuFaccoesLateralAlca?.ocultar?.();
+
+    applyFaccoes();
+    document.dispatchEvent(new CustomEvent("corponu:faccoes-mode", { detail: { mode: type } }));
+  }
+
   function setActiveType(pageId, type, options = {}) {
+    if (pageId === "faccoes") {
+      setActiveFaccoesType(type);
+      return;
+    }
     if (!TYPES[type]) return;
     state.active[pageId] = type;
     const tabs = document.querySelector(`.corponu-dual-tabs[data-page="${pageId}"]`);
@@ -963,22 +1001,42 @@
     };
   }
 
+  function isLateralAlcaMovement(item) {
+    if (!item) return false;
+    if (item.fluxoFaccoes === "lateral_alca" || item.movimentacaoCorte === true) return true;
+    const area = normalize([item.area, item.setor, item.areaLabel, item.setorLabel].filter(Boolean).join(" "));
+    const processo = normalize(item.processo || item.servicoNome || item.processoMovimentacao);
+    if (area.includes("LATERAL") || area.includes("ALCA") || area === "CORTE") return true;
+    return ["LATERAL", "ALCA", "ALCAS", "CORTAGEM E MONTAGEM", "CORTAGEM MONTAGEM", "CORTE E MONTAGEM"].includes(processo);
+  }
+
   function applyFaccoes() {
+    const gerais = [...state.maps.movimentacoes.values()].filter(item => item.tipoDestino === "faccao" && !isLateralAlcaMovement(item));
     const movementCountsByType = {
-      sutia: [...state.maps.movimentacoes.values()].filter(item => item.tipoDestino === "faccao" && typeOfData(item) === "sutia").length,
-      calcinha: [...state.maps.movimentacoes.values()].filter(item => item.tipoDestino === "faccao" && typeOfData(item) === "calcinha").length
+      sutia: gerais.filter(item => typeOfData(item) === "sutia").length,
+      calcinha: gerais.filter(item => typeOfData(item) === "calcinha").length
     };
+    const lateralCount = window.CorpoNuFaccoesLateralAlca?.contagem?.();
+    if (Number.isFinite(lateralCount)) movementCountsByType.lateral_alca = lateralCount;
     updateTabCounts("faccoes", movementCountsByType);
+
     const activeType = state.active.faccoes;
+    if (activeType === "lateral_alca") {
+      window.CorpoNuFaccoesLateralAlca?.render?.();
+      return;
+    }
+
     ["listaFaccoesMovimentacoes", "listaMovimentacoesUsuario"].forEach(id => {
       const tbody = document.getElementById(id);
       tbody?.querySelectorAll(":scope > tr").forEach(row => {
         if (row.querySelector(".empty") || row.cells.length <= 1) return;
         const movement = getMovementFromRow(row);
+        const lateral = movement ? isLateralAlcaMovement(movement) : false;
         const type = movement ? typeOfData(movement) : "sutia";
-        row.classList.toggle("corponu-dual-hidden", type !== activeType);
+        row.classList.toggle("corponu-dual-hidden", lateral || type !== activeType);
       });
     });
+
     const counts = movementCounts(activeType);
     const total = document.getElementById("faccoesOpsEmAndamento");
     const sent = document.getElementById("faccoesPecasEnviadas");
@@ -1554,7 +1612,14 @@
           }
           if (id.includes("Produto")) applyProducts();
           else if (id === "listaOrdens") applyOrders();
-          else if (id.includes("Faccoes") || id === "listaMovimentacoesUsuario") applyFaccoes();
+          else if (id.includes("Faccoes") || id === "listaMovimentacoesUsuario") {
+            clearTimeout(state.faccoesRefreshTimer);
+            state.faccoesRefreshTimer = setTimeout(() => {
+              refreshData({ collections: ["movimentacoesProducao"], serverFallback: false })
+                .catch(() => {})
+                .finally(() => applyFaccoes());
+            }, 40);
+          }
           else if (id === "listaRastreamento") applyTracking();
         });
       });
