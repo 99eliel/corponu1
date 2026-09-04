@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-04-faccoes-registrar-saida-restaurado-283",
-  "updatedAt": "2026-09-04T10:55:00-03:00",
-  "notes": "Produção. Restaurado estruturalmente o botão Registrar saída da aba Facções para Sutiã e Calcinha. O módulo de três abas estava condicionando a criação do botão geral à existência do antigo elemento abaFaccaoCorte. A versão atual de Lateral e Alça usa painel próprio e não cria mais esse ID legado, fazendo o módulo abortar antes de inserir Registrar saída. A dependência foi removida: o botão geral agora depende apenas das abas Sutiã/Calcinha, enquanto Lateral e Alça permanece com seu botão de saída independente. Nenhuma regra do Firebase foi alterada."
+  "version": "2026-09-04-base-corpo-nu-flow-estavel-284",
+  "updatedAt": "2026-09-04T11:04:00-03:00",
+  "notes": "Produção. Estabilizada a identidade base do sistema após identificar uma dependência histórica escondida: Corpo Nu Flow era aplicado por um módulo carregado indiretamente pela tela Pagamentos. Com o carregamento sob demanda e a renovação de cache, o HTML-base antigo OP Confecção voltou a aparecer. A identidade oficial agora nasce diretamente no index.html com título, nome, subtítulo, logo e favicon Corpo Nu Flow, sem depender de JavaScript ou de visitar Pagamentos. Também foram explicitados no carregador os módulos próprios da página Ordens (proteção do campo quantidade e restauração de OPs excluídas) e o motivo de pendências permanece explicitamente pertencente a Pagamentos, reduzindo dependências escondidas. A correção 283 do botão Registrar saída permanece preservada. Nenhum documento ou regra do Firebase foi alterado."
 }

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-09-04-faccoes-registrar-saida-restaurado-283";
+  const LOCAL_RELEASE = "2026-09-04-base-corpo-nu-flow-estavel-284";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -39,6 +39,11 @@
   ];
 
   const MODULOS_POR_PAGINA = Object.freeze({
+    ordens: [
+      ["corponu-quantidade-sem-scroll-148.js", "quantidade-sem-scroll-148", "Não foi possível ativar a proteção da quantidade da OP contra o scroll do mouse."],
+      ["corponu-ops-excluidas-restauracao-139.js", "ops-excluidas-restauracao-139", "Não foi possível carregar a lixeira/restauração de OPs excluídas."]
+    ],
+
     manejo: [
       MODULO_GRUPOS_FACCOES
     ],
@@ -58,6 +63,7 @@
       ["corponu-pagamentos-alerta-sem-valor.js", "pagamentos-alerta-sem-valor", "Não foi possível destacar pagamentos sem valor."],
       ["corponu-pagamentos-alerta-duplicidades.js", "pagamentos-alerta-duplicidades", "Não foi possível verificar duplicidades."],
       ["corponu-pendencias-modal-estavel.js", "pendencias-modal-estavel", "Não foi possível restaurar a abertura das pendências."],
+      ["corponu-pendencias-motivo-171.js", "pendencias-motivo-171", "Não foi possível mostrar o motivo específico das pendências financeiras."],
       ["corponu-pendencias-valor-seguro.js", "pendencias-valor-seguro", "Não foi possível salvar valores pendentes com segurança."],
       ["corponu-verificacao-sutia-completo.js", "verificacao-sutia-completo-segura", "Não foi possível carregar a verificação do Sutiã Completo."],
       ["corponu-valores-pendentes-financeiro.js", "valores-pendentes-financeiro", "Não foi possível carregar Valores pendentes."],
