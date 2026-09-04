@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const V = "2026-08-31-faccoes-processos-estavel-272";
+  const V = "2026-09-04-faccoes-registrar-saida-restaurado-283";
   const FB = "10.12.5";
   const PROCESSOS_SAIDA = Object.freeze({
     sutia: ["ENCAPAR BOJO", "SUTIÃ COMPLETO", "INTERLOCK"],
@@ -203,7 +203,9 @@
     preencherProcessos(aba);
 
     const x = abas();
-    if (!x || !document.getElementById("abaFaccaoCorte")) return;
+    // O botão geral pertence ao fluxo Sutiã/Calcinha e não depende do painel de Lateral e Alça.
+    // Lateral e Alça possui interface e botão de saída próprios.
+    if (!x) return;
 
     const ag = painelGeral()?.querySelector(":scope > .panel-header .actions") || painelGeral()?.querySelector(".panel-header .actions");
     if (ag && !document.getElementById("btnSaidaAbas")) {

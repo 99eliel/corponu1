@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-09-03-sutia-bases-especiais-282";
+  const LOCAL_RELEASE = "2026-09-04-faccoes-registrar-saida-restaurado-283";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 

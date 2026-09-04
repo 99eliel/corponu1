@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-03-sutia-bases-especiais-282",
-  "updatedAt": "2026-09-03T14:27:00-03:00",
-  "notes": "Produção. O Sutiã Completo passa a suportar múltiplas bases especiais de referência no cálculo canônico. A referência 912 mantém o valor/configuração e a regra integral já existentes. Foi adicionada a referência 414 com valor-base padrão de R$ 5,8000. A 414 usa essa base e continua seguindo normalmente os descontos de Lateral, Bojo, Fecho e Ponto de luz. A configuração em Processos agora exibe campos separados para as bases das referências 912 e 414. Os novos valores são persistidos no mapa referenciasEspeciaisBase, mantendo referenciaEspecial e valorBaseReferenciaEspecial da 912 para compatibilidade com o histórico e os módulos existentes. Não há migração nem alteração automática de pagamentos pagos. O recálculo de pendentes continua disponível pela opção já existente na configuração do Sutiã Completo. Nenhuma regra do Firebase foi modificada."
+  "version": "2026-09-04-faccoes-registrar-saida-restaurado-283",
+  "updatedAt": "2026-09-04T10:55:00-03:00",
+  "notes": "Produção. Restaurado estruturalmente o botão Registrar saída da aba Facções para Sutiã e Calcinha. O módulo de três abas estava condicionando a criação do botão geral à existência do antigo elemento abaFaccaoCorte. A versão atual de Lateral e Alça usa painel próprio e não cria mais esse ID legado, fazendo o módulo abortar antes de inserir Registrar saída. A dependência foi removida: o botão geral agora depende apenas das abas Sutiã/Calcinha, enquanto Lateral e Alça permanece com seu botão de saída independente. Nenhuma regra do Firebase foi alterada."
 }
