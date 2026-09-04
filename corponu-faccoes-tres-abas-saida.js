@@ -163,7 +163,7 @@
     preencherProcessos(a);
     document.getElementById("s3prev")?.classList.add("hidden");
     document.getElementById("s3campos")?.classList.add("hidden");
-    document.getElementById("s3titulo").textContent = `Registrar saída • ${a === "sutia" ? "Sutiã" : a === "calcinha" ? "Calcinha" : "Lateral e Alça"}`;
+    document.getElementById("s3titulo").textContent = `Registrar saída • ${a === "sutia" ? "Sutiã" : "Calcinha"}`;
     document.getElementById("s3data").value = hoje();
     document.getElementById("modalSaida3").classList.remove("hidden");
     carregarFaccoesRapido().catch(() => {});
@@ -213,7 +213,7 @@
 
     const escolhida = escolherOrdemEncontrada(encontrados, preferencia, s);
     if (!escolhida) return null;
-    if (preferencia !== "corte" && tipo(escolhida) !== preferencia) return null;
+    if (tipo(escolhida) !== preferencia) return null;
     return escolhida;
   }
 
@@ -265,14 +265,14 @@
 
     await buscarDocumentosDiretos(c, ids, encontrados, true);
     let escolhida = escolherOrdemEncontrada(encontrados, preferencia, s);
-    if (escolhida && (preferencia === "corte" || tipo(escolhida) === preferencia)) {
+    if (escolhida && tipo(escolhida) === preferencia) {
       cacheOps.set(chaveCache, { em: Date.now(), valor: escolhida });
       return escolhida;
     }
 
     await buscarDocumentosDiretos(c, ids, encontrados, false);
     escolhida = escolherOrdemEncontrada(encontrados, preferencia, s);
-    if (escolhida && (preferencia === "corte" || tipo(escolhida) === preferencia)) {
+    if (escolhida && tipo(escolhida) === preferencia) {
       cacheOps.set(chaveCache, { em: Date.now(), valor: escolhida });
       return escolhida;
     }
@@ -284,7 +284,7 @@
 
     await executarConsultasOP(c, ["numeroOP"], valoresUnicos, encontrados);
     escolhida = escolherOrdemEncontrada(encontrados, preferencia, s);
-    if (escolhida && (preferencia === "corte" || tipo(escolhida) === preferencia)) {
+    if (escolhida && tipo(escolhida) === preferencia) {
       cacheOps.set(chaveCache, { em: Date.now(), valor: escolhida });
       return escolhida;
     }
@@ -352,7 +352,7 @@
       if (!o) return toast("OP não encontrada ou está excluída.");
 
       const tp = tipo(o);
-      if (aba !== "corte" && tp !== aba) return toast(`Esta OP é de ${tp === "calcinha" ? "Calcinha" : "Sutiã"}. Abra a aba correta.`);
+      if (tp !== aba) return toast(`Esta OP é de ${tp === "calcinha" ? "Calcinha" : "Sutiã"}. Abra a aba correta.`);
 
       op = o;
       faccoes = await promessaFaccoes;
@@ -380,7 +380,6 @@
 
   async function salvar(ev) {
     ev.preventDefault();
-    if (aba === "corte") return toast("Use o fluxo próprio de Lateral e Alça.");
     if (!op) return toast("Busque a OP primeiro.");
 
     const processo = norm(document.getElementById("s3processo").value);
@@ -398,31 +397,30 @@
     const lista = await c.f.getDocs(c.f.query(c.f.collection(c.db, "movimentacoesProducao"), c.f.where("opId", "==", op.id)));
     if (lista.docs.some(d => {
       const m = d.data();
-      return !m.dataChegada && !m.cancelado && !m.excluido && norm(m.status) !== "CANCELADO" && norm(m.processo) === processo && (aba !== "corte" || m.area === "corte" || m.movimentacaoCorte === true);
+      return !m.dataChegada && !m.cancelado && !m.excluido && norm(m.status) !== "CANCELADO" && norm(m.processo) === processo;
     })) return toast(`Já existe uma saída em andamento para ${processo}.`);
 
     const nop = op.numeroOP || op.numeroOPExterno || op.id;
-    if (!confirm(`Confirmar saída?\nAba: ${aba === "sutia" ? "Sutiã" : aba === "calcinha" ? "Calcinha" : "Lateral e Alça"}\nOP ${nop}\nProcesso: ${processo}\nFacção: ${faccao}\nQuantidade: ${total.toLocaleString("pt-BR")}`)) return;
+    if (!confirm(`Confirmar saída?\nAba: ${aba === "sutia" ? "Sutiã" : "Calcinha"}\nOP ${nop}\nProcesso: ${processo}\nFacção: ${faccao}\nQuantidade: ${total.toLocaleString("pt-BR")}`)) return;
 
     const bt = ev.submitter;
     bt.disabled = true;
     bt.textContent = "Salvando...";
 
     try {
-      const corte = false;
       const dest = faccoes.find(f => norm(f.nome) === faccao);
       const mov = {
-        origem: corte ? "corte" : "faccoes_registro_saida",
+        origem: "faccoes_registro_saida",
         area: aba,
-        areaLabel: aba === "sutia" ? "Sutiã" : aba === "calcinha" ? "Calcinha" : "Corte",
-        movimentacaoCorte: corte,
+        areaLabel: aba === "sutia" ? "Sutiã" : "Calcinha",
+        movimentacaoCorte: false,
         opId: op.id,
         numeroOP: nop,
         referencia: op.referencia || "",
         cor: op.cor || "",
         produtoNome: op.produtoNome || op.nomeProduto || "",
-        tipoDestino: corte ? "faccao_corte" : "faccao",
-        tipoDestinoLabel: corte ? "Facção • Corte" : "Facção",
+        tipoDestino: "faccao",
+        tipoDestinoLabel: "Facção",
         destino: faccao,
         destinoId: dest?.id || "",
         processo,

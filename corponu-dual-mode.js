@@ -1037,7 +1037,12 @@
       });
     });
 
-    const counts = movementCounts(activeType);
+    const listaAtiva = gerais.filter(item => typeOfData(item) === activeType);
+    const counts = {
+      inProgress: listaAtiva.filter(item => !item.dataChegada && !["finalizado", "retornou", "encaminhado"].includes(item.status)).length,
+      sent: listaAtiva.reduce((sum, item) => sum + Number(item.quantidadeEnviada || 0), 0),
+      received: listaAtiva.reduce((sum, item) => sum + Number(item.quantidadeRecebida || 0), 0)
+    };
     const total = document.getElementById("faccoesOpsEmAndamento");
     const sent = document.getElementById("faccoesPecasEnviadas");
     const received = document.getElementById("faccoesPecasRecebidas");
