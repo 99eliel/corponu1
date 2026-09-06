@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-04-faccoes-controlador-unificado-285",
-  "updatedAt": "2026-09-04T11:45:00-03:00",
-  "notes": "Produção. Facções reorganizada estruturalmente com um único controlador de navegação. O Dual Mode agora é o único responsável pelas abas Sutiã, Calcinha e Lateral e Alça; o módulo Registrar saída não intercepta mais os cliques das abas, não usa stopImmediatePropagation para trocar aba e não disputa visibilidade nem filtro de linhas. Lateral e Alça passa a pré-carregar junto com os dados de Facções, aproveita o mapa compartilhado de movimentações para histórico e mantém seu listener vivo mesmo quando a aba fica escondida, sem reiniciar do zero a cada troca. A tela Lateral agora é somente dados, visualização e ações; a navegação pertence ao controlador central. Sutiã e Calcinha continuam usando a tabela geral, com movimentações de Lateral/Alça separadas desse filtro. Nenhuma regra ou documento do Firebase foi alterado."
+  "version": "2026-09-06-bloqueio-pagamento-286",
+  "updatedAt": "2026-09-06T01:35:00-03:00",
+  "notes": "Produção. Acesso temporariamente suspenso por pendência financeira do contratante. A tela de bloqueio agora faz parte da estrutura base do Corpo Nu Flow, sem popup ou módulo injetado: o body possui um único estado data-service-hold=\"payment\", a aplicação e o login ficam inacessíveis enquanto esse estado estiver ativo, e a mensagem informa que o vencimento mensal ocorre todo dia 5 e solicita a regularização das pendências para continuidade dos serviços. Para restabelecer o acesso, basta remover/desativar esse único estado da estrutura base. Nenhum documento, regra ou dado do Firebase foi alterado. A reorganização de Facções da versão 285 permanece preservada."
 }

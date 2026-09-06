@@ -4120,3 +4120,18 @@ table td {
 #manejo .manejo-inline-table:not(.manejo-sutia-ativo) .manejo-filter-fase-lateral,
 #manejo .manejo-inline-table:not(.manejo-sutia-ativo) .manejo-col-fase-lateral { display:none !important; }
 @media (max-width:1180px) { #manejo .manejo-inline-table.manejo-limpo-table.manejo-sutia-ativo { min-width:1120px !important; } }
+
+
+/* Corpo Nu Flow • bloqueio financeiro 286 */
+.service-payment-hold{display:none;position:fixed;inset:0;z-index:2147483647;min-height:100vh;padding:24px;align-items:center;justify-content:center;background:radial-gradient(circle at top,#eef5fb 0,#dbe8f3 38%,#cbdbea 100%);font-family:Arial,sans-serif;color:#14283e}
+body[data-service-hold="payment"]{overflow:hidden!important}
+body[data-service-hold="payment"]> :not(#servicePaymentHold):not(script):not(style){display:none!important}
+body[data-service-hold="payment"] .service-payment-hold{display:flex!important}
+.service-payment-card{width:min(620px,100%);padding:42px 38px;background:#fff;border:1px solid #c8d7e6;border-radius:24px;box-shadow:0 28px 80px rgba(22,52,82,.20);text-align:center}
+.service-payment-logo{display:block;width:92px;height:92px;object-fit:contain;margin:0 auto 18px}
+.service-payment-status{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;border-radius:999px;background:#fff1f2;color:#9f1239;font-size:12px;font-weight:900;letter-spacing:.02em;text-transform:uppercase}
+.service-payment-card h1{margin:18px 0 12px;font-size:30px;line-height:1.12;color:#163b68}
+.service-payment-card p{margin:10px auto;max-width:510px;font-size:16px;line-height:1.6;color:#435b72}
+.service-payment-due{margin:22px auto;padding:14px 16px;border:1px solid #f0c36a;border-radius:14px;background:#fff8e8;color:#7a4a00;font-size:15px}
+.service-payment-card small{display:block;margin-top:22px;padding-top:18px;border-top:1px solid #e3ebf3;color:#718296;font-size:12px;line-height:1.5}
+@media(max-width:620px){.service-payment-hold{padding:16px}.service-payment-card{padding:32px 22px;border-radius:20px}.service-payment-card h1{font-size:25px}.service-payment-card p{font-size:15px}.service-payment-logo{width:76px;height:76px}}
