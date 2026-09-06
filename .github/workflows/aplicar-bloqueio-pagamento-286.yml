@@ -1,0 +1,60 @@
+name: Aplicar bloqueio pagamento 286
+
+on:
+  push:
+    paths:
+      - '.github/workflows/aplicar-bloqueio-pagamento-286.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Baixar codigo
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Aplicar bloqueio financeiro estrutural
+        run: node scripts/aplicar-bloqueio-pagamento-286.js
+
+      - name: Validar JavaScript e JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module --check < corponu-atualizador.js
+          node --input-type=module --check < update.js
+          node -e "JSON.parse(require('fs').readFileSync('corponu-release.json','utf8')); JSON.parse(require('fs').readFileSync('version.json','utf8'));"
+
+      - name: Validar tela de bloqueio
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'data-service-hold="payment"' index.html
+          grep -F 'id="servicePaymentHold"' index.html
+          grep -F 'Pagamento mensal não debitado por parte do contratante do serviço.' index.html
+          grep -F 'Vencimento mensal: <strong>todo dia 5</strong>' index.html
+          grep -F 'body[data-service-hold="payment"]' style.css
+          grep -F '2026-09-06-bloqueio-pagamento-286' corponu-release.json
+
+      - name: Conferir diff
+        run: git diff --check
+
+      - name: Commitar alteracoes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html style.css corponu-atualizador.js update.js corponu-release.json version.json
+          git diff --cached --quiet && { echo 'Nenhuma alteracao funcional para commit.'; exit 1; }
+          git commit -m 'feat: bloquear acesso por pendencia financeira 286'
+          git push origin HEAD:main
