@@ -20,7 +20,7 @@ html = replaceExact(
   1,
   'inserção estrutural da tela de bloqueio'
 );
-html = replaceExact(html, OLD_RELEASE, NEW_RELEASE, 2, 'versão do HTML e CSS');
+html = replaceExact(html, OLD_RELEASE, NEW_RELEASE, 6, 'versões do HTML');
 write('index.html', html);
 
 let css = read('style.css');
