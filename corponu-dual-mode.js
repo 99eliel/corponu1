@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-09-04-faccoes-controlador-unificado-285";
+  const VERSION = "2026-09-09-calcinha-faccoes-id-oficial-304";
   const FIREBASE_VERSION = "10.12.5";
   const HISTORY_URL = `calcinhas-historico-2026.json?v=${encodeURIComponent(VERSION)}`;
   const TYPES = Object.freeze({ sutia: "Sutiã", calcinha: "Calcinha" });
@@ -983,12 +983,47 @@
   }
 
   function getMovementFromRow(row) {
-    const id = rowIdByFunction(row, ["registrarChegadaMovimentacao", "biparMovimentacao", "encaminharMovimentacao", "editarMovimentacaoRegistradaUsuario", "excluirMovimentacaoRegistradaUsuario", "abrirModalEditarLocalMovimentacao"]);
-    if (id && state.maps.movimentacoes.has(String(id))) return state.maps.movimentacoes.get(String(id));
+    if (!row) return null;
+
+    // Desde o controlador unificado de Facções, as ações usam data-movimentacao-id.
+    // Esse é o identificador oficial da linha e deve ter prioridade sobre qualquer leitura visual de colunas.
+    const dataId = String(
+      row.dataset?.movimentacaoId ||
+      row.querySelector?.('[data-movimentacao-id]')?.dataset?.movimentacaoId ||
+      ''
+    ).trim();
+    if (dataId && state.maps.movimentacoes.has(dataId)) {
+      return state.maps.movimentacoes.get(dataId);
+    }
+
+    // Compatibilidade apenas para linhas antigas que ainda possuam chamadas inline.
+    const idLegado = rowIdByFunction(row, [
+      "registrarChegadaMovimentacao",
+      "biparMovimentacao",
+      "encaminharMovimentacao",
+      "editarMovimentacaoRegistradaUsuario",
+      "excluirMovimentacaoRegistradaUsuario",
+      "abrirModalEditarLocalMovimentacao"
+    ]);
+    if (idLegado && state.maps.movimentacoes.has(String(idLegado))) {
+      return state.maps.movimentacoes.get(String(idLegado));
+    }
+
+    // Último recurso para registros realmente antigos sem ID no DOM.
+    // Não assume mais que a coluna 4 é a facção: a tabela atual é OP, REF, COR, FACÇÃO, PROCESSO.
     const op = normalize(row.cells[0]?.textContent);
     const ref = normalize(row.cells[1]?.textContent);
-    const destination = normalize(row.cells[4]?.textContent || row.cells[3]?.textContent);
-    return [...state.maps.movimentacoes.values()].find(item => normalize(item.numeroOP) === op && normalize(item.referencia) === ref && (!destination || normalize(item.destino) === destination));
+    const candidatos = [...state.maps.movimentacoes.values()].filter(item =>
+      normalize(item.numeroOP) === op && normalize(item.referencia) === ref
+    );
+    if (candidatos.length <= 1) return candidatos[0] || null;
+
+    const colunaFaccao = normalize(row.cells[3]?.textContent);
+    const colunaProcesso = normalize(row.cells[4]?.textContent);
+    return candidatos.find(item =>
+      normalize(item.destino || item.faccao) === colunaFaccao &&
+      normalize(item.processo || item.servicoNome || item.processoMovimentacao) === colunaProcesso
+    ) || candidatos[0] || null;
   }
 
   function movementCounts(type) {

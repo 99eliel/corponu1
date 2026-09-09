@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-09-reconfirmacao-chegada-integrada-303",
-  "updatedAt": "2026-09-09T21:25:55.988Z",
-  "notes": "Produção. Integra a reconfirmação obrigatória de processo e facção ao modal de chegada reorganizado na 302. O bloco de segurança passa a ser montado dentro de chegadaModalBody e o disparo acompanha o controlador delegado oficial data-faccoes-acao=\"chegada\", mantendo compatibilidade com o gatilho legado. Não cria segunda validação, listener de polling ou fluxo paralelo; Firebase, pagamentos existentes e demais processos permanecem intactos."
+  "version": "2026-09-09-calcinha-faccoes-id-oficial-304",
+  "updatedAt": "2026-09-09T21:32:55.847Z",
+  "notes": "Produção. Corrige a aba Facções > Calcinha após a migração do controlador de ações para data-movimentacao-id. O dual-mode passa a resolver cada linha pelo ID oficial da movimentação e mantém fallback legado sem confundir a coluna Processo com Facção. Contadores e dados existentes são preservados; Firebase, chegada, pagamentos e demais abas não são alterados."
 }
