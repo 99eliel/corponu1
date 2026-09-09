@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-09-saida-fantasma-canonica-297",
-  "updatedAt": "2026-09-09T17:18:29.519Z",
-  "notes": "Produção. Corrigida a saída fantasma em Facções: a verificação de duplicidade agora considera somente movimentações realmente pertencentes a Facções. Registros de Célula, Corte, cancelados, retornados, concluídos, com chegada, incompletos ou de outro processo não bloqueiam uma nova saída. Registros antigos de Facção com tipo/aba inconsistentes são normalizados para o esquema canônico e voltam a aparecer na aba Facções antes de continuar bloqueando uma duplicidade real."
+  "version": "2026-09-09-reparo-listas-fases-298",
+  "updatedAt": "2026-09-09T17:41:05.280Z",
+  "notes": "Produção. Reparadas estruturalmente as listas oficiais de fases do Sutiã, Calcinha e Fase Lateral. Configurações vazias não são mais criadas a partir de datalists ainda não carregados. Quando uma lista oficial estiver vazia por falha, o administrador executa uma reconstrução única usando o histórico real das OPs, exclusões persistentes e logs administrativos. A Fase Lateral passa a registrar exclusões persistentes e sua recuperação histórica respeita essas exclusões. Nenhuma OP histórica é alterada."
 }

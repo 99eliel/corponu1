@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-09-09-saida-fantasma-canonica-297";
+  const LOCAL_RELEASE = "2026-09-09-reparo-listas-fases-298";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
