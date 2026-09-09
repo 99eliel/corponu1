@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-09-fases-restritas-admin-291",
-  "updatedAt": "2026-09-09T10:05:00-03:00",
-  "notes": "Produção. Fases de Sutiã e Calcinha passam a ser seleção fechada pelas listas administradas na aba Usuários. O Manejo consulta configuracoes/fasesManejo e configuracoes/fasesManejoCalcinha, valida novamente no servidor antes de salvar, bipar ou movimentar e não permite criação local de fase pelo operador. Fases históricas fora da lista permanecem visíveis apenas como histórico e exigem nova seleção válida para alteração. Regras Firestore versionadas validam alterações de fase contra as listas oficiais e a coleção legada fasesManejo passa a ser administrada somente por admin."
+  "version": "2026-09-09-fases-calcinha-limpas-292",
+  "updatedAt": "2026-09-09T10:18:00-03:00",
+  "notes": "Produção. Corrige estruturalmente as sugestões de Fase Calcinha: remove a mistura histórica de sugestões globais/Sutiã, reconstrói uma única vez a lista da Calcinha usando apenas fases realmente registradas em OPs de Calcinha e ações explícitas do administrador, e passa a manter exclusões persistentes no documento configuracoes/fasesManejoCalcinha. OPs antigas não são alteradas. A recuperação manual passa a respeitar exclusões persistentes também na Calcinha."
 }

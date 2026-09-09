@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-09-09-fases-restritas-admin-291";
+  const LOCAL_RELEASE = "2026-09-09-fases-calcinha-limpas-292";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
