@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-09-09-exclusao-faccoes-estavel-296";
+  const APP_VERSION = "2026-09-09-saida-fantasma-canonica-297";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
