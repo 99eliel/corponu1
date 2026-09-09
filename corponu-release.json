@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-09-fases-sutia-persistentes-290",
-  "updatedAt": "2026-09-09T09:18:00-03:00",
-  "notes": "Produção. Corrige estruturalmente a gestão de Fase Bojo do Sutiã: remove a imposição incorreta de duas opções fixas, reconstrói a lista administrada usando as fases históricas e os registros de adicionar/remover do administrador, e passa a registrar exclusões persistentes para que fases removidas não sejam recolocadas por recuperação histórica. OPs antigas permanecem intactas. A recuperação de opções antigas continua somente manual."
+  "version": "2026-09-09-fases-restritas-admin-291",
+  "updatedAt": "2026-09-09T10:05:00-03:00",
+  "notes": "Produção. Fases de Sutiã e Calcinha passam a ser seleção fechada pelas listas administradas na aba Usuários. O Manejo consulta configuracoes/fasesManejo e configuracoes/fasesManejoCalcinha, valida novamente no servidor antes de salvar, bipar ou movimentar e não permite criação local de fase pelo operador. Fases históricas fora da lista permanecem visíveis apenas como histórico e exigem nova seleção válida para alteração. Regras Firestore versionadas validam alterações de fase contra as listas oficiais e a coleção legada fasesManejo passa a ser administrada somente por admin."
 }
