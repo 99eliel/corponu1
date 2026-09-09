@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-09-09-faccoes-acoes-desempenho-300";
+  const APP_VERSION = "2026-09-09-sutia-completo-chegada-controlador-301";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 

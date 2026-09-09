@@ -1674,7 +1674,9 @@
       const alvo = event.target instanceof Element ? event.target : null;
       if (!alvo) return;
 
-      if (alvo.closest('[onclick*="registrarChegadaMovimentacao"]')) {
+      const gatilhoChegada = alvo.closest('[data-faccoes-acao="chegada"][data-movimentacao-id], [onclick*="registrarChegadaMovimentacao"]');
+
+      if (gatilhoChegada) {
         [100, 350, 800].forEach(ms => window.setTimeout(() => {
           prepararChegadaPadrao().catch(error => {
             console.warn("Chegada do Sutiã Completo não preparada.", error);

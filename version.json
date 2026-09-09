@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-09-faccoes-acoes-desempenho-300",
-  "updatedAt": "2026-09-09T18:49:52.923Z",
-  "notes": "Produção. Estabiliza a aba Facções: Confirmar chegada, Bipar e Excluir passam a usar um controlador delegado único da tabela, sem onclick inline. Movimentações passam a ter índice por ID e a identidade das facções usa cache invalidado somente quando a coleção de facções muda. O snapshot de movimentações renderiza somente a página ativa, reduzindo trabalho desnecessário. As listas oficiais de fases e o reparo 299 permanecem intactos."
+  "version": "2026-09-09-sutia-completo-chegada-controlador-301",
+  "updatedAt": "2026-09-09T19:14:11.463Z",
+  "notes": "Produção. Corrige a chegada do Sutiã Completo após a reorganização de ações de Facções da release 300. O preparador do Sutiã Completo passa a reconhecer o controlador delegado oficial data-faccoes-acao=\"chegada\", mantendo compatibilidade com gatilhos antigos. Não reverte a otimização de Facções, não cria listener paralelo e não altera Firebase, pagamentos já gravados ou demais processos."
 }
