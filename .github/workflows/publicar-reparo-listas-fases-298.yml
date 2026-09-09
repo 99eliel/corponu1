@@ -1,0 +1,92 @@
+name: Publicar reparo listas de fases 298
+
+on:
+  push:
+    paths:
+      - '.github/workflows/publicar-reparo-listas-fases-298.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Confirmar base 297
+        run: |
+          grep -F '2026-09-09-saida-fantasma-canonica-297' version.json
+          grep -F '2026-09-09-saida-fantasma-canonica-297' update.js
+
+      - name: Aplicar reparo estrutural validado
+        run: |
+          curl -fsSL 'https://raw.githubusercontent.com/99eliel/corpunuteste/4465c488b36df282692a38141f9cb7f9c200bcff/scripts/reparar-listas-fases-298.js' -o /tmp/reparar-listas-fases-298.js
+          node /tmp/reparar-listas-fases-298.js
+
+      - name: Publicar release 298
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const OLD = '2026-09-09-saida-fantasma-canonica-297';
+          const NEW = '2026-09-09-reparo-listas-fases-298';
+          const notes = 'Produção. Reparadas estruturalmente as listas oficiais de fases do Sutiã, Calcinha e Fase Lateral. Configurações vazias não são mais criadas a partir de datalists ainda não carregados. Quando uma lista oficial estiver vazia por falha, o administrador executa uma reconstrução única usando o histórico real das OPs, exclusões persistentes e logs administrativos. A Fase Lateral passa a registrar exclusões persistentes e sua recuperação histórica respeita essas exclusões. Nenhuma OP histórica é alterada.';
+
+          for (const arquivo of ['update.js', 'index.html', 'corponu-atualizador.js']) {
+            let texto = fs.readFileSync(arquivo, 'utf8');
+            if (!texto.includes(OLD)) throw new Error(`${arquivo}: release 297 não encontrada`);
+            texto = texto.split(OLD).join(NEW);
+            fs.writeFileSync(arquivo, texto, 'utf8');
+          }
+
+          for (const arquivo of ['version.json', 'corponu-release.json']) {
+            const obj = JSON.parse(fs.readFileSync(arquivo, 'utf8'));
+            if (obj.version !== OLD) throw new Error(`${arquivo}: versão inesperada ${obj.version}`);
+            obj.version = NEW;
+            obj.updatedAt = new Date().toISOString();
+            obj.notes = notes;
+            fs.writeFileSync(arquivo, JSON.stringify(obj, null, 2) + '\n', 'utf8');
+          }
+          NODE
+
+      - name: Validar sintaxe e invariantes
+        run: |
+          node --check update.js
+          node --check corponu-atualizador.js
+          node -e "JSON.parse(require('fs').readFileSync('version.json','utf8')); JSON.parse(require('fs').readFileSync('corponu-release.json','utf8'));"
+          grep -F '2026-09-09-reparo-listas-fases-298' update.js
+          grep -F '2026-09-09-reparo-listas-fases-298' index.html
+          grep -F 'reparoFasesSutiaVazias20260909V1' update.js
+          grep -F 'reparoFasesCalcinhaVazias20260909V1' update.js
+          grep -F 'reparoFasesLateralVazias20260909V1' update.js
+          grep -F 'CAMPO_FASES_LATERAL_EXCLUIDAS' update.js
+          grep -F 'async function reconstruirListaFasesLateralSeNecessario()' update.js
+          grep -F 'async function alterarSugestaoFaseLateralPersistente' update.js
+          grep -F 'async function mesclarFasesLateralRecuperadas' update.js
+          ! grep -F 'alterarListaFasesLateralComTransacao(' update.js
+          test "$(grep -c 'configuração oficial não será criada sem dados' update.js)" -eq 2
+          ! grep -F 'servicePaymentHold' index.html
+          ! grep -F 'data-service-hold="payment"' index.html
+          git diff --check
+
+      - name: Garantir escopo exato
+        run: |
+          arquivos="$(git diff --name-only | sort)"
+          esperado="$(printf '%s\n' corponu-atualizador.js corponu-release.json index.html update.js version.json | sort)"
+          test "$arquivos" = "$esperado"
+
+      - name: Commitar release 298
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add corponu-atualizador.js corponu-release.json index.html update.js version.json
+          git commit -m 'fix: reparar listas oficiais de fases 298'
+          git push origin HEAD:main
