@@ -1,0 +1,63 @@
+name: Validar modal chegada 302
+
+on:
+  push:
+    branches:
+      - 'fix/modal-chegada-302'
+    paths:
+      - '.github/workflows/fix-modal-chegada-302.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: fix/modal-chegada-302
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Aplicar correção estrutural
+        run: node scripts/fix-modal-chegada-302.js
+
+      - name: Validar estrutura e sintaxe
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check corponu-sutia-completo-calculo-base-174.js
+          node --check update.js
+          node --check corponu-atualizador.js
+          node -e "JSON.parse(require('fs').readFileSync('version.json','utf8')); JSON.parse(require('fs').readFileSync('corponu-release.json','utf8'));"
+          grep -F 'id="chegadaModalBody" class="chegada-modal-body"' index.html
+          grep -F 'class="actions chegada-modal-actions"' index.html
+          grep -F '#formChegadaMovimentacao .chegada-modal-actions' style.css
+          grep -F 'const corpoChegada = document.getElementById("chegadaModalBody");' corponu-sutia-completo-calculo-base-174.js
+          test "$(grep -o '>Confirmar chegada</button>' index.html | wc -l | tr -d ' ')" = "1"
+          grep -F '2026-09-09-modal-chegada-rodape-fixo-302' version.json
+          git diff --check
+
+      - name: Garantir escopo
+        shell: bash
+        run: |
+          set -euo pipefail
+          arquivos="$(git diff --name-only | sort)"
+          esperado="$(printf '%s\n' corponu-atualizador.js corponu-release.json corponu-sutia-completo-calculo-base-174.js index.html style.css update.js version.json | sort)"
+          test "$arquivos" = "$esperado"
+
+      - name: Commitar correção validada
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add corponu-atualizador.js corponu-release.json corponu-sutia-completo-calculo-base-174.js index.html style.css update.js version.json
+          git commit -m 'fix: organizar modal de chegada com rodape fixo 302'
+          git push origin HEAD:fix/modal-chegada-302
