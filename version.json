@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-09-menu-acoes-manejo-293",
-  "updatedAt": "2026-09-09T11:05:00-03:00",
-  "notes": "Produção. Corrige estruturalmente o menu de três pontos do Manejo Sutiã: remove dependência de onclick inline/evento global, usa um único tratamento delegado, mantém o menu global ancorado ao botão e o reposiciona durante rolagem/redimensionamento em vez de fechá-lo. O posicionamento escolhe acima ou abaixo conforme o espaço disponível. Nenhuma OP, regra do Firebase, pagamento, Facção ou regra de negócio foi alterada."
+  "version": "2026-09-09-acoes-menu-manejo-294",
+  "updatedAt": "2026-09-09T11:20:00-03:00",
+  "notes": "Produção. Corrige a execução das funções do menu de três pontos do Manejo Sutiã. As ações Enviar para facção, Enviar para célula, Mover / editar local, Ver histórico/rastreamento e Limpar manejo passam a usar o mesmo controlador delegado do botão de abertura, sem onclick inline nem dependência de window.*. Mantém o posicionamento e reposicionamento do menu da 293. Nenhuma OP, regra do Firebase, pagamento, Facção ou regra de negócio foi alterada."
 }

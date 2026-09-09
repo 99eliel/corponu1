@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-09-09-menu-acoes-manejo-293";
+  const LOCAL_RELEASE = "2026-09-09-acoes-menu-manejo-294";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
