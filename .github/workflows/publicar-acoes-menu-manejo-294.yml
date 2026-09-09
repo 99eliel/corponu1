@@ -1,0 +1,202 @@
+name: Publicar ações menu Manejo 294
+
+on:
+  push:
+    paths:
+      - '.github/workflows/publicar-acoes-menu-manejo-294.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Aplicar correção validada e preparar release 294
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          app = Path('app.js')
+          source = app.read_text(encoding='utf-8')
+
+          antigo_menu = '''function montarMenuAcoesManejoHtml(ordemId) {
+            const ordem = state.ordens.find(op => String(op.id) === String(ordemId));
+            const setor = getManejoSetorAtual();
+            const manejo = ordem ? getManejoDaOrdem(ordem, setor) : null;
+            const podeLimpar = Boolean(manejo && ehAdmin());
+
+            return `
+              <button type="button" onclick="window.fecharMenusAcoesManejo(); window.mandarParaFaccao('${ordemId}')">Enviar para facção</button>
+              <button type="button" onclick="window.fecharMenusAcoesManejo(); window.mandarParaCelula('${ordemId}')">Enviar para célula</button>
+              <button type="button" onclick="window.fecharMenusAcoesManejo(); window.abrirModalAjusteMigracao('${ordemId}')">Mover / editar local</button>
+              <button type="button" onclick="window.fecharMenusAcoesManejo(); window.abrirRastreamentoOP('${ordemId}')">Ver histórico/rastreamento</button>
+              ${podeLimpar ? `<button class="danger" type="button" onclick="window.fecharMenusAcoesManejo(); window.limparManejoLinha('${ordemId}')">Limpar manejo</button>` : ""}
+            `;
+          }
+          '''
+
+          novo_menu = '''function montarMenuAcoesManejoHtml(ordemId) {
+            const ordem = state.ordens.find(op => String(op.id) === String(ordemId));
+            const setor = getManejoSetorAtual();
+            const manejo = ordem ? getManejoDaOrdem(ordem, setor) : null;
+            const podeLimpar = Boolean(manejo && ehAdmin());
+            const ordemIdHtml = escapeHtml(String(ordemId || ""));
+
+            return `
+              <button type="button" data-manejo-acao="faccao" data-ordem-id="${ordemIdHtml}">Enviar para facção</button>
+              <button type="button" data-manejo-acao="celula" data-ordem-id="${ordemIdHtml}">Enviar para célula</button>
+              <button type="button" data-manejo-acao="ajustar" data-ordem-id="${ordemIdHtml}">Mover / editar local</button>
+              <button type="button" data-manejo-acao="historico" data-ordem-id="${ordemIdHtml}">Ver histórico/rastreamento</button>
+              ${podeLimpar ? `<button class="danger" type="button" data-manejo-acao="limpar" data-ordem-id="${ordemIdHtml}">Limpar manejo</button>` : ""}
+            `;
+          }
+          '''
+
+          antigo_listener = '''document.addEventListener("click", event => {
+            const botaoAcoesManejo = event.target.closest?.("[data-manejo-acoes-id]");
+            if (botaoAcoesManejo) {
+              event.preventDefault();
+              event.stopPropagation();
+              toggleMenuAcoesManejo(botaoAcoesManejo.dataset.manejoAcoesId, botaoAcoesManejo);
+              return;
+            }
+
+            if (!event.target.closest?.(".action-menu")) fecharMenusAcoesManejo();
+          });
+          '''
+
+          novo_listener = '''document.addEventListener("click", event => {
+            const botaoAcoesManejo = event.target.closest?.("[data-manejo-acoes-id]");
+            if (botaoAcoesManejo) {
+              event.preventDefault();
+              event.stopPropagation();
+              toggleMenuAcoesManejo(botaoAcoesManejo.dataset.manejoAcoesId, botaoAcoesManejo);
+              return;
+            }
+
+            const botaoAcaoManejo = event.target.closest?.("[data-manejo-acao]");
+            if (botaoAcaoManejo) {
+              event.preventDefault();
+              event.stopPropagation();
+
+              const ordemId = String(botaoAcaoManejo.dataset.ordemId || "");
+              const acao = String(botaoAcaoManejo.dataset.manejoAcao || "");
+              fecharMenusAcoesManejo();
+
+              if (!ordemId) return;
+
+              switch (acao) {
+                case "faccao":
+                  mandarParaFaccao(ordemId);
+                  break;
+                case "celula":
+                  mandarParaCelula(ordemId);
+                  break;
+                case "ajustar":
+                  abrirModalAjusteMigracao(ordemId);
+                  break;
+                case "historico":
+                  abrirRastreamentoOP(ordemId);
+                  break;
+                case "limpar":
+                  limparManejoLinha(ordemId);
+                  break;
+                default:
+                  console.warn("Ação desconhecida no menu do Manejo:", acao);
+              }
+              return;
+            }
+
+            if (!event.target.closest?.(".action-menu")) fecharMenusAcoesManejo();
+          });
+          '''
+
+          for antigo, novo, nome in [
+              (antigo_menu, novo_menu, 'HTML das ações'),
+              (antigo_listener, novo_listener, 'controlador delegado'),
+          ]:
+              qtd = source.count(antigo)
+              if qtd != 1:
+                  raise SystemExit(f'{nome}: esperado 1 trecho, encontrado {qtd}')
+              source = source.replace(antigo, novo, 1)
+
+          for trecho in [
+              'data-manejo-acao="faccao"',
+              'data-manejo-acao="celula"',
+              'data-manejo-acao="ajustar"',
+              'data-manejo-acao="historico"',
+              'data-manejo-acao="limpar"',
+              'switch (acao)',
+              'mandarParaFaccao(ordemId);',
+              'mandarParaCelula(ordemId);',
+              'abrirModalAjusteMigracao(ordemId);',
+              'abrirRastreamentoOP(ordemId);',
+              'limparManejoLinha(ordemId);',
+          ]:
+              if trecho not in source:
+                  raise SystemExit(f'invariante ausente em app.js: {trecho}')
+
+          for trecho in [
+              'onclick="window.fecharMenusAcoesManejo(); window.mandarParaFaccao',
+              'onclick="window.fecharMenusAcoesManejo(); window.mandarParaCelula',
+              'onclick="window.fecharMenusAcoesManejo(); window.abrirModalAjusteMigracao',
+              'onclick="window.fecharMenusAcoesManejo(); window.abrirRastreamentoOP',
+              'onclick="window.fecharMenusAcoesManejo(); window.limparManejoLinha',
+          ]:
+              if trecho in source:
+                  raise SystemExit(f'handler legado ainda presente: {trecho}')
+
+          app.write_text(source, encoding='utf-8')
+
+          antiga = '2026-09-09-menu-acoes-manejo-293'
+          nova = '2026-09-09-acoes-menu-manejo-294'
+          for nome in ['update.js', 'corponu-atualizador.js', 'index.html']:
+              p = Path(nome)
+              texto = p.read_text(encoding='utf-8')
+              if antiga not in texto:
+                  raise SystemExit(f'versão 293 não encontrada em {nome}')
+              p.write_text(texto.replace(antiga, nova), encoding='utf-8')
+
+          notes = (
+              'Produção. Corrige a execução das funções do menu de três pontos do Manejo Sutiã. '
+              'As ações Enviar para facção, Enviar para célula, Mover / editar local, Ver histórico/rastreamento '
+              'e Limpar manejo passam a usar o mesmo controlador delegado do botão de abertura, sem onclick inline '
+              'nem dependência de window.*. Mantém o posicionamento e reposicionamento do menu da 293. '
+              'Nenhuma OP, regra do Firebase, pagamento, Facção ou regra de negócio foi alterada.'
+          )
+          for nome in ['version.json', 'corponu-release.json']:
+              p = Path(nome)
+              dados = json.loads(p.read_text(encoding='utf-8'))
+              if dados.get('version') != antiga:
+                  raise SystemExit(f'versão inesperada em {nome}: {dados.get("version")}')
+              dados['version'] = nova
+              dados['updatedAt'] = '2026-09-09T11:20:00-03:00'
+              dados['notes'] = notes
+              p.write_text(json.dumps(dados, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Validar sintaxe e escopo
+        run: |
+          cp app.js /tmp/app-294.mjs
+          node --check /tmp/app-294.mjs
+          arquivos="$(git diff --name-only | sort)"
+          esperado="$(printf '%s\n' app.js corponu-atualizador.js corponu-release.json index.html update.js version.json | sort)"
+          test "$arquivos" = "$esperado" || (echo "Escopo inesperado:"; echo "$arquivos"; exit 1)
+          grep -q 'data-manejo-acao="faccao"' app.js
+          grep -q 'switch (acao)' app.js
+          ! grep -q 'onclick="window.fecharMenusAcoesManejo(); window.mandarParaFaccao' app.js
+
+      - name: Publicar release 294
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app.js corponu-atualizador.js corponu-release.json index.html update.js version.json
+          git commit -m 'fix: restaurar execução das ações do menu Manejo 294'
+          git push
