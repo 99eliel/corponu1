@@ -1,0 +1,62 @@
+name: Validar e aplicar chegada Sutiã Completo 301
+
+on:
+  push:
+    branches:
+      - 'fix/sutia-completo-chegada-301'
+    paths:
+      - '.github/workflows/fix-sutia-chegada-301.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  validar-e-aplicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout da branch isolada
+        uses: actions/checkout@v4
+        with:
+          ref: fix/sutia-completo-chegada-301
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Aplicar correção estrutural
+        run: node scripts/fix-sutia-chegada-301.js
+
+      - name: Validar JavaScript e JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check corponu-sutia-completo-chegada-rapida.js
+          node --check update.js
+          node --check corponu-atualizador.js
+          node -e "JSON.parse(require('fs').readFileSync('corponu-release.json','utf8')); JSON.parse(require('fs').readFileSync('version.json','utf8'));"
+          ! grep -R -F 'sc107ReenvioSubmit' corponu-sutia-completo-chegada-rapida.js update.js
+          ! grep -F 'instalarMarcadorReenvioSubmit' corponu-sutia-completo-chegada-rapida.js
+          grep -F 'event.stopImmediatePropagation();' corponu-sutia-completo-chegada-rapida.js
+          grep -F 'void salvarPadrao(form);' corponu-sutia-completo-chegada-rapida.js
+          grep -F '2026-09-09-sutia-completo-chegada-direta-301' version.json
+          git diff --check
+
+      - name: Garantir escopo exato
+        shell: bash
+        run: |
+          set -euo pipefail
+          arquivos="$(git diff --name-only | sort)"
+          esperado="$(printf '%s\n' corponu-atualizador.js corponu-release.json corponu-sutia-completo-chegada-rapida.js index.html update.js version.json | sort)"
+          test "$arquivos" = "$esperado"
+
+      - name: Commitar somente a correção validada
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add corponu-atualizador.js corponu-release.json corponu-sutia-completo-chegada-rapida.js index.html update.js version.json
+          git commit -m 'fix: confirmar chegada do Sutiã Completo diretamente 301'
+          git push origin HEAD:fix/sutia-completo-chegada-301
