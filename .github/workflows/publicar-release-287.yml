@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   publicar:
-    if: github.event.head_commit.message == 'chore: trigger release 287'
+    if: ${{ github.event.head_commit.message == 'chore: trigger release 287 v2' }}
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
