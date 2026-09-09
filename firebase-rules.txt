@@ -30,6 +30,56 @@ service cloud.firestore {
       return ativo();
     }
 
+    function documentoConfiguracaoFases(docId) {
+      return /databases/$(database)/documents/configuracoes/$(docId);
+    }
+
+    function temFaseNoSetor(dados, setor) {
+      return dados.keys().hasAny(["manejosSetores"])
+        && dados.manejosSetores is map
+        && dados.manejosSetores.keys().hasAny([setor])
+        && dados.manejosSetores[setor] is map
+        && dados.manejosSetores[setor].keys().hasAny(["fase"])
+        && dados.manejosSetores[setor].fase is string;
+    }
+
+    function faseDoSetorPermitida(dados, setor, docId) {
+      return temFaseNoSetor(dados, setor)
+        && exists(documentoConfiguracaoFases(docId))
+        && get(documentoConfiguracaoFases(docId)).data.keys().hasAny(["sugestoes"])
+        && get(documentoConfiguracaoFases(docId)).data.sugestoes is list
+        && dados.manejosSetores[setor].fase in get(documentoConfiguracaoFases(docId)).data.sugestoes;
+    }
+
+    function faseDoSetorFoiAlterada(setor) {
+      return temFaseNoSetor(request.resource.data, setor) != temFaseNoSetor(resource.data, setor)
+        || (
+          temFaseNoSetor(request.resource.data, setor)
+          && temFaseNoSetor(resource.data, setor)
+          && request.resource.data.manejosSetores[setor].fase != resource.data.manejosSetores[setor].fase
+        );
+    }
+
+    function criacaoDeFasesManejoPermitida() {
+      return (
+        !temFaseNoSetor(request.resource.data, "sutia")
+        || faseDoSetorPermitida(request.resource.data, "sutia", "fasesManejo")
+      ) && (
+        !temFaseNoSetor(request.resource.data, "calcinha")
+        || faseDoSetorPermitida(request.resource.data, "calcinha", "fasesManejoCalcinha")
+      );
+    }
+
+    function alteracaoDeFasesManejoPermitida() {
+      return (
+        !faseDoSetorFoiAlterada("sutia")
+        || faseDoSetorPermitida(request.resource.data, "sutia", "fasesManejo")
+      ) && (
+        !faseDoSetorFoiAlterada("calcinha")
+        || faseDoSetorPermitida(request.resource.data, "calcinha", "fasesManejoCalcinha")
+      );
+    }
+
     function financeiroPodeDefinirValor() {
       return admin() || (
         ativo()
@@ -278,7 +328,8 @@ service cloud.firestore {
 
     match /ordensProducao/{ordemId} {
       allow read: if usuarioComum();
-      allow create, update: if usuarioComum();
+      allow create: if admin() || (usuarioComum() && criacaoDeFasesManejoPermitida());
+      allow update: if admin() || (usuarioComum() && alteracaoDeFasesManejoPermitida());
       allow delete: if admin();
     }
 
@@ -295,8 +346,7 @@ service cloud.firestore {
 
     match /fasesManejo/{faseId} {
       allow read: if usuarioComum();
-      allow create, update: if usuarioComum();
-      allow delete: if admin();
+      allow create, update, delete: if admin();
     }
 
     match /logsAlteracoes/{logId} {
@@ -354,7 +404,10 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.faccao is string
         && request.resource.data.faccao.size() > 0
-        && request.resource.data.tipo in ["faccao_deve_empresa", "empresa_deve_faccao"]
+        && request.resource.data.tipo in [
+          "faccao_deve_empresa",
+          "empresa_deve_faccao"
+        ]
         && request.resource.data.valor is number
         && request.resource.data.valor > 0
         && request.resource.data.status == "pendente";
@@ -370,8 +423,7 @@ service cloud.firestore {
           "quitadoPor"
         ]);
 
-      allow delete: if financeiroPodeDefinirValor()
-        && resource.data.status == "pendente";
+      allow delete: if admin();
     }
 
     match /ajustesMigracao/{ajusteId} {
@@ -403,10 +455,13 @@ service cloud.firestore {
 
     match /travasOperacionais/{travaId} {
       allow read: if usuarioComum();
+
       allow create: if usuarioComum()
         && request.resource.data.criadoPor == request.auth.uid;
+
       allow update: if usuarioComum()
         && request.resource.data.criadoPor == request.auth.uid;
+
       allow delete: if admin() || (
         usuarioComum()
         && resource.data.criadoPor == request.auth.uid
