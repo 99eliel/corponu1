@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-09-recuperacao-pre-bloqueio-288",
-  "updatedAt": "2026-09-09T08:10:00-03:00",
-  "notes": "Produção recuperada a partir da árvore exata imediatamente anterior ao primeiro bloqueio financeiro de 06/09/2026. Release 288 criada apenas para garantir atualização limpa e impedir reutilização de cache das releases 285/286/287. Nenhuma regra de negócio, documento, coleção ou dado do Firebase foi alterado."
+  "version": "2026-09-09-fase-bojo-oficial-289",
+  "updatedAt": "2026-09-09T08:25:00-03:00",
+  "notes": "Produção. Fase Bojo do Sutiã consolidada estruturalmente com somente duas opções oficiais: BÁSICO SEM BOJO e COM BOJO. A configuração persistida é migrada uma única vez, sem alterar OPs históricas. A restauração automática de sugestões a partir do histórico foi removida; a recuperação antiga permanece somente como ação manual do administrador. Nenhuma outra regra de negócio ou dado do Firebase foi alterado."
 }

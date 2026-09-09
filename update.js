@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-09-09-recuperacao-pre-bloqueio-288";
+  const APP_VERSION = "2026-09-09-fase-bojo-oficial-289";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -1008,6 +1008,8 @@
 
   const FASES_CONFIG_COLECAO = "configuracoes";
   const FASES_CONFIG_DOCUMENTO = "fasesManejo";
+  const FASES_BOJO_OFICIAIS = Object.freeze(["BÁSICO SEM BOJO", "COM BOJO"]);
+  const MARCADOR_FASES_BOJO_OFICIAIS = "faseBojoOficial20260909V1";
   let fasesGerenciadas = [];
   let configuracaoFasesExiste = false;
   let usuarioEhAdminFases = false;
@@ -1506,6 +1508,35 @@
     );
   }
 
+  async function migrarFaseBojoOficialSeNecessario() {
+    if (!usuarioEhAdminFases || !contextoFirebaseFases?.user) return false;
+
+    const { firestore, db, user } = contextoFirebaseFases;
+    const referencia = firestore.doc(db, FASES_CONFIG_COLECAO, FASES_CONFIG_DOCUMENTO);
+
+    try {
+      return await firestore.runTransaction(db, async transacao => {
+        const snapshot = await transacao.get(referencia);
+        const dados = snapshot.exists() ? snapshot.data() : {};
+        if (dados?.[MARCADOR_FASES_BOJO_OFICIAIS] === true) return false;
+
+        transacao.set(referencia, {
+          sugestoes: FASES_BOJO_OFICIAIS.map(normalizarFaseGerenciada),
+          [MARCADOR_FASES_BOJO_OFICIAIS]: true,
+          atualizadoEm: firestore.serverTimestamp(),
+          atualizadoPor: user.uid,
+          versaoGerenciamento: APP_VERSION
+        }, { merge: true });
+
+        return true;
+      });
+    } catch (error) {
+      console.error("Não foi possível migrar a Fase Bojo para as opções oficiais.", error);
+      mostrarAvisoFormulario("Não foi possível aplicar as opções oficiais da Fase Bojo.");
+      return false;
+    }
+  }
+
   async function configurarUsuarioGestaoFases(user) {
     if (!user || !contextoFirebaseFases) {
       usuarioEhAdminFases = false;
@@ -1526,6 +1557,7 @@
       const perfil = perfilSnapshot.exists() ? perfilSnapshot.data() : {};
       usuarioEhAdminFases = perfil?.tipo === "admin" && perfil?.ativo !== false;
       contextoFirebaseFases = { ...contextoFirebaseFases, user, perfil };
+      await migrarFaseBojoOficialSeNecessario();
       iniciarSnapshotConfiguracaoFases();
       criarPainelAdminFases();
     } catch (error) {
@@ -8349,7 +8381,6 @@
   // =========================================================
   const MARCADOR_RESTAURACAO_FASES_ANTIGAS = "restauracaoFiltrosAntigos20260729V2";
   let restauracaoFasesAntigasEmAndamento = false;
-  let restauracaoFasesAntigasAutomaticaTentada = false;
   let eventosRestauracaoFasesAntigasInstalados = false;
 
   function adicionarFaseAoConjunto(conjunto, valor) {
@@ -8584,17 +8615,11 @@
 
   function iniciarRestauracaoFasesAntigas() {
     instalarEventosRestauracaoFasesAntigas();
-    [350, 900, 1800, 3000].forEach(delay => setTimeout(() => {
-      garantirBotoesRestauracaoFasesAntigas();
-      if (
-        !restauracaoFasesAntigasAutomaticaTentada &&
-        (usuarioEhAdminFases || usuarioEhAdminFasesCalcinha) &&
-        (contextoFirebaseFasesCalcinha?.user || contextoFirebaseFases?.user)
-      ) {
-        restauracaoFasesAntigasAutomaticaTentada = true;
-        restaurarOpcoesAntigasFases({ manual: false });
-      }
-    }, delay));
+    // A lista oficial é soberana. Histórico de OP nunca repopula sugestões automaticamente.
+    // Recuperação histórica permanece disponível somente por ação manual do administrador.
+    [350, 900, 1800, 3000].forEach(delay =>
+      setTimeout(garantirBotoesRestauracaoFasesAntigas, delay)
+    );
   }
 
 
