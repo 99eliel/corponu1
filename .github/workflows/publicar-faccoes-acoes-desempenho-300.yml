@@ -1,0 +1,86 @@
+name: Publicar Facções ações e desempenho 300
+
+on:
+  push:
+    paths:
+      - '.github/workflows/publicar-faccoes-acoes-desempenho-300.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Confirmar base funcional 299
+        run: |
+          grep -F '2026-09-09-reparo-listas-principais-299' version.json
+          grep -F 'reparoListasPrincipais20260909V299' update.js
+          test "$(git diff 1fde9775f3719845db6c5f278dd9416123efe41b -- app.js | wc -l)" -eq 0
+
+      - name: Aplicar correção estrutural Facções 300
+        run: node scripts/publicar-faccoes-acoes-desempenho-300.js
+
+      - name: Atualizar release 300 sem alterar lógica de fases
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const antigo = '2026-09-09-reparo-listas-principais-299';
+          const novo = '2026-09-09-faccoes-acoes-desempenho-300';
+          for (const arquivo of ['update.js','index.html','corponu-atualizador.js']) {
+            let texto = fs.readFileSync(arquivo,'utf8');
+            if (!texto.includes(antigo)) throw new Error(`${arquivo}: release 299 ausente`);
+            texto = texto.split(antigo).join(novo);
+            fs.writeFileSync(arquivo,texto,'utf8');
+          }
+          const notes = 'Produção. Estabiliza a aba Facções: Confirmar chegada, Bipar e Excluir passam a usar um controlador delegado único da tabela, sem onclick inline. Movimentações passam a ter índice por ID e a identidade das facções usa cache invalidado somente quando a coleção de facções muda. O snapshot de movimentações renderiza somente a página ativa, reduzindo trabalho desnecessário. As listas oficiais de fases e o reparo 299 permanecem intactos.';
+          const agora = new Date().toISOString();
+          for (const arquivo of ['version.json','corponu-release.json']) {
+            const dados = JSON.parse(fs.readFileSync(arquivo,'utf8'));
+            dados.version = novo;
+            dados.updatedAt = agora;
+            dados.notes = notes;
+            fs.writeFileSync(arquivo,JSON.stringify(dados,null,2)+'\n','utf8');
+          }
+          NODE
+
+      - name: Validar sintaxe, ações e proteção das fases
+        run: |
+          node --check app.js
+          node --check update.js
+          grep -F 'function instalarControladorAcoesFaccoes()' app.js
+          grep -F 'data-faccoes-acao="chegada"' app.js
+          grep -F 'data-faccoes-acao="bipar"' app.js
+          grep -F 'data-faccoes-acao="excluir"' app.js
+          grep -F 'function reconstruirIndiceMovimentacoes()' app.js
+          grep -F 'function invalidarCacheIdentidadeFaccoes()' app.js
+          grep -F 'reparoListasPrincipais20260909V299' update.js
+          grep -F 'reconstruirListaFasesSutiaSeNecessario' update.js
+          grep -F 'reconstruirListaFasesCalcinhaSeNecessario' update.js
+          grep -F 'reconstruirListaFasesLateralSeNecessario' update.js
+          grep -F '2026-09-09-faccoes-acoes-desempenho-300' version.json
+          git diff --check
+
+      - name: Garantir que a lógica de fases só mudou na versão
+        run: |
+          git show 1fde9775f3719845db6c5f278dd9416123efe41b:update.js | sed 's/2026-09-09-reparo-listas-principais-299/2026-09-09-faccoes-acoes-desempenho-300/g' > /tmp/update-esperado.js
+          cmp -s /tmp/update-esperado.js update.js || { echo 'update.js teve alteração além da versão'; exit 1; }
+
+      - name: Garantir escopo exato
+        run: |
+          arquivos="$(git diff --name-only 1fde9775f3719845db6c5f278dd9416123efe41b | grep -v '^scripts/publicar-faccoes-acoes-desempenho-300.js$' | grep -v '^.github/workflows/publicar-faccoes-acoes-desempenho-300.yml$' | sort)"
+          esperado="$(printf '%s\n' app.js corponu-atualizador.js corponu-release.json index.html update.js version.json | sort)"
+          test "$arquivos" = "$esperado" || { echo 'Escopo inesperado:'; echo "$arquivos"; exit 1; }
+
+      - name: Commitar release 300
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app.js corponu-atualizador.js corponu-release.json index.html update.js version.json
+          git commit -m 'fix: estabilizar ações e desempenho de Facções 300'
+          git push origin HEAD:main
