@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-09-fases-calcinha-limpas-292",
-  "updatedAt": "2026-09-09T10:18:00-03:00",
-  "notes": "Produção. Corrige estruturalmente as sugestões de Fase Calcinha: remove a mistura histórica de sugestões globais/Sutiã, reconstrói uma única vez a lista da Calcinha usando apenas fases realmente registradas em OPs de Calcinha e ações explícitas do administrador, e passa a manter exclusões persistentes no documento configuracoes/fasesManejoCalcinha. OPs antigas não são alteradas. A recuperação manual passa a respeitar exclusões persistentes também na Calcinha."
+  "version": "2026-09-09-menu-acoes-manejo-293",
+  "updatedAt": "2026-09-09T11:05:00-03:00",
+  "notes": "Produção. Corrige estruturalmente o menu de três pontos do Manejo Sutiã: remove dependência de onclick inline/evento global, usa um único tratamento delegado, mantém o menu global ancorado ao botão e o reposiciona durante rolagem/redimensionamento em vez de fechá-lo. O posicionamento escolhe acima ou abaixo conforme o espaço disponível. Nenhuma OP, regra do Firebase, pagamento, Facção ou regra de negócio foi alterada."
 }

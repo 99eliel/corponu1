@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-09-09-fases-calcinha-limpas-292";
+  const APP_VERSION = "2026-09-09-menu-acoes-manejo-293";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
