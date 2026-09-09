@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-11-componentes-opcionais-calculo-170";
+  const VERSION = "2026-09-09-modal-chegada-rodape-fixo-302";
   const FB = "10.12.5";
   const CONFIG_DOC = "sutia-completo-pagamento";
   const PROCESSO_COMPLETO = "SUTIÃ COMPLETO";
@@ -932,12 +932,16 @@
       chegadaAtual = { mov, op, referencia: mov.referencia || op.referencia || "", contexto };
 
       const grupoDefeito = document.getElementById("grupoChegadaDefeito");
+      const corpoChegada = document.getElementById("chegadaModalBody");
       const container = document.createElement("div");
       container.innerHTML = criarPainelChegada("sc51", contexto);
       const painel = container.firstElementChild;
 
-      if (grupoDefeito?.parentElement) grupoDefeito.insertAdjacentElement("afterend", painel);
-      else document.getElementById("formChegadaMovimentacao")?.querySelector(".actions")?.insertAdjacentElement("beforebegin", painel);
+      if (!(corpoChegada instanceof HTMLElement) || !(painel instanceof HTMLElement)) {
+        throw new Error("Estrutura do modal de chegada não encontrada.");
+      }
+      if (grupoDefeito?.parentElement === corpoChegada) grupoDefeito.insertAdjacentElement("afterend", painel);
+      else corpoChegada.appendChild(painel);
 
       instalarEventosPainel("sc51");
       await atualizarResumoChegada("sc51");

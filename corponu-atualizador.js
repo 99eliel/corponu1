@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-09-09-sutia-completo-chegada-controlador-301";
+  const LOCAL_RELEASE = "2026-09-09-modal-chegada-rodape-fixo-302";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
