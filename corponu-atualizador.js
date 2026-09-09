@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-09-09-faccoes-acoes-desempenho-300";
+  const LOCAL_RELEASE = "2026-09-09-sutia-completo-chegada-direta-301";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 

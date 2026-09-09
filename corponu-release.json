@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-09-faccoes-acoes-desempenho-300",
-  "updatedAt": "2026-09-09T18:49:52.923Z",
-  "notes": "Produção. Estabiliza a aba Facções: Confirmar chegada, Bipar e Excluir passam a usar um controlador delegado único da tabela, sem onclick inline. Movimentações passam a ter índice por ID e a identidade das facções usa cache invalidado somente quando a coleção de facções muda. O snapshot de movimentações renderiza somente a página ativa, reduzindo trabalho desnecessário. As listas oficiais de fases e o reparo 299 permanecem intactos."
+  "version": "2026-09-09-sutia-completo-chegada-direta-301",
+  "updatedAt": "2026-09-09T19:13:11.258Z",
+  "notes": "Produção. Corrige estruturalmente a confirmação de chegada do Sutiã Completo. O módulo específico passa a assumir diretamente qualquer submit quando o painel de Sutiã Completo está ativo, removendo a dependência antiga de requestSubmit/sc107ReenvioSubmit. O revalidador continua apenas confirmando processo e facção quando necessário. O salvamento permanece atômico e exclusivo do Sutiã Completo, sem alterar regras de outros processos ou dados existentes."
 }

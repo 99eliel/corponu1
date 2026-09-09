@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-11-chegada-sutia-rapida-180";
+  const VERSION = "2026-09-09-sutia-completo-chegada-direta-301";
   const FIREBASE_VERSION = "10.12.5";
   const PROCESSO_COMPLETO = "SUTIÃ COMPLETO";
   const PROCESSO_LATERAL = "LATERAL";
@@ -890,22 +890,6 @@
     }
   }
 
-  function instalarMarcadorReenvioSubmit() {
-    if (window.__CORPONU_REQUEST_SUBMIT_MARCADO_107__) return;
-    const original = HTMLFormElement.prototype.requestSubmit;
-    if (typeof original !== "function") return;
-    window.__CORPONU_REQUEST_SUBMIT_MARCADO_107__ = true;
-    HTMLFormElement.prototype.requestSubmit = function(submitter) {
-      if ([FORM_PADRAO, FORM_MANUAL].includes(this.id)) {
-        const painelId = this.id === FORM_MANUAL
-          ? "sutCompletoComponentesChegadaManual"
-          : "sutCompletoComponentesChegada";
-        if (document.getElementById(painelId)) this.dataset.sc107ReenvioSubmit = "1";
-      }
-      return original.call(this, submitter);
-    };
-  }
-
   function aoSubmit(event) {
     const form = event.currentTarget;
     if (!(form instanceof HTMLFormElement)) return;
@@ -916,9 +900,6 @@
       : processoCanonico(document.querySelector("#sutCompletoComponentesChegada") ? PROCESSO_COMPLETO : "");
     const painel = document.getElementById(manual ? "sutCompletoComponentesChegadaManual" : "sutCompletoComponentesChegada");
     if (processo !== PROCESSO_COMPLETO || !(painel instanceof HTMLElement)) return;
-    if (form.dataset.sc107ReenvioSubmit !== "1") return;
-    delete form.dataset.sc107ReenvioSubmit;
-
     event.preventDefault();
     event.stopImmediatePropagation();
     suprimirPosProcessamentoLegado(manual ? "manual" : "padrao");
@@ -935,7 +916,6 @@
 
   function instalar() {
     injetarEstilos();
-    instalarMarcadorReenvioSubmit();
     instalarForm(document.getElementById(FORM_PADRAO));
     instalarForm(document.getElementById(FORM_MANUAL));
     aprimorarPaineis();

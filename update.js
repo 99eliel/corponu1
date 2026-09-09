@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-09-09-faccoes-acoes-desempenho-300";
+  const APP_VERSION = "2026-09-09-sutia-completo-chegada-direta-301";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -11235,7 +11235,6 @@
       document.getElementById('sutCompletoComponentesChegada') &&
       window.CorpoNuSutiaChegadaRapida?.fluxoRapidoAtivo === true
     ) {
-      form.dataset.sc107ReenvioSubmit = '1';
       form.dataset.corponuSutiaConfirmacaoProcesso = String(document.getElementById('chegadaConfirmarProcesso')?.value || '').trim();
       form.dataset.corponuSutiaConfirmacaoFaccao = String(document.getElementById('chegadaConfirmarFaccao')?.value || '').trim();
       return;
