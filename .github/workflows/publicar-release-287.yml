@@ -2,8 +2,6 @@ name: Publicar release 287
 
 on:
   push:
-    branches:
-      - main
     paths:
       - '.github/workflows/publicar-release-287.yml'
 
@@ -12,63 +10,41 @@ permissions:
 
 jobs:
   publicar:
-    if: ${{ github.event.head_commit.message == 'chore: trigger release 287 v2' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 6
     steps:
-      - name: Baixar código
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: main
 
-      - name: Preparar Node.js
+      - name: Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Publicar nova release sem alterar regras de negócio
+      - name: Aplicar release
         run: node scripts/publicar-release-287.js
 
-      - name: Validar JavaScript e JSON
-        shell: bash
+      - name: Validar
         run: |
-          set -euo pipefail
           node --check corponu-atualizador.js
           node --check update.js
           node -e "JSON.parse(require('fs').readFileSync('corponu-release.json','utf8')); JSON.parse(require('fs').readFileSync('version.json','utf8'));"
           grep -F '2026-09-09-pagamento-regularizado-release-287' index.html
-          grep -F '2026-09-09-pagamento-regularizado-release-287' corponu-atualizador.js
-          grep -F '2026-09-09-pagamento-regularizado-release-287' update.js
-          grep -F '2026-09-09-pagamento-regularizado-release-287' corponu-release.json
-          grep -F '2026-09-09-pagamento-regularizado-release-287' version.json
           ! grep -F 'servicePaymentHold' index.html
           ! grep -F 'data-service-hold="payment"' index.html
           git diff --check
 
-      - name: Garantir escopo da mudança
-        shell: bash
+      - name: Conferir arquivos alterados
         run: |
-          set -euo pipefail
           arquivos="$(git diff --name-only | sort)"
           esperado="$(printf '%s\n' corponu-atualizador.js corponu-release.json index.html update.js version.json | sort)"
           test "$arquivos" = "$esperado"
 
-      - name: Commitar release 287
-        shell: bash
+      - name: Publicar
         run: |
-          set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add corponu-atualizador.js corponu-release.json index.html update.js version.json
-          git commit -m 'fix: publicar release limpa 287 após desbloqueio'
-          git push origin HEAD:main
-
-      - name: Limpar migrador temporário
-        shell: bash
-        run: |
-          set -euo pipefail
-          git pull --ff-only origin main
-          rm -f scripts/publicar-release-287.js .github/workflows/publicar-release-287.yml
-          git add -A
-          git commit -m 'chore: limpar migrador temporário release 287'
+          git commit -m 'fix: publicar release limpa 287 apos desbloqueio'
           git push origin HEAD:main
