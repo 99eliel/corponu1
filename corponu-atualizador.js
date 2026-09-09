@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-09-09-fase-oficial-calcinha-295";
+  const LOCAL_RELEASE = "2026-09-09-exclusao-faccoes-estavel-296";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -73,7 +73,6 @@
 
     faccoes: [
       MODULO_GRUPOS_FACCOES,
-      ["corponu-faccoes-exclusao-pagamento-vinculado.js", "faccoes-exclusao-pagamento-vinculado", "Não foi possível vincular exclusão da facção ao pagamento."],
       ["corponu-faccao-cadastro-recolhido.js", "faccao-cadastro-recolhido", "Não foi possível carregar o cadastro recolhido de facção."],
       ["corponu-faccoes-lateral-alca-v2-270.js", "faccoes-lateral-alca-v2-270", "Não foi possível carregar a área Lateral e Alça V2."],
       ["corponu-faccoes-tres-abas-saida.js", "faccoes-tres-abas-saida", "Não foi possível carregar as abas de Facções."],

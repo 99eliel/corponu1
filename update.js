@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-09-09-fase-oficial-calcinha-295";
+  const APP_VERSION = "2026-09-09-exclusao-faccoes-estavel-296";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 

@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-09-fase-oficial-calcinha-295",
-  "updatedAt": "2026-09-09T12:20:00-03:00",
-  "notes": "Produção. Manejo Calcinha passa a aceitar somente fases cadastradas pelo administrador em configuracoes/fasesManejoCalcinha. O campo livre/datalist e fontes legadas de localStorage foram removidos do módulo dedicado. Antes de salvar ou enviar, a fase é confirmada diretamente no servidor. Fases antigas fora da lista permanecem apenas como legado visual e exigem nova escolha oficial."
+  "version": "2026-09-09-exclusao-faccoes-estavel-296",
+  "updatedAt": "2026-09-09T17:03:06.797Z",
+  "notes": "Produção. Exclusão de movimentações de Facções consolidada no app.js como único dono do fluxo. O wrapper antigo que substituía a função em runtime e fazia polling deixou de ser carregado. Pagamentos já pagos continuam protegidos; pagamentos pendentes vinculados são removidos atomicamente com a movimentação. Exclusões fora de Facções preservam o comportamento anterior."
 }
