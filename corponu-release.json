@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-09-pagamento-regularizado-release-287",
-  "updatedAt": "2026-09-09T11:34:27.259Z",
-  "notes": "Produção normal após regularização do pagamento. Release 287 criada exclusivamente para restabelecer uma sequência de versão crescente e forçar atualização limpa dos arquivos do Corpo Nu Flow após o bloqueio 286. O código funcional consolidado da versão 285 foi preservado; nenhuma regra, documento ou dado do Firebase foi alterado."
+  "version": "2026-09-04-faccoes-controlador-unificado-285",
+  "updatedAt": "2026-09-04T11:45:00-03:00",
+  "notes": "Produção. Facções reorganizada estruturalmente com um único controlador de navegação. O Dual Mode agora é o único responsável pelas abas Sutiã, Calcinha e Lateral e Alça; o módulo Registrar saída não intercepta mais os cliques das abas, não usa stopImmediatePropagation para trocar aba e não disputa visibilidade nem filtro de linhas. Lateral e Alça passa a pré-carregar junto com os dados de Facções, aproveita o mapa compartilhado de movimentações para histórico e mantém seu listener vivo mesmo quando a aba fica escondida, sem reiniciar do zero a cada troca. A tela Lateral agora é somente dados, visualização e ações; a navegação pertence ao controlador central. Sutiã e Calcinha continuam usando a tabela geral, com movimentações de Lateral/Alça separadas desse filtro. Nenhuma regra ou documento do Firebase foi alterado."
 }

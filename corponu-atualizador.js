@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-09-09-pagamento-regularizado-release-287";
+  const LOCAL_RELEASE = "2026-09-04-faccoes-controlador-unificado-285";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
