@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-04-faccoes-controlador-unificado-285",
-  "updatedAt": "2026-09-04T11:45:00-03:00",
-  "notes": "Produção. Facções reorganizada estruturalmente com um único controlador de navegação. O Dual Mode agora é o único responsável pelas abas Sutiã, Calcinha e Lateral e Alça; o módulo Registrar saída não intercepta mais os cliques das abas, não usa stopImmediatePropagation para trocar aba e não disputa visibilidade nem filtro de linhas. Lateral e Alça passa a pré-carregar junto com os dados de Facções, aproveita o mapa compartilhado de movimentações para histórico e mantém seu listener vivo mesmo quando a aba fica escondida, sem reiniciar do zero a cada troca. A tela Lateral agora é somente dados, visualização e ações; a navegação pertence ao controlador central. Sutiã e Calcinha continuam usando a tabela geral, com movimentações de Lateral/Alça separadas desse filtro. Nenhuma regra ou documento do Firebase foi alterado."
+  "version": "2026-09-09-recuperacao-pre-bloqueio-288",
+  "updatedAt": "2026-09-09T08:10:00-03:00",
+  "notes": "Produção recuperada a partir da árvore exata imediatamente anterior ao primeiro bloqueio financeiro de 06/09/2026. Release 288 criada apenas para garantir atualização limpa e impedir reutilização de cache das releases 285/286/287. Nenhuma regra de negócio, documento, coleção ou dado do Firebase foi alterado."
 }
