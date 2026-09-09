@@ -84,3 +84,5 @@ jobs:
           git add app.js corponu-atualizador.js corponu-release.json index.html update.js version.json
           git commit -m 'fix: estabilizar ações e desempenho de Facções 300'
           git push origin HEAD:main
+
+# reexecução após limpeza dos marcadores temporários
