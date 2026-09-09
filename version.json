@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-09-fase-bojo-oficial-289",
-  "updatedAt": "2026-09-09T08:25:00-03:00",
-  "notes": "Produção. Fase Bojo do Sutiã consolidada estruturalmente com somente duas opções oficiais: BÁSICO SEM BOJO e COM BOJO. A configuração persistida é migrada uma única vez, sem alterar OPs históricas. A restauração automática de sugestões a partir do histórico foi removida; a recuperação antiga permanece somente como ação manual do administrador. Nenhuma outra regra de negócio ou dado do Firebase foi alterado."
+  "version": "2026-09-09-fases-sutia-persistentes-290",
+  "updatedAt": "2026-09-09T09:18:00-03:00",
+  "notes": "Produção. Corrige estruturalmente a gestão de Fase Bojo do Sutiã: remove a imposição incorreta de duas opções fixas, reconstrói a lista administrada usando as fases históricas e os registros de adicionar/remover do administrador, e passa a registrar exclusões persistentes para que fases removidas não sejam recolocadas por recuperação histórica. OPs antigas permanecem intactas. A recuperação de opções antigas continua somente manual."
 }
