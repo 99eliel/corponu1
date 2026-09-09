@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-09-modal-chegada-rodape-fixo-302",
-  "updatedAt": "2026-09-09T19:34:54.983Z",
-  "notes": "Produção. Organiza estruturalmente o modal de Confirmar chegada: o formulário passa a ter corpo rolável próprio e mantém o rodapé oficial com Confirmar chegada e Cancelar sempre visível. A conferência do Sutiã Completo é inserida explicitamente dentro do corpo do modal. Nenhum botão, listener ou fluxo paralelo foi criado; regras de negócio, Firebase e demais processos permanecem inalterados."
+  "version": "2026-09-09-reconfirmacao-chegada-integrada-303",
+  "updatedAt": "2026-09-09T21:25:55.988Z",
+  "notes": "Produção. Integra a reconfirmação obrigatória de processo e facção ao modal de chegada reorganizado na 302. O bloco de segurança passa a ser montado dentro de chegadaModalBody e o disparo acompanha o controlador delegado oficial data-faccoes-acao=\"chegada\", mantendo compatibilidade com o gatilho legado. Não cria segunda validação, listener de polling ou fluxo paralelo; Firebase, pagamentos existentes e demais processos permanecem intactos."
 }

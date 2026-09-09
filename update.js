@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-09-09-modal-chegada-rodape-fixo-302";
+  const APP_VERSION = "2026-09-09-reconfirmacao-chegada-integrada-303";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -11010,9 +11010,13 @@
         <div class="confirmacao-chegada-faccao-alteracao" id="resumoAlteracaoChegadaFaccao"></div>
       `;
 
+      const corpoChegada = document.getElementById('chegadaModalBody');
       const dataLabel = document.getElementById('chegadaData')?.closest('label');
-      if (dataLabel) form.insertBefore(bloco, dataLabel);
-      else form.prepend(bloco);
+      if (!(corpoChegada instanceof HTMLElement)) {
+        throw new Error('Corpo oficial do modal de chegada não encontrado.');
+      }
+      if (dataLabel?.parentElement === corpoChegada) corpoChegada.insertBefore(bloco, dataLabel);
+      else corpoChegada.prepend(bloco);
 
       document.getElementById('chegadaConfirmarProcesso')?.addEventListener('change', () => {
         preencherFaccoesConfirmacaoChegadaFaccao();
@@ -11625,10 +11629,10 @@
     garantirCamposConfirmacaoChegadaFaccao();
 
     document.addEventListener('click', event => {
-      const botao = event.target?.closest?.('button[onclick*="registrarChegadaMovimentacao"]');
+      const botao = event.target?.closest?.('[data-faccoes-acao="chegada"][data-movimentacao-id], button[onclick*="registrarChegadaMovimentacao"]');
       if (!botao) return;
       setTimeout(prepararConfirmacaoChegadaFaccao, 30);
-    });
+    }, true);
 
     form.addEventListener('reset', () => setTimeout(limparConfirmacaoChegadaFaccao, 0));
     form.addEventListener('submit', confirmarChegadaFaccaoComRevalidacao, true);
