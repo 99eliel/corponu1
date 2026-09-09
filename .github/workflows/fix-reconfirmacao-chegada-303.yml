@@ -1,0 +1,61 @@
+name: Validar reconfirmação chegada 303
+
+on:
+  push:
+    branches:
+      - 'fix/reconfirmacao-chegada-303'
+    paths:
+      - '.github/workflows/fix-reconfirmacao-chegada-303.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: fix/reconfirmacao-chegada-303
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Aplicar correção estrutural
+        run: node scripts/fix-reconfirmacao-chegada-303.js
+
+      - name: Validar estrutura e sintaxe
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check update.js
+          node --check corponu-atualizador.js
+          node -e "JSON.parse(require('fs').readFileSync('version.json','utf8')); JSON.parse(require('fs').readFileSync('corponu-release.json','utf8'));"
+          grep -F "const corpoChegada = document.getElementById('chegadaModalBody');" update.js
+          grep -F '[data-faccoes-acao="chegada"][data-movimentacao-id]' update.js
+          ! grep -F "form.insertBefore(bloco, dataLabel)" update.js
+          test "$(grep -F "bloco.id = 'grupoConfirmacaoChegadaFaccao'" update.js | wc -l | tr -d ' ')" = "1"
+          grep -F '2026-09-09-reconfirmacao-chegada-integrada-303' version.json
+          git diff --check
+
+      - name: Garantir escopo exato
+        shell: bash
+        run: |
+          set -euo pipefail
+          arquivos="$(git diff --name-only | sort)"
+          esperado="$(printf '%s\n' corponu-atualizador.js corponu-release.json index.html update.js version.json | sort)"
+          test "$arquivos" = "$esperado"
+
+      - name: Commitar correção validada
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add corponu-atualizador.js corponu-release.json index.html update.js version.json
+          git commit -m 'fix: integrar reconfirmação ao modal de chegada 303'
+          git push origin HEAD:fix/reconfirmacao-chegada-303
