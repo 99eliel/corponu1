@@ -86,6 +86,29 @@ const state = {
 // - renderização fica limitada à tela ativa para não travar filtros/digitação.
 const OTIMIZACAO_LEITURAS_ATIVA = true;
 
+const movimentacoesPorId = new Map();
+const cacheFaccaoPorIdFiltro = new Map();
+const cacheFaccaoPorNomeFiltro = new Map();
+
+function reconstruirIndiceMovimentacoes() {
+  movimentacoesPorId.clear();
+  (state.movimentacoesProducao || []).forEach(item => {
+    const id = String(item?.id || "").trim();
+    if (id) movimentacoesPorId.set(id, item);
+  });
+}
+
+function getMovimentacaoPorId(id) {
+  const chave = String(id || "").trim();
+  if (!chave) return null;
+  return movimentacoesPorId.get(chave) || null;
+}
+
+function invalidarCacheIdentidadeFaccoes() {
+  cacheFaccaoPorIdFiltro.clear();
+  cacheFaccaoPorNomeFiltro.clear();
+}
+
 // Mantem o setor do preco coerente com processos que pertencem a um unico grupo.
 // Tambem recupera em memoria registros antigos salvos com o setor oculto padrao (bojo).
 function normalizarSetorPrecoPorProcesso(processo, setor) {
@@ -607,6 +630,7 @@ function carregarFaccoesSeNecessario() {
 
   registrarListenerChave("faccoes", onSnapshot(faccoesQuery, snapshot => {
     state.faccoes = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    invalidarCacheIdentidadeFaccoes();
     marcarCarregado("faccoes");
     renderFaccoes();
     renderFaccoesPendentes();
@@ -647,11 +671,9 @@ function carregarMovimentacoesSeNecessario() {
 
   registrarListenerChave("movimentacoes", onSnapshot(movimentacoesQuery, snapshot => {
     state.movimentacoesProducao = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+    reconstruirIndiceMovimentacoes();
     marcarCarregado("movimentacoes");
-    renderRastreamento();
-    renderFaccoesMovimentacoes();
-    renderCelulasMovimentacoes();
-    if (document.getElementById("pagamentos")?.classList.contains("active")) renderPagamentos();
+    renderPaginaAtiva();
   }, error => {
     state.carregandoDados.movimentacoes = false;
     console.error(error);
@@ -5442,14 +5464,14 @@ function htmlAcaoChegadaFaccoes(mov) {
   if (mov?.dataChegada || status === "finalizado" || status === "encaminhado") return "";
 
   if (ehAdmin()) {
-    return `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Confirmar chegada</button>`;
+    return `<button class="btn btn-sm btn-success" type="button" data-faccoes-acao="chegada" data-movimentacao-id="${mov.id}">Confirmar chegada</button>`;
   }
 
   if (situacaoChegadaFaccoes(mov) === "avisada") {
     return `<button class="btn btn-sm" type="button" disabled>Aviso enviado</button>`;
   }
 
-  return `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Avisar que chegou</button>`;
+  return `<button class="btn btn-sm btn-success" type="button" data-faccoes-acao="chegada" data-movimentacao-id="${mov.id}">Avisar que chegou</button>`;
 }
 
 function getFiltrosFaccoesMovimentacoes() {
@@ -5485,33 +5507,41 @@ function chaveExataFaccoes(valor) {
 function getFaccaoCadastroPorIdFiltro(id) {
   const chave = String(id ?? "").trim();
   if (!chave) return null;
+  if (cacheFaccaoPorIdFiltro.has(chave)) return cacheFaccaoPorIdFiltro.get(chave);
 
   const encontrada = (state.faccoes || []).find(faccao => String(faccao?.id || "").trim() === chave) || null;
-  if (!encontrada?.duplicadaDe) return encontrada;
-
-  return (state.faccoes || []).find(faccao => String(faccao?.id || "").trim() === String(encontrada.duplicadaDe)) || encontrada;
+  let resultado = encontrada;
+  if (encontrada?.duplicadaDe) {
+    resultado = (state.faccoes || []).find(
+      faccao => String(faccao?.id || "").trim() === String(encontrada.duplicadaDe)
+    ) || encontrada;
+  }
+  cacheFaccaoPorIdFiltro.set(chave, resultado);
+  return resultado;
 }
 
 function getFaccaoCadastroPorNomeExatoFiltro(nome) {
   const chave = chaveExataFaccoes(nome);
   if (!chave) return null;
-
+  if (cacheFaccaoPorNomeFiltro.has(chave)) return cacheFaccaoPorNomeFiltro.get(chave);
   const candidatos = (state.faccoes || [])
     .filter(faccao => chaveExataFaccoes(faccao?.nome) === chave)
     .map(faccao => faccao?.duplicadaDe ? (getFaccaoCadastroPorIdFiltro(faccao.duplicadaDe) || faccao) : faccao)
     .filter(Boolean);
-
-  if (!candidatos.length) return null;
-
+  if (!candidatos.length) {
+    cacheFaccaoPorNomeFiltro.set(chave, null);
+    return null;
+  }
   const unicos = new Map();
   candidatos.forEach(faccao => {
-    const id = String(faccao?.id || "").trim();
+    const id = String(faccao?.id || "").trim() || chaveExataFaccoes(faccao?.nome);
     if (id && !unicos.has(id)) unicos.set(id, faccao);
   });
-
   const lista = [...unicos.values()];
   const ativos = lista.filter(faccao => faccao?.ativo !== false && faccao?.statusImportacao !== "duplicada_consolidada");
-  return ativos[0] || lista[0] || null;
+  const resultado = ativos[0] || lista[0] || null;
+  cacheFaccaoPorNomeFiltro.set(chave, resultado);
+  return resultado;
 }
 
 function identidadeFaccaoMovimentacao(mov) {
@@ -5876,9 +5906,41 @@ function renderResumoFiltroFaccoes(movimentos, filtros) {
   `;
 }
 
+let controladorAcoesFaccoesInstalado = false;
+
+function instalarControladorAcoesFaccoes() {
+  if (controladorAcoesFaccoesInstalado) return;
+  const tbody = document.getElementById("listaFaccoesMovimentacoes");
+  if (!tbody) return;
+  tbody.addEventListener("click", event => {
+    const botao = event.target.closest?.("[data-faccoes-acao][data-movimentacao-id]");
+    if (!botao || !tbody.contains(botao)) return;
+    event.preventDefault();
+    const acao = String(botao.dataset.faccoesAcao || "").trim();
+    const id = String(botao.dataset.movimentacaoId || "").trim();
+    if (!id) return;
+    if (acao === "chegada") { registrarChegadaMovimentacao(id); return; }
+    if (acao === "bipar") {
+      Promise.resolve(biparMovimentacao(id)).catch(error => {
+        console.error("Erro na ação Bipar de Facções.", error);
+        toast("Não foi possível bipar a movimentação.");
+      });
+      return;
+    }
+    if (acao === "excluir") {
+      Promise.resolve(excluirMovimentacao(id)).catch(error => {
+        console.error("Erro na ação Excluir de Facções.", error);
+        toast("Não foi possível excluir a movimentação.");
+      });
+    }
+  });
+  controladorAcoesFaccoesInstalado = true;
+}
+
 function renderFaccoesMovimentacoes() {
   const tbody = document.getElementById("listaFaccoesMovimentacoes");
   if (!tbody) return;
+  instalarControladorAcoesFaccoes();
 
   const movimentosBase = state.movimentacoesProducao.filter(mov => mov.tipoDestino === "faccao");
   preencherFiltrosFaccoesMovimentacoes(movimentosBase);
@@ -5937,8 +5999,8 @@ function renderFaccoesMovimentacoes() {
         ${htmlAcaoChegadaFaccoes(mov)}
         ${podeEncaminharMovimentacao(mov) ? `<button class="btn btn-sm" onclick="enviarMovimentacaoParaCelula('${mov.id}')">Mandar célula</button>` : ""}
         ${podeEncaminharMovimentacao(mov) ? `<button class="btn btn-sm" onclick="reenviarMovimentacaoParaFaccao('${mov.id}')">Reenviar facção</button>` : ""}
-        ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : mov.status === "encaminhado" ? "" : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
-        ${ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="excluirMovimentacao('${mov.id}')">Excluir</button>` : ""}
+        ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : mov.status === "encaminhado" ? "" : `<button class="btn btn-sm btn-bipado" type="button" data-faccoes-acao="bipar" data-movimentacao-id="${mov.id}">Bipar</button>`}
+        ${ehAdmin() ? `<button class="btn btn-sm btn-danger" type="button" data-faccoes-acao="excluir" data-movimentacao-id="${mov.id}">Excluir</button>` : ""}
       </td>
     </tr>
   `).join("");
@@ -7062,7 +7124,7 @@ function encaminharMovimentacao(id, tipoDestino) {
     carregarCelulasSeNecessario();
   }
 
-  const mov = state.movimentacoesProducao.find(item => item.id === id);
+  const mov = getMovimentacaoPorId(id);
 
   if (!mov) {
     toast("Movimentação não encontrada.");
@@ -7353,7 +7415,7 @@ async function avisarChegadaMovimentacaoFaccao(id, movimentoRecebido = null) {
 }
 
 function registrarChegadaMovimentacao(id) {
-  const mov = state.movimentacoesProducao.find(item => item.id === id);
+  const mov = getMovimentacaoPorId(id);
   if (!mov) return;
 
   if (mov.tipoDestino === "faccao" && !ehAdmin()) {
@@ -7406,7 +7468,7 @@ async function confirmarChegadaMovimentacao(event) {
   event?.preventDefault?.();
 
   const id = document.getElementById("chegadaMovimentacaoId")?.value || chegadaModalMovimentacaoId;
-  const mov = state.movimentacoesProducao.find(item => item.id === id);
+  const mov = getMovimentacaoPorId(id);
 
   if (!mov) {
     toast("Movimentação não encontrada.");
@@ -7496,7 +7558,7 @@ async function confirmarChegadaMovimentacao(event) {
 
 
 async function biparMovimentacao(id) {
-  const mov = state.movimentacoesProducao.find(item => item.id === id);
+  const mov = getMovimentacaoPorId(id);
   if (!mov) return;
 
   if (mov.status === "finalizado") {
@@ -7579,7 +7641,7 @@ async function excluirMovimentacao(id) {
   const movimentacaoId = String(id || "").trim();
   if (!movimentacaoId || exclusoesMovimentacaoEmAndamento.has(movimentacaoId)) return;
 
-  const mov = state.movimentacoesProducao.find(item => item.id === movimentacaoId);
+  const mov = getMovimentacaoPorId(movimentacaoId);
   if (!mov) {
     toast("Essa movimentação já não está disponível.");
     return;

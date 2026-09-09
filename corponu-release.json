@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-09-reparo-listas-principais-299",
-  "updatedAt": "2026-09-09T18:00:55.581Z",
-  "notes": "Produção. Corrige a recuperação das listas principais de Fase Bojo/Sutiã e Fase da Calcinha quando ficaram vazias. A reconstrução 299 consulta formatos atuais e legados das OPs, sugestões locais antigas, mapa de ordens carregado e logs administrativos, sempre respeitando sugestoesExcluidas e o último estado de adicionar/remover. A Fase Lateral já recuperada na 298 é preservada. Nenhuma OP histórica é alterada."
+  "version": "2026-09-09-faccoes-acoes-desempenho-300",
+  "updatedAt": "2026-09-09T18:49:52.923Z",
+  "notes": "Produção. Estabiliza a aba Facções: Confirmar chegada, Bipar e Excluir passam a usar um controlador delegado único da tabela, sem onclick inline. Movimentações passam a ter índice por ID e a identidade das facções usa cache invalidado somente quando a coleção de facções muda. O snapshot de movimentações renderiza somente a página ativa, reduzindo trabalho desnecessário. As listas oficiais de fases e o reparo 299 permanecem intactos."
 }
