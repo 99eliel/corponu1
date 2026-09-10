@@ -37,7 +37,7 @@ jobs:
           node --check update.js
           node -e "JSON.parse(require('fs').readFileSync('version.json','utf8')); JSON.parse(require('fs').readFileSync('corponu-release.json','utf8'));"
           grep -F 'const botaoAjusteRastreamento = event.target.closest?.("[data-rastreamento-ajuste-id]");' app.js
-          test "$(grep -o 'data-rastreamento-ajuste-id=' app.js | wc -l)" -eq 4
+          test "$(grep -o 'data-rastreamento-ajuste-id=' app.js | wc -l)" -eq 3
           ! grep -Fq 'onclick="abrirModalAjusteMigracao(' app.js
           ! grep -Fq 'corponu-rastreamento-enviar-manejo.js' index.html
           grep -Fq '2026-09-10-rastreamento-controlador-unico-306' version.json
