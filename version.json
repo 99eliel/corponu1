@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-09-calcinha-faccoes-id-oficial-304",
-  "updatedAt": "2026-09-09T21:32:55.847Z",
-  "notes": "Produção. Corrige a aba Facções > Calcinha após a migração do controlador de ações para data-movimentacao-id. O dual-mode passa a resolver cada linha pelo ID oficial da movimentação e mantém fallback legado sem confundir a coluna Processo com Facção. Contadores e dados existentes são preservados; Firebase, chegada, pagamentos e demais abas não são alterados."
+  "version": "2026-09-10-rastreamento-acoes-canonicas-305",
+  "updatedAt": "2026-09-10T16:15:29.956Z",
+  "notes": "Produção. Remove do carregamento o módulo legado corponu-rastreamento-interno.js, que sobrescrevia as ações atuais, removia Bipar de movimentações de facção e restringia Editar local. O Rastreamento passa a usar exclusivamente as ações canônicas já existentes no app.js. Nenhum dado do Firebase é alterado."
 }
