@@ -34,9 +34,8 @@ app = replaceExact(
   'ação de ajuste da listagem de movimentações'
 );
 
-if ((app.match(/data-rastreamento-ajuste-id=/g) || []).length !== 4) {
-  // três botões + uma ocorrência no seletor do controlador
-  throw new Error('Quantidade inesperada de referências ao controlador de ajuste');
+if ((app.match(/data-rastreamento-ajuste-id=/g) || []).length !== 3) {
+  throw new Error('Quantidade inesperada de botões ligados ao controlador de ajuste');
 }
 if (app.includes(`onclick="abrirModalAjusteMigracao('`)) {
   throw new Error('Ainda existe onclick inline para abrir o ajuste de migração');
