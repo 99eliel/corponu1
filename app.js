@@ -5035,6 +5035,20 @@ function fecharMenusAcoesManejo() {
 }
 
 document.addEventListener("click", event => {
+  // Controlador canônico compartilhado: ações de telas renderizadas dinamicamente
+  // são resolvidas por data-attributes, sem depender de onclick inline ou observers.
+  const botaoAjusteRastreamento = event.target.closest?.("[data-rastreamento-ajuste-id]");
+  if (botaoAjusteRastreamento) {
+    event.preventDefault();
+    const ordemId = String(botaoAjusteRastreamento.dataset.rastreamentoAjusteId || "");
+    if (!ordemId) {
+      toast("Não foi possível identificar a OP para corrigir o local.");
+      return;
+    }
+    abrirModalAjusteMigracao(ordemId);
+    return;
+  }
+
   const botaoAcoesManejo = event.target.closest?.("[data-manejo-acoes-id]");
   if (botaoAcoesManejo) {
     event.preventDefault();
@@ -8116,7 +8130,7 @@ function renderLinhaHistoricoRastreamentoOP(op) {
               <strong>Por onde a OP ${escapeHtml(op.numeroOP || op.id || "-")} passou</strong>
               <span>Quem encapou: <b>${escapeHtml(quemEncapou)}</b>${processoInicial ? ` · Processo inicial: ${escapeHtml(processoInicial)}` : ""}</span>
             </div>
-            ${ehAdmin() ? `<button class="btn btn-sm btn-primary" onclick="abrirModalAjusteMigracao('${op.id}')">Mover / corrigir local</button>` : ""}
+            ${ehAdmin() ? `<button class="btn btn-sm btn-primary" type="button" data-rastreamento-ajuste-id="${escapeHtml(op.id)}">Mover / corrigir local</button>` : ""}
           </div>
           <div class="rastreamento-timeline">
             ${eventos.map((evento, index) => `
@@ -8363,7 +8377,7 @@ function renderLinhaRastreamentoGlobalOP(op) {
   const acoes = ehAdmin()
     ? `${botaoBipar}
        ${botaoManejo}
-       <button class="btn btn-sm btn-primary" onclick="abrirModalAjusteMigracao('${op.id}')">Editar local</button>
+       <button class="btn btn-sm btn-primary" type="button" data-rastreamento-ajuste-id="${escapeHtml(op.id)}">Editar local</button>
        <button class="btn btn-sm" onclick="filtrarManejosPorOP('${escapeHtml(op.numeroOP || op.id)}')">Abrir manejo</button>`
     : `${botaoBipar}
        ${botaoManejo}
@@ -8473,7 +8487,7 @@ function renderRastreamento() {
   tbody.innerHTML = movimentos.map(mov => {
     const ordem = getOrdemDaMovimentacao(mov);
     const editarLocal = ordem && ehAdmin()
-      ? `<button class="btn btn-sm btn-primary" onclick="abrirModalAjusteMigracao('${ordem.id}')">Editar local</button>`
+      ? `<button class="btn btn-sm btn-primary" type="button" data-rastreamento-ajuste-id="${escapeHtml(ordem.id)}">Editar local</button>`
       : "";
 
     return `
