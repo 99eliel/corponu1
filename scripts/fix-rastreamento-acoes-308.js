@@ -18,7 +18,6 @@ const oldController = `document.addEventListener("click", event => {\n  // Contr
 const newController = `document.addEventListener("click", event => {\n  // Controlador canônico compartilhado: ações de telas renderizadas dinamicamente\n  // são resolvidas por data-attributes, sem depender de onclick inline ou observers.\n  const botaoBiparRastreamento = event.target.closest?.("[data-bipar-op-direto]");\n  if (botaoBiparRastreamento) {\n    event.preventDefault();\n    const ordemId = String(botaoBiparRastreamento.dataset.biparOpDireto || "");\n    if (!ordemId) {\n      toast("Não foi possível identificar a OP para bipar.");\n      return;\n    }\n    biparOrdemDireto(ordemId);\n    return;\n  }\n\n  const botaoEnviarManejoRastreamento = event.target.closest?.("[data-enviar-manejo-direto]");\n  if (botaoEnviarManejoRastreamento) {\n    event.preventDefault();\n    const ordemId = String(botaoEnviarManejoRastreamento.dataset.enviarManejoDireto || "");\n    if (!ordemId) {\n      toast("Não foi possível identificar a OP para enviar ao manejo.");\n      return;\n    }\n    enviarOrdemParaManejoDireto(ordemId);\n    return;\n  }\n\n  const botaoAbrirManejoRastreamento = event.target.closest?.("[data-abrir-manejo-op]");\n  if (botaoAbrirManejoRastreamento) {\n    event.preventDefault();\n    const numeroOP = String(botaoAbrirManejoRastreamento.dataset.abrirManejoOp || "");\n    if (!numeroOP) {\n      toast("Não foi possível identificar a OP para abrir no manejo.");\n      return;\n    }\n    filtrarManejosPorOP(numeroOP);\n    return;\n  }\n\n  const botaoAjusteRastreamento = event.target.closest?.("[data-rastreamento-ajuste-id]");`;
 app = replaceExact(app, oldController, newController, 1, 'controlador canônico');
 
-// Bipar: os botões da busca global e do cartão de histórico passam pelo controlador único.
 app = replaceExact(
   app,
   `data-bipar-op-direto="\${escapeHtml(op.id)}" onclick="biparOrdemDireto('\${op.id}')"`,
@@ -27,7 +26,6 @@ app = replaceExact(
   'botões Bipar'
 );
 
-// Enviar para manejo: mesma regra, sem onclick inline.
 app = replaceExact(
   app,
   `data-enviar-manejo-direto="\${escapeHtml(op.id)}" onclick="enviarOrdemParaManejoDireto('\${op.id}')"`,
@@ -36,13 +34,11 @@ app = replaceExact(
   'botões Enviar para manejo'
 );
 
-// Abrir manejo: troca apenas as duas ações do Rastreamento que usam a OP pesquisada.
-const abrirManejoInline = `onclick="filtrarManejosPorOP('\${escapeHtml(op.numeroOP || op.id)}')"`;
 app = replaceExact(
   app,
-  abrirManejoInline,
+  `onclick="filtrarManejosPorOP('\${escapeHtml(op.numeroOP || op.id)}')"`,
   `data-abrir-manejo-op="\${escapeHtml(op.numeroOP || op.id)}"`,
-  2,
+  3,
   'botões Abrir manejo do Rastreamento'
 );
 
