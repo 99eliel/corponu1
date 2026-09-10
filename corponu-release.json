@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-10-rastreamento-acoes-historico-307",
-  "updatedAt": "2026-09-10T16:53:29.059Z",
-  "notes": "Produção. Restaura no cartão de histórico do Rastreamento as ações operacionais visíveis na busca exata: Bipar, Enviar para manejo, Mover/corrigir local e Abrir manejo. Mantém o controlador único da release 306 e não reativa módulos legados. Nenhum dado do Firebase é alterado."
+  "version": "2026-09-10-rastreamento-acoes-controlador-308",
+  "updatedAt": "2026-09-10T17:00:42.487Z",
+  "notes": "Produção. Consolida as ações operacionais do Rastreamento no controlador canônico do app.js. Bipar, Enviar para manejo, Abrir manejo e Mover/corrigir local passam a usar data-attributes e o mesmo listener central, eliminando dependência de onclick inline em conteúdo re-renderizado. Mantém os módulos legados desativados e não altera dados do Firebase."
 }

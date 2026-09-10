@@ -5037,6 +5037,42 @@ function fecharMenusAcoesManejo() {
 document.addEventListener("click", event => {
   // Controlador canônico compartilhado: ações de telas renderizadas dinamicamente
   // são resolvidas por data-attributes, sem depender de onclick inline ou observers.
+  const botaoBiparRastreamento = event.target.closest?.("[data-bipar-op-direto]");
+  if (botaoBiparRastreamento) {
+    event.preventDefault();
+    const ordemId = String(botaoBiparRastreamento.dataset.biparOpDireto || "");
+    if (!ordemId) {
+      toast("Não foi possível identificar a OP para bipar.");
+      return;
+    }
+    biparOrdemDireto(ordemId);
+    return;
+  }
+
+  const botaoEnviarManejoRastreamento = event.target.closest?.("[data-enviar-manejo-direto]");
+  if (botaoEnviarManejoRastreamento) {
+    event.preventDefault();
+    const ordemId = String(botaoEnviarManejoRastreamento.dataset.enviarManejoDireto || "");
+    if (!ordemId) {
+      toast("Não foi possível identificar a OP para enviar ao manejo.");
+      return;
+    }
+    enviarOrdemParaManejoDireto(ordemId);
+    return;
+  }
+
+  const botaoAbrirManejoRastreamento = event.target.closest?.("[data-abrir-manejo-op]");
+  if (botaoAbrirManejoRastreamento) {
+    event.preventDefault();
+    const numeroOP = String(botaoAbrirManejoRastreamento.dataset.abrirManejoOp || "");
+    if (!numeroOP) {
+      toast("Não foi possível identificar a OP para abrir no manejo.");
+      return;
+    }
+    filtrarManejosPorOP(numeroOP);
+    return;
+  }
+
   const botaoAjusteRastreamento = event.target.closest?.("[data-rastreamento-ajuste-id]");
   if (botaoAjusteRastreamento) {
     event.preventDefault();
@@ -8124,8 +8160,8 @@ function renderLinhaHistoricoRastreamentoOP(op) {
   const jaBipadoHistorico = /finalizado|bipado/i.test(`${localAtualHistorico.local || ""} ${localAtualHistorico.status || ""}`);
   const botaoBiparHistorico = jaBipadoHistorico
     ? `<span class="badge ok">Bipado ✓</span>`
-    : `<button class="btn btn-sm btn-bipado" type="button" data-bipar-op-direto="${escapeHtml(op.id)}" onclick="biparOrdemDireto('${op.id}')">Bipar</button>`;
-  const botaoManejoHistorico = `<button class="btn btn-sm" type="button" data-enviar-manejo-direto="${escapeHtml(op.id)}" onclick="enviarOrdemParaManejoDireto('${op.id}')">Enviar para manejo</button>`;
+    : `<button class="btn btn-sm btn-bipado" type="button" data-bipar-op-direto="${escapeHtml(op.id)}">Bipar</button>`;
+  const botaoManejoHistorico = `<button class="btn btn-sm" type="button" data-enviar-manejo-direto="${escapeHtml(op.id)}">Enviar para manejo</button>`;
 
   return `
     <tr class="rastreamento-historico-row">
@@ -8140,7 +8176,7 @@ function renderLinhaHistoricoRastreamentoOP(op) {
               ${botaoBiparHistorico}
               ${botaoManejoHistorico}
               ${ehAdmin() ? `<button class="btn btn-sm btn-primary" type="button" data-rastreamento-ajuste-id="${escapeHtml(op.id)}">Mover / corrigir local</button>` : ""}
-              <button class="btn btn-sm" type="button" onclick="filtrarManejosPorOP('${escapeHtml(op.numeroOP || op.id)}')">Abrir manejo</button>
+              <button class="btn btn-sm" type="button" data-abrir-manejo-op="${escapeHtml(op.numeroOP || op.id)}">Abrir manejo</button>
             </div>
           </div>
           <div class="rastreamento-timeline">
@@ -8382,17 +8418,17 @@ function renderLinhaRastreamentoGlobalOP(op) {
   const quantidade = Number(op?.quantidade || 0);
   const jaPossuiBipadoReal = /finalizado|bipado/i.test(`${local.local || ""} ${local.status || ""}`);
   const botaoBipar = !jaPossuiBipadoReal
-    ? `<button class="btn btn-sm btn-bipado" data-bipar-op-direto="${escapeHtml(op.id)}" onclick="biparOrdemDireto('${op.id}')">Bipar</button>`
+    ? `<button class="btn btn-sm btn-bipado" data-bipar-op-direto="${escapeHtml(op.id)}">Bipar</button>`
     : `<span class="badge ok">Bipado ✓</span>`;
-  const botaoManejo = `<button class="btn btn-sm" data-enviar-manejo-direto="${escapeHtml(op.id)}" onclick="enviarOrdemParaManejoDireto('${op.id}')">Enviar para manejo</button>`;
+  const botaoManejo = `<button class="btn btn-sm" data-enviar-manejo-direto="${escapeHtml(op.id)}">Enviar para manejo</button>`;
   const acoes = ehAdmin()
     ? `${botaoBipar}
        ${botaoManejo}
        <button class="btn btn-sm btn-primary" type="button" data-rastreamento-ajuste-id="${escapeHtml(op.id)}">Editar local</button>
-       <button class="btn btn-sm" onclick="filtrarManejosPorOP('${escapeHtml(op.numeroOP || op.id)}')">Abrir manejo</button>`
+       <button class="btn btn-sm" data-abrir-manejo-op="${escapeHtml(op.numeroOP || op.id)}">Abrir manejo</button>`
     : `${botaoBipar}
        ${botaoManejo}
-       <button class="btn btn-sm" onclick="filtrarManejosPorOP('${escapeHtml(op.numeroOP || op.id)}')">Abrir manejo</button>`;
+       <button class="btn btn-sm" data-abrir-manejo-op="${escapeHtml(op.numeroOP || op.id)}">Abrir manejo</button>`;
 
   return `
     <tr class="rastreamento-global-row">
