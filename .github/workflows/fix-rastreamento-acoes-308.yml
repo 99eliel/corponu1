@@ -62,3 +62,5 @@ jobs:
           git add app.js corponu-atualizador.js corponu-release.json index.html update.js version.json
           git commit -m 'fix: consolidar ações do Rastreamento 308'
           git push origin HEAD:fix/rastreamento-acoes-historico-307
+
+# revalidacao 2
