@@ -1,0 +1,61 @@
+name: Validar Rastreamento 305
+
+on:
+  push:
+    branches:
+      - 'fix/rastreamento-acoes-305'
+    paths:
+      - '.github/workflows/fix-rastreamento-acoes-305.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: fix/rastreamento-acoes-305
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Aplicar correção estrutural
+        run: node scripts/fix-rastreamento-acoes-305.js
+
+      - name: Validar sintaxe e estrutura
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check app.js
+          node --check corponu-atualizador.js
+          node --check update.js
+          node -e "JSON.parse(require('fs').readFileSync('version.json','utf8')); JSON.parse(require('fs').readFileSync('corponu-release.json','utf8'));"
+          grep -F 'tbody.dataset.acoesCanonicas = "1"' app.js
+          grep -F 'data-rastreamento-acao="bipar"' app.js
+          grep -F 'data-movimentacao-id="${escapeHtml(movimentacaoId)}"' app.js
+          grep -F '2026-09-10-rastreamento-acoes-canonicas-305' version.json
+          git diff --check
+
+      - name: Garantir escopo exato
+        shell: bash
+        run: |
+          set -euo pipefail
+          arquivos="$(git diff --name-only | sort)"
+          esperado="$(printf '%s\n' app.js corponu-atualizador.js corponu-release.json index.html update.js version.json | sort)"
+          test "$arquivos" = "$esperado"
+
+      - name: Commitar correção validada
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app.js corponu-atualizador.js corponu-release.json index.html update.js version.json
+          git commit -m 'fix: estabilizar ações do Rastreamento 305'
+          git push origin HEAD:fix/rastreamento-acoes-305
