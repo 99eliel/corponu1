@@ -8120,6 +8120,12 @@ function renderLinhaHistoricoRastreamentoOP(op) {
   const faccaoInicial = limparTexto(op?.faccaoOriginalLigia || "").toUpperCase();
   const processoInicial = faccaoInicial ? inferirProcessoHistoricoLigia(op, faccaoInicial) : "";
   const quemEncapou = processoInicial === "ENCAPAR BOJO" && faccaoInicial ? faccaoInicial : "Não identificado";
+  const localAtualHistorico = getLocalizacaoAtualOrdem(op);
+  const jaBipadoHistorico = /finalizado|bipado/i.test(`${localAtualHistorico.local || ""} ${localAtualHistorico.status || ""}`);
+  const botaoBiparHistorico = jaBipadoHistorico
+    ? `<span class="badge ok">Bipado ✓</span>`
+    : `<button class="btn btn-sm btn-bipado" type="button" data-bipar-op-direto="${escapeHtml(op.id)}" onclick="biparOrdemDireto('${op.id}')">Bipar</button>`;
+  const botaoManejoHistorico = `<button class="btn btn-sm" type="button" data-enviar-manejo-direto="${escapeHtml(op.id)}" onclick="enviarOrdemParaManejoDireto('${op.id}')">Enviar para manejo</button>`;
 
   return `
     <tr class="rastreamento-historico-row">
@@ -8130,7 +8136,12 @@ function renderLinhaHistoricoRastreamentoOP(op) {
               <strong>Por onde a OP ${escapeHtml(op.numeroOP || op.id || "-")} passou</strong>
               <span>Quem encapou: <b>${escapeHtml(quemEncapou)}</b>${processoInicial ? ` · Processo inicial: ${escapeHtml(processoInicial)}` : ""}</span>
             </div>
-            ${ehAdmin() ? `<button class="btn btn-sm btn-primary" type="button" data-rastreamento-ajuste-id="${escapeHtml(op.id)}">Mover / corrigir local</button>` : ""}
+            <div class="actions">
+              ${botaoBiparHistorico}
+              ${botaoManejoHistorico}
+              ${ehAdmin() ? `<button class="btn btn-sm btn-primary" type="button" data-rastreamento-ajuste-id="${escapeHtml(op.id)}">Mover / corrigir local</button>` : ""}
+              <button class="btn btn-sm" type="button" onclick="filtrarManejosPorOP('${escapeHtml(op.numeroOP || op.id)}')">Abrir manejo</button>
+            </div>
           </div>
           <div class="rastreamento-timeline">
             ${eventos.map((evento, index) => `

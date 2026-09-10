@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-09-10-rastreamento-controlador-unico-306";
+  const LOCAL_RELEASE = "2026-09-10-rastreamento-acoes-historico-307";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 

@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-10-rastreamento-controlador-unico-306",
-  "updatedAt": "2026-09-10T16:47:42.325Z",
-  "notes": "Produção. Consolida o Rastreamento no controlador canônico do app.js. Mover/corrigir local e Editar local deixam de depender de onclick inline e passam a usar o listener central já existente, preservando o funcionamento após re-renderizações. Remove do carregamento o módulo legado corponu-rastreamento-enviar-manejo.js, cuja injeção, observer e listener em captura duplicavam a função nativa enviarOrdemParaManejoDireto. Nenhum dado do Firebase é alterado."
+  "version": "2026-09-10-rastreamento-acoes-historico-307",
+  "updatedAt": "2026-09-10T16:53:29.059Z",
+  "notes": "Produção. Restaura no cartão de histórico do Rastreamento as ações operacionais visíveis na busca exata: Bipar, Enviar para manejo, Mover/corrigir local e Abrir manejo. Mantém o controlador único da release 306 e não reativa módulos legados. Nenhum dado do Firebase é alterado."
 }

@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-09-10-rastreamento-controlador-unico-306";
+  const APP_VERSION = "2026-09-10-rastreamento-acoes-historico-307";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
