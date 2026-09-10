@@ -1,0 +1,65 @@
+name: Validar Rastreamento Histórico 307
+
+on:
+  push:
+    branches:
+      - 'fix/rastreamento-acoes-historico-307'
+    paths:
+      - '.github/workflows/fix-rastreamento-acoes-historico-307.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: fix/rastreamento-acoes-historico-307
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Aplicar correção
+        run: node scripts/fix-rastreamento-acoes-historico-307.js
+
+      - name: Validar sintaxe e ações
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check app.js
+          node --check corponu-atualizador.js
+          node --check update.js
+          node -e "JSON.parse(require('fs').readFileSync('version.json','utf8')); JSON.parse(require('fs').readFileSync('corponu-release.json','utf8'));"
+          grep -Fq 'const botaoBiparHistorico =' app.js
+          grep -Fq 'const botaoManejoHistorico =' app.js
+          grep -Fq '>Bipar</button>' app.js
+          grep -Fq '>Enviar para manejo</button>' app.js
+          grep -Fq '>Mover / corrigir local</button>' app.js
+          grep -Fq '>Abrir manejo</button>' app.js
+          grep -Fq '2026-09-10-rastreamento-acoes-historico-307' version.json
+          ! grep -Fq 'corponu-rastreamento-enviar-manejo.js' index.html
+          git diff --check
+
+      - name: Garantir escopo
+        shell: bash
+        run: |
+          set -euo pipefail
+          arquivos="$(git diff --name-only | sort)"
+          esperado="$(printf '%s\n' app.js corponu-atualizador.js corponu-release.json index.html update.js version.json | sort)"
+          test "$arquivos" = "$esperado"
+
+      - name: Commitar versão validada
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app.js corponu-atualizador.js corponu-release.json index.html update.js version.json
+          git commit -m 'fix: restaurar ações no histórico do Rastreamento 307'
+          git push origin HEAD:fix/rastreamento-acoes-historico-307
