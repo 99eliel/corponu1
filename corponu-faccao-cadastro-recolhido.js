@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-09-10-faccao-cadastro-processos-309";
+  const VERSION = "2026-09-11-faccao-cadastro-processos-inativas-310";
   const FB = "10.12.5";
   const CONFIG_ID = "grupos-faccoes-processos";
   const FORM_ID = "formFaccao";
@@ -12,6 +12,9 @@
   const SUBTITULO_ID = "subtituloModalFaccao63";
   const CORPO_ID = "corpoModalFaccao63";
   const CLASSE_FECHADO = "cn63-faccao-form-fechado";
+  const BUSCA_FACCAO_ID = "buscaFaccao";
+  const LISTA_FACCOES_ID = "listaFaccoes";
+  const CACHE_INATIVAS_MS = 20 * 1000;
 
   const PROCESSOS_META = Object.freeze({
     "ENCAPAR BOJO": { sutia: true, calcinha: false },
@@ -44,6 +47,9 @@
   let intervalo = null;
   let contextoPromise = null;
   let salvando = false;
+  let reativandoId = "";
+  let inativasCache = [];
+  let inativasCacheEm = 0;
 
   const limparTexto = valor => String(valor ?? "").trim().replace(/\s+/g, " ");
   const normalizar = valor => String(valor ?? "")
@@ -52,6 +58,13 @@
     .trim()
     .replace(/\s+/g, " ")
     .toUpperCase();
+
+  const escapar = valor => String(valor ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 
   const processoCanonico = valor => ({
     BOJO: "ENCAPAR BOJO",
@@ -127,6 +140,13 @@
       #${CORPO_ID} #${FORM_ID}{display:grid!important;width:100%!important;max-width:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;animation:none!important}
       #${CORPO_ID} #${FORM_ID}.hidden:not(.${CLASSE_FECHADO}){display:grid!important}
       #${CORPO_ID} #${FORM_ID} .actions{position:sticky;bottom:-22px;z-index:3;margin:8px -20px -22px;padding:14px 20px;border-top:1px solid #e2e8f0;background:rgba(255,255,255,.96);backdrop-filter:blur(8px)}
+      #${LISTA_FACCOES_ID} tr.cn310-faccao-inativa td{background:#fffaf0}
+      #${LISTA_FACCOES_ID} tr.cn310-faccao-inativa:hover td{background:#fff7e6}
+      .cn310-status-inativa{display:inline-flex;align-items:center;gap:6px;font-weight:800;color:#9a3412}
+      .cn310-status-inativa::before{content:"";width:8px;height:8px;border-radius:50%;background:#f97316;display:inline-block}
+      .cn310-processos{display:flex;flex-wrap:wrap;gap:5px}
+      .cn310-processo{display:inline-flex;padding:4px 7px;border-radius:999px;background:#f3e8ff;color:#6b21a8;font-size:10px;font-weight:800}
+      .cn310-aviso-busca{display:block;margin-top:5px;color:#64748b;font-size:11px;font-weight:600}
       @keyframes cn63Abrir{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
       @media(max-width:760px){#${MODAL_ID}{padding:8px;align-items:stretch}#${MODAL_ID} .cn63-card{width:100%;max-height:100%;border-radius:15px}#${MODAL_ID} .cn63-header{padding:15px}#${CORPO_ID}{padding:14px 14px 18px}#${CORPO_ID} #${FORM_ID} .actions{bottom:-18px;margin:8px -14px -18px;padding:12px 14px}}
     `;
@@ -233,8 +253,8 @@
     if (principal) {
       principal.textContent = mensagem;
       principal.classList.remove("hidden");
-      window.clearTimeout(window.__cn309Toast);
-      window.__cn309Toast = window.setTimeout(() => principal.classList.add("hidden"), 6000);
+      window.clearTimeout(window.__cn310Toast);
+      window.__cn310Toast = window.setTimeout(() => principal.classList.add("hidden"), 6000);
       return;
     }
     window.alert(mensagem);
@@ -264,6 +284,14 @@
       if (auth.currentUser) return auth.currentUser;
     }
     throw new Error("Usuário ainda não autenticado.");
+  }
+
+  async function perfilAdmin() {
+    const { auth, db, fs } = await contexto();
+    const usuario = await aguardarUsuario(auth);
+    const perfilSnap = await fs.getDoc(fs.doc(db, "usuarios", usuario.uid));
+    const perfil = perfilSnap.exists() ? perfilSnap.data() : {};
+    return { usuario, admin: normalizar(perfil.tipo) === "ADMIN" && perfil.ativo !== false, db, fs };
   }
 
   function processosSelecionadosNoFormulario() {
@@ -322,6 +350,23 @@
     }
   }
 
+  async function registrarReativacaoSeguro(fs, db, usuario, faccao) {
+    try {
+      await fs.addDoc(fs.collection(db, "logsAlteracoes"), {
+        acao: "faccao_ativada",
+        tipoAlvo: "faccao",
+        alvoId: faccao.id,
+        detalhes: `${faccao.nome || faccao.id} | Reativada pela busca administrativa`,
+        usuarioUid: usuario.uid,
+        usuarioEmail: usuario.email || "",
+        criadoEm: fs.serverTimestamp(),
+        versao: VERSION
+      });
+    } catch (error) {
+      console.warn("Facção reativada, mas o log complementar não foi criado.", error);
+    }
+  }
+
   async function salvarCadastroCompleto(event) {
     if (!(event.target instanceof HTMLFormElement) || event.target.id !== FORM_ID) return;
 
@@ -353,11 +398,8 @@
     }
 
     try {
-      const { auth, db, fs } = await contexto();
-      const usuario = await aguardarUsuario(auth);
-      const perfilSnap = await fs.getDoc(fs.doc(db, "usuarios", usuario.uid));
-      const perfil = perfilSnap.exists() ? perfilSnap.data() : {};
-      if (normalizar(perfil.tipo) !== "ADMIN" || perfil.ativo === false) {
+      const { usuario, admin, db, fs } = await perfilAdmin();
+      if (!admin) {
         mostrarToast("Apenas admin pode salvar facções.");
         return;
       }
@@ -425,6 +467,8 @@
       }, { merge: true });
       await batch.commit();
 
+      inativasCache = [];
+      inativasCacheEm = 0;
       await registrarLogSeguro(fs, db, usuario, id, nome, processos, Boolean(idAtual));
 
       document.dispatchEvent(new CustomEvent("corponu:faccao-salva", {
@@ -449,9 +493,140 @@
     }
   }
 
+  async function carregarFaccoesInativas(forcar = false) {
+    if (!forcar && inativasCacheEm && Date.now() - inativasCacheEm < CACHE_INATIVAS_MS) return inativasCache;
+    const { db, fs } = await contexto();
+    const snap = await fs.getDocs(fs.collection(db, "faccoes"));
+    inativasCache = snap.docs
+      .map(item => ({ id: item.id, ...item.data() }))
+      .filter(item => item.ativo === false)
+      .filter(item => !item.cadastroPendente && !item.duplicadaDe && item.statusImportacao !== "duplicada_consolidada")
+      .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true }));
+    inativasCacheEm = Date.now();
+    return inativasCache;
+  }
+
+  function garantirAvisoBuscaInativas() {
+    const busca = document.getElementById(BUSCA_FACCAO_ID);
+    const header = busca?.closest?.(".panel-subheader");
+    const blocoTexto = header?.querySelector?.("div");
+    if (!busca || !blocoTexto || document.getElementById("cn310AvisoBuscaInativas")) return;
+    const aviso = document.createElement("small");
+    aviso.id = "cn310AvisoBuscaInativas";
+    aviso.className = "cn310-aviso-busca";
+    aviso.textContent = "A busca também encontra facções inativas para você poder reativá-las.";
+    blocoTexto.appendChild(aviso);
+  }
+
+  function removerLinhasInativasBusca() {
+    document.querySelectorAll(`#${LISTA_FACCOES_ID} tr[data-cn310-inativa="1"]`).forEach(linha => linha.remove());
+  }
+
+  function htmlProcessosInativa(faccao) {
+    const processos = processosDaFaccao(faccao);
+    if (!processos.length) return '<span class="muted">Nenhum processo</span>';
+    return `<div class="cn310-processos">${processos.slice(0, 3).map(item => `<span class="cn310-processo">${escapar(item)}</span>`).join("")}${processos.length > 3 ? `<span class="cn310-processo">+${processos.length - 3}</span>` : ""}</div>`;
+  }
+
+  function linhaFaccaoInativa(faccao, temColunaProcessos) {
+    return `
+      <tr class="cn310-faccao-inativa" data-cn310-inativa="1" data-cn310-faccao-id="${escapar(faccao.id)}">
+        <td><strong>${escapar(faccao.nome || "-")}</strong></td>
+        <td>${escapar(faccao.cidade || "-")}</td>
+        <td>${escapar(faccao.chavePix || "-")}</td>
+        <td>${escapar(faccao.celular || "-")}</td>
+        ${temColunaProcessos ? `<td class="gfp43-processos-cell">${htmlProcessosInativa(faccao)}</td>` : ""}
+        <td><span class="cn310-status-inativa">Inativa</span></td>
+        <td class="admin-only-cell"><button class="btn btn-sm btn-success" type="button" data-cn310-reativar-faccao="${escapar(faccao.id)}">Ativar</button></td>
+      </tr>`;
+  }
+
+  async function renderInativasNaBusca({ forcar = false } = {}) {
+    garantirAvisoBuscaInativas();
+    removerLinhasInativasBusca();
+
+    const busca = document.getElementById(BUSCA_FACCAO_ID);
+    const tbody = document.getElementById(LISTA_FACCOES_ID);
+    const termo = normalizar(busca?.value || "");
+    if (!busca || !tbody || termo.length < 2) return;
+
+    try {
+      const inativas = await carregarFaccoesInativas(forcar);
+      const encontradas = inativas.filter(item => normalizar([
+        item.nome,
+        item.cidade,
+        item.chavePix,
+        item.celular
+      ].filter(Boolean).join(" ")).includes(termo));
+      if (!encontradas.length) return;
+
+      // O módulo de grupos acrescenta a coluna Processos à mesma tabela. Detectamos
+      // a coluna para manter a linha de inativa perfeitamente alinhada.
+      const tabela = tbody.closest("table");
+      const temColunaProcessos = Boolean(tabela?.querySelector("thead .gfp43-th-processos"));
+      tbody.insertAdjacentHTML("beforeend", encontradas.map(item => linhaFaccaoInativa(item, temColunaProcessos)).join(""));
+    } catch (error) {
+      console.warn("Não foi possível incluir facções inativas na busca administrativa.", error);
+    }
+  }
+
+  async function reativarFaccao(id, botao) {
+    if (!id || reativandoId) return;
+    reativandoId = id;
+    const textoAnterior = botao?.textContent || "Ativar";
+    if (botao) {
+      botao.disabled = true;
+      botao.textContent = "Ativando...";
+    }
+
+    try {
+      const { usuario, admin, db, fs } = await perfilAdmin();
+      if (!admin) {
+        mostrarToast("Apenas admin pode reativar facções.");
+        return;
+      }
+
+      const ref = fs.doc(db, "faccoes", id);
+      const snap = await fs.getDoc(ref);
+      if (!snap.exists()) {
+        mostrarToast("O cadastro desta facção não foi encontrado.");
+        return;
+      }
+      const faccao = { id, ...snap.data() };
+
+      await fs.setDoc(ref, {
+        ativo: true,
+        cadastroPendente: false,
+        atualizadoPor: usuario.uid,
+        atualizadoEm: fs.serverTimestamp(),
+        versaoReativacao: VERSION
+      }, { merge: true });
+
+      await registrarReativacaoSeguro(fs, db, usuario, faccao);
+      inativasCache = [];
+      inativasCacheEm = 0;
+      botao?.closest?.("tr")?.remove();
+
+      const apiGrupos = window.CorpoNuFaccoesGrupos;
+      if (apiGrupos?.atualizar) await Promise.resolve(apiGrupos.atualizar(true)).catch(() => {});
+      document.getElementById("btnAtualizarServidor")?.click();
+      mostrarToast(`Facção ${faccao.nome || id} ativada. Agora ela pode voltar aos processos em que estiver cadastrada.`);
+    } catch (error) {
+      console.error("Erro ao reativar facção.", error);
+      mostrarToast("Erro ao reativar a facção.");
+    } finally {
+      reativandoId = "";
+      if (botao?.isConnected) {
+        botao.disabled = false;
+        botao.textContent = textoAnterior;
+      }
+    }
+  }
+
   function preparar() {
     injetarEstilo();
     criarModal();
+    garantirAvisoBuscaInativas();
     const form = formulario();
     if (!form || !moverFormularioParaModal()) return false;
     if (form.dataset.cn63Preparado !== "1") {
@@ -469,9 +644,24 @@
     // O submit é capturado no document antes de alcançar os listeners legados do form.
     document.addEventListener("submit", salvarCadastroCompleto, true);
 
+    document.addEventListener("input", event => {
+      const alvo = event.target instanceof Element ? event.target : null;
+      if (alvo?.id !== BUSCA_FACCAO_ID) return;
+      // app.js renderiza primeiro a lista ativa; logo depois completamos a mesma busca
+      // com cadastros inativos, exclusivamente na área administrativa.
+      window.setTimeout(() => renderInativasNaBusca(), 0);
+    });
+
     document.addEventListener("click", event => {
       const alvo = event.target instanceof Element ? event.target : null;
       if (!alvo) return;
+
+      const botaoReativar = alvo.closest("[data-cn310-reativar-faccao]");
+      if (botaoReativar) {
+        event.preventDefault();
+        reativarFaccao(botaoReativar.dataset.cn310ReativarFaccao, botaoReativar);
+        return;
+      }
 
       if (alvo.closest(`#${BOTAO_ABRIR_ID}`)) {
         elementoFocoAnterior = alvo.closest("button") || document.activeElement;
@@ -504,8 +694,21 @@
         return;
       }
 
+      if (alvo.closest("#btnAtualizarServidor")) {
+        inativasCache = [];
+        inativasCacheEm = 0;
+        window.setTimeout(() => renderInativasNaBusca({ forcar: true }), 250);
+      }
+
       const navegacao = alvo.closest('.nav-btn[data-page]');
-      if (navegacao && navegacao.dataset.page !== "faccoes") fechar({ restaurarFoco: false });
+      if (navegacao?.dataset.page === "faccoes") {
+        window.setTimeout(() => {
+          garantirAvisoBuscaInativas();
+          renderInativasNaBusca();
+        }, 200);
+      } else if (navegacao) {
+        fechar({ restaurarFoco: false });
+      }
     }, true);
 
     document.addEventListener("keydown", event => {
@@ -514,7 +717,12 @@
       fechar({ limpar: modoAtual === "cadastro" });
     });
 
-    document.addEventListener("corponu:faccao-salva", () => fechar({ limpar: true }));
+    document.addEventListener("corponu:faccao-salva", () => {
+      inativasCache = [];
+      inativasCacheEm = 0;
+      fechar({ limpar: true });
+      window.setTimeout(() => renderInativasNaBusca({ forcar: true }), 100);
+    });
   }
 
   function iniciar() {
