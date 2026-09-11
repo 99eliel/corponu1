@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-12-faccoes-otimizadas-183";
+  const VERSION = "2026-09-11-faccoes-nomes-validos-310";
   const FB = "10.12.5";
 
   if (window.__CORPONU_FACCOES_GRUPOS_SAIDA_FIX__ === VERSION) return;
@@ -17,11 +17,15 @@
     manejo: { processo: "", nomes: [], assinatura: "", observador: null, reaplicando: false, sequencia: 0 }
   };
 
-  const normalizar = valor => String(valor ?? "")
+  const limparNomeVisivel = valor => String(valor ?? "")
+    .normalize("NFKC")
+    .replace(/[\u0000-\u001F\u007F-\u009F\u00AD\u034F\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\u2800\u3164\uFEFF\uFFA0]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const normalizar = valor => limparNomeVisivel(valor)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .replace(/\s+/g, " ")
     .toUpperCase();
 
   const escapar = valor => String(valor ?? "")
@@ -99,8 +103,12 @@
     snap.docs.forEach(documento => {
       const faccao = { id: documento.id, ...documento.data() };
       if (faccao.ativo === false || faccao.cadastroPendente || faccao.duplicadaDe || faccao.statusImportacao === "duplicada_consolidada") return;
-      const chave = normalizar(faccao.nome);
+
+      const nome = limparNomeVisivel(faccao.nome);
+      const chave = normalizar(nome);
       if (!chave) return;
+      faccao.nome = nome;
+
       const atual = mapa.get(chave);
       if (!atual || processosDaFaccao(faccao).length > processosDaFaccao(atual).length) mapa.set(chave, faccao);
     });
@@ -155,7 +163,7 @@
   }
 
   function assinaturaNomes(nomes) {
-    return nomes.map(normalizar).join("|");
+    return nomes.map(normalizar).filter(Boolean).join("|");
   }
 
   function assinaturaSelect(select) {
@@ -172,7 +180,13 @@
     const select = refs?.destino;
     if (!(select instanceof HTMLSelectElement)) return;
 
-    const nomesOrdenados = [...new Set(nomes.map(nome => String(nome || "").trim()).filter(Boolean))]
+    const mapaNomes = new Map();
+    nomes.forEach(nome => {
+      const limpo = limparNomeVisivel(nome);
+      const chave = normalizar(limpo);
+      if (chave && !mapaNomes.has(chave)) mapaNomes.set(chave, limpo);
+    });
+    const nomesOrdenados = [...mapaNomes.values()]
       .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
     const assinatura = assinaturaNomes(nomesOrdenados);
     const ajuda = garantirAjuda(tipo, select, refs.ajudaId);
@@ -184,7 +198,7 @@
       return;
     }
 
-    const anterior = select.value;
+    const anterior = limparNomeVisivel(select.value);
     estado.reaplicando = true;
     select.innerHTML = nomesOrdenados.length
       ? '<option value="">Selecione a facção</option>' + nomesOrdenados
@@ -261,7 +275,9 @@
     try {
       const faccoes = await faccoesDoProcesso(processo);
       if (estado.sequencia !== minhaSequencia) return;
-      const nomes = faccoes.map(faccao => faccao.nome || "").filter(Boolean);
+      const nomes = faccoes
+        .map(faccao => limparNomeVisivel(faccao.nome))
+        .filter(nome => normalizar(nome));
       estado.processo = processo;
       estado.nomes = nomes;
       estado.assinatura = assinaturaNomes(nomes);
