@@ -1,0 +1,123 @@
+name: Corrigir processos duplicados na aba Facções
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/corrigir-processos-duplicados-faccoes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  corrigir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Canonizar processos nos filtros de Facções
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          app = Path("app.js")
+          texto = app.read_text(encoding="utf-8")
+
+          antigo = '''function preencherSelectProcessos(id, valores, labelTodos = "Todos") {
+            const select = document.getElementById(id);
+            if (!select) return;
+
+            const atual = select.value;
+            const limpos = [...new Set(valores.map(valor => String(valor ?? "").trim()).filter(Boolean))]
+              .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+
+            select.innerHTML = `<option value="">${labelTodos}</option>` + limpos.map(valor => {
+              return `<option value="${escapeHtml(valor)}">${escapeHtml(valor)}</option>`;
+            }).join("");
+
+            if (limpos.includes(atual)) select.value = atual;
+          }'''
+
+          novo = '''function preencherSelectProcessos(id, valores, labelTodos = "Todos") {
+            const select = document.getElementById(id);
+            if (!select) return;
+
+            // Processo é uma identidade de domínio. Variações antigas sem acento,
+            // com espaços extras ou aliases devem representar uma única opção.
+            const atual = normalizarNomeProcesso(select.value);
+            const limpos = [...new Set(
+              valores
+                .map(valor => normalizarNomeProcesso(valor))
+                .filter(Boolean)
+            )].sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" }));
+
+            select.innerHTML = `<option value="">${labelTodos}</option>` + limpos.map(valor => {
+              return `<option value="${escapeHtml(valor)}">${escapeHtml(valor)}</option>`;
+            }).join("");
+
+            if (limpos.includes(atual)) select.value = atual;
+          }'''
+
+          if antigo not in texto:
+              raise SystemExit("Função preencherSelectProcessos não encontrada no formato esperado; abortando sem alterar.")
+          texto = texto.replace(antigo, novo, 1)
+
+          comparacao_processos = 'if (filtros.processo && String(mov.processo || "") !== filtros.processo) return false;'
+          substituta_processos = 'if (filtros.processo && normalizarNomeProcesso(mov.processo) !== normalizarNomeProcesso(filtros.processo)) return false;'
+          if comparacao_processos not in texto:
+              raise SystemExit("Comparação do filtro geral de processos não encontrada; abortando.")
+          texto = texto.replace(comparacao_processos, substituta_processos, 1)
+
+          comparacao_faccoes = 'if (filtros.processo && String(mov.processo || "").trim() !== String(filtros.processo || "").trim()) return false;'
+          substituta_faccoes = 'if (filtros.processo && normalizarNomeProcesso(mov.processo) !== normalizarNomeProcesso(filtros.processo)) return false;'
+          if comparacao_faccoes not in texto:
+              raise SystemExit("Comparação do filtro de Facções não encontrada; abortando.")
+          texto = texto.replace(comparacao_faccoes, substituta_faccoes, 1)
+
+          app.write_text(texto, encoding="utf-8")
+
+          versao = "2026-09-11-processos-faccoes-canonicos-311"
+          index = Path("index.html")
+          html = index.read_text(encoding="utf-8")
+          html = html.replace("2026-09-10-rastreamento-acoes-controlador-308", versao)
+          index.write_text(html, encoding="utf-8")
+
+          release = {
+              "version": versao,
+              "updatedAt": "2026-09-11T15:44:00-03:00",
+              "notes": "Produção. Canoniza os nomes de processos nos filtros de Facções e Processos. Registros históricos como SUTIA COMPLETO e SUTIÃ COMPLETO passam a ser uma única opção SUTIÃ COMPLETO; espaços extras e aliases também são consolidados. O filtro compara pela identidade canônica para incluir todo o histórico equivalente."
+          }
+          conteudo = json.dumps(release, ensure_ascii=False, indent=2) + "\n"
+          Path("corponu-release.json").write_text(conteudo, encoding="utf-8")
+          Path("version.json").write_text(conteudo, encoding="utf-8")
+          PY
+
+      - name: Validar correção
+        shell: bash
+        run: |
+          node --check app.js
+          python -m json.tool corponu-release.json > /dev/null
+          python -m json.tool version.json > /dev/null
+          grep -q 'const atual = normalizarNomeProcesso(select.value)' app.js
+          grep -q 'normalizarNomeProcesso(mov.processo) !== normalizarNomeProcesso(filtros.processo)' app.js
+          grep -q '2026-09-11-processos-faccoes-canonicos-311' index.html
+          git diff --check
+
+      - name: Publicar na main
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "Correção já aplicada."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.js index.html corponu-release.json version.json
+          git commit -m "fix: unificar nomes de processos nos filtros de facções"
+          git push origin main
