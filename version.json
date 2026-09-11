@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-11-faccoes-nomes-validos-310",
-  "updatedAt": "2026-09-11T12:10:00.000Z",
-  "notes": "Produção. Corrige estruturalmente os seletores de facção para ignorar cadastros sem nome visível, incluindo espaços e caracteres invisíveis. Remove linhas em branco dos menus, normaliza os nomes antes de ordenar e mantém somente facções ativas, válidas e vinculadas ao processo selecionado."
+  "version": "2026-09-11-processos-faccoes-canonicos-311",
+  "updatedAt": "2026-09-11T15:44:00-03:00",
+  "notes": "Produção. Canoniza os nomes de processos nos filtros de Facções e Processos. Registros históricos como SUTIA COMPLETO e SUTIÃ COMPLETO passam a ser uma única opção SUTIÃ COMPLETO; espaços extras e aliases também são consolidados. O filtro compara pela identidade canônica para incluir todo o histórico equivalente."
 }

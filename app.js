@@ -3937,9 +3937,14 @@ function preencherSelectProcessos(id, valores, labelTodos = "Todos") {
   const select = document.getElementById(id);
   if (!select) return;
 
-  const atual = select.value;
-  const limpos = [...new Set(valores.map(valor => String(valor ?? "").trim()).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+  // Processo é uma identidade de domínio. Variações antigas sem acento,
+  // com espaços extras ou aliases devem representar uma única opção.
+  const atual = normalizarNomeProcesso(select.value);
+  const limpos = [...new Set(
+    valores
+      .map(valor => normalizarNomeProcesso(valor))
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" }));
 
   select.innerHTML = `<option value="">${labelTodos}</option>` + limpos.map(valor => {
     return `<option value="${escapeHtml(valor)}">${escapeHtml(valor)}</option>`;
@@ -4028,7 +4033,7 @@ function filtrarOrdensProcessos() {
     if (filtros.status && status !== filtros.status) return false;
     if (filtros.referencia && String(mov.referencia || "") !== filtros.referencia) return false;
     if (filtros.cor && String(mov.cor || "") !== filtros.cor) return false;
-    if (filtros.processo && String(mov.processo || "") !== filtros.processo) return false;
+    if (filtros.processo && normalizarNomeProcesso(mov.processo) !== normalizarNomeProcesso(filtros.processo)) return false;
     if (filtros.destino && String(mov.destino || "") !== filtros.destino) return false;
     if (filtros.tipo && String(tipoLabel || "") !== filtros.tipo) return false;
     if (filtros.necessidade && String(necessidade || "") !== filtros.necessidade) return false;
@@ -5723,7 +5728,7 @@ function filtrarMovimentacoesFaccoes(movimentosBase, filtros, opcoes = {}) {
       }
     }
     if (faccaoFiltroIdentidade && identidadeFaccao.chave !== faccaoFiltroIdentidade) return false;
-    if (filtros.processo && String(mov.processo || "").trim() !== String(filtros.processo || "").trim()) return false;
+    if (filtros.processo && normalizarNomeProcesso(mov.processo) !== normalizarNomeProcesso(filtros.processo)) return false;
     if (filtros.status && status !== filtros.status) return false;
     if (filtros.chegada && situacaoChegadaFaccoes(mov) !== filtros.chegada) return false;
     if (filtros.dataInicio && (!dataFiltro || dataFiltro < filtros.dataInicio)) return false;
