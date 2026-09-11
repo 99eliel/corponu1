@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-10-rastreamento-acoes-controlador-308",
-  "updatedAt": "2026-09-10T17:00:42.488Z",
-  "notes": "Produção. Consolida as ações operacionais do Rastreamento no controlador canônico do app.js. Bipar, Enviar para manejo, Abrir manejo e Mover/corrigir local passam a usar data-attributes e o mesmo listener central, eliminando dependência de onclick inline em conteúdo re-renderizado. Mantém os módulos legados desativados e não altera dados do Firebase."
+  "version": "2026-09-11-faccoes-nomes-validos-310",
+  "updatedAt": "2026-09-11T12:10:00.000Z",
+  "notes": "Produção. Corrige estruturalmente os seletores de facção para ignorar cadastros sem nome visível, incluindo espaços e caracteres invisíveis. Remove linhas em branco dos menus, normaliza os nomes antes de ordenar e mantém somente facções ativas, válidas e vinculadas ao processo selecionado."
 }
