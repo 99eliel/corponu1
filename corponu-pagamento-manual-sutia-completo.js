@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-01-pagamento-manual-sutia-completo-64";
+  const VERSION = "2026-09-22-sutia-lateral-padrao-312";
   const FB = "10.12.5";
   const MODAL_ID = "modalPagamentoManualFinanceiro";
   const FORM_ID = "formPagamentoManualFinanceiro";
@@ -10,7 +10,7 @@
   const FECHO_ID = "pagManualFechoPronto64";
   const PONTO_ID = "pagManualPontoLuzPronto64";
   const RESUMO_ID = "pagManualCalculoSutia64";
-  const CONFIG_ID = "sutia-completo-financeiro";
+  const CONFIG_ID = "sutia-completo-pagamento";
 
   if (window.__CORPONU_PAGAMENTO_MANUAL_SUTIA_COMPLETO__ === VERSION) return;
   window.__CORPONU_PAGAMENTO_MANUAL_SUTIA_COMPLETO__ = VERSION;
@@ -18,7 +18,6 @@
   let firebasePromise = null;
   let configCache = null;
   let configCacheEm = 0;
-  const valoresCache = new Map();
   let observerPainel = null;
   let sequenciaCalculo = 0;
   let calculoAtual = null;
@@ -241,10 +240,28 @@
     const { fs, db } = await firebase();
     const snap = await fs.getDoc(fs.doc(db, "configuracoes", CONFIG_ID));
     const dados = snap.exists() ? snap.data() : {};
+
+    const referenciasEspeciaisBase = { "912": 6.5, "414": 5.8 };
+    const salvas = dados.referenciasEspeciaisBase || dados.referenciasEspeciais;
+    if (salvas && typeof salvas === "object" && !Array.isArray(salvas)) {
+      Object.entries(salvas).forEach(([ref, valor]) => {
+        const chave = texto(ref).replace(/\s+/g, "").toUpperCase();
+        const base = numero(valor);
+        if (chave && base > 0) referenciasEspeciaisBase[chave] = base;
+      });
+    }
+
+    const referenciaEspecial = texto(dados.referenciaEspecial || "912").replace(/\s+/g, "").toUpperCase() || "912";
+    const valorEspecialLegado = numero(dados.valorBaseReferenciaEspecial ?? dados.valorReferenciaEspecial ?? dados.valorEspecial ?? 6.5) || 6.5;
+    if (referenciaEspecial && valorEspecialLegado > 0) referenciasEspeciaisBase[referenciaEspecial] = valorEspecialLegado;
+
     configCache = {
-      valorGeral: numero(dados.valorGeral ?? dados.valorBaseGeral ?? 5.5) || 5.5,
-      referenciaEspecial: texto(dados.referenciaEspecial || "912") || "912",
-      valorReferenciaEspecial: numero(dados.valorReferenciaEspecial ?? dados.valorEspecial ?? 6.5) || 6.5,
+      valorGeral: numero(dados.valorBaseGeral ?? dados.valorGeral ?? 5.5) || 5.5,
+      referenciasEspeciaisBase,
+      referenciaEspecial,
+      valorReferenciaEspecial: referenciasEspeciaisBase[referenciaEspecial] || valorEspecialLegado,
+      descontoLateralConfeccao: numero(dados.descontoLateralConfeccao ?? 0.18),
+      descontoBojoConfeccao: numero(dados.descontoBojoConfeccao ?? 0.5),
       descontoFechoNaoFeito: numero(dados.descontoFechoNaoFeito ?? 0.25),
       descontoPontoLuzNaoFeito: numero(dados.descontoPontoLuzNaoFeito ?? 0.15)
     };
@@ -252,37 +269,10 @@
     return configCache;
   }
 
-  async function carregarValoresReferencia(referencia) {
-    const ref = texto(referencia);
-    if (!ref) return { lateral: null, bojo: null };
-    const cache = valoresCache.get(ref);
-    if (cache && Date.now() - cache.em < 30000) return cache.valor;
-
-    const { fs, db } = await firebase();
-    let documentos = [];
-    const refNumerica = Number(ref);
-    const valoresBusca = Number.isFinite(refNumerica) && String(refNumerica) !== ref ? [ref, refNumerica] : [ref];
-    try {
-      const consulta = valoresBusca.length > 1
-        ? fs.query(fs.collection(db, "precosReferencia"), fs.where("referencia", "in", valoresBusca))
-        : fs.query(fs.collection(db, "precosReferencia"), fs.where("referencia", "==", valoresBusca[0]));
-      const snap = await fs.getDocs(consulta);
-      documentos = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-    } catch (error) {
-      console.warn("Consulta direta dos valores não disponível; usando leitura compatível.", error);
-      const snap = await fs.getDocs(fs.collection(db, "precosReferencia"));
-      documentos = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
-        .filter(item => texto(item.referencia) === ref || numero(item.referencia) === refNumerica);
-    }
-
-    const ativos = documentos.filter(item => item.ativo !== false);
-    const encontrar = processo => {
-      const item = ativos.find(preco => normalizar(preco.processo || preco.servicoNome) === normalizar(processo));
-      return item ? numero(item.valor ?? item.valorUnitario ?? item.preco) : null;
-    };
-    const valor = { lateral: encontrar("LATERAL"), bojo: encontrar("ENCAPAR BOJO") };
-    valoresCache.set(ref, { em: Date.now(), valor });
-    return valor;
+  function valorBaseParaReferencia(config, referencia) {
+    const chave = texto(referencia).replace(/\s+/g, "").toUpperCase();
+    const especial = numero(config?.referenciasEspeciaisBase?.[chave]);
+    return especial > 0 ? especial : numero(config?.valorGeral);
   }
 
   function chaveCalculo() {
@@ -346,21 +336,13 @@
     }
 
     try {
-      const [config, valores] = await Promise.all([carregarConfig(), carregarValoresReferencia(referencia)]);
+      const config = await carregarConfig();
       if (minhaSequencia !== sequenciaCalculo) return;
 
-      const faltantes = [];
-      if (lateral === "sim" && valores.lateral === null) faltantes.push(`LATERAL da referência ${referencia}`);
-      if (bojo === "sim" && valores.bojo === null) faltantes.push(`ENCAPAR BOJO da referência ${referencia}`);
-      if (faltantes.length) {
-        definirResumo(`Não é possível calcular: falta cadastrar ${faltantes.join(" e ")} na aba Processos.`, "erro");
-        return;
-      }
-
-      const referenciaEspecial = texto(config.referenciaEspecial);
-      const valorBase = referencia === referenciaEspecial ? config.valorReferenciaEspecial : config.valorGeral;
-      const descontoLateral = lateral === "sim" ? numero(valores.lateral) : 0;
-      const descontoBojo = bojo === "sim" ? numero(valores.bojo) : 0;
+      const chaveReferencia = texto(referencia).replace(/\s+/g, "").toUpperCase();
+      const valorBase = valorBaseParaReferencia(config, chaveReferencia);
+      const descontoLateral = lateral === "sim" ? numero(config.descontoLateralConfeccao) : 0;
+      const descontoBojo = bojo === "sim" ? numero(config.descontoBojoConfeccao) : 0;
       const descontoFecho = fecho === "nao" ? config.descontoFechoNaoFeito : 0;
       const descontoPonto = ponto === "nao" ? config.descontoPontoLuzNaoFeito : 0;
       const valorUnitario = arred4(Math.max(0, valorBase - descontoLateral - descontoBojo - descontoFecho - descontoPonto));
@@ -368,12 +350,16 @@
 
       calculoAtual = {
         referencia,
-        referenciaEspecialAplicada: referencia === referenciaEspecial,
+        referenciaEspecialAplicada: numero(config.referenciasEspeciaisBase?.[chaveReferencia]) > 0,
         valorBaseUnitario: arred4(valorBase),
         lateralPronta: lateral === "sim",
         descontoLateralUnitario: arred4(descontoLateral),
+        regraDescontoLateral: lateral === "sim" ? "PADRAO_CONFECCAO" : "SEM_DESCONTO",
+        descontoLateralConfigurado: arred4(config.descontoLateralConfeccao),
         bojoPronto: bojo === "sim",
         descontoBojoUnitario: arred4(descontoBojo),
+        regraDescontoBojo: bojo === "sim" ? "PADRAO_CONFECCAO" : "SEM_DESCONTO",
+        descontoBojoConfigurado: arred4(config.descontoBojoConfeccao),
         fechoVeioPronto: fecho === "sim",
         descontoFechoUnitario: arred4(descontoFecho),
         pontoLuzVeioPronto: ponto === "sim",
@@ -392,7 +378,7 @@
       );
     } catch (error) {
       console.error("Não foi possível calcular o pagamento manual do Sutiã Completo.", error);
-      if (minhaSequencia === sequenciaCalculo) definirResumo("Não foi possível carregar os valores agora. Tente novamente antes de salvar.", "erro");
+      if (minhaSequencia === sequenciaCalculo) definirResumo("Não foi possível carregar a configuração do Sutiã Completo agora. Tente novamente antes de salvar.", "erro");
     }
   }
 

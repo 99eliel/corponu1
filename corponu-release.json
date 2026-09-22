@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-11-processos-faccoes-canonicos-311",
-  "updatedAt": "2026-09-11T15:44:00-03:00",
-  "notes": "Produção. Canoniza os nomes de processos nos filtros de Facções e Processos. Registros históricos como SUTIA COMPLETO e SUTIÃ COMPLETO passam a ser uma única opção SUTIÃ COMPLETO; espaços extras e aliases também são consolidados. O filtro compara pela identidade canônica para incluir todo o histórico equivalente."
+  "version": "2026-09-22-sutia-lateral-padrao-312",
+  "updatedAt": "2026-09-22T09:29:00-03:00",
+  "notes": "Produção. Padroniza o desconto de Lateral dentro do Sutiã Completo em R$ 0,1800 como valor inicial configurável. O cálculo automático e o lançamento manual passam a usar a mesma configuração oficial; Bojo, Fecho e Ponto de Luz permanecem padronizados. O processo LATERAL avulso continua independente por referência. Remove o patch textual em tempo de execução do cálculo do Sutiã Completo e consolida a lógica na base oficial."
 }
