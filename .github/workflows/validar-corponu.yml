@@ -21,6 +21,15 @@ jobs:
         with:
           node-version: 22
 
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Gerar ajustes do Rastreamento para validação
+        if: github.ref == 'refs/heads/manual/bipar-direto-rastreamento-20260730' || github.head_ref == 'manual/bipar-direto-rastreamento-20260730'
+        run: python gerar-bipar-direto-rastreamento.py
+
       - name: Validar JavaScript
         shell: bash
         run: |
@@ -46,3 +55,75 @@ jobs:
             throw new Error('corponu-release.json está sem versão.');
           }
           NODE
+
+      - name: Validar Bipar e Enviar para manejo
+        if: github.ref == 'refs/heads/manual/bipar-direto-rastreamento-20260730' || github.head_ref == 'manual/bipar-direto-rastreamento-20260730'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          versao = '2026-07-30-rastreamento-bipar-manejo-13'
+          app = Path('app.js').read_text(encoding='utf-8')
+          regras = Path('firestore-rules.txt').read_text(encoding='utf-8')
+          sw = Path('sw.js').read_text(encoding='utf-8')
+          atualizador = Path('corponu-atualizador.js').read_text(encoding='utf-8')
+          release = json.loads(Path('corponu-release.json').read_text(encoding='utf-8'))
+
+          assert 'async function biparOrdemDireto(opId)' in app
+          assert 'data-bipar-op-direto=' in app
+          assert 'const movimentacoesAbertas = state.movimentacoesProducao' in app
+          assert 'movimentacoesAbertas.slice(1).forEach' in app
+          assert 'encerradoPorBipadoDireto: true' in app
+          assert 'localAtualMigracao: "FINALIZADO_BIPADO"' in app
+          assert 'ocultarDoManejo: true' in app
+          assert 'const lote = writeBatch(db);' in app
+          assert 'await lote.commit();' in app
+
+          assert 'async function enviarOrdemParaManejoDireto(opId)' in app
+          assert 'data-enviar-manejo-direto=' in app
+          assert 'window.enviarOrdemParaManejoDireto = enviarOrdemParaManejoDireto;' in app
+          assert 'const FASE_MANEJO_AGUARDANDO_MOVIMENTACAO = "AGUARDANDO MOVIMENTAÇÃO";' in app
+          assert 'const setor = getTipoPecaManejoOP(ordem);' in app
+          assert 'const patch = montarPatchManejoSetor(setor, manejo, "organizada"' in app
+          assert 'ocultarDoManejo: false' in app
+          assert 'statusMigracaoLigia: "MANEJO_ABERTO_AGUARDANDO_DESTINO"' in app
+          assert 'processoAtualMigracao: FASE_MANEJO_AGUARDANDO_MOVIMENTACAO' in app
+          assert 'await setDoc(doc(db, "ordensProducao", id), patch, { merge: true });' in app
+
+          trecho_manejo = app[app.index('async function enviarOrdemParaManejoDireto'):app.index('async function biparOrdemDireto')]
+          assert 'movimentacoesProducao' not in trecho_manejo
+          assert 'entregasPagamento' not in trecho_manejo
+          assert 'gerarPagamentoPorMovimentacao' not in trecho_manejo
+          assert 'dataChegada: hoje' not in trecho_manejo
+          assert 'MutationObserver' not in trecho_manejo
+          assert 'setInterval' not in trecho_manejo
+          assert 'location.reload' not in trecho_manejo
+
+          assert 'match /ordensProducao/{ordemId}' in regras
+          assert 'match /movimentacoesProducao/{movimentoId}' in regras
+          assert versao in sw
+          assert versao in atualizador
+          assert release['version'] == versao
+          print('Validação rigorosa concluída.')
+          PY
+
+      - name: Montar pacote manual
+        if: github.ref == 'refs/heads/manual/bipar-direto-rastreamento-20260730' || github.head_ref == 'manual/bipar-direto-rastreamento-20260730'
+        run: |
+          mkdir pacote-rastreamento-bipar-manejo
+          cp app.js pacote-rastreamento-bipar-manejo/
+          cp sw.js pacote-rastreamento-bipar-manejo/
+          cp corponu-atualizador.js pacote-rastreamento-bipar-manejo/
+          cp corponu-release.json pacote-rastreamento-bipar-manejo/
+          cp LEIA-ME-RASTREAMENTO-BIPAR-E-MANEJO.txt pacote-rastreamento-bipar-manejo/
+          zip -r corponu-rastreamento-bipar-manejo-13.zip pacote-rastreamento-bipar-manejo
+
+      - name: Publicar pacote manual
+        if: github.ref == 'refs/heads/manual/bipar-direto-rastreamento-20260730' || github.head_ref == 'manual/bipar-direto-rastreamento-20260730'
+        uses: actions/upload-artifact@v4
+        with:
+          name: corponu-rastreamento-bipar-manejo-13
+          path: corponu-rastreamento-bipar-manejo-13.zip
+          if-no-files-found: error
+          retention-days: 7
