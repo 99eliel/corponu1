@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-28-manejo-fases-persistentes-313",
-  "updatedAt": "2026-09-28T10:10:00-03:00",
-  "notes": "Produção. Torna as fases/filtros do Manejo persistentes no Firestore e independentes do cache do navegador. Sutiã, Calcinha e Fase Lateral passam a sincronizar por snapshot; listas vazias são recuperadas do histórico persistido das OPs e dos logs administrativos. Dados antigos do localStorage/datalists são usados apenas como migração para o Firestore e deixam de ser fonte de verdade."
+  "version": "2026-09-28-manejo-fases-blindadas-314",
+  "updatedAt": "2026-09-28T11:15:00-03:00",
+  "notes": "Produção. Restaura uma única vez o snapshot salvo de Fase Bojo (24), Fase Lateral (5) e Calcinha (40), cria backup persistente do último estado válido no Firestore, confirma estado vazio diretamente no servidor antes de restaurar e impede que limpeza de cache volte a zerar as listas."
 }

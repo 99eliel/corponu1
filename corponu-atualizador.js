@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-09-28-manejo-fases-persistentes-313";
+  const LOCAL_RELEASE = "2026-09-28-manejo-fases-blindadas-314";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -93,7 +93,7 @@
   });
 
   const MODULOS_CRITICOS = [
-    ["corponu-manejo-fases-persistencia-313.js", "manejo-fases-persistencia-313", "Não foi possível sincronizar as fases oficiais do Manejo."],
+    ["corponu-manejo-fases-persistencia-313.js", "manejo-fases-persistencia-314", "Não foi possível sincronizar e proteger as fases oficiais do Manejo."],
     ["corponu-pagamento-antiduplicidade-isolada.js", "pagamento-antiduplicidade-isolada", "Não foi possível carregar a proteção contra pagamentos duplicados."]
   ];
 

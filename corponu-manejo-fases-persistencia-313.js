@@ -1,48 +1,125 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-09-28-manejo-fases-persistentes-313";
+  const VERSION = "2026-09-28-manejo-fases-blindadas-314";
   const GUARD = "__CORPONU_MANEJO_FASES_PERSISTENCIA__";
   const COLECAO_CONFIG = "configuracoes";
-  const COLECAO_ORDENS = "ordensProducao";
-  const COLECAO_LOGS = "logsAlteracoes";
-  const RELOAD_REPARO_KEY = `corponu_fases_reparo_reload_${VERSION}`;
+  const MARCADOR_BASELINE = "baselineProtecao314Consolidado";
 
   if (window[GUARD] === VERSION) return;
   window[GUARD] = VERSION;
 
+  // Snapshot salvo pelo administrador em 28/09/2026.
+  // É usado uma única vez para reconstruir as três listas oficiais e,
+  // depois disso, o backup persistente passa a ser a fonte de recuperação.
+  const BASELINE_SALVO = Object.freeze({
+    sutia: Object.freeze([
+      "AGUARDANDO MOVIMENTAÇÃO",
+      "ÁGUIA",
+      "BOJOS ENCAPADOS",
+      "CASA",
+      "CORTE",
+      "COTTON",
+      "DANÚBIA",
+      "DEP. CORTE",
+      "DHEYSIVEL",
+      "DISPONÍVEL P CASA",
+      "ENTRAR NA PRODUÇÃO",
+      "FÊNIX",
+      "GISLAINE",
+      "GOIANIRA",
+      "ITAMAR",
+      "KAKA",
+      "LIDERANÇA",
+      "LÚCIA",
+      "NÃO USA BOJO",
+      "PEGAR BOJO",
+      "PREPARAR",
+      "PRODUÇÃO",
+      "SILKADO",
+      "UNIÃO"
+    ]),
+    lateral: Object.freeze([
+      "FRANCILDA",
+      "JHENIFER",
+      "LIVIA",
+      "NAGILA",
+      "PRODUÇÃO"
+    ]),
+    calcinha: Object.freeze([
+      "AGUARDANDO MOVIMENTAÇÃO",
+      "ANA FLAVIA",
+      "ANDREZA",
+      "ANGÉLICA",
+      "AURELIO",
+      "BEATRIZ",
+      "BRUNA",
+      "CAMILA FIRMINO",
+      "CORTE",
+      "COTTON",
+      "DAIANA",
+      "DARLLEN",
+      "DEP. CORTE",
+      "ELITE",
+      "ESPERANÇA",
+      "ÍRIS",
+      "JEAN",
+      "JESSICA CAROLINE",
+      "JHAYNNIS ALVES",
+      "JOÃO",
+      "JULIANA MARTINS",
+      "JUZENI",
+      "KAMILA E KARLA",
+      "KAUANE",
+      "KEILA",
+      "LEIDIANE",
+      "LEONARDO",
+      "LIANA BADIAS",
+      "LORENA",
+      "MARÍLIA",
+      "MATHEUS",
+      "NAYARA FERNANDES",
+      "PEDRO - MARCILENE",
+      "POWER",
+      "RONEIDIA",
+      "SCHENEIDER",
+      "SILVANY",
+      "SUPERAÇÃO",
+      "TALYTA",
+      "THELLOR"
+    ])
+  });
+
   const ESPECIFICACOES = Object.freeze({
     sutia: Object.freeze({
       documento: "fasesManejo",
-      campoExcluidas: "sugestoesExcluidas",
-      tipoLog: "Sugestão de fase",
+      backup: "backupFasesManejoSutia",
+      idsDatalist: ["manejoFasesList", "filtroManejoFaseList"],
       evento: "corponu:fases-manejo-atualizadas"
     }),
     calcinha: Object.freeze({
       documento: "fasesManejoCalcinha",
-      campoExcluidas: "sugestoesExcluidas",
-      tipoLog: "Sugestão de fase da Calcinha",
+      backup: "backupFasesManejoCalcinha",
+      idsDatalist: ["manejoFasesListCalcinha"],
       evento: "corponu:fases-manejo-atualizadas"
     }),
     lateral: Object.freeze({
       documento: "fasesManejoSutiaLateral",
-      campoExcluidas: "sugestoesExcluidas",
-      tipoLog: "Sugestão de Fase Lateral do Sutiã",
+      backup: "backupFasesManejoSutiaLateral",
+      idsDatalist: ["manejoFasesLateraisList", "filtroManejoFaseLateralList"],
       evento: "corponu:fases-manejo-lateral-atualizadas"
     })
   });
 
   const estados = {
-    sutia: { unsubscribe: null, reparando: null },
-    calcinha: { unsubscribe: null, reparando: null },
-    lateral: { unsubscribe: null, reparando: null }
+    sutia: { unsubscribe: null, resolvendoVazio: null, ultimoBackupHash: "" },
+    calcinha: { unsubscribe: null, resolvendoVazio: null, ultimoBackupHash: "" },
+    lateral: { unsubscribe: null, resolvendoVazio: null, ultimoBackupHash: "" }
   };
 
   let contexto = null;
-  let unsubscribeAuth = null;
-  let ordensHistoricasPromessa = null;
   let perfilAtual = null;
-  let reloadReparoAgendado = false;
+  let unsubscribeAuth = null;
 
   const texto = valor => String(valor ?? "").replace(/\s+/g, " ").trim();
 
@@ -81,323 +158,268 @@
     );
   }
 
-  function tipoPecaDaOrdem(dados) {
-    const setores = dados?.manejosSetores || {};
-    if (setores?.calcinha || dados?.manejoCalcinha || dados?.calcinha) return "calcinha";
-    const identidade = chave([
-      dados?.tipoPeca,
-      dados?.tipoPecaPadrao,
-      dados?.tipoPecaLabel,
-      dados?.setor,
-      dados?.setorLabel,
-      dados?.produtoNome,
-      dados?.processo,
-      dados?.processoPlanejado,
-      dados?.observacoes
-    ].join(" "));
-    return identidade.includes("CALCINHA") ? "calcinha" : "sutia";
+  function hashLista(lista) {
+    return ordenar(lista).map(chave).join("|");
   }
 
-  function adicionar(mapa, valor) {
-    const fase = normalizarFase(valor);
-    const k = chave(fase);
-    if (!fase || !k || mapa.has(k)) return;
-    mapa.set(k, fase);
-  }
-
-  function extrairFasesDasOrdens(snapshot) {
-    const sutia = new Map();
-    const calcinha = new Map();
-    const lateral = new Map();
-
-    snapshot.forEach(item => {
-      const dados = item.data?.() || {};
-      const setores = dados?.manejosSetores || {};
-      const tipo = tipoPecaDaOrdem(dados);
-
-      [
-        setores?.sutia?.fase,
-        setores?.bojo?.fase,
-        dados?.manejoSutia?.fase,
-        dados?.sutia?.fase,
-        dados?.faseSutia,
-        dados?.faseBojo
-      ].forEach(valor => adicionar(sutia, valor));
-
-      [
-        setores?.calcinha?.fase,
-        dados?.manejoCalcinha?.fase,
-        dados?.calcinha?.fase,
-        dados?.faseCalcinha
-      ].forEach(valor => adicionar(calcinha, valor));
-
-      if (dados?.fase) {
-        adicionar(tipo === "calcinha" ? calcinha : sutia, dados.fase);
-      }
-
-      if (dados?.manejo?.fase) {
-        adicionar(tipo === "calcinha" ? calcinha : sutia, dados.manejo.fase);
-      }
-
-      [
-        setores?.sutia?.faseLateral,
-        setores?.bojo?.faseLateral,
-        dados?.manejoSutia?.faseLateral,
-        dados?.sutia?.faseLateral,
-        dados?.faseLateral,
-        dados?.manejo?.faseLateral
-      ].forEach(valor => adicionar(lateral, valor));
-    });
-
-    return {
-      sutia: [...sutia.values()],
-      calcinha: [...calcinha.values()],
-      lateral: [...lateral.values()]
-    };
-  }
-
-  async function obterFasesHistoricasOrdens() {
-    if (ordensHistoricasPromessa) return ordensHistoricasPromessa;
-    const { firestore, db } = contexto;
-    ordensHistoricasPromessa = firestore
-      .getDocs(firestore.collection(db, COLECAO_ORDENS))
-      .then(extrairFasesDasOrdens)
-      .catch(error => {
-        console.warn("[Manejo] Não foi possível recuperar fases pelo histórico das OPs.", error);
-        return { sutia: [], calcinha: [], lateral: [] };
-      });
-    return ordensHistoricasPromessa;
-  }
-
-  function instanteLog(dados, id = "") {
-    const ts = dados?.criadoEm;
-    const millis = typeof ts?.toMillis === "function" ? ts.toMillis() : 0;
-    return `${String(millis).padStart(16, "0")}|${id}`;
-  }
-
-  async function obterEstadoPelosLogs(tipo) {
-    if (perfilAtual?.tipo !== "admin") return new Map();
-
-    const { firestore, db } = contexto;
-    const spec = ESPECIFICACOES[tipo];
-
-    try {
-      const consulta = firestore.query(
-        firestore.collection(db, COLECAO_LOGS),
-        firestore.where("tipoAlvo", "==", spec.tipoLog)
-      );
-      const snapshot = await firestore.getDocs(consulta);
-      const eventos = new Map();
-
-      snapshot.forEach(item => {
-        const dados = item.data?.() || {};
-        const fase = normalizarFase(dados.alvoId);
-        const k = chave(fase);
-        if (!fase || !k) return;
-
-        const acao = chave(dados.acao);
-        const adicionada = acao.includes("ADICION") || acao.includes("CADASTR");
-        const removida = acao.includes("REMOVID") || acao.includes("EXCLUID");
-        if (!adicionada && !removida) return;
-
-        const ordem = instanteLog(dados, item.id);
-        const anterior = eventos.get(k);
-        if (!anterior || ordem > anterior.ordem) {
-          eventos.set(k, { fase, removida, ordem });
-        }
-      });
-
-      return eventos;
-    } catch (error) {
-      console.warn(`[Manejo] Logs de ${tipo} não puderam ser usados na recuperação.`, error);
-      return new Map();
-    }
-  }
-
-  function obterFasesLocaisParaMigracao(tipo) {
-    // Compatibilidade de migração apenas: estes valores são copiados uma vez
-    // para o Firestore quando a lista oficial está vazia. Depois disso, o
-    // navegador deixa de ser a fonte de verdade.
-    const valores = [];
-    const idsPorTipo = {
-      sutia: ["manejoFasesList", "filtroManejoFaseList"],
-      calcinha: ["manejoFasesListCalcinha"],
-      lateral: ["manejoFasesLateraisList", "filtroManejoFaseLateralList"]
-    };
-
-    (idsPorTipo[tipo] || []).forEach(id => {
-      document.querySelectorAll(`#${id} option`).forEach(option => {
-        valores.push(option.value || option.textContent || "");
-      });
-    });
-
-    const chavesStorage = tipo === "lateral"
-      ? ["fasesLateraisManejoExtras"]
-      : ["fasesManejoExtras"];
-
-    chavesStorage.forEach(storageKey => {
-      try {
-        const lista = JSON.parse(localStorage.getItem(storageKey) || "[]");
-        if (Array.isArray(lista)) valores.push(...lista);
-      } catch (_) {}
-    });
-
-    return ordenar(valores);
-  }
-
-  async function recuperarLista(tipo, dadosDocumento = {}) {
-    const spec = ESPECIFICACOES[tipo];
-    const historico = await obterFasesHistoricasOrdens();
-    const mapa = new Map();
-
-    (historico[tipo] || []).forEach(valor => adicionar(mapa, valor));
-    obterFasesLocaisParaMigracao(tipo).forEach(valor => adicionar(mapa, valor));
-
-    const excluidasPersistidas = new Set(
-      ordenar(dadosDocumento?.[spec.campoExcluidas] || []).map(chave)
-    );
-
-    const eventos = await obterEstadoPelosLogs(tipo);
-    eventos.forEach((evento, k) => {
-      if (evento.removida) {
-        mapa.delete(k);
-        excluidasPersistidas.add(k);
-      } else {
-        mapa.set(k, evento.fase);
-        excluidasPersistidas.delete(k);
-      }
-    });
-
-    excluidasPersistidas.forEach(k => mapa.delete(k));
-
-    return {
-      lista: ordenar([...mapa.values()]),
-      excluidas: [...excluidasPersistidas]
-    };
+  function escaparHtml(valor) {
+    return String(valor ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
   }
 
   function preencherDatalist(id, fases) {
     const datalist = document.getElementById(id);
     if (!datalist) return;
     datalist.innerHTML = ordenar(fases)
-      .map(fase => `<option value="${fase.replaceAll("&", "&amp;").replaceAll('"', "&quot;")}"></option>`)
+      .map(fase => `<option value="${escaparHtml(fase)}"></option>`)
       .join("");
   }
 
-  function publicar(tipo, fases) {
+  function publicar(tipo, fases, origem = "firestore") {
+    const spec = ESPECIFICACOES[tipo];
     const lista = ordenar(fases);
+
+    (spec.idsDatalist || []).forEach(id => preencherDatalist(id, lista));
 
     if (tipo === "sutia" || tipo === "calcinha") {
       window.dispatchEvent(new CustomEvent("corponu:fases-manejo-atualizadas", {
-        detail: { tipo, fases: lista, origem: "firestore", versao: VERSION }
+        detail: { tipo, fases: lista, origem, versao: VERSION }
       }));
     }
 
     if (tipo === "lateral") {
-      preencherDatalist("manejoFasesLateraisList", lista);
-      preencherDatalist("filtroManejoFaseLateralList", lista);
-      window.dispatchEvent(new CustomEvent(ESPECIFICACOES.lateral.evento, {
-        detail: { tipo: "lateral", fases: lista, origem: "firestore", versao: VERSION }
+      window.dispatchEvent(new CustomEvent(spec.evento, {
+        detail: { tipo: "lateral", fases: lista, origem, versao: VERSION }
       }));
     }
   }
 
-  function agendarReloadAposReparo() {
-    if (reloadReparoAgendado) return;
-    try {
-      if (sessionStorage.getItem(RELOAD_REPARO_KEY) === "1") return;
-      sessionStorage.setItem(RELOAD_REPARO_KEY, "1");
-    } catch (_) {}
-
-    reloadReparoAgendado = true;
-    window.setTimeout(() => {
-      const url = new URL(window.location.href);
-      url.searchParams.set("fases", VERSION);
-      url.searchParams.set("t", String(Date.now()));
-      window.location.replace(url.toString());
-    }, 350);
+  function dadosBackupDoDocumento(dados = {}, lista = []) {
+    return {
+      sugestoes: ordenar(lista),
+      sugestoesExcluidas: ordenar(dados?.sugestoesExcluidas || [])
+    };
   }
 
-  async function persistirRecuperacao(tipo, recuperada) {
-    if (perfilAtual?.tipo !== "admin" || !recuperada.lista.length) return false;
+  async function lerDocumentoServidor(referencia) {
+    const { firestore } = contexto;
+    if (typeof firestore.getDocFromServer === "function") {
+      try {
+        return await firestore.getDocFromServer(referencia);
+      } catch (_) {}
+    }
+    return firestore.getDoc(referencia);
+  }
+
+  async function salvarBackup(tipo, dadosDocumento, lista) {
+    if (perfilAtual?.tipo !== "admin" || !contexto?.user) return false;
+
+    const spec = ESPECIFICACOES[tipo];
+    const listaOrdenada = ordenar(lista);
+    if (!listaOrdenada.length) return false;
+
+    const estado = estados[tipo];
+    const hash = hashLista(listaOrdenada) + "#" + hashLista(dadosDocumento?.sugestoesExcluidas || []);
+    if (estado.ultimoBackupHash === hash) return false;
 
     const { firestore, db, user } = contexto;
+    const referenciaBackup = firestore.doc(db, COLECAO_CONFIG, spec.backup);
+
+    await firestore.setDoc(referenciaBackup, {
+      ...dadosBackupDoDocumento(dadosDocumento, listaOrdenada),
+      tipo,
+      documentoOrigem: spec.documento,
+      protegidoEm: firestore.serverTimestamp(),
+      protegidoPor: user.uid,
+      versaoProtecao: VERSION
+    }, { merge: false });
+
+    estado.ultimoBackupHash = hash;
+    return true;
+  }
+
+  async function lerBackup(tipo) {
     const spec = ESPECIFICACOES[tipo];
+    const { firestore, db } = contexto;
+    const referencia = firestore.doc(db, COLECAO_CONFIG, spec.backup);
+
+    try {
+      const snapshot = await lerDocumentoServidor(referencia);
+      if (!snapshot.exists()) return null;
+      const dados = snapshot.data() || {};
+      const lista = ordenar(dados.sugestoes || []);
+      if (!lista.length) return null;
+      return {
+        lista,
+        excluidas: ordenar(dados.sugestoesExcluidas || [])
+      };
+    } catch (error) {
+      console.warn(`[Manejo] Backup de ${tipo} não pôde ser lido.`, error);
+      return null;
+    }
+  }
+
+  async function consolidarBaseline(tipo) {
+    if (perfilAtual?.tipo !== "admin" || !contexto?.user) return false;
+
+    const spec = ESPECIFICACOES[tipo];
+    const baseline = ordenar(BASELINE_SALVO[tipo] || []);
+    if (!baseline.length) return false;
+
+    const { firestore, db, user } = contexto;
     const referencia = firestore.doc(db, COLECAO_CONFIG, spec.documento);
 
-    return firestore.runTransaction(db, async transacao => {
+    const resultado = await firestore.runTransaction(db, async transacao => {
       const snapshot = await transacao.get(referencia);
       const dados = snapshot.exists() ? snapshot.data() : {};
-      const atuais = ordenar(dados?.sugestoes || []);
-      if (atuais.length) return false;
 
-      const excluidasAtuais = ordenar(dados?.[spec.campoExcluidas] || []);
-      const mapaExcluidas = new Map();
-      [...excluidasAtuais, ...recuperada.excluidas].forEach(valor => {
-        const fase = normalizarFase(valor);
-        const k = chave(fase || valor);
-        if (k && !mapaExcluidas.has(k)) mapaExcluidas.set(k, fase || texto(valor));
-      });
+      if (dados?.[MARCADOR_BASELINE] === true) {
+        return { aplicado: false, lista: ordenar(dados.sugestoes || []), dados };
+      }
 
       transacao.set(referencia, {
-        sugestoes: recuperada.lista,
-        [spec.campoExcluidas]: [...mapaExcluidas.values()].filter(Boolean),
-        recuperadoAutomaticamente: true,
-        recuperadoEm: firestore.serverTimestamp(),
-        recuperadoPor: user.uid,
-        versaoPersistencia: VERSION,
+        sugestoes: baseline,
+        sugestoesExcluidas: [],
+        [MARCADOR_BASELINE]: true,
+        baselineProtecaoVersao: VERSION,
+        baselineProtecaoEm: firestore.serverTimestamp(),
+        baselineProtecaoPor: user.uid,
         atualizadoEm: firestore.serverTimestamp(),
         atualizadoPor: user.uid
       }, { merge: true });
 
-      return true;
+      return { aplicado: true, lista: baseline, dados: { ...dados, sugestoesExcluidas: [] } };
     });
+
+    if (resultado.aplicado) {
+      publicar(tipo, baseline, "snapshot-salvo-28-09-2026");
+      await salvarBackup(tipo, resultado.dados || {}, baseline);
+      console.info(`[Manejo] Baseline protegido de ${tipo} consolidado com ${baseline.length} opções.`);
+    }
+
+    return resultado.aplicado;
   }
 
-  async function repararSeNecessario(tipo, dadosDocumento = {}) {
-    const estado = estados[tipo];
-    if (estado.reparando) return estado.reparando;
+  async function restaurarOficial(tipo, lista, excluidas = [], origem = "backup") {
+    if (perfilAtual?.tipo !== "admin" || !contexto?.user) return false;
 
-    estado.reparando = (async () => {
-      const recuperada = await recuperarLista(tipo, dadosDocumento);
-      if (!recuperada.lista.length) {
-        publicar(tipo, []);
+    const spec = ESPECIFICACOES[tipo];
+    const restaurada = ordenar(lista);
+    if (!restaurada.length) return false;
+
+    const { firestore, db, user } = contexto;
+    const referencia = firestore.doc(db, COLECAO_CONFIG, spec.documento);
+
+    const resultado = await firestore.runTransaction(db, async transacao => {
+      const snapshot = await transacao.get(referencia);
+      const dados = snapshot.exists() ? snapshot.data() : {};
+      const atual = ordenar(dados.sugestoes || []);
+
+      // Nunca substitui uma lista válida por uma restauração antiga.
+      if (atual.length) return { restaurou: false, lista: atual, dados };
+
+      const payload = {
+        sugestoes: restaurada,
+        [MARCADOR_BASELINE]: true,
+        restauradoAutomaticamente: true,
+        restauradoDe: origem,
+        restauradoEm: firestore.serverTimestamp(),
+        restauradoPor: user.uid,
+        versaoProtecao: VERSION,
+        atualizadoEm: firestore.serverTimestamp(),
+        atualizadoPor: user.uid
+      };
+
+      if (origem === "baseline-salvo") {
+        payload.sugestoesExcluidas = [];
+      } else {
+        payload.sugestoesExcluidas = ordenar(excluidas || []);
+      }
+
+      transacao.set(referencia, payload, { merge: true });
+      return { restaurou: true, lista: restaurada, dados: { ...dados, ...payload } };
+    });
+
+    publicar(tipo, resultado.lista, resultado.restaurou ? origem : "firestore");
+
+    if (resultado.restaurou) {
+      await salvarBackup(tipo, resultado.dados || {}, resultado.lista);
+      console.warn(`[Manejo] Lista ${tipo} estava vazia e foi restaurada automaticamente de ${origem}.`);
+    }
+
+    return resultado.restaurou;
+  }
+
+  async function resolverListaVazia(tipo) {
+    const estado = estados[tipo];
+    if (estado.resolvendoVazio) return estado.resolvendoVazio;
+
+    estado.resolvendoVazio = (async () => {
+      const spec = ESPECIFICACOES[tipo];
+      const { firestore, db } = contexto;
+      const referencia = firestore.doc(db, COLECAO_CONFIG, spec.documento);
+
+      // Confirma diretamente no servidor antes de considerar a lista realmente vazia.
+      try {
+        const servidor = await lerDocumentoServidor(referencia);
+        const dadosServidor = servidor.exists() ? servidor.data() : {};
+        const listaServidor = ordenar(dadosServidor?.sugestoes || []);
+        if (listaServidor.length) {
+          publicar(tipo, listaServidor, "firestore-servidor");
+          salvarBackup(tipo, dadosServidor, listaServidor).catch(() => {});
+          return false;
+        }
+      } catch (error) {
+        console.warn(`[Manejo] Não foi possível confirmar ${tipo} diretamente no servidor.`, error);
+      }
+
+      const backup = await lerBackup(tipo);
+      const fallback = backup?.lista?.length ? backup.lista : ordenar(BASELINE_SALVO[tipo] || []);
+      const excluidas = backup?.excluidas || [];
+      const origem = backup?.lista?.length ? "backup-firestore" : "baseline-salvo";
+
+      if (!fallback.length) {
+        console.error(`[Manejo] Nenhuma fonte de recuperação disponível para ${tipo}.`);
         return false;
       }
 
-      publicar(tipo, recuperada.lista);
-      const persistiu = await persistirRecuperacao(tipo, recuperada);
-      if (persistiu) agendarReloadAposReparo();
-      return persistiu;
+      // Usuários comuns também recebem a lista imediatamente na interface.
+      publicar(tipo, fallback, origem);
+
+      // Somente o admin persiste a restauração, conforme as regras do Firestore.
+      if (perfilAtual?.tipo === "admin") {
+        return restaurarOficial(tipo, fallback, excluidas, origem);
+      }
+
+      return false;
     })();
 
     try {
-      return await estado.reparando;
+      return await estado.resolvendoVazio;
     } finally {
-      estado.reparando = null;
+      estado.resolvendoVazio = null;
     }
   }
 
   function pararSnapshots() {
     Object.values(estados).forEach(estado => {
-      try {
-        estado.unsubscribe?.();
-      } catch (_) {}
+      try { estado.unsubscribe?.(); } catch (_) {}
       estado.unsubscribe = null;
-      estado.reparando = null;
+      estado.resolvendoVazio = null;
+      estado.ultimoBackupHash = "";
     });
-    ordensHistoricasPromessa = null;
   }
 
   function iniciarSnapshot(tipo) {
-    const { firestore, db } = contexto;
     const spec = ESPECIFICACOES[tipo];
-    const referencia = firestore.doc(db, COLECAO_CONFIG, spec.documento);
     const estado = estados[tipo];
+    const { firestore, db } = contexto;
+    const referencia = firestore.doc(db, COLECAO_CONFIG, spec.documento);
 
-    try {
-      estado.unsubscribe?.();
-    } catch (_) {}
+    try { estado.unsubscribe?.(); } catch (_) {}
 
     estado.unsubscribe = firestore.onSnapshot(
       referencia,
@@ -407,20 +429,22 @@
         const lista = ordenar(dados?.sugestoes || []);
 
         if (lista.length) {
-          publicar(tipo, lista);
+          publicar(tipo, lista, snapshot.metadata?.fromCache ? "cache-firestore" : "firestore");
+          if (!snapshot.metadata?.fromCache) {
+            salvarBackup(tipo, dados, lista).catch(error => {
+              console.warn(`[Manejo] Não foi possível atualizar o backup de ${tipo}.`, error);
+            });
+          }
           return;
         }
 
-        // Não depende do cache local: se a configuração oficial estiver vazia,
-        // reconstrói a visualização pelo histórico persistido. Admin também
-        // regrava a lista no Firestore para que a correção seja definitiva.
-        repararSeNecessario(tipo, dados).catch(error => {
-          console.error(`[Manejo] Falha ao reconstruir as fases de ${tipo}.`, error);
+        resolverListaVazia(tipo).catch(error => {
+          console.error(`[Manejo] Falha ao proteger a lista ${tipo}.`, error);
         });
       },
       error => {
-        console.error(`[Manejo] Falha no snapshot persistente de ${tipo}.`, error);
-        repararSeNecessario(tipo, {}).catch(() => {});
+        console.error(`[Manejo] Snapshot de ${tipo} falhou.`, error);
+        resolverListaVazia(tipo).catch(() => {});
       }
     );
   }
@@ -433,19 +457,29 @@
 
     const { firestore, db } = contexto;
     try {
-      const perfilSnap = await firestore.getDocFromServer(
-        firestore.doc(db, "usuarios", user.uid)
-      ).catch(() => firestore.getDoc(firestore.doc(db, "usuarios", user.uid)));
-
+      const referenciaPerfil = firestore.doc(db, "usuarios", user.uid);
+      const perfilSnap = await lerDocumentoServidor(referenciaPerfil);
       perfilAtual = perfilSnap.exists() ? perfilSnap.data() : {};
     } catch (error) {
-      console.warn("[Manejo] Não foi possível conferir o perfil para persistência das fases.", error);
+      console.warn("[Manejo] Perfil não pôde ser confirmado para a proteção das fases.", error);
       perfilAtual = {};
     }
 
+    // Primeira execução da versão 314: grava exatamente o snapshot salvo pelo
+    // administrador. O marcador impede que isso se repita após futuras edições.
+    if (perfilAtual?.tipo === "admin") {
+      for (const tipo of ["sutia", "lateral", "calcinha"]) {
+        try {
+          await consolidarBaseline(tipo);
+        } catch (error) {
+          console.error(`[Manejo] Não foi possível consolidar o baseline de ${tipo}.`, error);
+        }
+      }
+    }
+
     iniciarSnapshot("sutia");
-    iniciarSnapshot("calcinha");
     iniciarSnapshot("lateral");
+    iniciarSnapshot("calcinha");
   }
 
   async function conectar(tentativa = 0) {
@@ -466,16 +500,22 @@
       const db = firestore.getFirestore(app);
       contexto = { firebaseApp, firestore, firebaseAuth, app, auth, db, user: null };
 
-      unsubscribeAuth?.();
+      try { unsubscribeAuth?.(); } catch (_) {}
       unsubscribeAuth = firebaseAuth.onAuthStateChanged(auth, user => {
         contexto = { ...contexto, user: user || null };
         configurarUsuario(user).catch(error => {
-          console.error("[Manejo] Não foi possível iniciar a persistência das fases.", error);
+          console.error("[Manejo] Proteção das fases não pôde ser iniciada.", error);
         });
       });
+
+      window.corponuRestaurarFasesSalvas = async () => {
+        if (!auth.currentUser) throw new Error("Faça login antes de restaurar as fases.");
+        await configurarUsuario(auth.currentUser);
+        return true;
+      };
     } catch (error) {
       if (tentativa >= 40) {
-        console.error("[Manejo] Persistência das fases não conseguiu conectar ao Firebase.", error);
+        console.error("[Manejo] Proteção das fases não conseguiu conectar ao Firebase.", error);
         return;
       }
       window.setTimeout(() => conectar(tentativa + 1), 250);
