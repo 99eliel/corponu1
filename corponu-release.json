@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-22-sutia-lateral-padrao-312",
-  "updatedAt": "2026-09-22T09:29:00-03:00",
-  "notes": "Produção. Padroniza o desconto de Lateral dentro do Sutiã Completo em R$ 0,1800 como valor inicial configurável. O cálculo automático e o lançamento manual passam a usar a mesma configuração oficial; Bojo, Fecho e Ponto de Luz permanecem padronizados. O processo LATERAL avulso continua independente por referência. Remove o patch textual em tempo de execução do cálculo do Sutiã Completo e consolida a lógica na base oficial."
+  "version": "2026-09-28-manejo-fases-persistentes-313",
+  "updatedAt": "2026-09-28T10:10:00-03:00",
+  "notes": "Produção. Torna as fases/filtros do Manejo persistentes no Firestore e independentes do cache do navegador. Sutiã, Calcinha e Fase Lateral passam a sincronizar por snapshot; listas vazias são recuperadas do histórico persistido das OPs e dos logs administrativos. Dados antigos do localStorage/datalists são usados apenas como migração para o Firestore e deixam de ser fonte de verdade."
 }
