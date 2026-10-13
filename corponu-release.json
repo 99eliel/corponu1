@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-13-rastreamento-op-sob-demanda-318",
-  "updatedAt": "2026-10-13T11:22:00-03:00",
-  "notes": "Rastreamento por OP sob demanda. Tela abre vazia e consulta somente a OP digitada e suas movimentações. Corrige colisão de identificadores detectada pela validação JavaScript."
+  "version": "2026-10-13-rastreamento-op-sob-demanda-319",
+  "updatedAt": "2026-10-13T11:25:00-03:00",
+  "notes": "Rastreamento abre vazio e consulta somente a OP digitada e suas movimentações. Remove definitivamente a renderização/listagem geral antiga da tela."
 }

@@ -8671,131 +8671,23 @@ function renderRastreamento() {
   }
 
   const local = getLocalizacaoAtualOrdem(op);
-  const emAndamentoBusca = /andamento|facção|faccao|célula|celula/i.test(`${local.local} ${local.status}`) ? 1 : 0;
-  const retornaramBusca = /retornou/i.test(local.local || "") ? 1 : 0;
-  const finalizadasBusca = /bipado|finalizado|relatório células|relatorio celulas/i.test(`${local.local} ${local.status}`) ? 1 : 0;
+  const emAndamento = /andamento|facção|faccao|célula|celula/i.test(`${local.local} ${local.status}`) ? 1 : 0;
+  const retornou = /retornou/i.test(local.local || "") ? 1 : 0;
+  const finalizada = /bipado|finalizado|relatório células|relatorio celulas/i.test(`${local.local} ${local.status}`) ? 1 : 0;
 
-  const setText = (id, valor) => {
+  const atualizarCard = (id, valor) => {
     const el = document.getElementById(id);
     if (el) el.textContent = Number(valor || 0).toLocaleString("pt-BR");
   };
 
-  setTextBusca("rastTotalMovimentacoes", 1);
-  setTextBusca("rastEmAndamento", emAndamentoBusca);
-  setTextBusca("rastRetornaram", retornaramBusca);
-  setTextBusca("rastFinalizadas", finalizadasBusca);
+  atualizarCard("rastTotalMovimentacoes", 1);
+  atualizarCard("rastEmAndamento", emAndamento);
+  atualizarCard("rastRetornaram", retornou);
+  atualizarCard("rastFinalizadas", finalizada);
 
   tbody.innerHTML =
     renderLinhaRastreamentoGlobalOP(op) +
     renderLinhaHistoricoRastreamentoOP(op);
-  return;
-
-  // Legado mantido abaixo temporariamente apenas para histórico de código;
-  // a tela atual não lista mais todas as movimentações.
-
-  // Busca global: quando digita uma OP/ref/cor/destino, pesquisa também em ordens que não têm movimentação ativa
-  // ou que foram separadas em relatórios, como FASE=PRODUÇÃO.
-  if (busca) {
-    const ordensEncontradas = state.ordens
-      .filter(op => montarTextoBuscaGlobalOP(op, getMovimentacoesDaOrdem(op.id)).includes(busca))
-      .sort((a, b) => {
-        const aExata = normalizarTexto(a.numeroOP || a.id) === busca ? 0 : 1;
-        const bExata = normalizarTexto(b.numeroOP || b.id) === busca ? 0 : 1;
-        if (aExata !== bExata) return aExata - bExata;
-        return String(a.numeroOP || "").localeCompare(String(b.numeroOP || ""), "pt-BR", { numeric: true });
-      });
-
-    const total = ordensEncontradas.length;
-    const emAndamento = ordensEncontradas.filter(op => {
-      const loc = getLocalizacaoAtualOrdem(op);
-      return /andamento|facção|faccao|célula|celula/i.test(`${loc.local} ${loc.status}`);
-    }).length;
-    const retornaram = ordensEncontradas.filter(op => /retornou/i.test(getLocalizacaoAtualOrdem(op).local)).length;
-    const finalizadas = ordensEncontradas.filter(op => {
-      const loc = getLocalizacaoAtualOrdem(op);
-      return /bipado|finalizado|relatório células|relatorio celulas/i.test(`${loc.local} ${loc.status}`);
-    }).length;
-
-    const setText = (id, valor) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = Number(valor || 0).toLocaleString("pt-BR");
-    };
-
-    setText("rastTotalMovimentacoes", total);
-    setText("rastEmAndamento", emAndamento);
-    setText("rastRetornaram", retornaram);
-    setText("rastFinalizadas", finalizadas);
-
-    if (!ordensEncontradas.length) {
-      tbody.innerHTML = `<tr><td colspan="12" class="empty">Nenhuma OP encontrada. Confira se o número foi digitado corretamente.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = ordensEncontradas.map(op => {
-      const linhaPrincipal = renderLinhaRastreamentoGlobalOP(op);
-      const historico = deveMostrarHistoricoRastreamento(op, busca, total) ? renderLinhaHistoricoRastreamentoOP(op) : "";
-      return linhaPrincipal + historico;
-    }).join("");
-    return;
-  }
-
-  let movimentos = [...state.movimentacoesProducao];
-
-  const total = movimentos.length;
-  const emAndamento = movimentos.filter(mov => mov.status === "em_andamento" || !mov.status).length;
-  const retornaram = movimentos.filter(mov => mov.status === "retornou" || mov.status === "encaminhado").length;
-  const finalizadas = movimentos.filter(mov => mov.status === "finalizado").length;
-
-  const setText = (id, valor) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = Number(valor || 0).toLocaleString("pt-BR");
-  };
-
-  setText("rastTotalMovimentacoes", total);
-  setText("rastEmAndamento", emAndamento);
-  setText("rastRetornaram", retornaram);
-  setText("rastFinalizadas", finalizadas);
-
-  if (!movimentos.length) {
-    tbody.innerHTML = `<tr><td colspan="12" class="empty">Nenhuma movimentação encontrada. Digite o número de uma OP para fazer a busca global.</td></tr>`;
-    return;
-  }
-
-  movimentos = movimentos.sort((a, b) => getMovTimestamp(b) - getMovTimestamp(a));
-
-  tbody.innerHTML = movimentos.map(mov => {
-    const ordem = getOrdemDaMovimentacao(mov);
-    const editarLocal = ordem && ehAdmin()
-      ? `<button class="btn btn-sm btn-primary" type="button" data-rastreamento-ajuste-id="${escapeHtml(ordem.id)}">Editar local</button>`
-      : "";
-
-    return `
-      <tr>
-        <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
-        <td><strong>${escapeHtml(mov.referencia || "-")}</strong></td>
-        <td>${escapeHtml(mov.cor || "-")}</td>
-        <td>${escapeHtml(mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino))}</td>
-        <td><strong>${escapeHtml(mov.destino || "-")}</strong></td>
-        <td>${escapeHtml(mov.processo || "-")}</td>
-        <td><strong>${escapeHtml(Number(mov.quantidadeEnviada || 0).toLocaleString("pt-BR"))}</strong></td>
-        <td>${escapeHtml(dataISOParaBR(mov.dataEnvio) || mov.dataEnvio || "-")}</td>
-        <td>${escapeHtml(dataISOParaBR(mov.dataChegada) || mov.dataChegada || "-")}</td>
-        <td>${escapeHtml(Number(mov.falta || 0).toLocaleString("pt-BR"))}</td>
-        <td>
-          <span class="badge ${classeStatusMovimento(mov.status)}">
-            ${escapeHtml(labelStatusMovimento(mov.status))}
-          </span>
-        </td>
-        <td>
-          ${editarLocal}
-          ${mov.status === "encaminhado" ? `<span class="badge info">Encaminhado</span>` : ""}
-          ${mov.status !== "finalizado" && mov.status !== "encaminhado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
-          ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : mov.status === "encaminhado" ? "" : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
-          ${ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="excluirMovimentacao('${mov.id}')">Excluir</button>` : ""}
-        </td>
-      </tr>
-    `;
-  }).join("");
 }
 
 function configurarPagamentos() {
