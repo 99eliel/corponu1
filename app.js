@@ -87,14 +87,6 @@ const state = {
 const OTIMIZACAO_LEITURAS_ATIVA = true;
 
 const movimentacoesPorId = new Map();
-const rastreamentoSobDemanda = {
-  termo: "",
-  ordem: null,
-  movimentos: [],
-  carregando: false,
-  erro: "",
-  sequencia: 0
-};
 const cacheFaccaoPorIdFiltro = new Map();
 const cacheFaccaoPorNomeFiltro = new Map();
 
@@ -795,15 +787,10 @@ function carregarDadosDaPagina(page) {
     // Processos, Facções ou Células.
   }
 
-  if (page === "processos") {
+  if (page === "processos" || page === "rastreamento") {
     carregarMovimentacoesSeNecessario();
     carregarFaccoesSeNecessario();
     carregarCelulasSeNecessario();
-  }
-
-  if (page === "rastreamento") {
-    // Rastreamento é consulta sob demanda por OP. Não abrir a coleção inteira
-    // de movimentações ao entrar na tela.
   }
 
   if (page === "faccoes") {
@@ -1924,7 +1911,7 @@ function atualizarBotoesManejoSetor() {
     btn.classList.toggle("active", permitido && btn.dataset.setor === setorAtual);
   });
 
-  const setTextBusca = (id, valor) => {
+  const setText = (id, valor) => {
     const el = document.getElementById(id);
     if (el) el.textContent = valor;
   };
@@ -5203,6 +5190,7 @@ window.addEventListener("scroll", agendarReposicionamentoMenuAcoesManejo, true);
 async function abrirRastreamentoOP(ordemId) {
   const ordem = state.ordens.find(op => String(op.id) === String(ordemId) || String(op.numeroOP) === String(ordemId));
   if (!ordem) return;
+  carregarMovimentacoesSeNecessario();
   abrirPagina("rastreamento");
   const busca = document.getElementById("buscaRastreamento");
   if (busca) {
@@ -6608,150 +6596,21 @@ async function excluirCelula(id) {
 
 let timerBuscaRastreamento = null;
 
-function zerarContadoresRastreamento() {
-  ["rastTotalMovimentacoes", "rastEmAndamento", "rastRetornaram", "rastFinalizadas"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = "0";
-  });
-}
-
-function localizarOrdemRastreamentoNaMemoria(termo) {
-  const chave = normalizarTexto(termo).trim();
-  if (!chave) return null;
-
-  return state.ordens.find(op => {
-    return [
-      op?.numeroOP,
-      op?.numeroOPExterno,
-      op?.id
-    ].some(valor => normalizarTexto(valor).trim() === chave);
-  }) || null;
-}
-
-async function localizarOrdemRastreamentoNoServidor(termo) {
-  const textoBusca = limparTexto(termo);
-  if (!textoBusca) return null;
-
-  const tentativas = [
-    ["numeroOP", textoBusca],
-    ["numeroOPExterno", textoBusca]
-  ];
-
-  if (/^\d+$/.test(textoBusca)) {
-    const numero = Number(textoBusca);
-    if (Number.isFinite(numero)) tentativas.push(["numeroOP", numero]);
-  }
-
-  for (const [campo, valor] of tentativas) {
-    try {
-      const snapshot = await getDocs(query(
-        collection(db, "ordensProducao"),
-        where(campo, "==", valor)
-      ));
-      const documento = snapshot.docs.find(item => item.data()?.excluida !== true);
-      if (documento) return { id: documento.id, ...documento.data() };
-    } catch (error) {
-      console.warn(`Rastreamento: falha na busca pontual por ${campo}.`, error);
-    }
-  }
-
-  return null;
-}
-
-async function buscarRastreamentoPorOP(valor) {
-  const termoOriginal = limparTexto(valor);
-  const termo = normalizarTexto(termoOriginal).trim();
-  const sequencia = ++rastreamentoSobDemanda.sequencia;
-
-  if (!termo) {
-    rastreamentoSobDemanda.termo = "";
-    rastreamentoSobDemanda.ordem = null;
-    rastreamentoSobDemanda.movimentos = [];
-    rastreamentoSobDemanda.carregando = false;
-    rastreamentoSobDemanda.erro = "";
-    renderRastreamento();
-    return;
-  }
-
-  rastreamentoSobDemanda.termo = termo;
-  rastreamentoSobDemanda.ordem = null;
-  rastreamentoSobDemanda.movimentos = [];
-  rastreamentoSobDemanda.carregando = true;
-  rastreamentoSobDemanda.erro = "";
-  renderRastreamento();
-
-  try {
-    let ordem = localizarOrdemRastreamentoNaMemoria(termoOriginal);
-    if (!ordem) ordem = await localizarOrdemRastreamentoNoServidor(termoOriginal);
-    if (sequencia !== rastreamentoSobDemanda.sequencia) return;
-
-    if (!ordem) {
-      rastreamentoSobDemanda.carregando = false;
-      rastreamentoSobDemanda.erro = "nao_encontrada";
-      renderRastreamento();
-      return;
-    }
-
-    const movSnap = await getDocs(query(
-      collection(db, "movimentacoesProducao"),
-      where("opId", "==", ordem.id)
-    ));
-    if (sequencia !== rastreamentoSobDemanda.sequencia) return;
-
-    rastreamentoSobDemanda.ordem = ordem;
-    rastreamentoSobDemanda.movimentos = movSnap.docs
-      .map(item => ({ id: item.id, ...item.data() }))
-      .sort((a, b) => getMovTimestamp(b) - getMovTimestamp(a));
-    rastreamentoSobDemanda.carregando = false;
-    rastreamentoSobDemanda.erro = "";
-    renderRastreamento();
-  } catch (error) {
-    if (sequencia !== rastreamentoSobDemanda.sequencia) return;
-    console.error("Erro na consulta sob demanda do Rastreamento.", error);
-    rastreamentoSobDemanda.carregando = false;
-    rastreamentoSobDemanda.erro = "erro";
-    renderRastreamento();
-  }
-}
-
 function configurarRastreamento() {
   const busca = document.getElementById("buscaRastreamento");
-  if (!busca) return;
-
-  busca.removeAttribute("list");
-  busca.setAttribute("autocomplete", "off");
-  busca.setAttribute("inputmode", "numeric");
-
-  busca.addEventListener("input", () => {
-    if (timerBuscaRastreamento) clearTimeout(timerBuscaRastreamento);
-    const valor = busca.value || "";
-
-    if (!limparTexto(valor)) {
-      buscarRastreamentoPorOP("");
-      return;
-    }
-
-    timerBuscaRastreamento = setTimeout(() => {
-      buscarRastreamentoPorOP(valor);
-    }, 250);
-  });
+  if (busca) {
+    // Busca global sem datalist e com pequeno atraso para não travar ao digitar OP.
+    busca.removeAttribute("list");
+    busca.setAttribute("autocomplete", "off");
+    busca.addEventListener("input", () => {
+      if (timerBuscaRastreamento) clearTimeout(timerBuscaRastreamento);
+      timerBuscaRastreamento = setTimeout(renderRastreamento, 160);
+    });
+  }
 }
 
 function getMovimentacoesDaOrdem(opId) {
-  const id = String(opId || "");
-  const mapa = new Map();
-
-  (state.movimentacoesProducao || [])
-    .filter(mov => String(mov?.opId || "") === id)
-    .forEach(mov => mapa.set(String(mov.id || `global-${mapa.size}`), mov));
-
-  if (String(rastreamentoSobDemanda.ordem?.id || "") === id) {
-    (rastreamentoSobDemanda.movimentos || []).forEach(mov => {
-      mapa.set(String(mov.id || `consulta-${mapa.size}`), mov);
-    });
-  }
-
-  return [...mapa.values()];
+  return state.movimentacoesProducao.filter(mov => mov.opId === opId);
 }
 
 function getDestinoMovimento(tipo, nome) {
@@ -8471,8 +8330,9 @@ async function biparOrdemDireto(opId) {
   ordensEmBipadoDireto.add(id);
   try {
     const hoje = getDataHojeISO();
-    const movimentacoesAbertas = getMovimentacoesDaOrdem(id)
+    const movimentacoesAbertas = state.movimentacoesProducao
       .filter(mov => {
+        if (String(mov.opId || "") !== id) return false;
         return !["finalizado", "encaminhado"].includes(String(mov.status || "em_andamento"));
       })
       .sort((a, b) => getMovTimestamp(b) - getMovTimestamp(a));
@@ -8637,57 +8497,111 @@ function renderRastreamento() {
   if (!tbody) return;
 
   const buscaOriginal = document.getElementById("buscaRastreamento")?.value || "";
-  const busca = normalizarTexto(buscaOriginal).trim();
+  const busca = normalizarTexto(buscaOriginal);
 
-  if (!busca) {
-    zerarContadoresRastreamento();
-    tbody.innerHTML = `<tr><td colspan="12" class="empty">Digite o número de uma OP para iniciar o rastreamento.</td></tr>`;
+  // Busca global: quando digita uma OP/ref/cor/destino, pesquisa também em ordens que não têm movimentação ativa
+  // ou que foram separadas em relatórios, como FASE=PRODUÇÃO.
+  if (busca) {
+    const ordensEncontradas = state.ordens
+      .filter(op => montarTextoBuscaGlobalOP(op, getMovimentacoesDaOrdem(op.id)).includes(busca))
+      .sort((a, b) => {
+        const aExata = normalizarTexto(a.numeroOP || a.id) === busca ? 0 : 1;
+        const bExata = normalizarTexto(b.numeroOP || b.id) === busca ? 0 : 1;
+        if (aExata !== bExata) return aExata - bExata;
+        return String(a.numeroOP || "").localeCompare(String(b.numeroOP || ""), "pt-BR", { numeric: true });
+      });
+
+    const total = ordensEncontradas.length;
+    const emAndamento = ordensEncontradas.filter(op => {
+      const loc = getLocalizacaoAtualOrdem(op);
+      return /andamento|facção|faccao|célula|celula/i.test(`${loc.local} ${loc.status}`);
+    }).length;
+    const retornaram = ordensEncontradas.filter(op => /retornou/i.test(getLocalizacaoAtualOrdem(op).local)).length;
+    const finalizadas = ordensEncontradas.filter(op => {
+      const loc = getLocalizacaoAtualOrdem(op);
+      return /bipado|finalizado|relatório células|relatorio celulas/i.test(`${loc.local} ${loc.status}`);
+    }).length;
+
+    const setText = (id, valor) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = Number(valor || 0).toLocaleString("pt-BR");
+    };
+
+    setText("rastTotalMovimentacoes", total);
+    setText("rastEmAndamento", emAndamento);
+    setText("rastRetornaram", retornaram);
+    setText("rastFinalizadas", finalizadas);
+
+    if (!ordensEncontradas.length) {
+      tbody.innerHTML = `<tr><td colspan="12" class="empty">Nenhuma OP encontrada. Confira se o número foi digitado corretamente.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = ordensEncontradas.map(op => {
+      const linhaPrincipal = renderLinhaRastreamentoGlobalOP(op);
+      const historico = deveMostrarHistoricoRastreamento(op, busca, total) ? renderLinhaHistoricoRastreamentoOP(op) : "";
+      return linhaPrincipal + historico;
+    }).join("");
     return;
   }
 
-  if (rastreamentoSobDemanda.termo !== busca || rastreamentoSobDemanda.carregando) {
-    zerarContadoresRastreamento();
-    tbody.innerHTML = `<tr><td colspan="12" class="empty">Buscando OP ${escapeHtml(buscaOriginal)}...</td></tr>`;
-    return;
-  }
+  let movimentos = [...state.movimentacoesProducao];
 
-  if (rastreamentoSobDemanda.erro === "nao_encontrada") {
-    zerarContadoresRastreamento();
-    tbody.innerHTML = `<tr><td colspan="12" class="empty">OP ${escapeHtml(buscaOriginal)} não encontrada.</td></tr>`;
-    return;
-  }
+  const total = movimentos.length;
+  const emAndamento = movimentos.filter(mov => mov.status === "em_andamento" || !mov.status).length;
+  const retornaram = movimentos.filter(mov => mov.status === "retornou" || mov.status === "encaminhado").length;
+  const finalizadas = movimentos.filter(mov => mov.status === "finalizado").length;
 
-  if (rastreamentoSobDemanda.erro) {
-    zerarContadoresRastreamento();
-    tbody.innerHTML = `<tr><td colspan="12" class="empty">Não foi possível consultar esta OP agora. Tente novamente.</td></tr>`;
-    return;
-  }
-
-  const op = rastreamentoSobDemanda.ordem;
-  if (!op) {
-    zerarContadoresRastreamento();
-    tbody.innerHTML = `<tr><td colspan="12" class="empty">Buscando OP ${escapeHtml(buscaOriginal)}...</td></tr>`;
-    return;
-  }
-
-  const local = getLocalizacaoAtualOrdem(op);
-  const emAndamento = /andamento|facção|faccao|célula|celula/i.test(`${local.local} ${local.status}`) ? 1 : 0;
-  const retornou = /retornou/i.test(local.local || "") ? 1 : 0;
-  const finalizada = /bipado|finalizado|relatório células|relatorio celulas/i.test(`${local.local} ${local.status}`) ? 1 : 0;
-
-  const atualizarCard = (id, valor) => {
+  const setText = (id, valor) => {
     const el = document.getElementById(id);
     if (el) el.textContent = Number(valor || 0).toLocaleString("pt-BR");
   };
 
-  atualizarCard("rastTotalMovimentacoes", 1);
-  atualizarCard("rastEmAndamento", emAndamento);
-  atualizarCard("rastRetornaram", retornou);
-  atualizarCard("rastFinalizadas", finalizada);
+  setText("rastTotalMovimentacoes", total);
+  setText("rastEmAndamento", emAndamento);
+  setText("rastRetornaram", retornaram);
+  setText("rastFinalizadas", finalizadas);
 
-  tbody.innerHTML =
-    renderLinhaRastreamentoGlobalOP(op) +
-    renderLinhaHistoricoRastreamentoOP(op);
+  if (!movimentos.length) {
+    tbody.innerHTML = `<tr><td colspan="12" class="empty">Nenhuma movimentação encontrada. Digite o número de uma OP para fazer a busca global.</td></tr>`;
+    return;
+  }
+
+  movimentos = movimentos.sort((a, b) => getMovTimestamp(b) - getMovTimestamp(a));
+
+  tbody.innerHTML = movimentos.map(mov => {
+    const ordem = getOrdemDaMovimentacao(mov);
+    const editarLocal = ordem && ehAdmin()
+      ? `<button class="btn btn-sm btn-primary" type="button" data-rastreamento-ajuste-id="${escapeHtml(ordem.id)}">Editar local</button>`
+      : "";
+
+    return `
+      <tr>
+        <td><strong>${escapeHtml(mov.numeroOP || "-")}</strong></td>
+        <td><strong>${escapeHtml(mov.referencia || "-")}</strong></td>
+        <td>${escapeHtml(mov.cor || "-")}</td>
+        <td>${escapeHtml(mov.tipoDestinoLabel || labelTipoMovimento(mov.tipoDestino))}</td>
+        <td><strong>${escapeHtml(mov.destino || "-")}</strong></td>
+        <td>${escapeHtml(mov.processo || "-")}</td>
+        <td><strong>${escapeHtml(Number(mov.quantidadeEnviada || 0).toLocaleString("pt-BR"))}</strong></td>
+        <td>${escapeHtml(dataISOParaBR(mov.dataEnvio) || mov.dataEnvio || "-")}</td>
+        <td>${escapeHtml(dataISOParaBR(mov.dataChegada) || mov.dataChegada || "-")}</td>
+        <td>${escapeHtml(Number(mov.falta || 0).toLocaleString("pt-BR"))}</td>
+        <td>
+          <span class="badge ${classeStatusMovimento(mov.status)}">
+            ${escapeHtml(labelStatusMovimento(mov.status))}
+          </span>
+        </td>
+        <td>
+          ${editarLocal}
+          ${mov.status === "encaminhado" ? `<span class="badge info">Encaminhado</span>` : ""}
+          ${mov.status !== "finalizado" && mov.status !== "encaminhado" ? `<button class="btn btn-sm btn-success" onclick="registrarChegadaMovimentacao('${mov.id}')">Chegada</button>` : ""}
+          ${mov.status === "finalizado" ? `<span class="badge ok">Bipado ✓</span>` : mov.status === "encaminhado" ? "" : `<button class="btn btn-sm btn-bipado" onclick="biparMovimentacao('${mov.id}')">Bipar</button>`}
+          ${ehAdmin() ? `<button class="btn btn-sm btn-danger" onclick="excluirMovimentacao('${mov.id}')">Excluir</button>` : ""}
+        </td>
+      </tr>
+    `;
+  }).join("");
 }
 
 function configurarPagamentos() {
@@ -12236,7 +12150,7 @@ async function atualizarDadosServidorAgora() {
     processos: ["movimentacoes", "faccoes", "celulas"],
     faccoes: ["faccoes", "movimentacoes"],
     celulas: ["celulas", "movimentacoes"],
-    rastreamento: ["produtos", "ordens", "faccoes", "celulas"],
+    rastreamento: ["produtos", "ordens", "movimentacoes", "faccoes", "celulas"],
     pagamentos: ["entregasPagamento", "precosReferencia", "faccoes"],
     relatorios: ["produtos", "ordens"],
     usuarios: ["usuarios"],
@@ -12254,15 +12168,6 @@ async function atualizarDadosServidorAgora() {
 
   iniciarDadosEssenciais();
   carregarDadosDaPagina(pagina);
-
-  if (pagina === "rastreamento") {
-    const termoAtual = document.getElementById("buscaRastreamento")?.value || "";
-    if (limparTexto(termoAtual)) {
-      await buscarRastreamentoPorOP(termoAtual);
-      return;
-    }
-  }
-
   renderPaginaAtiva();
 }
 

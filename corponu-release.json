@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-13-rastreamento-op-sob-demanda-319",
-  "updatedAt": "2026-10-13T11:25:00-03:00",
-  "notes": "Rastreamento abre vazio e consulta somente a OP digitada e suas movimentações. Remove definitivamente a renderização/listagem geral antiga da tela."
+  "version": "2026-10-13-fases-firestore-fonte-unica-316",
+  "updatedAt": "2026-10-13T08:05:00-03:00",
+  "notes": "Fases do Manejo passam a ter Firestore como fonte única. Cadastro e remoção pelo administrador gravam lista oficial e backup persistente na mesma transação. Após limpeza de cache, Sutiã, Fase Lateral e Calcinha recarregam do servidor/backup; localStorage e datalists não recriam nem substituem listas automaticamente."
 }

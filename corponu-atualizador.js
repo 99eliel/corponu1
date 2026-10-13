@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-10-13-rastreamento-op-sob-demanda-319";
+  const LOCAL_RELEASE = "2026-10-13-fases-firestore-fonte-unica-316";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
