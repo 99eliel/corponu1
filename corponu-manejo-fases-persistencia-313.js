@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-09-28-manejo-fases-blindadas-314";
+  const VERSION = "2026-10-13-fases-firestore-fonte-unica-316";
   const GUARD = "__CORPONU_MANEJO_FASES_PERSISTENCIA__";
   const COLECAO_CONFIG = "configuracoes";
   const MARCADOR_BASELINE = "baselineProtecao314Consolidado";
@@ -278,6 +278,17 @@
 
       if (dados?.[MARCADOR_BASELINE] === true) {
         return { aplicado: false, lista: ordenar(dados.sugestoes || []), dados };
+      }
+
+      const atual = ordenar(dados.sugestoes || []);
+      if (atual.length) {
+        transacao.set(referencia, {
+          [MARCADOR_BASELINE]: true,
+          baselineProtecaoVersao: VERSION,
+          baselineProtecaoEm: firestore.serverTimestamp(),
+          baselineProtecaoPor: user.uid
+        }, { merge: true });
+        return { aplicado: false, lista: atual, dados };
       }
 
       transacao.set(referencia, {

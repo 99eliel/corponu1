@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-13-validacao-fases-backup-315",
-  "updatedAt": "2026-10-13T07:57:00-03:00",
-  "notes": "Corrige a validação das fases no Manejo. Ao salvar, o sistema consulta a lista oficial e, se ela estiver vazia ou atrasada, usa o backup protegido do último estado válido; preserva também a lista já sincronizada na interface. Aplicado a Sutiã e Calcinha para impedir falso aviso de fase não autorizada."
+  "version": "2026-10-13-fases-firestore-fonte-unica-316",
+  "updatedAt": "2026-10-13T08:05:00-03:00",
+  "notes": "Fases do Manejo passam a ter Firestore como fonte única. Cadastro e remoção pelo administrador gravam lista oficial e backup persistente na mesma transação. Após limpeza de cache, Sutiã, Fase Lateral e Calcinha recarregam do servidor/backup; localStorage e datalists não recriam nem substituem listas automaticamente."
 }

@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-09-10-rastreamento-acoes-controlador-308";
+  const APP_VERSION = "2026-10-13-fases-firestore-fonte-unica-316";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -1008,6 +1008,7 @@
 
   const FASES_CONFIG_COLECAO = "configuracoes";
   const FASES_CONFIG_DOCUMENTO = "fasesManejo";
+  const FASES_CONFIG_BACKUP_DOCUMENTO = "backupFasesManejoSutia";
   const CAMPO_FASES_SUTIA_EXCLUIDAS = "sugestoesExcluidas";
   const MARCADOR_RECONSTRUCAO_FASES_SUTIA = "reconstrucaoFasesSutia20260909V1";
   const MARCADOR_REPARO_FASES_SUTIA_VAZIAS = "reparoFasesSutiaVazias20260909V1";
@@ -1418,12 +1419,27 @@
 
     const { firestore, db, user } = contextoFirebaseFases;
     const referencia = firestore.doc(db, FASES_CONFIG_COLECAO, FASES_CONFIG_DOCUMENTO);
+    const referenciaBackup = firestore.doc(db, FASES_CONFIG_COLECAO, FASES_CONFIG_BACKUP_DOCUMENTO);
 
     return firestore.runTransaction(db, async transacao => {
       const snapshot = await transacao.get(referencia);
+      const snapshotBackup = await transacao.get(referenciaBackup);
       const dados = snapshot.exists() ? snapshot.data() : {};
-      const listaAtual = ordenarFasesGerenciadas(dados?.sugestoes || fasesGerenciadas);
-      const excluidasAtuais = ordenarFasesGerenciadas(dados?.[CAMPO_FASES_SUTIA_EXCLUIDAS] || []);
+      const dadosBackup = snapshotBackup.exists() ? snapshotBackup.data() : {};
+
+      const oficial = ordenarFasesGerenciadas(dados?.sugestoes || []);
+      const backup = ordenarFasesGerenciadas(dadosBackup?.sugestoes || []);
+      const listaAtual = oficial.length
+        ? oficial
+        : backup.length
+          ? backup
+          : ordenarFasesGerenciadas(fasesGerenciadas);
+
+      const excluidasAtuais = ordenarFasesGerenciadas(
+        dados?.[CAMPO_FASES_SUTIA_EXCLUIDAS] ||
+        dadosBackup?.[CAMPO_FASES_SUTIA_EXCLUIDAS] ||
+        []
+      );
       const mapaExcluidas = new Map(excluidasAtuais.map(item => [chaveFaseGerenciada(item), item]));
       const chave = chaveFaseGerenciada(fase);
 
@@ -1438,13 +1454,23 @@
         mapaExcluidas.set(chave, fase);
       }
 
-      transacao.set(referencia, {
+      const excluidas = ordenarFasesGerenciadas([...mapaExcluidas.values()]);
+      const dadosPersistidos = {
         sugestoes: proximaLista,
-        [CAMPO_FASES_SUTIA_EXCLUIDAS]: ordenarFasesGerenciadas([...mapaExcluidas.values()]),
+        [CAMPO_FASES_SUTIA_EXCLUIDAS]: excluidas,
         atualizadoEm: firestore.serverTimestamp(),
         atualizadoPor: user.uid,
         versaoGerenciamento: APP_VERSION
-      }, { merge: true });
+      };
+
+      transacao.set(referencia, dadosPersistidos, { merge: true });
+      transacao.set(referenciaBackup, {
+        ...dadosPersistidos,
+        documentoOrigem: FASES_CONFIG_DOCUMENTO,
+        protegidoEm: firestore.serverTimestamp(),
+        protegidoPor: user.uid,
+        versaoProtecao: APP_VERSION
+      }, { merge: false });
 
       return proximaLista;
     });
@@ -1553,17 +1579,35 @@
 
     const { firestore, db } = contextoFirebaseFases;
     const referencia = firestore.doc(db, FASES_CONFIG_COLECAO, FASES_CONFIG_DOCUMENTO);
+    const referenciaBackup = firestore.doc(db, FASES_CONFIG_COLECAO, FASES_CONFIG_BACKUP_DOCUMENTO);
+
     unsubscribeConfiguracaoFases = firestore.onSnapshot(
       referencia,
-      snapshot => {
-        configuracaoFasesExiste = snapshot.exists();
-        fasesGerenciadas = ordenarFasesGerenciadas(
-          configuracaoFasesExiste ? snapshot.data()?.sugestoes : opcoesAtuaisDoDatalistFases()
-        );
+      async snapshot => {
+        let lista = ordenarFasesGerenciadas(snapshot.exists() ? snapshot.data()?.sugestoes : []);
+
+        if (!lista.length) {
+          try {
+            const ler = typeof firestore.getDocFromServer === "function"
+              ? firestore.getDocFromServer
+              : firestore.getDoc;
+            const backupSnapshot = await ler(referenciaBackup);
+            lista = ordenarFasesGerenciadas(
+              backupSnapshot.exists() ? backupSnapshot.data()?.sugestoes : []
+            );
+          } catch (error) {
+            console.warn("Não foi possível carregar o backup persistente das fases do Sutiã.", error);
+          }
+        }
+
+        // Uma resposta vazia de cache nunca derruba uma lista válida já carregada.
+        if (!lista.length && snapshot.metadata?.fromCache && fasesGerenciadas.length) return;
+
+        configuracaoFasesExiste = snapshot.exists() || lista.length > 0;
+        fasesGerenciadas = lista;
         publicarFasesManejoOficiaisParaAplicacao("sutia", fasesGerenciadas);
         aplicarListaOficialNoDatalist();
         criarPainelAdminFases();
-        criarListaInicialFasesSeNecessario();
       },
       error => {
         console.error("Erro ao carregar sugestões centralizadas de fases.", error);
@@ -1963,8 +2007,7 @@
       const perfil = perfilSnapshot.exists() ? perfilSnapshot.data() : {};
       usuarioEhAdminFases = perfil?.tipo === "admin" && perfil?.ativo !== false;
       contextoFirebaseFases = { ...contextoFirebaseFases, user, perfil };
-      await repararListasPrincipaisFasesV299();
-      await reconstruirListaFasesSutiaSeNecessario();
+      // Fonte única: Firestore. Migrações/reconstruções só podem ser acionadas manualmente.
       iniciarSnapshotConfiguracaoFases();
       criarPainelAdminFases();
     } catch (error) {
@@ -2020,6 +2063,7 @@
   // - Recuperação histórica só lê todas as OPs quando o admin solicitar.
   // =========================================================
   const FASES_LATERAL_CONFIG_DOCUMENTO = "fasesManejoSutiaLateral";
+  const FASES_LATERAL_BACKUP_DOCUMENTO = "backupFasesManejoSutiaLateral";
   const CAMPO_FASES_LATERAL_EXCLUIDAS = "sugestoesExcluidas";
   const MARCADOR_REPARO_FASES_LATERAL_VAZIAS = "reparoFasesLateralVazias20260909V1";
   const ID_DATALIST_FASES_LATERAL = "manejoFasesLateraisList";
@@ -2269,11 +2313,27 @@
 
     const { firestore, db, user } = contexto;
     const referencia = firestore.doc(db, "configuracoes", FASES_LATERAL_CONFIG_DOCUMENTO);
+    const referenciaBackup = firestore.doc(db, "configuracoes", FASES_LATERAL_BACKUP_DOCUMENTO);
+
     return firestore.runTransaction(db, async transacao => {
       const snapshot = await transacao.get(referencia);
+      const snapshotBackup = await transacao.get(referenciaBackup);
       const dados = snapshot.exists() ? snapshot.data() : {};
-      const listaAtual = ordenarFasesGerenciadas(dados?.sugestoes || fasesLateralGerenciadas);
-      const excluidasAtuais = ordenarFasesGerenciadas(dados?.[CAMPO_FASES_LATERAL_EXCLUIDAS] || []);
+      const dadosBackup = snapshotBackup.exists() ? snapshotBackup.data() : {};
+
+      const oficial = ordenarFasesGerenciadas(dados?.sugestoes || []);
+      const backup = ordenarFasesGerenciadas(dadosBackup?.sugestoes || []);
+      const listaAtual = oficial.length
+        ? oficial
+        : backup.length
+          ? backup
+          : ordenarFasesGerenciadas(fasesLateralGerenciadas);
+
+      const excluidasAtuais = ordenarFasesGerenciadas(
+        dados?.[CAMPO_FASES_LATERAL_EXCLUIDAS] ||
+        dadosBackup?.[CAMPO_FASES_LATERAL_EXCLUIDAS] ||
+        []
+      );
       const mapaExcluidas = new Map(excluidasAtuais.map(item => [chaveFaseGerenciada(item), item]));
       const chave = chaveFaseGerenciada(fase);
 
@@ -2282,19 +2342,32 @@
         proximaLista = ordenarFasesGerenciadas([...listaAtual, fase]);
         mapaExcluidas.delete(chave);
       } else {
-        proximaLista = ordenarFasesGerenciadas(listaAtual.filter(item => chaveFaseGerenciada(item) !== chave));
+        proximaLista = ordenarFasesGerenciadas(
+          listaAtual.filter(item => chaveFaseGerenciada(item) !== chave)
+        );
         mapaExcluidas.set(chave, fase);
       }
 
-      transacao.set(referencia, {
+      const excluidas = ordenarFasesGerenciadas([...mapaExcluidas.values()]);
+      const dadosPersistidos = {
         sugestoes: proximaLista,
-        [CAMPO_FASES_LATERAL_EXCLUIDAS]: ordenarFasesGerenciadas([...mapaExcluidas.values()]),
+        [CAMPO_FASES_LATERAL_EXCLUIDAS]: excluidas,
         atualizadoEm: firestore.serverTimestamp(),
         atualizadoPor: user.uid,
         versaoGerenciamento: APP_VERSION,
         tipoPeca: "sutia",
         campo: "faseLateral"
-      }, { merge: true });
+      };
+
+      transacao.set(referencia, dadosPersistidos, { merge: true });
+      transacao.set(referenciaBackup, {
+        ...dadosPersistidos,
+        documentoOrigem: FASES_LATERAL_CONFIG_DOCUMENTO,
+        protegidoEm: firestore.serverTimestamp(),
+        protegidoPor: user.uid,
+        versaoProtecao: APP_VERSION
+      }, { merge: false });
+
       return proximaLista;
     });
   }
@@ -2477,20 +2550,34 @@
 
     const { firestore, db } = contexto;
     const referencia = firestore.doc(db, "configuracoes", FASES_LATERAL_CONFIG_DOCUMENTO);
+    const referenciaBackup = firestore.doc(db, "configuracoes", FASES_LATERAL_BACKUP_DOCUMENTO);
+
     unsubscribeConfiguracaoFasesLateral = firestore.onSnapshot(
       referencia,
-      snapshot => {
-        configuracaoFasesLateralExiste = snapshot.exists();
-        fasesLateralGerenciadas = ordenarFasesGerenciadas(
-          configuracaoFasesLateralExiste ? snapshot.data()?.sugestoes : opcoesAtuaisFasesLateral()
-        );
+      async snapshot => {
+        let lista = ordenarFasesGerenciadas(snapshot.exists() ? snapshot.data()?.sugestoes : []);
+
+        if (!lista.length) {
+          try {
+            const ler = typeof firestore.getDocFromServer === "function"
+              ? firestore.getDocFromServer
+              : firestore.getDoc;
+            const backupSnapshot = await ler(referenciaBackup);
+            lista = ordenarFasesGerenciadas(
+              backupSnapshot.exists() ? backupSnapshot.data()?.sugestoes : []
+            );
+          } catch (error) {
+            console.warn("Não foi possível carregar o backup persistente da Fase Lateral.", error);
+          }
+        }
+
+        if (!lista.length && snapshot.metadata?.fromCache && fasesLateralGerenciadas.length) return;
+
+        configuracaoFasesLateralExiste = snapshot.exists() || lista.length > 0;
+        fasesLateralGerenciadas = lista;
         renderDatalistsFasesLateral();
         removerBotoesMaisFaseLateral();
         criarPainelAdminFasesLateral();
-        if (usuarioEhAdminFasesLateral() && !fasesLateralGerenciadas.length) {
-          void reconstruirListaFasesLateralSeNecessario();
-        }
-        criarListaInicialFasesLateralSeNecessario();
       },
       error => console.error("Erro ao carregar sugestões da Fase Lateral.", error)
     );
@@ -8561,6 +8648,7 @@
   // - Não usa MutationObserver de DOM; aplica a lista por eventos pontuais.
   // =========================================================
   const FASES_CALCINHA_CONFIG_DOCUMENTO = "fasesManejoCalcinha";
+  const FASES_CALCINHA_BACKUP_DOCUMENTO = "backupFasesManejoCalcinha";
   const CAMPO_FASES_CALCINHA_EXCLUIDAS = "sugestoesExcluidas";
   const MARCADOR_RECONSTRUCAO_FASES_CALCINHA = "reconstrucaoFasesCalcinha20260909V1";
   const MARCADOR_REPARO_FASES_CALCINHA_VAZIAS = "reparoFasesCalcinhaVazias20260909V1";
@@ -8811,12 +8899,27 @@
 
     const { firestore, db, user } = contextoFirebaseFasesCalcinha;
     const referencia = firestore.doc(db, "configuracoes", FASES_CALCINHA_CONFIG_DOCUMENTO);
+    const referenciaBackup = firestore.doc(db, "configuracoes", FASES_CALCINHA_BACKUP_DOCUMENTO);
 
     return firestore.runTransaction(db, async transacao => {
       const snapshot = await transacao.get(referencia);
+      const snapshotBackup = await transacao.get(referenciaBackup);
       const dados = snapshot.exists() ? snapshot.data() : {};
-      const listaAtual = ordenarFasesGerenciadas(dados?.sugestoes || fasesCalcinhaGerenciadas);
-      const excluidasAtuais = ordenarFasesGerenciadas(dados?.[CAMPO_FASES_CALCINHA_EXCLUIDAS] || []);
+      const dadosBackup = snapshotBackup.exists() ? snapshotBackup.data() : {};
+
+      const oficial = ordenarFasesGerenciadas(dados?.sugestoes || []);
+      const backup = ordenarFasesGerenciadas(dadosBackup?.sugestoes || []);
+      const listaAtual = oficial.length
+        ? oficial
+        : backup.length
+          ? backup
+          : ordenarFasesGerenciadas(fasesCalcinhaGerenciadas);
+
+      const excluidasAtuais = ordenarFasesGerenciadas(
+        dados?.[CAMPO_FASES_CALCINHA_EXCLUIDAS] ||
+        dadosBackup?.[CAMPO_FASES_CALCINHA_EXCLUIDAS] ||
+        []
+      );
       const mapaExcluidas = new Map(excluidasAtuais.map(item => [chaveFaseGerenciada(item), item]));
       const chave = chaveFaseGerenciada(fase);
 
@@ -8831,13 +8934,23 @@
         mapaExcluidas.set(chave, fase);
       }
 
-      transacao.set(referencia, {
+      const excluidas = ordenarFasesGerenciadas([...mapaExcluidas.values()]);
+      const dadosPersistidos = {
         sugestoes: proximaLista,
-        [CAMPO_FASES_CALCINHA_EXCLUIDAS]: ordenarFasesGerenciadas([...mapaExcluidas.values()]),
+        [CAMPO_FASES_CALCINHA_EXCLUIDAS]: excluidas,
         atualizadoEm: firestore.serverTimestamp(),
         atualizadoPor: user.uid,
         versaoGerenciamento: APP_VERSION
-      }, { merge: true });
+      };
+
+      transacao.set(referencia, dadosPersistidos, { merge: true });
+      transacao.set(referenciaBackup, {
+        ...dadosPersistidos,
+        documentoOrigem: FASES_CALCINHA_CONFIG_DOCUMENTO,
+        protegidoEm: firestore.serverTimestamp(),
+        protegidoPor: user.uid,
+        versaoProtecao: APP_VERSION
+      }, { merge: false });
 
       return proximaLista;
     });
@@ -8877,20 +8990,43 @@
   function iniciarSnapshotConfiguracaoFasesCalcinha() {
     if (!contextoFirebaseFasesCalcinha) return;
     unsubscribeConfiguracaoFasesCalcinha?.();
+
     const { firestore, db } = contextoFirebaseFasesCalcinha;
     const referencia = firestore.doc(db, "configuracoes", FASES_CALCINHA_CONFIG_DOCUMENTO);
-    unsubscribeConfiguracaoFasesCalcinha = firestore.onSnapshot(referencia, snapshot => {
-      configuracaoFasesCalcinhaExiste = snapshot.exists();
-      fasesCalcinhaGerenciadas = ordenarFasesGerenciadas(
-        snapshot.exists() ? snapshot.data()?.sugestoes : []
-      );
-      publicarFasesManejoOficiaisParaAplicacao("calcinha", fasesCalcinhaGerenciadas);
-      renderDatalistFasesCalcinha();
-      criarPainelAdminFasesCalcinha();
-      if (tipoManejoAtualSugestoes() === "calcinha") agendarAplicacaoListaPorSetor();
-    }, error => {
-      console.error("Erro ao carregar sugestões da Calcinha.", error);
-    });
+    const referenciaBackup = firestore.doc(db, "configuracoes", FASES_CALCINHA_BACKUP_DOCUMENTO);
+
+    unsubscribeConfiguracaoFasesCalcinha = firestore.onSnapshot(
+      referencia,
+      async snapshot => {
+        let lista = ordenarFasesGerenciadas(snapshot.exists() ? snapshot.data()?.sugestoes : []);
+
+        if (!lista.length) {
+          try {
+            const ler = typeof firestore.getDocFromServer === "function"
+              ? firestore.getDocFromServer
+              : firestore.getDoc;
+            const backupSnapshot = await ler(referenciaBackup);
+            lista = ordenarFasesGerenciadas(
+              backupSnapshot.exists() ? backupSnapshot.data()?.sugestoes : []
+            );
+          } catch (error) {
+            console.warn("Não foi possível carregar o backup persistente das fases da Calcinha.", error);
+          }
+        }
+
+        if (!lista.length && snapshot.metadata?.fromCache && fasesCalcinhaGerenciadas.length) return;
+
+        configuracaoFasesCalcinhaExiste = snapshot.exists() || lista.length > 0;
+        fasesCalcinhaGerenciadas = lista;
+        publicarFasesManejoOficiaisParaAplicacao("calcinha", fasesCalcinhaGerenciadas);
+        renderDatalistFasesCalcinha();
+        criarPainelAdminFasesCalcinha();
+        if (tipoManejoAtualSugestoes() === "calcinha") agendarAplicacaoListaPorSetor();
+      },
+      error => {
+        console.error("Erro ao carregar sugestões da Calcinha.", error);
+      }
+    );
   }
 
   async function reconstruirListaFasesCalcinhaSeNecessario() {
@@ -9015,8 +9151,7 @@
       const perfil = perfilSnapshot.exists() ? perfilSnapshot.data() : {};
       usuarioEhAdminFasesCalcinha = perfil?.tipo === "admin" && perfil?.ativo !== false;
       contextoFirebaseFasesCalcinha = { ...contextoFirebaseFasesCalcinha, user, perfil };
-      await repararListasPrincipaisFasesV299();
-      await reconstruirListaFasesCalcinhaSeNecessario();
+      // Fonte única: Firestore. Recuperação histórica somente por ação manual do administrador.
       iniciarSnapshotConfiguracaoFasesCalcinha();
       criarPainelAdminFasesCalcinha();
     } catch (error) {
