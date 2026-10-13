@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-13-fases-firestore-fonte-unica-316",
-  "updatedAt": "2026-10-13T08:05:00-03:00",
-  "notes": "Fases do Manejo passam a ter Firestore como fonte única. Cadastro e remoção pelo administrador gravam lista oficial e backup persistente na mesma transação. Após limpeza de cache, Sutiã, Fase Lateral e Calcinha recarregam do servidor/backup; localStorage e datalists não recriam nem substituem listas automaticamente."
+  "version": "2026-10-13-rastreamento-op-sob-demanda-317",
+  "updatedAt": "2026-10-13T11:18:00-03:00",
+  "notes": "Rastreamento otimizado para consulta sob demanda. A tela abre vazia e não carrega mais toda a coleção movimentacoesProducao. Ao digitar uma OP, consulta somente a ordem exata e as movimentações vinculadas ao seu opId, mantendo histórico e ações da OP."
 }
