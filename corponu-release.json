@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-28-manejo-fases-blindadas-314",
-  "updatedAt": "2026-09-28T11:15:00-03:00",
-  "notes": "Produção. Restaura uma única vez o snapshot salvo de Fase Bojo (24), Fase Lateral (5) e Calcinha (40), cria backup persistente do último estado válido no Firestore, confirma estado vazio diretamente no servidor antes de restaurar e impede que limpeza de cache volte a zerar as listas."
+  "version": "2026-10-13-validacao-fases-backup-315",
+  "updatedAt": "2026-10-13T07:57:00-03:00",
+  "notes": "Corrige a validação das fases no Manejo. Ao salvar, o sistema consulta a lista oficial e, se ela estiver vazia ou atrasada, usa o backup protegido do último estado válido; preserva também a lista já sincronizada na interface. Aplicado a Sutiã e Calcinha para impedir falso aviso de fase não autorizada."
 }

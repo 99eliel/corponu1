@@ -1631,8 +1631,16 @@ function getTipoPecaManejoOP(op) {
 // Fases oficiais do Manejo.
 // A fonte de verdade é a configuração administrada na aba Usuários.
 const FASES_MANEJO_ADMIN_POR_SETOR = Object.freeze({
-  sutia: Object.freeze({ documento: "fasesManejo", label: "Sutiã" }),
-  calcinha: Object.freeze({ documento: "fasesManejoCalcinha", label: "Calcinha" })
+  sutia: Object.freeze({
+    documento: "fasesManejo",
+    backup: "backupFasesManejoSutia",
+    label: "Sutiã"
+  }),
+  calcinha: Object.freeze({
+    documento: "fasesManejoCalcinha",
+    backup: "backupFasesManejoCalcinha",
+    label: "Calcinha"
+  })
 });
 
 const fasesManejoOficiaisCache = {
@@ -1703,13 +1711,38 @@ async function carregarFasesManejoOficiais(setor = getManejoSetorAtual(), opcoes
   fasesManejoOficiaisStatus[tipo] = "carregando";
 
   const promessa = (async () => {
-    const referencia = doc(db, "configuracoes", config.documento);
-    const snapshot = somenteServidor
-      ? await getDocFromServer(referencia)
-      : await getDoc(referencia);
-    const lista = snapshot.exists()
-      ? normalizarListaFasesManejoOficiais(snapshot.data()?.sugestoes)
+    const lerDocumento = async documento => {
+      const referencia = doc(db, "configuracoes", documento);
+      return somenteServidor
+        ? await getDocFromServer(referencia)
+        : await getDoc(referencia);
+    };
+
+    const snapshotOficial = await lerDocumento(config.documento);
+    let lista = snapshotOficial.exists()
+      ? normalizarListaFasesManejoOficiais(snapshotOficial.data()?.sugestoes)
       : [];
+
+    // A proteção das fases mantém um segundo documento com o último estado
+    // válido. Se o documento oficial estiver vazio por sincronização/zeramento,
+    // a gravação deve aceitar exatamente a mesma lista protegida mostrada na UI.
+    if (!lista.length && config.backup) {
+      try {
+        const snapshotBackup = await lerDocumento(config.backup);
+        lista = snapshotBackup.exists()
+          ? normalizarListaFasesManejoOficiais(snapshotBackup.data()?.sugestoes)
+          : [];
+      } catch (error) {
+        console.warn(`Não foi possível consultar o backup protegido das fases de ${config.label}.`, error);
+      }
+    }
+
+    // Última proteção contra corrida entre o snapshot persistente e a leitura
+    // direta do servidor: nunca apaga um cache válido já publicado pelo módulo
+    // de proteção só porque uma leitura pontual retornou lista vazia.
+    if (!lista.length && fasesManejoOficiaisCache[tipo]?.length) {
+      lista = getFasesManejoOficiaisCache(tipo);
+    }
 
     fasesManejoOficiaisCache[tipo] = lista;
     fasesManejoOficiaisStatus[tipo] = "pronto";

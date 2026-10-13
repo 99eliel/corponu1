@@ -7,6 +7,7 @@
   const STYLE_ID = "corponuManejoCalcinhaDedicado253Style";
   const FASES_CONFIG_COLECAO = "configuracoes";
   const FASES_CONFIG_DOCUMENTO = "fasesManejoCalcinha";
+  const FASES_CONFIG_BACKUP_DOCUMENTO = "backupFasesManejoCalcinha";
   const PAGE_SIZE = 80;
 
   if (window[GUARD] === VERSION) return;
@@ -154,13 +155,31 @@
     fasesOficiaisCalcinhaStatus = "carregando";
     const promessa = (async () => {
       const { doc, getDoc, getDocFromServer } = state.firebase;
-      const referencia = doc(state.db, FASES_CONFIG_COLECAO, FASES_CONFIG_DOCUMENTO);
       const ler = somenteServidor && typeof getDocFromServer === "function" ? getDocFromServer : getDoc;
       if (typeof ler !== "function") throw new Error("Leitura da configuração oficial indisponível.");
+
+      const referencia = doc(state.db, FASES_CONFIG_COLECAO, FASES_CONFIG_DOCUMENTO);
       const snapshot = await ler(referencia);
-      const lista = snapshot.exists()
+      let lista = snapshot.exists()
         ? normalizarListaFasesOficiaisCalcinha(snapshot.data()?.sugestoes)
         : [];
+
+      if (!lista.length) {
+        try {
+          const referenciaBackup = doc(state.db, FASES_CONFIG_COLECAO, FASES_CONFIG_BACKUP_DOCUMENTO);
+          const snapshotBackup = await ler(referenciaBackup);
+          lista = snapshotBackup.exists()
+            ? normalizarListaFasesOficiaisCalcinha(snapshotBackup.data()?.sugestoes)
+            : [];
+        } catch (error) {
+          console.warn("[Calcinha] Não foi possível consultar o backup protegido das fases.", error);
+        }
+      }
+
+      if (!lista.length && fasesOficiaisCalcinha.length) {
+        lista = [...fasesOficiaisCalcinha];
+      }
+
       fasesOficiaisCalcinha = lista;
       fasesOficiaisCalcinhaStatus = "pronto";
       return [...lista];
