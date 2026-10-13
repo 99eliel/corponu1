@@ -1924,7 +1924,7 @@ function atualizarBotoesManejoSetor() {
     btn.classList.toggle("active", permitido && btn.dataset.setor === setorAtual);
   });
 
-  const setText = (id, valor) => {
+  const setTextBusca = (id, valor) => {
     const el = document.getElementById(id);
     if (el) el.textContent = valor;
   };
@@ -8671,19 +8671,19 @@ function renderRastreamento() {
   }
 
   const local = getLocalizacaoAtualOrdem(op);
-  const emAndamento = /andamento|facção|faccao|célula|celula/i.test(`${local.local} ${local.status}`) ? 1 : 0;
-  const retornaram = /retornou/i.test(local.local || "") ? 1 : 0;
-  const finalizadas = /bipado|finalizado|relatório células|relatorio celulas/i.test(`${local.local} ${local.status}`) ? 1 : 0;
+  const emAndamentoBusca = /andamento|facção|faccao|célula|celula/i.test(`${local.local} ${local.status}`) ? 1 : 0;
+  const retornaramBusca = /retornou/i.test(local.local || "") ? 1 : 0;
+  const finalizadasBusca = /bipado|finalizado|relatório células|relatorio celulas/i.test(`${local.local} ${local.status}`) ? 1 : 0;
 
   const setText = (id, valor) => {
     const el = document.getElementById(id);
     if (el) el.textContent = Number(valor || 0).toLocaleString("pt-BR");
   };
 
-  setText("rastTotalMovimentacoes", 1);
-  setText("rastEmAndamento", emAndamento);
-  setText("rastRetornaram", retornaram);
-  setText("rastFinalizadas", finalizadas);
+  setTextBusca("rastTotalMovimentacoes", 1);
+  setTextBusca("rastEmAndamento", emAndamentoBusca);
+  setTextBusca("rastRetornaram", retornaramBusca);
+  setTextBusca("rastFinalizadas", finalizadasBusca);
 
   tbody.innerHTML =
     renderLinhaRastreamentoGlobalOP(op) +

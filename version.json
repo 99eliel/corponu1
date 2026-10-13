@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-13-rastreamento-op-sob-demanda-317",
-  "updatedAt": "2026-10-13T11:18:00-03:00",
-  "notes": "Rastreamento otimizado para consulta sob demanda. A tela abre vazia e não carrega mais toda a coleção movimentacoesProducao. Ao digitar uma OP, consulta somente a ordem exata e as movimentações vinculadas ao seu opId, mantendo histórico e ações da OP."
+  "version": "2026-10-13-rastreamento-op-sob-demanda-318",
+  "updatedAt": "2026-10-13T11:22:00-03:00",
+  "notes": "Rastreamento por OP sob demanda. Tela abre vazia e consulta somente a OP digitada e suas movimentações. Corrige colisão de identificadores detectada pela validação JavaScript."
 }
