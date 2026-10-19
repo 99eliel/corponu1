@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-09-22-sutia-lateral-padrao-312";
+  const VERSION = "2026-10-19-sutia-lateral-por-referencia-323";
   const FB = "10.12.5";
   const MODAL_ID = "modalPagamentoManualFinanceiro";
   const FORM_ID = "formPagamentoManualFinanceiro";
@@ -260,7 +260,6 @@
       referenciasEspeciaisBase,
       referenciaEspecial,
       valorReferenciaEspecial: referenciasEspeciaisBase[referenciaEspecial] || valorEspecialLegado,
-      descontoLateralConfeccao: numero(dados.descontoLateralConfeccao ?? 0.18),
       descontoBojoConfeccao: numero(dados.descontoBojoConfeccao ?? 0.5),
       descontoFechoNaoFeito: numero(dados.descontoFechoNaoFeito ?? 0.25),
       descontoPontoLuzNaoFeito: numero(dados.descontoPontoLuzNaoFeito ?? 0.15)
@@ -273,6 +272,56 @@
     const chave = texto(referencia).replace(/\s+/g, "").toUpperCase();
     const especial = numero(config?.referenciasEspeciaisBase?.[chave]);
     return especial > 0 ? especial : numero(config?.valorGeral);
+  }
+
+  function valorPrecoLateral(item) {
+    for (const campo of ["valor", "valorUnitario", "preco", "valorPorPeca"]) {
+      const valor = arred4(item?.[campo]);
+      if (valor > 0) return valor;
+    }
+    return 0;
+  }
+
+  async function carregarPrecoLateralReferencia(referencia) {
+    const { fs, db } = await firebase();
+    const ref = texto(referencia);
+    const valoresBusca = [ref];
+    const numerico = Number(ref);
+    if (ref && Number.isFinite(numerico)) valoresBusca.push(numerico);
+
+    const mapa = new Map();
+    const vistos = new Set();
+
+    for (const valor of valoresBusca) {
+      const chave = `${typeof valor}:${valor}`;
+      if (vistos.has(chave)) continue;
+      vistos.add(chave);
+
+      const snap = await fs.getDocs(fs.query(
+        fs.collection(db, "precosReferencia"),
+        fs.where("referencia", "==", valor)
+      ));
+      snap.docs.forEach(item => mapa.set(item.id, { id: item.id, ...item.data() }));
+    }
+
+    const candidatos = [...mapa.values()].filter(item =>
+      item?.ativo !== false &&
+      normalizar(item?.processo || item?.servicoNome || "") === "LATERAL"
+    );
+
+    const valores = [...new Set(
+      candidatos
+        .map(valorPrecoLateral)
+        .filter(valor => valor > 0)
+        .map(valor => valor.toFixed(4))
+    )].map(Number);
+
+    if (!valores.length) return { encontrado: false, divergente: false, valor: 0, id: "" };
+    if (valores.length > 1) return { encontrado: false, divergente: true, valor: 0, id: "" };
+
+    const valor = valores[0];
+    const item = candidatos.find(candidato => Math.abs(valorPrecoLateral(candidato) - valor) < 0.00001) || candidatos[0];
+    return { encontrado: true, divergente: false, valor: arred4(valor), id: item?.id || "" };
   }
 
   function chaveCalculo() {
@@ -336,12 +385,25 @@
     }
 
     try {
-      const config = await carregarConfig();
+      const [config, precoLateral] = await Promise.all([
+        carregarConfig(),
+        lateral === "sim" ? carregarPrecoLateralReferencia(referencia) : Promise.resolve(null)
+      ]);
       if (minhaSequencia !== sequenciaCalculo) return;
+
+      if (lateral === "sim" && !precoLateral?.encontrado) {
+        definirResumo(
+          precoLateral?.divergente
+            ? `Não é possível calcular: existem valores diferentes de LATERAL para a referência ${referencia}. Revise em Processos.`
+            : `Não é possível calcular: falta cadastrar LATERAL da referência ${referencia} na aba Processos.`,
+          "erro"
+        );
+        return;
+      }
 
       const chaveReferencia = texto(referencia).replace(/\s+/g, "").toUpperCase();
       const valorBase = valorBaseParaReferencia(config, chaveReferencia);
-      const descontoLateral = lateral === "sim" ? numero(config.descontoLateralConfeccao) : 0;
+      const descontoLateral = lateral === "sim" ? numero(precoLateral?.valor) : 0;
       const descontoBojo = bojo === "sim" ? numero(config.descontoBojoConfeccao) : 0;
       const descontoFecho = fecho === "nao" ? config.descontoFechoNaoFeito : 0;
       const descontoPonto = ponto === "nao" ? config.descontoPontoLuzNaoFeito : 0;
@@ -354,8 +416,9 @@
         valorBaseUnitario: arred4(valorBase),
         lateralPronta: lateral === "sim",
         descontoLateralUnitario: arred4(descontoLateral),
-        regraDescontoLateral: lateral === "sim" ? "PADRAO_CONFECCAO" : "SEM_DESCONTO",
-        descontoLateralConfigurado: arred4(config.descontoLateralConfeccao),
+        regraDescontoLateral: lateral === "sim" ? "VALOR_REFERENCIA" : "SEM_DESCONTO",
+        precoLateralReferenciaId: precoLateral?.id || "",
+        valorLateralReferencia: precoLateral?.valor || 0,
         bojoPronto: bojo === "sim",
         descontoBojoUnitario: arred4(descontoBojo),
         regraDescontoBojo: bojo === "sim" ? "PADRAO_CONFECCAO" : "SEM_DESCONTO",
@@ -373,7 +436,7 @@
       if (inputManual) inputManual.value = total.toFixed(2);
       mostrarValorManual(false);
       definirResumo(
-        `Cálculo automático: ${moeda4(valorBase)} − lateral ${moeda4(descontoLateral)} − bojo ${moeda4(descontoBojo)} − fecho ${moeda4(descontoFecho)} − ponto de luz ${moeda4(descontoPonto)} = ${moeda4(valorUnitario)} por peça. Total: ${moeda2(total)}.`,
+        `Cálculo automático: ${moeda4(valorBase)} − lateral ${moeda4(descontoLateral)} (Ref. ${referencia}) − bojo ${moeda4(descontoBojo)} − fecho ${moeda4(descontoFecho)} − ponto de luz ${moeda4(descontoPonto)} = ${moeda4(valorUnitario)} por peça. Total: ${moeda2(total)}.`,
         "ok"
       );
     } catch (error) {

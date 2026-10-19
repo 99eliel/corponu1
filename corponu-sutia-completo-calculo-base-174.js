@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-10-19-sutia-completo-pendencias-legadas-322";
+  const VERSION = "2026-10-19-sutia-lateral-por-referencia-323";
   const FB = "10.12.5";
   const CONFIG_DOC = "sutia-completo-pagamento";
   const PROCESSO_COMPLETO = "SUTIÃ COMPLETO";
@@ -16,7 +16,6 @@
     referenciasEspeciaisBase: REFERENCIAS_ESPECIAIS_BASE,
     referenciaEspecial: "912",
     valorBaseReferenciaEspecial: 6.5,
-    descontoLateralConfeccao: 0.18,
     descontoBojoConfeccao: 0.5,
     descontoFechoNaoFeito: 0.25,
     descontoPontoLuzNaoFeito: 0.15
@@ -190,7 +189,6 @@
         referenciasEspeciaisBase,
         referenciaEspecial: referenciaEspecialLegada,
         valorBaseReferenciaEspecial: Math.max(0, numero(referenciasEspeciaisBase[referenciaEspecialLegada], DEFAULTS.valorBaseReferenciaEspecial)),
-        descontoLateralConfeccao: Math.max(0, numero(dados.descontoLateralConfeccao, DEFAULTS.descontoLateralConfeccao)),
         descontoBojoConfeccao: Math.max(0, numero(dados.descontoBojoConfeccao, DEFAULTS.descontoBojoConfeccao)),
         descontoFechoNaoFeito: Math.max(0, numero(dados.descontoFechoNaoFeito, DEFAULTS.descontoFechoNaoFeito)),
         descontoPontoLuzNaoFeito: Math.max(0, numero(dados.descontoPontoLuzNaoFeito, DEFAULTS.descontoPontoLuzNaoFeito))
@@ -248,7 +246,6 @@
       sc51ValorBaseGeral: configAtual.valorBaseGeral,
       sc51ValorBase912: configAtual.referenciasEspeciaisBase?.["912"] ?? configAtual.valorBaseReferenciaEspecial,
       sc51ValorBase414: configAtual.referenciasEspeciaisBase?.["414"] ?? REFERENCIAS_ESPECIAIS_BASE["414"],
-      sc51LateralConfeccao: configAtual.descontoLateralConfeccao,
       sc51BojoConfeccao: configAtual.descontoBojoConfeccao,
       sc51Fecho: configAtual.descontoFechoNaoFeito,
       sc51PontoLuz: configAtual.descontoPontoLuzNaoFeito
@@ -291,9 +288,6 @@
         <label>Valor base especial • Referência 414
           <input id="sc51ValorBase414" type="number" min="0" step="0.0001" required>
         </label>
-        <label>Desconto padrão da lateral feita pela confecção
-          <input id="sc51LateralConfeccao" type="number" min="0" step="0.0001" required>
-        </label>
         <label>Desconto padrão do bojo feito pela confecção
           <input id="sc51BojoConfeccao" type="number" min="0" step="0.0001" required>
         </label>
@@ -305,7 +299,7 @@
         </label>
       </div>
       <div class="sc51-ajuda">
-        As referências 912 e 414 possuem bases próprias. A referência 414 usa a base configurada acima e segue normalmente os descontos de Lateral, Bojo, Fecho e Ponto de luz. A referência 912 mantém sua regra especial integral já existente. Dentro do Sutiã Completo, Lateral e Bojo usam valores padronizados desta configuração; o processo LATERAL avulso continua com seu preço próprio por referência e não interfere neste cálculo. Sutiã Montagem não recebe estes descontos.
+        As referências 912 e 414 possuem bases próprias. A referência 414 usa a base configurada acima e segue normalmente os descontos de Lateral, Bojo, Fecho e Ponto de luz. A referência 912 mantém sua regra especial integral já existente. Dentro do Sutiã Completo, a Lateral usa o valor ativo cadastrado para a própria referência no processo LATERAL; Bojo, Fecho e Ponto de luz continuam usando as regras configuradas aqui. Sutiã Montagem não recebe estes descontos.
       </div>
       <label class="sc51-recalcular">
         <input id="sc51RecalcularPendentes" type="checkbox">
@@ -354,7 +348,6 @@
       referenciasEspeciaisBase: { "912": valorBase912, "414": valorBase414 },
       referenciaEspecial: "912",
       valorBaseReferenciaEspecial: valorBase912,
-      descontoLateralConfeccao: Math.max(0, numero(document.getElementById("sc51LateralConfeccao")?.value)),
       descontoBojoConfeccao: Math.max(0, numero(document.getElementById("sc51BojoConfeccao")?.value)),
       descontoFechoNaoFeito: Math.max(0, numero(document.getElementById("sc51Fecho")?.value)),
       descontoPontoLuzNaoFeito: Math.max(0, numero(document.getElementById("sc51PontoLuz")?.value))
@@ -372,7 +365,7 @@
       `Valor geral: ${moeda4(nova.valorBaseGeral)}`,
       `Referência 912: ${moeda4(valorBase912)}`,
       `Referência 414: ${moeda4(valorBase414)}`,
-      `Lateral feita pela confecção: ${moeda4(nova.descontoLateralConfeccao)}`,
+      "Lateral: usa o valor cadastrado por referência no processo LATERAL",
       `Bojo feito pela confecção: ${moeda4(nova.descontoBojoConfeccao)}`,
       `Fecho não feito: ${moeda4(nova.descontoFechoNaoFeito)}`,
       `Ponto de luz não feito: ${moeda4(nova.descontoPontoLuzNaoFeito)}`,
@@ -394,6 +387,7 @@
       const usuario = ctx.auth.currentUser;
       await ctx.fs.setDoc(ctx.fs.doc(ctx.db, "configuracoes", CONFIG_DOC), {
         ...nova,
+        descontoLateralConfeccao: ctx.fs.deleteField(),
         atualizadoPor: usuario?.uid || "",
         atualizadoPorNome: perfil?.nome || usuario?.displayName || usuario?.email || "",
         atualizadoEm: ctx.fs.serverTimestamp(),
@@ -444,6 +438,80 @@
     form.style.setProperty("display", "none", "important");
     form.setAttribute("aria-hidden", "true");
     form.closest(".rev-grid")?.classList.add("sc51-sem-config-antiga");
+  }
+
+  function valorPrecoReferencia(item) {
+    for (const campo of ["valor", "valorUnitario", "preco", "valorPorPeca"]) {
+      const valor = arred4(item?.[campo]);
+      if (valor > 0) return valor;
+    }
+    return 0;
+  }
+
+  function valoresConsultaReferencia(referencia) {
+    const bruto = texto(referencia);
+    const valores = [];
+    if (bruto) valores.push(bruto);
+
+    const numerico = Number(bruto);
+    if (bruto && Number.isFinite(numerico)) valores.push(numerico);
+
+    const unicos = [];
+    const vistos = new Set();
+    valores.forEach(valor => {
+      const chave = `${typeof valor}:${valor}`;
+      if (vistos.has(chave)) return;
+      vistos.add(chave);
+      unicos.push(valor);
+    });
+    return unicos;
+  }
+
+  async function buscarPrecoLateralReferencia(referencia) {
+    const ctx = await firebase();
+    const documentos = new Map();
+    const valores = valoresConsultaReferencia(referencia);
+
+    for (const valor of valores) {
+      const snap = await ctx.fs.getDocs(ctx.fs.query(
+        ctx.fs.collection(ctx.db, "precosReferencia"),
+        ctx.fs.where("referencia", "==", valor)
+      ));
+      snap.docs.forEach(item => documentos.set(item.id, { id: item.id, ...item.data() }));
+    }
+
+    const candidatos = [...documentos.values()].filter(item =>
+      item?.ativo !== false &&
+      normalizar(item?.processo || item?.servicoNome || "") === normalizar(PROCESSO_LATERAL) &&
+      referenciaNormalizada(item?.referencia) === referenciaNormalizada(referencia)
+    );
+
+    const valoresPositivos = [...new Set(
+      candidatos
+        .map(valorPrecoReferencia)
+        .filter(valor => valor > 0)
+        .map(valor => valor.toFixed(4))
+    )].map(Number);
+
+    if (!valoresPositivos.length) {
+      return { encontrado: false, divergente: false, id: "", valor: 0, candidatos };
+    }
+
+    if (valoresPositivos.length > 1) {
+      return { encontrado: false, divergente: true, id: "", valor: 0, candidatos, valores: valoresPositivos };
+    }
+
+    const valor = valoresPositivos[0];
+    const principal = candidatos.find(item => Math.abs(valorPrecoReferencia(item) - valor) < 0.00001) || candidatos[0];
+
+    return {
+      encontrado: true,
+      divergente: false,
+      id: principal?.id || "",
+      valor: arred4(valor),
+      dados: principal || null,
+      candidatos
+    };
   }
 
   async function buscarOPPorNumero(numeroOP) {
@@ -839,29 +907,42 @@
   }
 
   async function calcularMemoria(referencia, contexto, dados) {
-    const base = valorBaseParaReferencia(referencia);
+    const baseValor = valorBaseParaReferencia(referencia);
+    const precoLateral = dados.lateral.descontar
+      ? await buscarPrecoLateralReferencia(referencia)
+      : null;
     const faltantes = [];
 
-    if (dados.lateral.indefinido) faltantes.push("definição da LATERAL");
+    if (dados.lateral.indefinido) {
+      faltantes.push("definição da LATERAL");
+    } else if (dados.lateral.descontar && !precoLateral?.encontrado) {
+      faltantes.push(
+        precoLateral?.divergente
+          ? `valor divergente da LATERAL da referência ${referencia}`
+          : `valor da LATERAL da referência ${referencia}`
+      );
+    }
+
     if (dados.bojo.indefinido) faltantes.push("definição do BOJO");
 
     const descontos = {
-      lateral: dados.lateral.descontar ? arred4(configAtual.descontoLateralConfeccao) : 0,
+      lateral: dados.lateral.descontar && precoLateral?.encontrado ? arred4(precoLateral.valor) : 0,
       bojo: dados.bojo.descontar ? arred4(configAtual.descontoBojoConfeccao) : 0,
       fecho: dados.fechoPronto ? 0 : arred4(configAtual.descontoFechoNaoFeito),
       pontoLuz: dados.pontoLuzPronto ? 0 : arred4(configAtual.descontoPontoLuzNaoFeito)
     };
 
-    const valorUnitario = arred4(Math.max(base - descontos.lateral - descontos.bojo - descontos.fecho - descontos.pontoLuz, 0));
+    const valorUnitario = arred4(Math.max(baseValor - descontos.lateral - descontos.bojo - descontos.fecho - descontos.pontoLuz, 0));
+
     return {
-      base,
+      base: baseValor,
       descontos,
       valorUnitario,
       faltantes,
-      precoLateral: null,
+      precoLateral: precoLateral?.encontrado ? precoLateral : null,
+      precoLateralStatus: precoLateral,
       precoBojo: null,
-      regraDescontoLateral: dados.lateral.descontar ? "PADRAO_CONFECCAO" : "SEM_DESCONTO",
-      descontoLateralConfigurado: arred4(configAtual.descontoLateralConfeccao),
+      regraDescontoLateral: dados.lateral.descontar ? "VALOR_REFERENCIA" : "SEM_DESCONTO",
       regraDescontoBojo: dados.bojo.descontar ? "PADRAO_CONFECCAO" : "SEM_DESCONTO",
       descontoBojoConfigurado: arred4(configAtual.descontoBojoConfeccao)
     };
@@ -882,7 +963,7 @@
       const memoria = await calcularMemoria(atual.referencia, atual.contexto, dados);
       const partes = [
         `Base ${moeda4(memoria.base)}`,
-        dados.lateral.indefinido ? "Lateral aguardando informação" : dados.lateral.descontar ? `Lateral − ${moeda4(memoria.descontos.lateral)} (padrão confecção)` : "Lateral sem desconto",
+        dados.lateral.indefinido ? "Lateral aguardando informação" : dados.lateral.descontar ? (memoria.precoLateral ? `Lateral − ${moeda4(memoria.descontos.lateral)} (Ref. ${atual.referencia})` : `Lateral aguardando valor da Ref. ${atual.referencia}`) : "Lateral sem desconto",
         dados.bojo.indefinido ? "Bojo aguardando informação" : dados.bojo.descontar ? `Bojo − ${moeda4(memoria.descontos.bojo)} (padrão confecção)` : "Bojo sem desconto",
         dados.fechoPronto ? "Fecho sem desconto" : `Fecho − ${moeda4(memoria.descontos.fecho)}`,
         dados.pontoLuzPronto ? "Ponto de luz sem desconto" : `Ponto de luz − ${moeda4(memoria.descontos.pontoLuz)}`
@@ -1034,7 +1115,7 @@
         `Confirmar a chegada de SUTIÃ COMPLETO da OP ${atual.mov?.numeroOP || atual.numeroOP || atual.op?.numeroOP || "-"}?`,
         "",
         `Valor-base: ${moeda4(memoria.base)}`,
-        `Lateral: ${dados.lateral.indefinido ? "não informada — pagamento aguardará definição" : dados.lateral.descontar ? `feita pela confecção — desconto padrão ${moeda4(memoria.descontos.lateral)}` : "feita pela facção — sem desconto"}`,
+        `Lateral: ${dados.lateral.indefinido ? "não informada — pagamento aguardará definição" : dados.lateral.descontar ? (memoria.precoLateral ? `feita pela confecção — desconto ${moeda4(memoria.descontos.lateral)} da Ref. ${atual.referencia}` : `feita pela confecção — aguardando valor da Ref. ${atual.referencia}`) : "feita pela facção — sem desconto"}`,
         `Bojo: ${dados.bojo.indefinido ? "não informado — pagamento aguardará definição" : dados.bojo.descontar ? `feito pela confecção — desconto padrão ${moeda4(memoria.descontos.bojo)}` : "feito pela facção — sem desconto"}`,
         `Fecho: ${dados.fechoPronto ? "veio pronto — sem desconto" : `não feito — desconto ${moeda4(memoria.descontos.fecho)}`}`,
         `Ponto de luz: ${dados.pontoLuzPronto ? "veio pronto — sem desconto" : `não feito — desconto ${moeda4(memoria.descontos.pontoLuz)}`}`,
@@ -1136,7 +1217,8 @@
         valorBase: memoria.base,
         descontoLateral: memoria.descontos.lateral,
         regraDescontoLateral: memoria.regraDescontoLateral,
-        descontoLateralConfigurado: memoria.descontoLateralConfigurado,
+        precoLateralReferenciaId: memoria.precoLateral?.id || "",
+        valorLateralReferencia: memoria.precoLateral?.valor || 0,
         descontoBojo: memoria.descontos.bojo,
         regraDescontoBojo: memoria.regraDescontoBojo,
         descontoBojoConfigurado: memoria.descontoBojoConfigurado,
@@ -1240,10 +1322,10 @@
       descontoSutiaCompletoBojo: arred4(memoria.descontos.bojo),
       descontoSutiaCompletoFecho: arred4(memoria.descontos.fecho),
       descontoSutiaCompletoPontoLuz: arred4(memoria.descontos.pontoLuz),
-      precoLateralReferenciaId: "",
+      precoLateralReferenciaId: memoria.precoLateral?.id || "",
       precoBojoReferenciaId: "",
       regraDescontoSutiaCompletoLateral: memoria.regraDescontoLateral,
-      descontoLateralConfiguradoSutiaCompleto: memoria.descontoLateralConfigurado,
+      valorLateralReferenciaSutiaCompleto: memoria.precoLateral?.valor || 0,
       regraDescontoSutiaCompletoBojo: memoria.regraDescontoBojo,
       descontoBojoConfiguradoSutiaCompleto: memoria.descontoBojoConfigurado,
       lateralPronta: dados.lateral.pronto,
@@ -1285,7 +1367,8 @@
         lateralPronta: dados.lateral.pronto,
         descontoLateral: arred4(memoria.descontos.lateral),
         regraDescontoLateral: memoria.regraDescontoLateral,
-        descontoLateralConfigurado: memoria.descontoLateralConfigurado,
+        precoLateralReferenciaId: memoria.precoLateral?.id || "",
+        valorLateralReferencia: memoria.precoLateral?.valor || 0,
         bojoPronto: dados.bojo.pronto,
         descontoBojo: arred4(memoria.descontos.bojo),
         regraDescontoBojo: memoria.regraDescontoBojo,

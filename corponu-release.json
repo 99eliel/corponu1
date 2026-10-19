@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-19-sutia-completo-pendencias-legadas-322",
-  "updatedAt": "2026-10-19T16:06:00-03:00",
-  "notes": "Corrige pendências legadas de Sutiã Completo que ainda exigiam preço de LATERAL por referência. A Central Financeira recalcula os lançamentos visíveis com a regra oficial atual do Sutiã Completo, onde Lateral usa o desconto padrão configurado. O processo LATERAL avulso permanece independente por referência."
+  "version": "2026-10-19-sutia-lateral-por-referencia-323",
+  "updatedAt": "2026-10-19T16:24:00-03:00",
+  "notes": "Restaura a regra correta da Lateral no Sutiã Completo: quando a confecção fez a Lateral, o desconto usa o valor ativo de LATERAL cadastrado para a mesma referência em precosReferencia. Remove o valor fixo/padronizado de R$ 0,18 do cálculo e da configuração. Bojo, Fecho e Ponto de luz permanecem com suas regras atuais. A Central Financeira continua reconciliando pendências antigas pela calculadora oficial."
 }
