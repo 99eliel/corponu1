@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-13-rastreamento-seguro-321",
-  "updatedAt": "2026-10-13T11:52:00-03:00",
-  "notes": "Rastreamento otimizado com consulta por OP sob demanda. A tela abre vazia e não inicia o listener global de movimentações. Alteração isolada do Rastreamento; autenticação, perfil de usuário e regras Firebase permanecem inalterados."
+  "version": "2026-10-19-sutia-completo-pendencias-legadas-322",
+  "updatedAt": "2026-10-19T16:06:00-03:00",
+  "notes": "Corrige pendências legadas de Sutiã Completo que ainda exigiam preço de LATERAL por referência. A Central Financeira recalcula os lançamentos visíveis com a regra oficial atual do Sutiã Completo, onde Lateral usa o desconto padrão configurado. O processo LATERAL avulso permanece independente por referência."
 }

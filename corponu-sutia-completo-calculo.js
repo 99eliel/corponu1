@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-09-22-sutia-lateral-padrao-312";
+  const VERSION = "2026-10-19-sutia-completo-pendencias-legadas-322";
   const BASE_FILE = "corponu-sutia-completo-calculo-base-174.js";
   const GUARD = "__CORPONU_SUTIA_COMPLETO_LOADER__";
 

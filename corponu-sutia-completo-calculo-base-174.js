@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-09-22-sutia-lateral-padrao-312";
+  const VERSION = "2026-10-19-sutia-completo-pendencias-legadas-322";
   const FB = "10.12.5";
   const CONFIG_DOC = "sutia-completo-pagamento";
   const PROCESSO_COMPLETO = "SUTIÃ COMPLETO";
@@ -882,7 +882,7 @@
       const memoria = await calcularMemoria(atual.referencia, atual.contexto, dados);
       const partes = [
         `Base ${moeda4(memoria.base)}`,
-        dados.lateral.indefinido ? "Lateral aguardando informação" : dados.lateral.descontar ? `Lateral − ${memoria.precoLateral ? moeda4(memoria.descontos.lateral) : "valor não cadastrado"}` : "Lateral sem desconto",
+        dados.lateral.indefinido ? "Lateral aguardando informação" : dados.lateral.descontar ? `Lateral − ${moeda4(memoria.descontos.lateral)} (padrão confecção)` : "Lateral sem desconto",
         dados.bojo.indefinido ? "Bojo aguardando informação" : dados.bojo.descontar ? `Bojo − ${moeda4(memoria.descontos.bojo)} (padrão confecção)` : "Bojo sem desconto",
         dados.fechoPronto ? "Fecho sem desconto" : `Fecho − ${moeda4(memoria.descontos.fecho)}`,
         dados.pontoLuzPronto ? "Ponto de luz sem desconto" : `Ponto de luz − ${moeda4(memoria.descontos.pontoLuz)}`
@@ -1034,7 +1034,7 @@
         `Confirmar a chegada de SUTIÃ COMPLETO da OP ${atual.mov?.numeroOP || atual.numeroOP || atual.op?.numeroOP || "-"}?`,
         "",
         `Valor-base: ${moeda4(memoria.base)}`,
-        `Lateral: ${dados.lateral.indefinido ? "não informada — pagamento aguardará definição" : dados.lateral.descontar ? (memoria.precoLateral ? `feita pela confecção — desconto ${moeda4(memoria.descontos.lateral)}` : "feita pela confecção, mas sem valor cadastrado") : "feita pela facção — sem desconto"}`,
+        `Lateral: ${dados.lateral.indefinido ? "não informada — pagamento aguardará definição" : dados.lateral.descontar ? `feita pela confecção — desconto padrão ${moeda4(memoria.descontos.lateral)}` : "feita pela facção — sem desconto"}`,
         `Bojo: ${dados.bojo.indefinido ? "não informado — pagamento aguardará definição" : dados.bojo.descontar ? `feito pela confecção — desconto padrão ${moeda4(memoria.descontos.bojo)}` : "feito pela facção — sem desconto"}`,
         `Fecho: ${dados.fechoPronto ? "veio pronto — sem desconto" : `não feito — desconto ${moeda4(memoria.descontos.fecho)}`}`,
         `Ponto de luz: ${dados.pontoLuzPronto ? "veio pronto — sem desconto" : `não feito — desconto ${moeda4(memoria.descontos.pontoLuz)}`}`,
@@ -1519,10 +1519,14 @@
     if (!movSnap.exists()) return { tipo: "ignorado" };
     const mov = { id: movSnap.id, ...movSnap.data() };
     const conferencia = mov.sutiaCompletoConferencia || {};
+    const memoriaAnterior = pagamento.memoriaCalculoSutiaCompleto || {};
 
-    if (typeof conferencia.fechoPronto !== "boolean" || typeof conferencia.pontoLuzPronto !== "boolean") {
-      return { tipo: "aguardando" };
-    }
+    const primeiroBooleano = (...valores) => {
+      for (const valor of valores) {
+        if (typeof valor === "boolean") return valor;
+      }
+      return null;
+    };
 
     const op = mov.opId
       ? await (async () => {
@@ -1533,35 +1537,99 @@
     if (!op) return { tipo: "aguardando" };
 
     const contexto = await obterContextoComponentes(op);
+
+    const fechoPronto = primeiroBooleano(
+      conferencia.fechoPronto,
+      pagamento.fechoPronto,
+      memoriaAnterior.fechoPronto
+    );
+    const pontoLuzPronto = primeiroBooleano(
+      conferencia.pontoLuzPronto,
+      pagamento.pontoLuzPronto,
+      memoriaAnterior.pontoLuzPronto
+    );
+
+    if (typeof fechoPronto !== "boolean" || typeof pontoLuzPronto !== "boolean") {
+      return { tipo: "aguardando" };
+    }
+
+    const lateralPronta = primeiroBooleano(
+      conferencia.lateralPronta,
+      pagamento.lateralPronta,
+      memoriaAnterior.lateralPronta,
+      contexto.lateral.pronto
+    );
+    const bojoPronto = primeiroBooleano(
+      conferencia.bojoPronto,
+      pagamento.bojoPronto,
+      memoriaAnterior.bojoPronto,
+      contexto.bojo.pronto
+    );
+
+    const lateralDescontada = primeiroBooleano(
+      conferencia.lateralDescontada,
+      pagamento.lateralDescontada,
+      contexto.lateral.descontar
+    );
+    const bojoDescontado = primeiroBooleano(
+      conferencia.bojoDescontado,
+      pagamento.bojoDescontado,
+      contexto.bojo.descontar
+    );
+
     const dados = {
       lateral: {
         conhecido: true,
-        pronto: typeof conferencia.lateralPronta === "boolean" ? conferencia.lateralPronta : contexto.lateral.pronto,
-        descontar: typeof conferencia.lateralDescontada === "boolean" ? conferencia.lateralDescontada : (contexto.lateral.descontar === true || (contexto.lateral.descontar !== false && contexto.lateral.pronto === true)),
-        indefinido: (conferencia.lateralOrigemExecucao || contexto.lateral.origemExecucao) === "nao_informado",
-        feitoPelaFaccao: typeof conferencia.lateralFeitaPelaFaccao === "boolean" ? conferencia.lateralFeitaPelaFaccao : contexto.lateral.feitoPelaFaccao === true,
-        feitoPelaConfeccao: typeof conferencia.lateralFeitaPelaConfeccao === "boolean" ? conferencia.lateralFeitaPelaConfeccao : contexto.lateral.feitoPelaConfeccao === true,
-        origemExecucao: conferencia.lateralOrigemExecucao || contexto.lateral.origemExecucao || "",
-        origem: conferencia.lateralOrigem || contexto.lateral.origem,
-        responsavel: conferencia.lateralResponsavel || contexto.lateral.responsavel
+        pronto: lateralPronta === true,
+        descontar: lateralDescontada === null
+          ? (contexto.lateral.descontar === true || (contexto.lateral.descontar !== false && lateralPronta === true))
+          : lateralDescontada,
+        indefinido: (conferencia.lateralOrigemExecucao || pagamento.lateralOrigemExecucao || contexto.lateral.origemExecucao) === "nao_informado",
+        feitoPelaFaccao: typeof conferencia.lateralFeitaPelaFaccao === "boolean"
+          ? conferencia.lateralFeitaPelaFaccao
+          : (typeof pagamento.lateralFeitaPelaFaccao === "boolean" ? pagamento.lateralFeitaPelaFaccao : contexto.lateral.feitoPelaFaccao === true),
+        feitoPelaConfeccao: typeof conferencia.lateralFeitaPelaConfeccao === "boolean"
+          ? conferencia.lateralFeitaPelaConfeccao
+          : (typeof pagamento.lateralFeitaPelaConfeccao === "boolean" ? pagamento.lateralFeitaPelaConfeccao : contexto.lateral.feitoPelaConfeccao === true),
+        origemExecucao: conferencia.lateralOrigemExecucao || pagamento.lateralOrigemExecucao || contexto.lateral.origemExecucao || "",
+        origem: conferencia.lateralOrigem || pagamento.lateralOrigem || contexto.lateral.origem,
+        responsavel: conferencia.lateralResponsavel || pagamento.lateralResponsavel || contexto.lateral.responsavel
       },
       bojo: {
         conhecido: true,
-        pronto: typeof conferencia.bojoPronto === "boolean" ? conferencia.bojoPronto : contexto.bojo.pronto,
-        descontar: typeof conferencia.bojoDescontado === "boolean" ? conferencia.bojoDescontado : (contexto.bojo.descontar === true || (contexto.bojo.descontar !== false && contexto.bojo.pronto === true)),
-        indefinido: (conferencia.bojoOrigemExecucao || contexto.bojo.origemExecucao) === "nao_informado",
-        feitoPelaFaccao: typeof conferencia.bojoFeitoPelaFaccao === "boolean" ? conferencia.bojoFeitoPelaFaccao : contexto.bojo.feitoPelaFaccao === true,
-        feitoPelaConfeccao: typeof conferencia.bojoFeitoPelaConfeccao === "boolean" ? conferencia.bojoFeitoPelaConfeccao : contexto.bojo.feitoPelaConfeccao === true,
-        origemExecucao: conferencia.bojoOrigemExecucao || contexto.bojo.origemExecucao || "",
-        origem: conferencia.bojoOrigem || contexto.bojo.origem,
-        responsavel: conferencia.bojoResponsavel || contexto.bojo.responsavel
+        pronto: bojoPronto === true,
+        descontar: bojoDescontado === null
+          ? (contexto.bojo.descontar === true || (contexto.bojo.descontar !== false && bojoPronto === true))
+          : bojoDescontado,
+        indefinido: (conferencia.bojoOrigemExecucao || pagamento.bojoOrigemExecucao || contexto.bojo.origemExecucao) === "nao_informado",
+        feitoPelaFaccao: typeof conferencia.bojoFeitoPelaFaccao === "boolean"
+          ? conferencia.bojoFeitoPelaFaccao
+          : (typeof pagamento.bojoFeitoPelaFaccao === "boolean" ? pagamento.bojoFeitoPelaFaccao : contexto.bojo.feitoPelaFaccao === true),
+        feitoPelaConfeccao: typeof conferencia.bojoFeitoPelaConfeccao === "boolean"
+          ? conferencia.bojoFeitoPelaConfeccao
+          : (typeof pagamento.bojoFeitoPelaConfeccao === "boolean" ? pagamento.bojoFeitoPelaConfeccao : contexto.bojo.feitoPelaConfeccao === true),
+        origemExecucao: conferencia.bojoOrigemExecucao || pagamento.bojoOrigemExecucao || contexto.bojo.origemExecucao || "",
+        origem: conferencia.bojoOrigem || pagamento.bojoOrigem || contexto.bojo.origem,
+        responsavel: conferencia.bojoResponsavel || pagamento.bojoResponsavel || contexto.bojo.responsavel
       },
-      fechoPronto: conferencia.fechoPronto,
-      pontoLuzPronto: conferencia.pontoLuzPronto
+      fechoPronto,
+      pontoLuzPronto
     };
     const memoria = await calcularMemoria(mov.referencia || pagamento.referencia, contexto, dados);
     const resultado = await aplicarCalculoAoPagamento(mov, dados, memoria);
     return { tipo: memoria.faltantes.length ? "aguardando" : (resultado.atualizados ? "atualizado" : "ignorado") };
+  }
+
+  async function recalcularPagamentoPorId(id) {
+    const pagamentoId = texto(id);
+    if (!pagamentoId) return { tipo: "ignorado" };
+
+    await carregarConfig();
+    const ctx = await firebase();
+    const snap = await ctx.fs.getDoc(ctx.fs.doc(ctx.db, "entregasPagamento", pagamentoId));
+    if (!snap.exists()) return { tipo: "ignorado" };
+
+    return recalcularPagamentoExistente({ id: snap.id, ...snap.data() });
   }
 
   async function recalcularPendentes() {
@@ -1757,6 +1825,7 @@
   window.CorpoNuSutiaCompleto = {
     versao: VERSION,
     carregarConfig,
+    recalcularPagamentoPorId,
     recalcularPendentes,
     recalcularPendentesDaReferencia,
     atualizarStatusOP: async numeroOP => {

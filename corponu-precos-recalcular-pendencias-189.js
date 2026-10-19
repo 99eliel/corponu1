@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-08-12-precos-recalcular-pendencias-189";
+  const VERSION = "2026-10-19-sutia-completo-pendencias-legadas-322";
   const FIREBASE_VERSION = "10.12.5";
   const MODAL_ID = "modalPendenciasValoresFinanceiro";
 
@@ -60,6 +60,19 @@
   function processoUsaValorUnitario(processo) {
     const chave = normalizar(processoCanonico(processo));
     return chave !== "SUTIA MONTAGEM" && chave !== "SUTIA COMPLETO";
+  }
+
+  function processoUsaCalculoSutiaCompleto(processo) {
+    return normalizar(processoCanonico(processo)) === "SUTIA COMPLETO";
+  }
+
+  async function aguardarCalculadoraSutiaCompleto() {
+    for (let tentativa = 0; tentativa < 40; tentativa += 1) {
+      const api = window.CorpoNuSutiaCompleto;
+      if (api?.recalcularPagamentoPorId) return api;
+      await new Promise(resolve => window.setTimeout(resolve, 100));
+    }
+    return null;
   }
 
   function pagamentoAtivoSemValor(item) {
@@ -305,16 +318,42 @@
       }
 
       const grupos = new Map();
+      const sutiasCompletos = [];
+
       pagamentos.filter(pagamentoAtivoSemValor).forEach(item => {
         const referencia = texto(item?.referencia).toUpperCase();
         const processo = processoDoItem(item);
-        if (!referencia || !processo || !processoUsaValorUnitario(processo)) return;
+        if (!referencia || !processo) return;
+
+        if (processoUsaCalculoSutiaCompleto(processo)) {
+          sutiasCompletos.push(item);
+          return;
+        }
+
+        if (!processoUsaValorUnitario(processo)) return;
         const chave = `${normalizar(referencia)}|||${normalizar(processo)}`;
         if (!grupos.has(chave)) grupos.set(chave, { referencia, processo, itens: [] });
         grupos.get(chave).itens.push(item);
       });
 
       let total = 0;
+
+      if (sutiasCompletos.length) {
+        const calculadora = await aguardarCalculadoraSutiaCompleto();
+        if (calculadora) {
+          for (const pagamento of sutiasCompletos) {
+            try {
+              const resultado = await calculadora.recalcularPagamentoPorId(pagamento.id);
+              if (resultado?.tipo === "atualizado") total += 1;
+            } catch (error) {
+              console.warn("Pendência legada de Sutiã Completo não recalculada.", pagamento.id, error);
+            }
+          }
+        } else {
+          console.warn("Calculadora oficial do Sutiã Completo ainda não está disponível em Pagamentos.");
+        }
+      }
+
       for (const grupo of grupos.values()) {
         const preco = await buscarPrecoUnico(fs, db, grupo.referencia, grupo.processo);
         if (!preco) continue;
@@ -323,7 +362,7 @@
 
       if (total > 0) {
         window.dispatchEvent(new CustomEvent("corponu:pendencias-recalculadas", { detail: { quantidade: total } }));
-        avisar(`${total} pendência(s) receberam automaticamente o valor já cadastrado.`);
+        avisar(`${total} pendência(s) foram recalculadas automaticamente com as regras financeiras atuais.`);
         window.setTimeout(() => atualizarModalSemRecursao(), 120);
       }
       return total;
