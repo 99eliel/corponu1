@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-10-19-sutia-completo-pendencias-legadas-322";
+  const VERSION = "2026-10-19-reconciliador-pendencias-324";
   const FIREBASE_VERSION = "10.12.5";
   const MODAL_ID = "modalPendenciasValoresFinanceiro";
 
@@ -446,4 +446,11 @@
   window.addEventListener("pageshow", () => {
     window.setTimeout(reconciliarPendenciasVisiveis, 700);
   });
+
+  // O módulo é carregado sob demanda ao entrar em Pagamentos. Se a Central
+  // já estiver aberta quando ele chegar, reconcilia imediatamente; se ainda
+  // estiver fechada, estas chamadas saem sem leitura e os listeners cuidam
+  // da próxima abertura.
+  window.setTimeout(reconciliarPendenciasVisiveis, 120);
+  window.setTimeout(reconciliarPendenciasVisiveis, 700);
 })();

@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-19-sutia-lateral-por-referencia-323",
-  "updatedAt": "2026-10-19T16:24:00-03:00",
-  "notes": "Restaura a regra correta da Lateral no Sutiã Completo: quando a confecção fez a Lateral, o desconto usa o valor ativo de LATERAL cadastrado para a mesma referência em precosReferencia. Remove o valor fixo/padronizado de R$ 0,18 do cálculo e da configuração. Bojo, Fecho e Ponto de luz permanecem com suas regras atuais. A Central Financeira continua reconciliando pendências antigas pela calculadora oficial."
+  "version": "2026-10-19-reconciliador-pendencias-324",
+  "updatedAt": "2026-10-19T16:43:00-03:00",
+  "notes": "Corrige a Central financeira: o módulo que reconcilia pagamentos sem valor com os preços cadastrados passa a ser carregado de fato na página Pagamentos. Ao abrir Valores pendentes, Sutiã Completo é recalculado pela regra oficial, incluindo LATERAL por referência."
 }

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-10-19-sutia-lateral-por-referencia-323";
+  const LOCAL_RELEASE = "2026-10-19-reconciliador-pendencias-324";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
@@ -66,6 +66,7 @@
       ["corponu-pendencias-modal-estavel.js", "pendencias-modal-estavel", "Não foi possível restaurar a abertura das pendências."],
       ["corponu-pendencias-motivo-171.js", "pendencias-motivo-171", "Não foi possível mostrar o motivo específico das pendências financeiras."],
       ["corponu-pendencias-valor-seguro.js", "pendencias-valor-seguro", "Não foi possível salvar valores pendentes com segurança."],
+      ["corponu-precos-recalcular-pendencias-189.js", "precos-recalcular-pendencias-189", "Não foi possível reconciliar automaticamente os valores pendentes com os preços cadastrados."],
       ["corponu-verificacao-sutia-completo.js", "verificacao-sutia-completo-segura", "Não foi possível carregar a verificação do Sutiã Completo."],
       ["corponu-valores-pendentes-financeiro.js", "valores-pendentes-financeiro", "Não foi possível carregar Valores pendentes."],
       ["corponu-valores-pendentes-auth-214.js", "valores-pendentes-auth-214", "Não foi possível estabilizar a autenticação de Valores pendentes."],
