@@ -2489,6 +2489,332 @@ async function registrarEntregaManejo(ordemId) {
 }
 
 
+
+const MANEJO_INFO_LOCAL_MODAL_ID = "modalManejoInfoLocal325";
+const MANEJO_INFO_LOCAL_STYLE_ID = "styleManejoInfoLocal325";
+
+function garantirEstiloInfoLocalManejo() {
+  if (document.getElementById(MANEJO_INFO_LOCAL_STYLE_ID)) return;
+
+  const style = document.createElement("style");
+  style.id = MANEJO_INFO_LOCAL_STYLE_ID;
+  style.textContent = `
+    .btn-info-local-manejo{
+      width:36px;height:36px;min-width:36px;padding:0!important;
+      display:inline-flex;align-items:center;justify-content:center;
+      border:1px solid #bfdbfe!important;border-radius:10px!important;
+      background:#eff6ff!important;color:#1d4ed8!important;
+      font-size:19px!important;font-weight:900!important;line-height:1!important;
+      cursor:pointer;box-shadow:none!important;
+    }
+    .btn-info-local-manejo:hover{background:#dbeafe!important;border-color:#60a5fa!important}
+    #${MANEJO_INFO_LOCAL_MODAL_ID}[hidden]{display:none!important}
+    #${MANEJO_INFO_LOCAL_MODAL_ID}{
+      position:fixed;inset:0;z-index:100300;display:flex;align-items:center;justify-content:center;
+      padding:18px;background:rgba(15,23,42,.50);backdrop-filter:blur(2px)
+    }
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-card{
+      width:min(760px,100%);max-height:min(820px,92vh);overflow:auto;
+      border:1px solid #cbd5e1;border-radius:18px;background:#fff;
+      box-shadow:0 28px 80px rgba(15,23,42,.34)
+    }
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-head{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+      padding:18px 20px 16px;border-bottom:1px solid #e2e8f0;
+      background:linear-gradient(180deg,#fff,#f8fafc)
+    }
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-head h3{margin:0;color:#0f172a;font-size:20px}
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-head p{margin:5px 0 0;color:#64748b;font-size:12px}
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-close{
+      width:36px;height:36px;flex:0 0 36px;border:1px solid #cbd5e1;border-radius:10px;
+      background:#fff;color:#334155;font-size:22px;cursor:pointer
+    }
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-body{padding:18px 20px 20px}
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-ident{
+      display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px
+    }
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-ident div{
+      padding:10px 12px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc
+    }
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-ident span{display:block;color:#64748b;font-size:10px;font-weight:800;text-transform:uppercase}
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-ident strong{display:block;margin-top:3px;color:#0f172a;font-size:14px}
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-resumo{
+      padding:11px 13px;margin-bottom:12px;border-radius:12px;font-size:13px;font-weight:700
+    }
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-resumo.ok{background:#ecfdf5;border:1px solid #a7f3d0;color:#166534}
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-resumo.neutro{background:#f8fafc;border:1px solid #cbd5e1;color:#475569}
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-resumo.aviso{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-lista{display:grid;gap:10px}
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-mov{
+      border:1px solid #dbe4ef;border-radius:14px;padding:13px 14px;background:#fff
+    }
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-mov-top{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px
+    }
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-tipo{
+      display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;
+      font-size:10px;font-weight:900;text-transform:uppercase
+    }
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-tipo.faccao{background:#f3e8ff;color:#6b21a8}
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-tipo.celula{background:#dbeafe;color:#1d4ed8}
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-destino{margin:6px 0 2px;color:#0f172a;font-size:17px;font-weight:900}
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-processo{color:#334155;font-size:13px}
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-status{
+      flex:0 0 auto;padding:5px 8px;border-radius:999px;background:#ecfdf5;color:#166534;
+      font-size:10px;font-weight:900
+    }
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-status.aviso{background:#fffbeb;color:#92400e}
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-meta{
+      display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;padding-top:9px;
+      border-top:1px dashed #e2e8f0;color:#64748b;font-size:11px
+    }
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-loading,
+    #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-empty{
+      padding:28px 16px;text-align:center;color:#64748b
+    }
+    @media (max-width:640px){
+      #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-ident{grid-template-columns:1fr}
+      #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-mov-top{display:block}
+      #${MANEJO_INFO_LOCAL_MODAL_ID} .mil325-status{display:inline-flex;margin-top:8px}
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function garantirModalInfoLocalManejo() {
+  garantirEstiloInfoLocalManejo();
+
+  let modal = document.getElementById(MANEJO_INFO_LOCAL_MODAL_ID);
+  if (modal) return modal;
+
+  modal = document.createElement("div");
+  modal.id = MANEJO_INFO_LOCAL_MODAL_ID;
+  modal.hidden = true;
+  modal.innerHTML = `
+    <div class="mil325-card" role="dialog" aria-modal="true" aria-labelledby="mil325Titulo">
+      <div class="mil325-head">
+        <div>
+          <h3 id="mil325Titulo">Onde está esta OP?</h3>
+          <p>Mostra facções e células em que a OP está agora e o processo executado em cada local.</p>
+        </div>
+        <button class="mil325-close" type="button" data-mil325-fechar aria-label="Fechar">×</button>
+      </div>
+      <div class="mil325-body" id="mil325Conteudo"></div>
+    </div>
+  `;
+
+  modal.addEventListener("click", event => {
+    const alvo = event.target instanceof Element ? event.target : null;
+    if (alvo?.closest?.("[data-mil325-fechar]") || alvo === modal) fecharInfoLocalManejo();
+  });
+
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function fecharInfoLocalManejo() {
+  const modal = document.getElementById(MANEJO_INFO_LOCAL_MODAL_ID);
+  if (modal) modal.hidden = true;
+  document.body.style.overflow = "";
+}
+
+function tipoMovimentacaoInfoManejo(mov) {
+  const tipo = normalizarTexto(mov?.tipoDestino || mov?.tipoDestinoLabel || "").toUpperCase();
+  if (tipo.includes("CELULA")) return "celula";
+  if (tipo.includes("FACCAO")) return "faccao";
+  if (limparTexto(mov?.celula || mov?.celu || "")) return "celula";
+  if (limparTexto(mov?.faccao || "")) return "faccao";
+  return "";
+}
+
+function movimentacaoEncerradaInfoManejo(mov) {
+  const status = normalizarTexto(mov?.status || "").toLowerCase();
+  return ["retornou", "encaminhado", "finalizado", "cancelado", "cancelada", "excluido", "excluida"]
+    .includes(status);
+}
+
+function retornoInformadoInfoManejo(mov) {
+  return mov?.chegadaInformada === true ||
+    normalizarTexto(mov?.statusOperacional || "").toLowerCase() === "chegada_informada";
+}
+
+async function buscarMovimentacoesInfoManejo(op) {
+  const mapa = new Map();
+
+  const adicionarSnapshot = snapshot => {
+    snapshot.docs.forEach(item => mapa.set(item.id, { id: item.id, ...item.data() }));
+  };
+
+  const snapOpId = await getDocs(query(
+    collection(db, "movimentacoesProducao"),
+    where("opId", "==", op.id)
+  ));
+  adicionarSnapshot(snapOpId);
+
+  // Compatibilidade com movimentações antigas que eventualmente não guardaram opId.
+  if (!mapa.size && limparTexto(op?.numeroOP || "")) {
+    const numeroTexto = limparTexto(op.numeroOP);
+    const valores = [numeroTexto];
+    const numero = Number(numeroTexto);
+    if (Number.isFinite(numero)) valores.push(numero);
+
+    const vistos = new Set();
+    for (const valor of valores) {
+      const chave = `${typeof valor}:${valor}`;
+      if (vistos.has(chave)) continue;
+      vistos.add(chave);
+      const snapNumero = await getDocs(query(
+        collection(db, "movimentacoesProducao"),
+        where("numeroOP", "==", valor)
+      ));
+      adicionarSnapshot(snapNumero);
+    }
+  }
+
+  return [...mapa.values()].sort((a,b) => getMovTimestamp(b) - getMovTimestamp(a));
+}
+
+function fallbackLocalAtualInfoManejo(op) {
+  const local = normalizarTexto(op?.localAtualMigracao || op?.statusMigracaoLigia || "").toUpperCase();
+  const tipo = local.includes("CELULA") ? "celula" : local.includes("FACCAO") ? "faccao" : "";
+  if (!tipo) return null;
+
+  const destino = limparTexto(
+    op?.destinoAtualMigracao ||
+    (tipo === "faccao" ? op?.faccaoAtual : op?.celulaAtual) ||
+    ""
+  );
+  if (!destino) return null;
+
+  return {
+    id: "fallback-op",
+    tipoDestino: tipo,
+    tipoDestinoLabel: tipo === "faccao" ? "Facção" : "Célula",
+    destino,
+    processo: limparTexto(op?.processoAtualMigracao || op?.faseOriginalLigia || "") || "Processo não informado",
+    quantidadeEnviada: Number(op?.quantidade || 0),
+    dataEnvio: op?.dataEnvioAtualMigracao || op?.dataOriginalLigia || "",
+    status: "em_andamento",
+    origemInfoLocal: "Localização atual registrada na OP"
+  };
+}
+
+function renderMovimentacaoInfoManejo(mov, { retornoInformado = false } = {}) {
+  const tipo = tipoMovimentacaoInfoManejo(mov) || (mov?.tipoDestino === "celula" ? "celula" : "faccao");
+  const tipoLabel = tipo === "celula" ? "Célula" : "Facção";
+  const destino = limparTexto(mov?.destino || mov?.faccao || mov?.celula || mov?.celu || "") || "Destino não informado";
+  const processo = limparTexto(mov?.processo || mov?.processoMovimentacao || mov?.servicoNome || "") || "Processo não informado";
+  const quantidade = Number(mov?.quantidadeEnviada || mov?.quantidade || 0);
+  const envio = dataISOParaBR(mov?.dataEnvio) || limparTexto(mov?.dataEnvio || "") || "Sem data";
+  const status = retornoInformado
+    ? "Retorno informado"
+    : (labelStatusMovimento(mov?.status || "em_andamento") || "Em andamento");
+  const origem = limparTexto(mov?.origemInfoLocal || "");
+  const falta = Number(mov?.falta || 0);
+
+  return `
+    <div class="mil325-mov">
+      <div class="mil325-mov-top">
+        <div>
+          <span class="mil325-tipo ${tipo}">${escapeHtml(tipoLabel)}</span>
+          <div class="mil325-destino">${escapeHtml(destino)}</div>
+          <div class="mil325-processo"><strong>Fazendo:</strong> ${escapeHtml(processo)}</div>
+        </div>
+        <span class="mil325-status ${retornoInformado ? "aviso" : ""}">${escapeHtml(status)}</span>
+      </div>
+      <div class="mil325-meta">
+        <span><strong>Enviado:</strong> ${escapeHtml(envio)}</span>
+        <span><strong>Quantidade:</strong> ${escapeHtml(quantidade.toLocaleString("pt-BR"))}</span>
+        ${falta > 0 ? `<span><strong>Falta:</strong> ${escapeHtml(falta.toLocaleString("pt-BR"))}</span>` : ""}
+        ${origem ? `<span>${escapeHtml(origem)}</span>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+async function abrirInfoLocalManejo(opId) {
+  const id = String(opId || "").trim();
+  const op = state.ordens.find(item => String(item.id) === id);
+  if (!op) {
+    toast("OP não encontrada no Manejo.");
+    return;
+  }
+
+  const modal = garantirModalInfoLocalManejo();
+  const conteudo = document.getElementById("mil325Conteudo");
+  modal.hidden = false;
+  document.body.style.overflow = "hidden";
+
+  if (conteudo) {
+    conteudo.innerHTML = `
+      <div class="mil325-ident">
+        <div><span>OP</span><strong>${escapeHtml(op.numeroOP || op.id || "-")}</strong></div>
+        <div><span>Referência</span><strong>${escapeHtml(op.referencia || "-")}</strong></div>
+        <div><span>Cor</span><strong>${escapeHtml(op.cor || "-")}</strong></div>
+      </div>
+      <div class="mil325-loading">Consultando localização atual...</div>
+    `;
+  }
+
+  try {
+    const movimentos = await buscarMovimentacoesInfoManejo(op);
+    const externos = movimentos.filter(mov => ["faccao","celula"].includes(tipoMovimentacaoInfoManejo(mov)));
+    let atuais = externos.filter(mov => !movimentacaoEncerradaInfoManejo(mov) && !retornoInformadoInfoManejo(mov) && !mov?.dataChegada);
+    const retornosInformados = externos.filter(mov => !movimentacaoEncerradaInfoManejo(mov) && retornoInformadoInfoManejo(mov));
+
+    if (!atuais.length) {
+      const fallback = fallbackLocalAtualInfoManejo(op);
+      if (fallback) atuais = [fallback];
+    }
+
+    const identificacao = `
+      <div class="mil325-ident">
+        <div><span>OP</span><strong>${escapeHtml(op.numeroOP || op.id || "-")}</strong></div>
+        <div><span>Referência</span><strong>${escapeHtml(op.referencia || "-")}</strong></div>
+        <div><span>Cor</span><strong>${escapeHtml(op.cor || "-")}</strong></div>
+      </div>
+    `;
+
+    let html = identificacao;
+
+    if (atuais.length) {
+      const locais = atuais.map(mov => tipoMovimentacaoInfoManejo(mov) === "celula" ? "célula" : "facção");
+      const descricao = locais.length === 1
+        ? `Esta OP está atualmente em ${locais[0]}.`
+        : `Esta OP possui ${atuais.length} movimentações externas abertas.`;
+      html += `<div class="mil325-resumo ok">${escapeHtml(descricao)}</div>`;
+      html += `<div class="mil325-lista">${atuais.map(mov => renderMovimentacaoInfoManejo(mov)).join("")}</div>`;
+    } else {
+      html += '<div class="mil325-resumo neutro">Esta OP não está atualmente em nenhuma facção ou célula.</div>';
+    }
+
+    if (retornosInformados.length) {
+      html += `
+        <div class="mil325-resumo aviso" style="margin-top:14px">
+          Há retorno de facção/célula informado e aguardando confirmação no sistema.
+        </div>
+        <div class="mil325-lista">
+          ${retornosInformados.map(mov => renderMovimentacaoInfoManejo(mov,{ retornoInformado:true })).join("")}
+        </div>
+      `;
+    }
+
+    if (conteudo) conteudo.innerHTML = html;
+  } catch (error) {
+    console.error("Erro ao consultar localização da OP pelo Manejo.", error);
+    if (conteudo) {
+      conteudo.innerHTML = `
+        <div class="mil325-ident">
+          <div><span>OP</span><strong>${escapeHtml(op.numeroOP || op.id || "-")}</strong></div>
+          <div><span>Referência</span><strong>${escapeHtml(op.referencia || "-")}</strong></div>
+          <div><span>Cor</span><strong>${escapeHtml(op.cor || "-")}</strong></div>
+        </div>
+        <div class="mil325-empty">Não foi possível consultar a localização agora. Atualize a página e tente novamente.</div>
+      `;
+    }
+  }
+}
+
 function renderManejoInline() {
   const tbody = document.getElementById("listaManejoInline");
   if (!tbody) return;
@@ -2569,6 +2895,7 @@ function renderManejoInline() {
         </td>
         <td>
           <div class="manejo-actions-inline">
+            <button class="btn-info-local-manejo" type="button" onclick="abrirInfoLocalManejo('${op.id}')" title="Ver onde a OP está e o que está fazendo" aria-label="Ver localização da OP ${escapeHtml(op.numeroOP || '')}">ⓘ</button>
             <button class="btn-save-manejo" type="button" onclick="salvarManejoLinha('${op.id}')" title="Salvar edição rápida" aria-label="Salvar edição rápida da OP ${escapeHtml(op.numeroOP || '')}">✓</button>
             <div class="action-menu-wrap">
               <button class="btn-kebab" type="button" data-manejo-acoes-id="${op.id}" title="Mais ações da OP" aria-label="Mais ações da OP ${escapeHtml(op.numeroOP || '')}">⋮</button>
@@ -12279,6 +12606,8 @@ window.excluirManejo = excluirManejo;
 window.iniciarManejoParaOrdem = iniciarManejoParaOrdem;
 window.filtrarManejosPorOP = filtrarManejosPorOP;
 window.salvarManejoLinha = salvarManejoLinha;
+window.abrirInfoLocalManejo = abrirInfoLocalManejo;
+window.fecharInfoLocalManejo = fecharInfoLocalManejo;
 window.limparManejoLinha = limparManejoLinha;
 window.adicionarFaseSugestao = adicionarFaseSugestao;
 window.adicionarFaseLateralSugestao = adicionarFaseLateralSugestao;
@@ -12322,3 +12651,9 @@ window.biparOrdemDireto = biparOrdemDireto;
 window.enviarOrdemParaManejoDireto = enviarOrdemParaManejoDireto;
 window.finalizarMovimentacao = finalizarMovimentacao;
 window.excluirMovimentacao = excluirMovimentacao;
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && !document.getElementById(MANEJO_INFO_LOCAL_MODAL_ID)?.hidden) {
+    fecharInfoLocalManejo();
+  }
+});
