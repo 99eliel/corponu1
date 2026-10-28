@@ -2,9 +2,104 @@
   "firestore": {
     "rules": "firebase-rules.txt"
   },
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "**/.*",
+      "**/node_modules/**",
+      ".github/**",
+      "backups/**",
+      "firebase-rules.txt",
+      "firestore-rules.txt",
+      "storage-rules.txt",
+      "BACKUP-sw-anterior.js",
+      "remover-pwa-corponu.py",
+      "*.md",
+      "README*.txt",
+      "LEIA-ME*.txt",
+      "TESTES-REALIZADOS.txt",
+      "VALIDACAO-REALIZADA.txt",
+      "REVISAO-LOGICA-PAGAMENTOS.txt",
+      "backup-op-confeccao-planilha.json",
+      "calcinhas-historico-2026.json",
+      "dados-ligia-migracao.json",
+      "valores-processos-corponu-2026.json",
+      "corponu-faccoes-corte-*.txt",
+      "resumo-extracao-planilha.txt"
+    ],
+    "cleanUrls": false,
+    "trailingSlash": false,
+    "headers": [
+      {
+        "source": "/index.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/corponu-release.json",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/version.json",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/corponu-atualizador.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/update.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
   "emulators": {
     "firestore": {
       "port": 8085
+    },
+    "hosting": {
+      "port": 5000
     }
   }
 }
