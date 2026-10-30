@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-27-manejo-info-local-325",
-  "updatedAt": "2026-10-27T19:07:00-03:00",
-  "notes": "Adiciona ao Manejo um botão de informação por OP. A consulta é sob demanda e mostra se a OP está atualmente em Facção ou Célula, qual destino, qual processo está sendo executado, quantidade, data de envio e status. Retornos já informados e ainda aguardando confirmação são mostrados separadamente. Nenhuma regra de produção, login ou Firebase foi alterada."
+  "version": "2026-10-30-alca-cortagem-montagem-sem-x2-326",
+  "updatedAt": "2026-10-30T09:45:00-03:00",
+  "notes": "Corrige o serviço Alça • Cortagem e montagem: o valor fixo R$ 0,0540 já é por peça e não deve ser multiplicado por 2. A Alça global mantém sua regra própria de 2 alças por peça. Novos pagamentos de Cortagem e montagem passam a usar R$ 0,0540 por peça, e pagamentos antigos do mesmo fluxo que receberam o x2 indevido são reconciliados para o valor correto."
 }

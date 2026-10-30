@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-09-04-faccoes-lateral-preload-285";
+  const VERSION = "2026-10-30-alca-cortagem-montagem-sem-x2-326";
   const FB = "10.12.5";
   const AREA_LEGADA = "corte";
   const FLUXO = "lateral_alca";
@@ -39,7 +39,8 @@
       faccaoProcesso: "ALÇA",
       tipoValor: "fixo",
       valorFixo: VALOR_FIXO_CORTAGEM_MONTAGEM,
-      multiplicadorPorPeca: MULTIPLICADOR_ALCAS_POR_PECA,
+      // CORTAGEM E MONTAGEM é R$ 0,0540 por peça. O multiplicador de
+      // 2 alças pertence somente ao processo ALÇA global.
       marcaLateralPronta: false
     })
   ]);
@@ -1399,7 +1400,7 @@
     processos: PROCESSOS.map(item => ({ ...item })),
     valorFixoCortagemMontagem: VALOR_FIXO_CORTAGEM_MONTAGEM,
     multiplicadorAlcasPorPeca: MULTIPLICADOR_ALCAS_POR_PECA,
-    valorEfetivoCortagemMontagem: arred4(VALOR_FIXO_CORTAGEM_MONTAGEM * MULTIPLICADOR_ALCAS_POR_PECA)
+    valorEfetivoCortagemMontagem: arred4(VALOR_FIXO_CORTAGEM_MONTAGEM)
   };
   window.CorpoNuFaccoesLateralAlca = api;
   window.CorpoNuFaccoesCorte = api;

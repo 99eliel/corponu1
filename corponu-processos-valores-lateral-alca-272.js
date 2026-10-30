@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-09-03-alca-cortagem-montagem-x2-281";
+  const VERSION = "2026-10-30-alca-cortagem-montagem-sem-x2-326";
   const FB = "10.12.5";
   const AREA = "corte";
   const VALOR_FIXO_CORTAGEM_MONTAGEM = 0.0540;
@@ -99,8 +99,8 @@
           </form>
           <div class="processos-la-valor-card">
             <h4>Alça • Cortagem e montagem</h4>
-            <p>O valor fixo é por alça; o pagamento considera 2 alças por peça.</p>
-            <strong class="processos-la-valor-fixo">R$ 0,0540 × 2 = R$ 0,1080 por peça</strong>
+            <p>Valor fixo por peça. Este serviço não usa o multiplicador de 2 alças da Alça global.</p>
+            <strong class="processos-la-valor-fixo">R$ 0,0540 por peça</strong>
           </div>
         </div>
       `;
@@ -284,7 +284,7 @@
     garantirEstrutura,
     valorFixoCortagemMontagem: VALOR_FIXO_CORTAGEM_MONTAGEM,
     multiplicadorAlcasPorPeca: MULTIPLICADOR_ALCAS_POR_PECA,
-    valorEfetivoCortagemMontagem: arred4(VALOR_FIXO_CORTAGEM_MONTAGEM * MULTIPLICADOR_ALCAS_POR_PECA)
+    valorEfetivoCortagemMontagem: arred4(VALOR_FIXO_CORTAGEM_MONTAGEM)
   });
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar, { once: true });

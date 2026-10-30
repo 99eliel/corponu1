@@ -1,11 +1,11 @@
 (() => {
   "use strict";
 
-  const VERSION = "2026-09-03-alca-cortagem-montagem-x2-281";
+  const VERSION = "2026-10-30-alca-cortagem-montagem-sem-x2-326";
   const FB = "10.12.5";
   const VALOR_BASE = 0.0540;
-  const MULTIPLICADOR = 2;
-  const VALOR_CORRETO = 0.1080;
+  const MULTIPLICADOR = 1;
+  const VALOR_CORRETO = VALOR_BASE;
   const PROCESSOS = ["CORTAGEM E MONTAGEM", "CORTAGEM MONTAGEM", "CORTE E MONTAGEM"];
 
   if (window.__CORPONU_RECONCILIACAO_LATERAL_ALCA_281__ === VERSION) return;
@@ -82,15 +82,26 @@
   function pagamentoAlvo(item) {
     if (!item || item.cancelado === true || norm(item.statusPagamento) === "CANCELADO") return false;
     if (!PROCESSOS.includes(norm(item.processo))) return false;
-    if (Math.abs(arred4(item.valorUnitario) - VALOR_BASE) > 0.00001) return false;
-    if (item.correcaoCortagemMontagemX2 === true) return false;
 
     const fonte = norm(item.fonteValor);
     const origemFluxo = norm(item.origemFluxo);
     const fluxo = norm(item.fluxoFaccoes);
-    return fonte === "FIXO_CORTAGEM_MONTAGEM" ||
+    const regra = norm(item.regraValor);
+    const pertenceAoFluxo = fonte === "FIXO_CORTAGEM_MONTAGEM" ||
+      fonte === "FIXO_CORTAGEM_MONTAGEM-X2" ||
       origemFluxo === "FACCOES_LATERAL_ALCA_V2" ||
       fluxo === "LATERAL_ALCA";
+
+    if (!pertenceAoFluxo) return false;
+
+    const valorAtual = arred4(item.valorUnitario);
+    const marcadoComX2 =
+      item.correcaoCortagemMontagemX2 === true ||
+      regra === "2_ALCAS_POR_PECA" ||
+      fonte === "FIXO_CORTAGEM_MONTAGEM-X2" ||
+      Math.abs(valorAtual - 0.1080) < 0.00001;
+
+    return marcadoComX2 || Math.abs(valorAtual - VALOR_CORRETO) > 0.00001;
   }
 
   async function reconciliar() {
@@ -104,7 +115,7 @@
         return { corrigidos: 0, ignorados: 0, admin: false };
       }
 
-      const chaveSessao = `corponu_reconciliacao_cortagem_montagem_x2_281_${usuario.uid}`;
+      const chaveSessao = `corponu_reconciliacao_cortagem_montagem_sem_x2_326_${usuario.uid}`;
       if (sessionStorage.getItem(chaveSessao) === "ok") {
         return { corrigidos: 0, ignorados: 0, sessaoConcluida: true };
       }
@@ -140,18 +151,19 @@
 
           batch.set(c.fs.doc(c.db, "entregasPagamento", item.id), {
             valorUnitarioAntesCorrecao: arred4(item.valorUnitario),
-            subtotalAntesCorrecao: arred2(item.subtotal ?? (quantidade * VALOR_BASE)),
+            subtotalAntesCorrecao: arred2(item.subtotal ?? (quantidade * num(item.valorUnitario))),
             totalAntesCorrecao: arred2(item.total),
             valorBaseUnitario: VALOR_BASE,
             multiplicadorValor: MULTIPLICADOR,
-            regraValor: "2_alcas_por_peca",
+            regraValor: "valor_unitario_por_peca",
             valorUnitario: VALOR_CORRETO,
             subtotal,
             total,
-            fonteValor: "fixo_cortagem_montagem-x2",
-            correcaoCortagemMontagemX2: true,
+            fonteValor: "fixo_cortagem_montagem",
+            correcaoCortagemMontagemX2: false,
+            correcaoCortagemMontagemSemX2: true,
             correcaoCortagemMontagemVersao: VERSION,
-            correcaoCortagemMontagemMotivo: "Valor de R$ 0,0540 é por alça; processo usa 2 alças por peça.",
+            correcaoCortagemMontagemMotivo: "Cortagem e montagem usa R$ 0,0540 por peça, sem multiplicar por 2.",
             correcaoAposPagamento: pago,
             corrigidoPor: usuario.uid,
             corrigidoEm: agora,
@@ -162,12 +174,12 @@
 
           const logRef = c.fs.doc(c.fs.collection(c.db, "logsAlteracoes"));
           batch.set(logRef, {
-            acao: "pagamento_cortagem_montagem_corrigido_x2",
+            acao: "pagamento_cortagem_montagem_corrigido_sem_x2",
             entidade: "entregaPagamento",
             entidadeId: item.id,
             tipoAlvo: "entregaPagamento",
             alvoId: item.id,
-            detalhes: `OP ${item.numeroOP || "-"} | CORTAGEM E MONTAGEM | unitário 0,0540 -> 0,1080 | total ${arred2(item.total)} -> ${total}`,
+            detalhes: `OP ${item.numeroOP || "-"} | CORTAGEM E MONTAGEM | unitário ${arred4(item.valorUnitario)} -> 0,0540 | total ${arred2(item.total)} -> ${total}`,
             usuarioId: usuario.uid,
             usuarioUid: usuario.uid,
             usuarioEmail: usuario.email || "",
@@ -186,7 +198,7 @@
       window.dispatchEvent(new CustomEvent("corponu:pagamentos-reconciliados", {
         detail: { versao: VERSION, corrigidos, ignorados }
       }));
-      if (corrigidos) toast(`${corrigidos} pagamento(s) de Cortagem e montagem corrigido(s) para R$ 0,1080 por peça.`);
+      if (corrigidos) toast(`${corrigidos} pagamento(s) de Cortagem e montagem corrigido(s) para R$ 0,0540 por peça.`);
       return { corrigidos, ignorados, admin: true };
     } catch (error) {
       console.error("Falha ao reconciliar pagamentos de Cortagem e montagem.", error);
