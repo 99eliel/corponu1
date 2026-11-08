@@ -4634,9 +4634,18 @@ function configurarFaccoes() {
   }
 
   const busca = document.getElementById("buscaFaccao");
-  if (busca) {
-    busca.addEventListener("input", renderFaccoes);
-  }
+  busca?.addEventListener("input", renderFaccoes);
+  document.getElementById("filtroStatusFaccao")?.addEventListener("change", renderFaccoes);
+
+  // Ações únicas por delegação: sem onclick inline nem interceptadores externos.
+  document.getElementById("listaFaccoes")?.addEventListener("click", event => {
+    const botao = event.target.closest("button[data-faccao-acao][data-faccao-id]");
+    if (!botao) return;
+    const id = botao.dataset.faccaoId;
+    if (botao.dataset.faccaoAcao === "editar") editarFaccao(id);
+    else if (botao.dataset.faccaoAcao === "alternar") alternarFaccao(id);
+    else if (botao.dataset.faccaoAcao === "excluir") excluirFaccao(id);
+  });
 
   const buscaMovimentacoes = document.getElementById("buscaFaccaoMovimentacoes");
   if (buscaMovimentacoes) {
@@ -4760,13 +4769,27 @@ async function salvarFaccao(event) {
     return;
   }
 
+  const faccaoAnterior = idAtual ? state.faccoes.find(item => item.id === idAtual) : null;
+  if (idAtual && !faccaoAnterior) {
+    toast("Esta facção não está mais disponível. Atualize a lista.");
+    return;
+  }
+  const outraMesmoNome = state.faccoes.some(item =>
+    item.id !== idAtual && item.ativo !== false &&
+    !item.duplicadaDe && item.statusImportacao !== "duplicada_consolidada" &&
+    chaveFaccaoCanonica(item.nome) === chaveFaccaoCanonica(nome)
+  );
+  if (outraMesmoNome) {
+    toast("Já existe uma facção ativa com esse nome.");
+    return;
+  }
   const dados = {
     nome,
     cidade,
     chavePix,
     celular,
     observacoes,
-    ativo: true,
+    ativo: faccaoAnterior ? faccaoAnterior.ativo !== false : true,
     cadastroPendente: false,
     statusImportacao: "ok",
     pendenciaImportacao: "",
@@ -4898,88 +4921,69 @@ function renderFaccoes() {
   const tbody = document.getElementById("listaFaccoes");
   if (!tbody) return;
 
-  const busca = normalizarTexto(document.getElementById("buscaFaccao")?.value || "");
-  let faccoes = getFaccoesUnicas().filter(faccao => !faccao.cadastroPendente && faccao.ativo !== false);
+  const normalizarBusca = texto => normalizarTexto(String(texto || ""));
+  const busca = normalizarBusca(document.getElementById("buscaFaccao")?.value || "");
+  const filtro = document.getElementById("filtroStatusFaccao")?.value || "todas";
 
-  if (busca) {
-    faccoes = faccoes.filter(faccao => {
-      const texto = normalizarTexto([
-        faccao.nome,
-        faccao.cidade,
-        faccao.chavePix,
-        faccao.celular,
-        faccao.observacoes,
-        faccao.origemImportacao,
-        faccao.titularPix
-      ].join(" "));
-      return texto.includes(busca);
-    });
-  }
+  // Exibe também inativas e pendentes, sem alterar os documentos originais.
+  const unicas = getFaccoesUnicas({ incluirPendentes: true, incluirInativas: true })
+    .filter(item => item?.id && item?.nome)
+    .sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR", { numeric: true }));
+  const ativas = unicas.filter(item => item.ativo !== false && !item.cadastroPendente).length;
+  const inativas = unicas.filter(item => item.ativo === false).length;
+  const pendentes = unicas.filter(item => item.ativo !== false && item.cadastroPendente).length;
 
-  const faccoesFiltradas = faccoes;
+  const resumo = document.getElementById("resumoGerenciarFaccoes");
+  if (resumo) resumo.textContent = `${ativas} ativas  •  ${inativas} inativas  •  ${pendentes} pendentes`;
+
+  const visiveis = unicas.filter(faccao => {
+    const status = faccao.ativo === false ? "inativas" : faccao.cadastroPendente ? "pendentes" : "ativas";
+    if (filtro !== "todas" && filtro !== status) return false;
+    if (!busca) return true;
+    return normalizarBusca([
+      faccao.nome, faccao.cidade, faccao.chavePix, faccao.celular,
+      faccao.observacoes, faccao.titularPix
+    ].join(" ")).includes(busca);
+  });
+
   const chaveRender = "faccoes-cadastro";
-  faccoes = limitarItensRenderTabela(chaveRender, faccoesFiltradas);
-
-  if (!faccoesFiltradas.length) {
-    tbody.innerHTML = `<tr><td colspan="${ehAdmin() ? 6 : 5}" class="empty">Nenhuma facção cadastrada.</td></tr>`;
+  const pagina = limitarItensRenderTabela(chaveRender, visiveis);
+  if (!visiveis.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhuma facção encontrada.</td></tr>';
     limparControleRenderTabela(chaveRender);
     return;
   }
 
-  tbody.innerHTML = faccoes.map(faccao => `
-    <tr>
-      <td><strong>${escapeHtml(faccao.nome || "-")}</strong></td>
-      <td>${escapeHtml(faccao.cidade || "-")}</td>
-      <td>${escapeHtml(faccao.chavePix || "-")}</td>
-      <td>${escapeHtml(faccao.celular || "-")}</td>
-      <td>
-        <span class="status-dot ${faccao.ativo !== false ? "active" : "inactive"}">
-          ${faccao.ativo !== false ? "Ativa" : "Inativa"}
-        </span>
-      </td>
-      ${ehAdmin() ? `<td class="admin-only-cell">
-        <button class="btn btn-sm" onclick="editarFaccao('${faccao.id}')">Editar</button>
-        <button class="btn btn-sm ${faccao.ativo !== false ? "btn-warning" : "btn-success"}" onclick="alternarFaccao('${faccao.id}')">
-          ${faccao.ativo !== false ? "Inativar" : "Ativar"}
-        </button>
-        <button class="btn btn-sm btn-danger" onclick="excluirFaccao('${faccao.id}')">Excluir</button>
-      </td>` : ""}
-    </tr>
-  `).join("");
-  renderControleRenderTabela(tbody, chaveRender, faccoesFiltradas.length, faccoes.length, "facções");
+  tbody.innerHTML = pagina.map(faccao => {
+    const ativa = faccao.ativo !== false;
+    const pendente = ativa && Boolean(faccao.cadastroPendente);
+    const status = !ativa ? "Inativa" : pendente ? "Pendente" : "Ativa";
+    const classe = !ativa ? "inativa" : pendente ? "pendente" : "ativa";
+    const id = escapeHtml(String(faccao.id));
+    const acoes = ehAdmin() ? `
+      <div class="gf328-acoes">
+        <button type="button" class="btn btn-sm" data-faccao-acao="editar" data-faccao-id="${id}">Editar</button>
+        <button type="button" class="btn btn-sm ${ativa ? "btn-warning" : "btn-success"}" data-faccao-acao="alternar" data-faccao-id="${id}">${ativa ? "Inativar" : "Ativar"}</button>
+        <button type="button" class="btn btn-sm btn-danger" data-faccao-acao="excluir" data-faccao-id="${id}">Excluir</button>
+      </div>` : "—";
+    return `
+      <tr>
+        <td><strong>${escapeHtml(faccao.nome || "—")}</strong></td>
+        <td>${escapeHtml(faccao.cidade || "—")}</td>
+        <td class="gf328-contato">${escapeHtml(faccao.chavePix || "—")}</td>
+        <td class="gf328-contato">${escapeHtml(faccao.celular || "—")}</td>
+        <td><span class="gf328-status ${classe}">${status}</span></td>
+        <td>${acoes}</td>
+      </tr>
+    `;
+  }).join("");
+  renderControleRenderTabela(tbody, chaveRender, visiveis.length, pagina.length, "facções");
 }
 
+// Compatibilidade: a aba de pendências agora usa o filtro da lista única.
 function renderFaccoesPendentes() {
-  const tbody = document.getElementById("listaFaccoesPendentes");
-  if (!tbody) return;
-
-  const pendentes = getFaccoesUnicas({ incluirPendentes: true, somentePendentes: true })
-    .filter(faccao => faccao.statusImportacao !== "duplicada_consolidada" && !faccao.duplicadaDe)
-    .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true }));
-
-  if (!pendentes.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhuma facção pendente. Tudo pronto.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = pendentes.map(faccao => `
-    <tr class="faccao-pendente-row">
-      <td><strong>${escapeHtml(faccao.nome || "-")}</strong></td>
-      <td>${escapeHtml(faccao.cidade || "-")}</td>
-      <td>${escapeHtml(faccao.chavePix || "-")}</td>
-      <td>
-        <span class="badge pending">${escapeHtml(faccao.pendenciaImportacao || "Revisar dados")}</span>
-      </td>
-      <td>${escapeHtml(faccao.origemImportacao || "-")}</td>
-      <td class="admin-only-cell">
-        <button class="btn btn-sm btn-primary" onclick="editarFaccao('${faccao.id}')">Editar / completar</button>
-        <button class="btn btn-sm btn-danger" onclick="excluirFaccao('${faccao.id}')">Excluir</button>
-      </td>
-    </tr>
-  `).join("");
+  renderFaccoes();
 }
-
-
 
 async function carregarDadosLigiaNovaLogica() {
   const resposta = await fetch(LIGIA_MIGRACAO_DADOS_URL, { cache: "no-store" });
@@ -6438,27 +6442,31 @@ function renderFaccoesMovimentacoes() {
 
 
 function editarFaccao(id) {
+  if (!ehAdmin()) { toast("Apenas admin pode editar facções."); return; }
   const faccao = state.faccoes.find(item => item.id === id);
-  if (!faccao) return;
+  if (!faccao) { toast("Facção não encontrada. Atualize a lista."); return; }
 
-  abrirPagina("faccoes");
-  document.getElementById("painelGerenciarFaccoes")?.classList.remove("hidden");
-  const toggleGerenciar = document.getElementById("btnToggleGerenciarFaccoes");
-  if (toggleGerenciar) toggleGerenciar.textContent = "Ocultar gerenciamento";
-  document.getElementById("formFaccao")?.classList.remove("hidden");
-
-  document.getElementById("faccaoId").value = faccao.id;
-  document.getElementById("faccaoNome").value = faccao.nome || "";
-  document.getElementById("faccaoCidade").value = faccao.cidade || "";
-  document.getElementById("faccaoPix").value = faccao.chavePix || "";
-  document.getElementById("faccaoCelular").value = faccao.celular || "";
-  document.getElementById("faccaoObs").value = faccao.observacoes || "";
-
-  if (faccao.cadastroPendente) {
-    toast("Complete cidade/PIX e salve. A facção sairá dos pendentes.");
+  // Não chama abrirPagina: editar dentro da tela exclusiva não pode mudar a navegação.
+  const painel = document.getElementById("painelGerenciarFaccoes");
+  painel?.classList.remove("hidden");
+  const form = document.getElementById("formFaccao");
+  form?.classList.remove("hidden");
+  const campos = {
+    faccaoId: faccao.id,
+    faccaoNome: faccao.nome || "",
+    faccaoCidade: faccao.cidade || "",
+    faccaoPix: faccao.chavePix || "",
+    faccaoCelular: faccao.celular || "",
+    faccaoObs: faccao.observacoes || ""
+  };
+  for (const [chave, valor] of Object.entries(campos)) {
+    const campo = document.getElementById(chave);
+    if (campo) campo.value = valor;
   }
+  document.getElementById("tituloFormFaccao")?.replaceChildren(document.createTextNode("Editar facção"));
+  form?.scrollIntoView({ behavior: "smooth", block: "start" });
+  document.getElementById("faccaoNome")?.focus({ preventScroll: true });
 }
-
 async function alternarFaccao(id) {
   if (!ehAdmin()) {
     toast("Apenas admin pode alterar facções.");
@@ -6469,6 +6477,7 @@ async function alternarFaccao(id) {
   if (!faccao) return;
 
   const ativo = faccao.ativo === false;
+  if (!ativo && !confirm(`Inativar ${faccao.nome}? O cadastro será preservado e poderá ser reativado.`)) return;
 
   try {
     await setDoc(doc(db, "faccoes", id), {
@@ -6492,7 +6501,8 @@ async function excluirFaccao(id) {
   }
 
   const faccao = state.faccoes.find(item => item.id === id);
-  if (!confirm(`Excluir a facção ${faccao?.nome || id}?`)) return;
+  if (!faccao) { toast("Facção não encontrada."); return; }
+  if (!confirm(`Excluir definitivamente o cadastro de ${faccao.nome}? Esta ação não apaga movimentações ou pagamentos históricos. Para apenas retirar das opções de envio, prefira Inativar.`)) return;
 
   try {
     await deleteDoc(doc(db, "faccoes", id));
