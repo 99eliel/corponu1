@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-10-13-fases-firestore-fonte-unica-316";
+  const APP_VERSION = "2026-11-08-gerenciar-faccoes-organizado-327";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -10921,6 +10921,7 @@
       snapshot => {
         faccoesCadastroProcessos = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
         renderGradeProcessosFaccoes();
+        atualizarGerenciarFaccoes327();
         criarConfiguracaoInicialProcessosFaccoesSeNecessario();
       },
       error => console.error("Erro ao carregar facções para os processos.", error)
@@ -13762,4 +13763,339 @@
   document.addEventListener("visibilitychange", () => {
     // Sem verificação pelo version.json legado.
   });
+
+
+  // =========================================================
+  // REVISÃO 327: GERENCIAR FACÇÕES
+  // - Mantém o cadastro e as funções oficiais do app.js.
+  // - Torna Editar / Ativar-Inativar / Excluir confiáveis por delegação.
+  // - Exibe resumo, busca mais clara e facções inativas para reativação.
+  // - Não altera regras do Firebase, histórico, movimentações ou pagamentos.
+  // =========================================================
+  let gerenciarFaccoes327Iniciado = false;
+
+  function escapeHtmlGerenciarFaccoes327(valor) {
+    return String(valor ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function injetarEstilosGerenciarFaccoes327() {
+    if (document.getElementById("styleGerenciarFaccoes327")) return;
+    const style = document.createElement("style");
+    style.id = "styleGerenciarFaccoes327";
+    style.textContent = `
+      #painelGerenciarFaccoes.painel-tela-exclusiva-ativo {
+        --gf327-border: #dbe4ef;
+        --gf327-muted: #64748b;
+        --gf327-ink: #0f172a;
+      }
+      #painelGerenciarFaccoes .gerenciar-faccoes-resumo-327 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin: 0 0 18px;
+      }
+      #painelGerenciarFaccoes .gerenciar-faccoes-card-327 {
+        padding: 15px 16px;
+        border: 1px solid var(--gf327-border);
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, .04);
+      }
+      #painelGerenciarFaccoes .gerenciar-faccoes-card-327 span {
+        display: block;
+        color: var(--gf327-muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+      }
+      #painelGerenciarFaccoes .gerenciar-faccoes-card-327 strong {
+        display: block;
+        margin-top: 6px;
+        color: var(--gf327-ink);
+        font-size: 25px;
+        line-height: 1;
+      }
+      #painelGerenciarFaccoes .faccao-form-inline {
+        margin: 0 0 20px !important;
+        padding: 18px !important;
+        border: 1px solid #bfdbfe !important;
+        border-radius: 16px !important;
+        background: #eff6ff !important;
+      }
+      #painelGerenciarFaccoes .faccao-form-inline:not(.hidden)::before {
+        content: "Cadastro da facção";
+        grid-column: 1 / -1;
+        display: block;
+        margin-bottom: 2px;
+        color: #1e3a8a;
+        font-size: 15px;
+        font-weight: 900;
+      }
+      #painelGerenciarFaccoes .faccoes-list-header {
+        position: sticky;
+        top: 82px;
+        z-index: 9;
+        padding: 12px 0;
+        background: rgba(248,250,252,.96);
+        backdrop-filter: blur(8px);
+      }
+      #painelGerenciarFaccoes .faccoes-table td:last-child {
+        white-space: nowrap;
+      }
+      #painelGerenciarFaccoes .faccoes-table .btn {
+        margin: 2px;
+      }
+      #painelGerenciarFaccoes .gerenciar-faccoes-inativas-327 {
+        margin: 18px 0 22px;
+        padding: 16px;
+        border: 1px solid var(--gf327-border);
+        border-radius: 16px;
+        background: #fff;
+      }
+      #painelGerenciarFaccoes .gerenciar-faccoes-inativas-327 > header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      #painelGerenciarFaccoes .gerenciar-faccoes-inativas-327 h3 {
+        margin: 0;
+        color: var(--gf327-ink);
+      }
+      #painelGerenciarFaccoes .gerenciar-faccoes-inativas-327 p {
+        margin: 4px 0 0;
+        color: var(--gf327-muted);
+        font-size: 12px;
+      }
+      #painelGerenciarFaccoes .gf327-status-inativa {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 9px;
+        border-radius: 999px;
+        background: #f1f5f9;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 900;
+      }
+      #painelGerenciarFaccoes [data-gf327-acao] {
+        cursor: pointer;
+      }
+      @media (max-width: 780px) {
+        #painelGerenciarFaccoes .gerenciar-faccoes-resumo-327 {
+          grid-template-columns: 1fr;
+        }
+        #painelGerenciarFaccoes .faccoes-list-header {
+          position: static;
+        }
+        #painelGerenciarFaccoes .gerenciar-faccoes-inativas-327 > header {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function garantirEstruturaGerenciarFaccoes327() {
+    const painel = document.getElementById("painelGerenciarFaccoes");
+    if (!painel) return null;
+
+    injetarEstilosGerenciarFaccoes327();
+
+    let resumo = document.getElementById("resumoGerenciarFaccoes327");
+    if (!resumo) {
+      resumo = document.createElement("div");
+      resumo.id = "resumoGerenciarFaccoes327";
+      resumo.className = "gerenciar-faccoes-resumo-327";
+      resumo.innerHTML = `
+        <div class="gerenciar-faccoes-card-327"><span>Facções ativas</span><strong id="gf327TotalAtivas">0</strong></div>
+        <div class="gerenciar-faccoes-card-327"><span>Facções inativas</span><strong id="gf327TotalInativas">0</strong></div>
+        <div class="gerenciar-faccoes-card-327"><span>Pendentes de cadastro</span><strong id="gf327TotalPendentes">0</strong></div>
+      `;
+      const cabecalho = painel.querySelector(":scope > .panel-subheader");
+      if (cabecalho) cabecalho.insertAdjacentElement("afterend", resumo);
+      else painel.prepend(resumo);
+    }
+
+    let inativas = document.getElementById("gerenciarFaccoesInativas327");
+    if (!inativas) {
+      inativas = document.createElement("section");
+      inativas.id = "gerenciarFaccoesInativas327";
+      inativas.className = "gerenciar-faccoes-inativas-327";
+      inativas.innerHTML = `
+        <header>
+          <div>
+            <h3>Facções inativas</h3>
+            <p>Cadastros desativados continuam preservados e podem ser reativados aqui.</p>
+          </div>
+        </header>
+        <div class="table-wrap">
+          <table class="faccoes-table">
+            <thead><tr><th>Nome</th><th>Cidade</th><th>PIX</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="listaFaccoesInativas327"></tbody>
+          </table>
+        </div>
+      `;
+      const listaHeader = painel.querySelector(".faccoes-list-header");
+      if (listaHeader) listaHeader.insertAdjacentElement("beforebegin", inativas);
+      else painel.appendChild(inativas);
+    }
+
+    const busca = document.getElementById("buscaFaccao");
+    if (busca) {
+      busca.placeholder = "Buscar por nome, cidade, PIX, celular ou observação...";
+      busca.setAttribute("aria-label", "Buscar facções cadastradas");
+    }
+
+    return painel;
+  }
+
+  function atualizarGerenciarFaccoes327() {
+    const painel = garantirEstruturaGerenciarFaccoes327();
+    if (!painel) return;
+
+    const faccoes = Array.isArray(faccoesCadastroProcessos) ? faccoesCadastroProcessos : [];
+    const validas = faccoes.filter(item =>
+      item?.nome &&
+      item?.statusImportacao !== "duplicada_consolidada" &&
+      !item?.duplicadaDe
+    );
+    const ativas = validas.filter(item => item.ativo !== false && !item.cadastroPendente);
+    const inativas = validas.filter(item => item.ativo === false && !item.cadastroPendente);
+    const pendentes = validas.filter(item => item.cadastroPendente);
+
+    const elAtivas = document.getElementById("gf327TotalAtivas");
+    const elInativas = document.getElementById("gf327TotalInativas");
+    const elPendentes = document.getElementById("gf327TotalPendentes");
+    if (elAtivas) elAtivas.textContent = String(ativas.length);
+    if (elInativas) elInativas.textContent = String(inativas.length);
+    if (elPendentes) elPendentes.textContent = String(pendentes.length);
+
+    const tbody = document.getElementById("listaFaccoesInativas327");
+    if (!tbody) return;
+    if (!inativas.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">Nenhuma facção inativa.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = inativas
+      .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { numeric: true }))
+      .map(faccao => `
+        <tr>
+          <td><strong>${escapeHtmlGerenciarFaccoes327(faccao.nome || "-")}</strong></td>
+          <td>${escapeHtmlGerenciarFaccoes327(faccao.cidade || "-")}</td>
+          <td>${escapeHtmlGerenciarFaccoes327(faccao.chavePix || "-")}</td>
+          <td><span class="gf327-status-inativa">Inativa</span></td>
+          <td>
+            <button class="btn btn-sm" type="button" data-gf327-acao="editar" data-gf327-id="${escapeHtmlGerenciarFaccoes327(faccao.id)}">Editar</button>
+            <button class="btn btn-sm btn-success" type="button" data-gf327-acao="alternar" data-gf327-id="${escapeHtmlGerenciarFaccoes327(faccao.id)}">Ativar</button>
+            <button class="btn btn-sm btn-danger" type="button" data-gf327-acao="excluir" data-gf327-id="${escapeHtmlGerenciarFaccoes327(faccao.id)}">Excluir</button>
+          </td>
+        </tr>
+      `).join("");
+  }
+
+  function extrairAcaoFaccaoInline327(botao) {
+    const codigo = String(botao?.getAttribute?.("onclick") || "");
+    const match = codigo.match(/\b(editarFaccao|alternarFaccao|excluirFaccao)\((['"])(.*?)\2\)/);
+    if (!match) return null;
+    const mapa = {
+      editarFaccao: "editar",
+      alternarFaccao: "alternar",
+      excluirFaccao: "excluir"
+    };
+    return { acao: mapa[match[1]], id: match[3] };
+  }
+
+  async function executarAcaoGerenciarFaccoes327(acao, id) {
+    const funcao = acao === "editar"
+      ? window.editarFaccao
+      : acao === "alternar"
+        ? window.alternarFaccao
+        : acao === "excluir"
+          ? window.excluirFaccao
+          : null;
+
+    if (typeof funcao !== "function") {
+      mostrarAvisoFormulario("A ação ainda não está disponível. Atualize a página e tente novamente.");
+      return;
+    }
+
+    try {
+      if (acao === "editar") {
+        funcao(id);
+        setTimeout(() => {
+          abrirTelaExclusivaGerenciamento("faccoes", { rolarTopo: false });
+          const form = document.getElementById("formFaccao");
+          form?.classList.remove("hidden");
+          form?.scrollIntoView({ behavior: "smooth", block: "start" });
+          setTimeout(() => document.getElementById("faccaoNome")?.focus({ preventScroll: true }), 250);
+        }, 0);
+        return;
+      }
+
+      await funcao(id);
+      setTimeout(atualizarGerenciarFaccoes327, 120);
+      setTimeout(atualizarGerenciarFaccoes327, 600);
+    } catch (error) {
+      console.error("Erro na ação de Gerenciar facções.", error);
+      mostrarAvisoFormulario("Não foi possível concluir a ação da facção.");
+    }
+  }
+
+  function instalarEventosGerenciarFaccoes327() {
+    if (gerenciarFaccoes327Iniciado) return;
+    gerenciarFaccoes327Iniciado = true;
+
+    document.addEventListener("click", event => {
+      const botaoNovo = event.target?.closest?.("[data-gf327-acao][data-gf327-id]");
+      const botaoInline = event.target?.closest?.(
+        '#listaFaccoes button[onclick*="Faccao"], #listaFaccoesPendentes button[onclick*="Faccao"]'
+      );
+      if (!botaoNovo && !botaoInline) return;
+
+      const dados = botaoNovo
+        ? { acao: botaoNovo.dataset.gf327Acao, id: botaoNovo.dataset.gf327Id }
+        : extrairAcaoFaccaoInline327(botaoInline);
+      if (!dados?.acao || !dados?.id) return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      executarAcaoGerenciarFaccoes327(dados.acao, dados.id);
+    }, true);
+
+    document.addEventListener("click", event => {
+      if (!event.target?.closest?.("#btnToggleGerenciarFaccoes")) return;
+      setTimeout(atualizarGerenciarFaccoes327, 50);
+      setTimeout(atualizarGerenciarFaccoes327, 500);
+    });
+
+    document.getElementById("btnAbrirCadastroFaccao")?.addEventListener("click", () => {
+      setTimeout(() => {
+        const form = document.getElementById("formFaccao");
+        form?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    });
+  }
+
+  function iniciarGerenciarFaccoes327() {
+    garantirEstruturaGerenciarFaccoes327();
+    instalarEventosGerenciarFaccoes327();
+    atualizarGerenciarFaccoes327();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", iniciarGerenciarFaccoes327, { once: true });
+  } else {
+    iniciarGerenciarFaccoes327();
+  }
+
 })();
