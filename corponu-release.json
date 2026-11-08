@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-08-gerenciar-faccoes-328",
+  "version": "2026-11-08-editor-faccao-modal-329",
   "updatedAt": "2026-11-08T13:40:00-03:00",
-  "notes": "Cadastro de facções reconstruído com busca, filtro e ações diretas. Removida sobreposição visual do módulo legado; configurações de processos e histórico preservados."
+  "notes": "Editor de facções abre em uma janela dedicada com dados preenchidos, Salvar/Cancelar e fechamento por X ou Esc, preservando a posição da lista e o salvamento original."
 }
