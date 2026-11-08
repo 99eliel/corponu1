@@ -4731,6 +4731,133 @@ function configurarFaccoes() {
   configurarModalAjusteMigracao();
 }
 
+// Processos da facção: lista vinda do cadastro oficial, sem valores fixos na UI.
+// Ambos os cadastros de vínculos são atualizados em um único lote Firestore.
+let processosEditor330Carregados = false;
+let carregamentoProcessosEditor330 = 0;
+let salvandoFaccaoEditor330 = false;
+
+function chaveProcessoEditor330(valor) {
+  return normalizarTexto(normalizarNomeProcesso(valor)).toUpperCase().trim();
+}
+
+function selecionadosProcessosEditor330() {
+  return [...document.querySelectorAll("#faccaoProcessosOpcoes330 input[data-processo-faccao330]:checked")]
+    .map(input => input.dataset.processoFaccao330).filter(Boolean);
+}
+
+async function prepararProcessosEditor330(idFaccao = "") {
+  const bloco = document.getElementById("faccaoProcessosBloco330");
+  const grade = document.getElementById("faccaoProcessosOpcoes330");
+  const aviso = document.getElementById("faccaoProcessosAviso330");
+  const botaoSalvar = document.querySelector("#formFaccao button[type=submit]");
+  if (!bloco || !grade) return;
+  const sequencia = ++carregamentoProcessosEditor330;
+  processosEditor330Carregados = false;
+  bloco.disabled = true;
+  if (botaoSalvar) botaoSalvar.disabled = true;
+  grade.textContent = "Carregando processos cadastrados...";
+  if (aviso) aviso.textContent = "";
+
+  try {
+    const [configAtual, configLegada] = await Promise.all([
+      getDoc(doc(db, "configuracoes", "processosFaccoes")),
+      getDoc(doc(db, "configuracoes", "grupos-faccoes-processos"))
+    ]);
+    if (sequencia !== carregamentoProcessosEditor330) return;
+    const faccao = idFaccao ? state.faccoes.find(item => item.id === idFaccao) : null;
+    const listaOficial = configAtual.exists()
+      ? (configAtual.data()?.processos || []).filter(item => item?.ativo !== false).map(item => item.nome)
+      : [];
+    const listaLegada = configLegada.exists()
+      ? (configLegada.data()?.processos || []).map(item => typeof item === "string" ? item : item?.nome)
+      : [];
+    const existentes = Array.isArray(faccao?.processosPermitidos) ? faccao.processosPermitidos : [];
+    const catalogo = listaUnicaNormalizada([
+      ...Object.keys(FACCOES_POR_PROCESSO_PADRAO),
+      ...listaOficial, ...listaLegada, ...existentes
+    ].map(normalizarNomeProcesso));
+    const marcados = new Set((
+      faccao
+        ? (faccao.processosGerenciados === true
+          ? existentes
+          : listaUnicaNormalizada([...existentes, ...getProcessosPadraoDaFaccao(faccao.nome)]))
+        : []
+    ).map(chaveProcessoEditor330));
+
+    grade.replaceChildren();
+    for (const processo of catalogo) {
+      const label = document.createElement("label");
+      label.className = "gf330-processo-item";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.dataset.processoFaccao330 = processo;
+      input.checked = marcados.has(chaveProcessoEditor330(processo));
+      const texto = document.createElement("span");
+      texto.textContent = processo;
+      label.append(input, texto);
+      grade.appendChild(label);
+    }
+    if (!catalogo.length) {
+      grade.textContent = "Nenhum processo cadastrado.";
+      if (aviso) aviso.textContent = "Cadastre primeiro os processos na área de gerenciamento.";
+      return;
+    }
+    bloco.disabled = false;
+    processosEditor330Carregados = true;
+    if (botaoSalvar) botaoSalvar.disabled = false;
+  } catch (erro) {
+    if (sequencia !== carregamentoProcessosEditor330) return;
+    console.error("Erro ao carregar processos das facções.", erro);
+    grade.textContent = "Não foi possível carregar os processos.";
+    if (aviso) aviso.textContent = "Verifique a conexão e abra a edição novamente.";
+    toast("Erro ao carregar os processos. Nenhum dado foi alterado.");
+  }
+}
+
+function atualizarVinculosFaccaoEditor330(lote, id, nome, nomeAntigo, processos, configAtual, configLegada) {
+  const selecionados = new Set(processos.map(chaveProcessoEditor330));
+  const nomeAntigoChave = chaveFaccaoCanonica(nomeAntigo || nome);
+  const novoNomeChave = chaveFaccaoCanonica(nome);
+
+  // Configuração consumida pelo Manejo e pela seleção oficial de destinos.
+  if (configAtual.exists()) {
+    const lista = configAtual.data()?.processos || [];
+    const alterados = lista.map(registro => {
+      const processo = normalizarNomeProcesso(registro.nome || "");
+      if (!processo) return registro;
+      const nomes = (registro.faccoes || []).filter(
+        item => ![nomeAntigoChave, novoNomeChave].includes(chaveFaccaoCanonica(item))
+      );
+      if (selecionados.has(chaveProcessoEditor330(processo))) nomes.push(nome);
+      return { ...registro, faccoes: listaUnicaNormalizada(nomes) };
+    });
+    lote.set(doc(db, "configuracoes", "processosFaccoes"), {
+      processos: alterados,
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+  }
+
+  // Grupos antigos são mantidos em sincronia para os seletores operacionais legados.
+  if (configLegada.exists()) {
+    const gruposOriginais = configLegada.data()?.grupos || {};
+    const grupos = { ...gruposOriginais };
+    for (const [chave, grupo] of Object.entries(gruposOriginais)) {
+      const processo = normalizarNomeProcesso(grupo?.processo || "");
+      if (!processo) continue;
+      const ids = new Set((grupo.faccaoIds || []).filter(item => item !== id));
+      if (selecionados.has(chaveProcessoEditor330(processo))) ids.add(id);
+      grupos[chave] = { ...grupo, faccaoIds: [...ids], configurado: true };
+    }
+    lote.set(doc(db, "configuracoes", "grupos-faccoes-processos"), {
+      grupos,
+      atualizadoPor: state.currentUser.uid,
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+  }
+}
+
 // Editor dedicado: usa o mesmo formulário e salvamento original sem duplicar campos.
 let marcadorFormularioFaccaoModal329 = null;
 let focoAnteriorFaccaoModal329 = null;
@@ -4797,6 +4924,7 @@ function abrirEditorFaccaoModal329(tipo) {
       : "Preencha os dados para cadastrar uma nova facção.";
   document.getElementById("tituloFormFaccao").textContent =
     tipo === "editar" ? "Dados da facção" : "Nova facção";
+  prepararProcessosEditor330(document.getElementById("faccaoId")?.value || "");
   document.getElementById("faccaoNome")?.focus({ preventScroll: true });
 }
 
@@ -4804,6 +4932,8 @@ function fecharEditorFaccaoModal329() {
   const modal = document.getElementById("editorFaccaoModal329");
   if (!modal || modal.classList.contains("hidden")) return;
   modal.classList.add("hidden");
+  carregamentoProcessosEditor330++;
+  processosEditor330Carregados = false;
   const form = document.getElementById("formFaccao");
   if (form && marcadorFormularioFaccaoModal329?.parentNode) {
     marcadorFormularioFaccaoModal329.parentNode.insertBefore(
@@ -4832,6 +4962,11 @@ function limparFormFaccao() {
 
 async function salvarFaccao(event) {
   event.preventDefault();
+  if (salvandoFaccaoEditor330) return;
+  if (!processosEditor330Carregados) {
+    toast("Aguarde o carregamento dos processos antes de salvar.");
+    return;
+  }
 
   if (!ehAdmin()) {
     toast("Apenas admin pode salvar facções.");
@@ -4864,12 +4999,20 @@ async function salvarFaccao(event) {
     toast("Já existe uma facção ativa com esse nome.");
     return;
   }
+  const processosPermitidos = listaUnicaNormalizada(selecionadosProcessosEditor330().map(normalizarNomeProcesso));
+  const trabalhaSutia = processosPermitidos.some(item => /SUTIÃ|BOJO|ALÇA|LATERAL/i.test(item));
+  const trabalhaCalcinha = processosPermitidos.some(item => /CALCINHA/i.test(item));
   const dados = {
     nome,
     cidade,
     chavePix,
     celular,
     observacoes,
+    processosPermitidos,
+    processosGerenciados: true,
+    trabalhaSutia,
+    trabalhaCalcinha,
+    gruposPermitidos: [trabalhaSutia ? "SUTIÃ" : "", trabalhaCalcinha ? "CALCINHA" : ""].filter(Boolean),
     ativo: faccaoAnterior ? faccaoAnterior.ativo !== false : true,
     cadastroPendente: false,
     statusImportacao: "ok",
@@ -4883,9 +5026,22 @@ async function salvarFaccao(event) {
     dados.criadoEm = serverTimestamp();
   }
 
+  const botaoSalvar = document.querySelector("#formFaccao button[type=submit]");
+  salvandoFaccaoEditor330 = true;
+  if (botaoSalvar) botaoSalvar.disabled = true;
   try {
     const docId = idAtual || docIdSeguro(nome);
-    await setDoc(doc(db, "faccoes", docId), dados, { merge: true });
+    const [configAtual, configLegada] = await Promise.all([
+      getDoc(doc(db, "configuracoes", "processosFaccoes")),
+      getDoc(doc(db, "configuracoes", "grupos-faccoes-processos"))
+    ]);
+    const lote = writeBatch(db);
+    lote.set(doc(db, "faccoes", docId), dados, { merge: true });
+    atualizarVinculosFaccaoEditor330(
+      lote, docId, nome, faccaoAnterior?.nome || nome,
+      processosPermitidos, configAtual, configLegada
+    );
+    await lote.commit();
 
     await registrarLog(
       idAtual ? "faccao_atualizada" : "faccao_criada",
@@ -4898,7 +5054,10 @@ async function salvarFaccao(event) {
     toast("Facção salva com sucesso.");
   } catch (error) {
     console.error(error);
-    toast("Erro ao salvar facção.");
+    toast("Erro ao salvar facção e processos. Nenhum vínculo foi atualizado.");
+  } finally {
+    salvandoFaccaoEditor330 = false;
+    if (botaoSalvar) botaoSalvar.disabled = !processosEditor330Carregados;
   }
 }
 
@@ -7285,10 +7444,11 @@ function scoreFaccaoParaUnificar(faccao) {
 
 function mergeFaccoesCadastro(base, item) {
   const nome = nomeFaccaoCanonico(base?.nome || item?.nome || "");
+  const configurados = base?.processosGerenciados === true || item?.processosGerenciados === true;
   const processos = listaUnicaNormalizada([
     ...(base?.processosPermitidos || []),
     ...(item?.processosPermitidos || []),
-    ...getProcessosPadraoDaFaccao(nome)
+    ...(configurados ? [] : getProcessosPadraoDaFaccao(nome))
   ].map(normalizarNomeProcesso));
 
   return {
@@ -7300,6 +7460,7 @@ function mergeFaccoesCadastro(base, item) {
     celular: base?.celular || item?.celular || "",
     observacoes: listaUnicaNormalizada([base?.observacoes, item?.observacoes]).join(" | "),
     processosPermitidos: processos,
+    processosGerenciados: configurados,
     gruposPermitidos: listaUnicaNormalizada([...(base?.gruposPermitidos || []), ...(item?.gruposPermitidos || []), base?.grupo, item?.grupo]),
     ativo: base?.ativo !== false || item?.ativo !== false,
     cadastroPendente: Boolean(base?.cadastroPendente && item?.cadastroPendente),
@@ -7340,7 +7501,7 @@ function getFaccoesUnicas(opcoes = {}) {
 function getProcessosDaFaccao(faccao) {
   return listaUnicaNormalizada([
     ...(faccao?.processosPermitidos || []),
-    ...getProcessosPadraoDaFaccao(faccao?.nome || "")
+    ...(faccao?.processosGerenciados === true ? [] : getProcessosPadraoDaFaccao(faccao?.nome || ""))
   ].map(normalizarNomeProcesso));
 }
 
@@ -7390,7 +7551,8 @@ function getFaccoesPermitidasPorProcesso(processo) {
   faccoesUnicas.forEach(faccao => {
     const processos = getProcessosDaFaccao(faccao).map(normalizarNomeProcesso);
     const chave = chaveFaccaoCanonica(faccao.nome);
-    const permitido = processos.includes(processoNormalizado) || chavesOficiais.has(chave);
+    const permitido = processos.includes(processoNormalizado) ||
+      (faccao.processosGerenciados !== true && chavesOficiais.has(chave));
     if (!permitido || !chave) return;
 
     const atual = mapa.get(chave);
