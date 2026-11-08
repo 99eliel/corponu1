@@ -804,104 +804,71 @@
           </div>
 
           <div class="gerenciar-faccoes-panel hidden" id="painelGerenciarFaccoes">
-            <div class="panel-subheader">
+            <div class="panel-subheader gf328-header">
               <div>
-                <h3>Gerenciar facções</h3>
-                <p>Cadastre, edite ou inative facções. Esta área fica escondida para não poluir a movimentação.</p>
+                <h3>Cadastro de facções</h3>
+                <p>Gerencie os cadastros sem interferir nas movimentações e nos pagamentos.</p>
               </div>
-              <div class="actions">
-                <button class="btn btn-success" id="btnImportarFaccoesExtraidas" type="button">Importar facções da planilha</button>
-                <button class="btn btn-warning" id="btnOrganizarFaccoesDuplicadas" type="button">Organizar duplicadas</button>
-                <button class="btn btn-primary" id="btnAbrirCadastroFaccao" type="button">Cadastrar facção</button>
-              </div>
-            </div>
-
-            <div class="faccoes-import-box admin-only-block">
-              <div>
-                <strong>Importação preparada</strong>
-                <span>A lista de facções agora é unificada por nome e ligada ao processo correto.</span>
-              </div>
-              <small>Use “Organizar duplicadas” para manter só um cadastro ativo por nome, sem apagar histórico de movimentações.</small>
+              <button class="btn btn-primary" id="btnAbrirCadastroFaccao" type="button">+ Nova facção</button>
             </div>
 
             <form class="form admin-only-block faccao-form-inline hidden" id="formFaccao">
+              <h3 id="tituloFormFaccao">Nova facção</h3>
               <input type="hidden" id="faccaoId" />
-
-              <label>
-                Nome da facção
-                <input id="faccaoNome" type="text" placeholder="Ex: FACÇÃO KELLY" required />
+              <div class="gf328-form-grid">
+                <label>Nome da facção
+                  <input id="faccaoNome" type="text" placeholder="Nome" required />
+                </label>
+                <label>Cidade
+                  <input id="faccaoCidade" type="text" placeholder="Cidade" required />
+                </label>
+                <label>Chave PIX
+                  <input id="faccaoPix" type="text" placeholder="Opcional" />
+                </label>
+                <label>Celular
+                  <input id="faccaoCelular" type="tel" placeholder="Opcional" />
+                </label>
+              </div>
+              <label>Observações
+                <textarea id="faccaoObs" rows="2" placeholder="Informações adicionais (opcional)"></textarea>
               </label>
-
-              <label>
-                Cidade
-                <input id="faccaoCidade" type="text" placeholder="Ex: Pontalina" required />
-              </label>
-
-              <label>
-                Chave PIX
-                <input id="faccaoPix" type="text" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" />
-              </label>
-
-              <label>
-                Número de celular
-                <input id="faccaoCelular" type="tel" placeholder="Ex: (64) 99999-9999" />
-              </label>
-
-              <label>
-                Observações
-                <textarea id="faccaoObs" rows="2" placeholder="Opcional"></textarea>
-              </label>
-
               <div class="actions">
                 <button class="btn btn-primary" type="submit">Salvar facção</button>
-                <button class="btn" type="button" id="btnCancelarFaccao">Cancelar</button>
+                <button class="btn" id="btnCancelarFaccao" type="button">Cancelar</button>
               </div>
             </form>
 
-            <div class="panel-subheader faccoes-pendentes-header">
+            <div class="gf328-lista-topo">
               <div>
-                <h3>Facções pendentes</h3>
-                <p>Dados extraídos da planilha que precisam de conferência antes de usar no envio.</p>
+                <h3>Facções cadastradas</h3>
+                <p id="resumoGerenciarFaccoes" aria-live="polite">Carregando cadastros...</p>
+              </div>
+              <div class="gf328-filtros">
+                <input id="buscaFaccao" class="search" type="search" placeholder="Buscar por nome, cidade ou PIX..." aria-label="Buscar facções" />
+                <select id="filtroStatusFaccao" aria-label="Filtrar status das facções">
+                  <option value="todas">Todas</option>
+                  <option value="ativas">Ativas</option>
+                  <option value="inativas">Inativas</option>
+                  <option value="pendentes">Pendentes</option>
+                </select>
               </div>
             </div>
 
-            <div class="table-wrap faccoes-pendentes-wrap">
-              <table class="faccoes-table faccoes-pendentes-table">
+            <div class="table-wrap gf328-tabela-wrap">
+              <table class="faccoes-table gf328-tabela">
                 <thead>
                   <tr>
                     <th>Nome</th>
                     <th>Cidade</th>
                     <th>PIX</th>
-                    <th>Pendência</th>
-                    <th>Origem</th>
-                    <th class="admin-only-cell">Ações</th>
-                  </tr>
-                </thead>
-                <tbody id="listaFaccoesPendentes"></tbody>
-              </table>
-            </div>
-
-            <div class="panel-subheader faccoes-list-header">
-              <div>
-                <h3>Facções cadastradas</h3>
-                <p>Lista de nomes disponíveis para envio no Manejo.</p>
-              </div>
-              <input id="buscaFaccao" class="search" type="text" placeholder="Buscar facção, cidade, PIX ou celular..." />
-            </div>
-
-            <div class="table-wrap">
-              <table class="faccoes-table">
-                <thead>
-                  <tr>
-                    <th>Nome</th>
-                    <th>Cidade</th>
-                    <th>Chave PIX</th>
                     <th>Celular</th>
                     <th>Status</th>
-                    <th class="admin-only-cell">Ações</th>
+                    <th>Ações</th>
                   </tr>
                 </thead>
-                <tbody id="listaFaccoes"></tbody>
+                <tbody id="listaFaccoes">
+                  <tr><td colspan="6" class="empty">Carregando facções...</td></tr>
+                </tbody>
               </table>
             </div>
           </div>
@@ -1862,8 +1829,39 @@
     </div>
   </div>
 
-  <script src="update.js?v=2026-10-13-fases-firestore-fonte-unica-316"></script>
-  <script type="module" src="app.js?v=2026-10-30-alca-cortagem-montagem-sem-x2-326"></script>
+  <style id="gf328-estilos">
+    #painelGerenciarFaccoes .gf328-header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin:8px 0 20px; }
+    #painelGerenciarFaccoes .gf328-header h3 { margin:0; font-size:20px; }
+    #painelGerenciarFaccoes .gf328-header p { margin:5px 0 0; color:#64748b; }
+    #painelGerenciarFaccoes .gf328-lista-topo { display:flex; justify-content:space-between; align-items:center; gap:16px; margin:22px 0 12px; }
+    #painelGerenciarFaccoes .gf328-lista-topo h3 { margin:0; font-size:18px; }
+    #painelGerenciarFaccoes .gf328-lista-topo p { margin:5px 0 0; font-size:13px; color:#64748b; }
+    #painelGerenciarFaccoes .gf328-filtros { display:flex; gap:10px; flex-wrap:wrap; }
+    #painelGerenciarFaccoes .gf328-filtros input { min-width:260px; }
+    #painelGerenciarFaccoes .gf328-filtros select { min-width:135px; min-height:42px; border:1px solid #cbd5e1; border-radius:10px; padding:8px; background:#fff; }
+    #painelGerenciarFaccoes #formFaccao { display:grid; gap:12px; padding:20px; border:1px solid #dbe4ef; border-radius:14px; background:#fff; margin:0 0 20px; }
+    #painelGerenciarFaccoes #formFaccao.hidden { display:none !important; }
+    #painelGerenciarFaccoes #formFaccao h3 { margin:0 0 4px; }
+    #painelGerenciarFaccoes .gf328-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    #painelGerenciarFaccoes .gf328-tabela-wrap { background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow-x:auto; }
+    #painelGerenciarFaccoes .gf328-tabela { min-width:780px; width:100%; }
+    #painelGerenciarFaccoes .gf328-tabela td { vertical-align:middle; }
+    #painelGerenciarFaccoes .gf328-contato { max-width:230px; overflow-wrap:anywhere; }
+    #painelGerenciarFaccoes .gf328-acoes { display:flex; flex-wrap:wrap; gap:6px; }
+    #painelGerenciarFaccoes .gf328-acoes .btn { margin:0; }
+    #painelGerenciarFaccoes .gf328-status { display:inline-flex; padding:6px 10px; border-radius:999px; font-weight:800; font-size:12px; }
+    #painelGerenciarFaccoes .gf328-status.ativa { color:#166534; background:#dcfce7; }
+    #painelGerenciarFaccoes .gf328-status.inativa { color:#475569; background:#e2e8f0; }
+    #painelGerenciarFaccoes .gf328-status.pendente { color:#9a3412; background:#ffedd5; }
+    @media (max-width:760px) {
+      #painelGerenciarFaccoes .gf328-header,#painelGerenciarFaccoes .gf328-lista-topo { align-items:stretch; flex-direction:column; }
+      #painelGerenciarFaccoes .gf328-form-grid { grid-template-columns:1fr; }
+      #painelGerenciarFaccoes .gf328-filtros { flex-direction:column; }
+      #painelGerenciarFaccoes .gf328-filtros input,#painelGerenciarFaccoes .gf328-filtros select { min-width:0; width:100%; }
+    }
+  </style>
+  <script src="update.js?v=2026-11-08-gerenciar-faccoes-328"></script>
+  <script type="module" src="app.js?v=2026-11-08-gerenciar-faccoes-328"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
