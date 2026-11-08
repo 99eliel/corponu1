@@ -4693,15 +4693,15 @@ function configurarFaccoes() {
   const abrirCadastro = document.getElementById("btnAbrirCadastroFaccao");
   if (abrirCadastro) {
     abrirCadastro.addEventListener("click", () => {
+      limparFormFaccao();
       const painel = document.getElementById("painelGerenciarFaccoes");
-      const formFaccao = document.getElementById("formFaccao");
-
-      if (painel) painel.classList.remove("hidden");
-
-      if (formFaccao) {
-        formFaccao.classList.remove("hidden");
-        document.getElementById("faccaoNome")?.focus();
-      }
+      const form = document.getElementById("formFaccao");
+      painel?.classList.remove("hidden");
+      form?.classList.remove("hidden");
+      const titulo = document.getElementById("tituloFormFaccao");
+      if (titulo) titulo.textContent = "Nova facção";
+      form?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById("faccaoNome")?.focus({ preventScroll: true });
     });
   }
 
@@ -4744,6 +4744,8 @@ function limparFormFaccao() {
     form.reset();
     form.classList.add("hidden");
   }
+  const titulo = document.getElementById("tituloFormFaccao");
+  if (titulo) titulo.textContent = "Nova facção";
 
   const id = document.getElementById("faccaoId");
   if (id) id.value = "";
