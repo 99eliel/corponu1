@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-08-editor-faccao-modal-329",
-  "updatedAt": "2026-11-08T13:40:00-03:00",
-  "notes": "Editor de facções abre em uma janela dedicada com dados preenchidos, Salvar/Cancelar e fechamento por X ou Esc, preservando a posição da lista e o salvamento original."
+  "version": "2026-11-08-processos-editor-faccoes-330",
+  "updatedAt": "2026-11-08T15:25:00-03:00",
+  "notes": "Adiciona seleção múltipla de processos na janela de cadastro/edição de facções; salva vínculos no cadastro e sincroniza configurações existentes dos grupos de produção."
 }
