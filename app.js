@@ -4775,15 +4775,27 @@ async function prepararProcessosEditor330(idFaccao = "") {
     const existentes = Array.isArray(faccao?.processosPermitidos) ? faccao.processosPermitidos : [];
     const catalogo = listaUnicaNormalizada([
       ...Object.keys(FACCOES_POR_PROCESSO_PADRAO),
-      ...listaOficial, ...listaLegada, ...existentes
+      ...listaOficial, ...listaLegada,
+      ...Object.values(configLegada.exists() ? configLegada.data()?.grupos || {} : {}).map(item => item?.processo),
+      ...existentes
     ].map(normalizarNomeProcesso));
-    const marcados = new Set((
-      faccao
-        ? (faccao.processosGerenciados === true
-          ? existentes
-          : listaUnicaNormalizada([...existentes, ...getProcessosPadraoDaFaccao(faccao.nome)]))
-        : []
-    ).map(chaveProcessoEditor330));
+    const vinculadosNoCadastro = faccao?.processosGerenciados === true
+      ? existentes
+      : listaUnicaNormalizada([
+          ...existentes,
+          ...(faccao ? getProcessosPadraoDaFaccao(faccao.nome) : []),
+          ...(faccao && configAtual.exists()
+            ? (configAtual.data()?.processos || [])
+              .filter(item => (item.faccoes || []).some(nome => chaveFaccaoCanonica(nome) === chaveFaccaoCanonica(faccao.nome)))
+              .map(item => item.nome)
+            : []),
+          ...(faccao && configLegada.exists()
+            ? Object.values(configLegada.data()?.grupos || {})
+              .filter(item => (item.faccaoIds || []).includes(faccao.id))
+              .map(item => item.processo)
+            : [])
+        ]);
+    const marcados = new Set(vinculadosNoCadastro.map(chaveProcessoEditor330));
 
     grade.replaceChildren();
     for (const processo of catalogo) {
@@ -4832,6 +4844,14 @@ function atualizarVinculosFaccaoEditor330(lote, id, nome, nomeAntigo, processos,
       if (selecionados.has(chaveProcessoEditor330(processo))) nomes.push(nome);
       return { ...registro, faccoes: listaUnicaNormalizada(nomes) };
     });
+    const cadastrados = new Set(alterados.map(item => chaveProcessoEditor330(item.nome)));
+    for (const processo of processos) {
+      if (cadastrados.has(chaveProcessoEditor330(processo))) continue;
+      const setor = /CALCINHA/i.test(processo) ? "calcinha"
+        : /SUTIÃ|ALÇA|BOJO|LATERAL/i.test(processo) ? "sutia" : "ambos";
+      alterados.push({ nome: processo, setor, faccoes: [nome], ativo: true });
+      cadastrados.add(chaveProcessoEditor330(processo));
+    }
     lote.set(doc(db, "configuracoes", "processosFaccoes"), {
       processos: alterados,
       atualizadoPor: state.currentUser.uid,
@@ -4849,6 +4869,13 @@ function atualizarVinculosFaccaoEditor330(lote, id, nome, nomeAntigo, processos,
       const ids = new Set((grupo.faccaoIds || []).filter(item => item !== id));
       if (selecionados.has(chaveProcessoEditor330(processo))) ids.add(id);
       grupos[chave] = { ...grupo, faccaoIds: [...ids], configurado: true };
+    }
+    const existentes = new Set(Object.values(grupos).map(item => chaveProcessoEditor330(item?.processo)));
+    for (const processo of processos) {
+      if (existentes.has(chaveProcessoEditor330(processo))) continue;
+      const chave = normalizarTexto(processo).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      grupos[chave] = { processo, faccaoIds: [id], configurado: true };
+      existentes.add(chaveProcessoEditor330(processo));
     }
     lote.set(doc(db, "configuracoes", "grupos-faccoes-processos"), {
       grupos,
