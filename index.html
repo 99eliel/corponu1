@@ -1860,8 +1860,91 @@
       #painelGerenciarFaccoes .gf328-filtros input,#painelGerenciarFaccoes .gf328-filtros select { min-width:0; width:100%; }
     }
   </style>
-  <script src="update.js?v=2026-11-08-gerenciar-faccoes-328"></script>
-  <script type="module" src="app.js?v=2026-11-08-gerenciar-faccoes-328"></script>
+  <style id="gf329-editor-estilos">
+    #editorFaccaoModal329.gf329-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 210000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #editorFaccaoModal329.gf329-modal.hidden { display: none !important; }
+    #editorFaccaoModal329 .gf329-fundo {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, .68);
+      backdrop-filter: blur(3px);
+    }
+    #editorFaccaoModal329 .gf329-janela {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      width: min(790px, 100%);
+      max-height: min(90vh, 860px);
+      overflow: hidden;
+      border: 1px solid #dbe4ef;
+      border-radius: 20px;
+      background: #f8fafc;
+      box-shadow: 0 25px 90px rgba(15, 23, 42, .32);
+    }
+    #editorFaccaoModal329 .gf329-cabecalho {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 22px 26px;
+      border-bottom: 1px solid #e2e8f0;
+      background: white;
+    }
+    #editorFaccaoModal329 .gf329-cabecalho h2 {
+      margin: 0;
+      font-size: 22px;
+      color: #0f172a;
+    }
+    #editorFaccaoModal329 .gf329-cabecalho p {
+      margin: 6px 0 0;
+      font-size: 13px;
+      color: #64748b;
+    }
+    #editorFaccaoModal329 .gf329-fechar {
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #fff;
+      color: #334155;
+      font-size: 25px;
+      cursor: pointer;
+    }
+    #editorFaccaoModal329 .gf329-corpo {
+      padding: 22px 26px 28px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    #editorFaccaoModal329 #formFaccao {
+      margin: 0 !important;
+      max-width: none;
+      box-shadow: none;
+    }
+    #editorFaccaoModal329 #formFaccao .actions {
+      position: sticky;
+      bottom: -28px;
+      padding: 14px 0 0;
+      background: #fff;
+      border-top: 1px solid #e2e8f0;
+    }
+    @media (max-width: 650px) {
+      #editorFaccaoModal329.gf329-modal { padding: 8px; }
+      #editorFaccaoModal329 .gf329-janela { max-height: 98vh; border-radius: 14px; }
+      #editorFaccaoModal329 .gf329-cabecalho { padding: 16px; }
+      #editorFaccaoModal329 .gf329-corpo { padding: 16px; }
+    }
+  </style>
+  <script src="update.js?v=2026-11-08-editor-faccao-modal-329"></script>
+  <script type="module" src="app.js?v=2026-11-08-editor-faccao-modal-329"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
