@@ -10309,7 +10309,7 @@
         text-align: right;
       }
       .area-processos-dentro-gerenciar-faccoes {
-        margin: 16px 0 20px;
+        margin: 8px 0 20px;
         padding: 16px;
         border: 1px solid #d8e0ec;
         border-radius: 16px;
@@ -10533,9 +10533,12 @@
             <h3>Processos e responsáveis</h3>
             <p>Crie processos e defina quais facções realizam cada serviço.</p>
           </div>
-          <button id="btnGerenciarProcessosFaccoes" class="btn btn-primary hidden" type="button">Gerenciar processos</button>
+          <div class="actions">
+            <button id="btnExpandirProcessosFaccoes328" class="btn" type="button" aria-expanded="false">Mostrar processos</button>
+            <button id="btnGerenciarProcessosFaccoes" class="btn btn-primary hidden" type="button">Gerenciar processos</button>
+          </div>
         </div>
-        <div id="mountProcessosDentroGerenciarFaccoes"></div>
+        <div id="mountProcessosDentroGerenciarFaccoes" class="hidden"></div>
       `;
 
       const toolbar = painelGerenciarFaccoes.querySelector(":scope > .gerenciamento-exclusivo-toolbar");
@@ -10544,7 +10547,19 @@
     }
 
     const botao = area.querySelector("#btnGerenciarProcessosFaccoes");
-    botao?.classList.toggle("hidden", !usuarioEhAdminProcessosFaccoes);
+    const expandir = area.querySelector("#btnExpandirProcessosFaccoes328");
+    const mount = area.querySelector("#mountProcessosDentroGerenciarFaccoes");
+    if (expandir && mount && !expandir.dataset.eventoInstalado) {
+      expandir.dataset.eventoInstalado = "1";
+      expandir.addEventListener("click", () => {
+        const abrir = mount.classList.contains("hidden");
+        mount.classList.toggle("hidden", !abrir);
+        expandir.setAttribute("aria-expanded", String(abrir));
+        expandir.textContent = abrir ? "Ocultar processos" : "Mostrar processos";
+        botao?.classList.toggle("hidden", !abrir || !usuarioEhAdminProcessosFaccoes);
+      });
+    }
+    botao?.classList.toggle("hidden", !usuarioEhAdminProcessosFaccoes || mount?.classList.contains("hidden"));
     return area;
   }
 
