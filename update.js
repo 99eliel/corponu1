@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-11-08-gerenciar-faccoes-328";
+  const APP_VERSION = "2026-11-08-editor-faccao-modal-329";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -8199,6 +8199,8 @@
 
     document.addEventListener("keydown", event => {
       if (event.key !== "Escape" || !telaExclusivaGerenciamentoAtiva) return;
+      if (!document.getElementById("editorFaccaoModal329")?.classList.contains("hidden") &&
+          document.getElementById("editorFaccaoModal329")) return;
       event.preventDefault();
       fecharTelaExclusivaGerenciamento(telaExclusivaGerenciamentoAtiva);
     });
