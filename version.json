@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-08-gerenciar-faccoes-organizado-327",
-  "updatedAt": "2026-11-08T12:01:00-03:00",
-  "notes": "Revisa Gerenciar Facções com ações confiáveis de editar, ativar/inativar e excluir, resumo visual, listagem de facções inativas para reativação e organização da área sem alterar regras do Firebase, histórico, movimentações ou pagamentos."
+  "version": "2026-11-08-gerenciar-faccoes-328",
+  "updatedAt": "2026-11-08T13:40:00-03:00",
+  "notes": "Reconstrói Gerenciar facções com tabela única, busca, filtro de status e ações diretas. Remove interceptador de eventos anterior, preservando movimentações, pagamentos e regras do banco."
 }
