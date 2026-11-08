@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-30-alca-cortagem-montagem-sem-x2-326",
-  "updatedAt": "2026-10-30T09:45:00-03:00",
-  "notes": "Corrige o serviço Alça • Cortagem e montagem: o valor fixo R$ 0,0540 já é por peça e não deve ser multiplicado por 2. A Alça global mantém sua regra própria de 2 alças por peça. Novos pagamentos de Cortagem e montagem passam a usar R$ 0,0540 por peça, e pagamentos antigos do mesmo fluxo que receberam o x2 indevido são reconciliados para o valor correto."
+  "version": "2026-11-08-gerenciar-faccoes-328",
+  "updatedAt": "2026-11-08T13:40:00-03:00",
+  "notes": "Cadastro de facções reconstruído com busca, filtro e ações diretas. Removida sobreposição visual do módulo legado; configurações de processos e histórico preservados."
 }
