@@ -4694,14 +4694,7 @@ function configurarFaccoes() {
   if (abrirCadastro) {
     abrirCadastro.addEventListener("click", () => {
       limparFormFaccao();
-      const painel = document.getElementById("painelGerenciarFaccoes");
-      const form = document.getElementById("formFaccao");
-      painel?.classList.remove("hidden");
-      form?.classList.remove("hidden");
-      const titulo = document.getElementById("tituloFormFaccao");
-      if (titulo) titulo.textContent = "Nova facção";
-      form?.scrollIntoView({ behavior: "smooth", block: "start" });
-      document.getElementById("faccaoNome")?.focus({ preventScroll: true });
+      abrirEditorFaccaoModal329("novo");
     });
   }
 
@@ -4738,6 +4731,91 @@ function configurarFaccoes() {
   configurarModalAjusteMigracao();
 }
 
+// Editor dedicado: usa o mesmo formulário e salvamento original sem duplicar campos.
+let marcadorFormularioFaccaoModal329 = null;
+let focoAnteriorFaccaoModal329 = null;
+
+function garantirEditorFaccaoModal329() {
+  let modal = document.getElementById("editorFaccaoModal329");
+  if (modal) return modal;
+  const form = document.getElementById("formFaccao");
+  if (!form?.parentElement) return null;
+
+  marcadorFormularioFaccaoModal329 = document.createComment("posicao-original-form-faccao-329");
+  form.parentNode.insertBefore(marcadorFormularioFaccaoModal329, form);
+
+  modal = document.createElement("div");
+  modal.id = "editorFaccaoModal329";
+  modal.className = "gf329-modal hidden";
+  modal.setAttribute("role", "presentation");
+  modal.innerHTML = `
+    <div class="gf329-fundo" data-fechar-editor-faccao329></div>
+    <section class="gf329-janela" role="dialog" aria-modal="true"
+             aria-labelledby="tituloEditorFaccao329">
+      <header class="gf329-cabecalho">
+        <div>
+          <h2 id="tituloEditorFaccao329">Editar facção</h2>
+          <p id="subtituloEditorFaccao329">Altere os dados e salve para atualizar o cadastro.</p>
+        </div>
+        <button class="gf329-fechar" type="button" data-fechar-editor-faccao329 aria-label="Fechar edição">×</button>
+      </header>
+      <div class="gf329-corpo" id="corpoEditorFaccao329"></div>
+    </section>
+  `;
+  document.body.appendChild(modal);
+
+  modal.addEventListener("click", evento => {
+    if (evento.target.closest("[data-fechar-editor-faccao329]")) {
+      limparFormFaccao();
+    }
+  });
+  modal.addEventListener("keydown", evento => {
+    if (evento.key === "Escape") {
+      evento.preventDefault();
+      evento.stopPropagation();
+      limparFormFaccao();
+    }
+  });
+  return modal;
+}
+
+function abrirEditorFaccaoModal329(tipo) {
+  const modal = garantirEditorFaccaoModal329();
+  const form = document.getElementById("formFaccao");
+  const corpo = document.getElementById("corpoEditorFaccao329");
+  if (!modal || !form || !corpo) return;
+
+  focoAnteriorFaccaoModal329 = document.activeElement;
+  corpo.appendChild(form);
+  form.classList.remove("hidden");
+  modal.classList.remove("hidden");
+  document.getElementById("tituloEditorFaccao329").textContent =
+    tipo === "editar" ? "Editar facção" : "Cadastrar facção";
+  document.getElementById("subtituloEditorFaccao329").textContent =
+    tipo === "editar"
+      ? "Atualize as informações desta facção. O histórico de movimentações será preservado."
+      : "Preencha os dados para cadastrar uma nova facção.";
+  document.getElementById("tituloFormFaccao").textContent =
+    tipo === "editar" ? "Dados da facção" : "Nova facção";
+  document.getElementById("faccaoNome")?.focus({ preventScroll: true });
+}
+
+function fecharEditorFaccaoModal329() {
+  const modal = document.getElementById("editorFaccaoModal329");
+  if (!modal || modal.classList.contains("hidden")) return;
+  modal.classList.add("hidden");
+  const form = document.getElementById("formFaccao");
+  if (form && marcadorFormularioFaccaoModal329?.parentNode) {
+    marcadorFormularioFaccaoModal329.parentNode.insertBefore(
+      form, marcadorFormularioFaccaoModal329.nextSibling
+    );
+  }
+  if (focoAnteriorFaccaoModal329?.isConnected) {
+    focoAnteriorFaccaoModal329.focus({ preventScroll: true });
+  }
+  focoAnteriorFaccaoModal329 = null;
+}
+
 function limparFormFaccao() {
   const form = document.getElementById("formFaccao");
   if (form) {
@@ -4749,6 +4827,7 @@ function limparFormFaccao() {
 
   const id = document.getElementById("faccaoId");
   if (id) id.value = "";
+  fecharEditorFaccaoModal329();
 }
 
 async function salvarFaccao(event) {
@@ -6448,11 +6527,7 @@ function editarFaccao(id) {
   const faccao = state.faccoes.find(item => item.id === id);
   if (!faccao) { toast("Facção não encontrada. Atualize a lista."); return; }
 
-  // Não chama abrirPagina: editar dentro da tela exclusiva não pode mudar a navegação.
-  const painel = document.getElementById("painelGerenciarFaccoes");
-  painel?.classList.remove("hidden");
-  const form = document.getElementById("formFaccao");
-  form?.classList.remove("hidden");
+  // Mantém a lista onde está; o editor abre por cima dela.
   const campos = {
     faccaoId: faccao.id,
     faccaoNome: faccao.nome || "",
@@ -6465,9 +6540,7 @@ function editarFaccao(id) {
     const campo = document.getElementById(chave);
     if (campo) campo.value = valor;
   }
-  document.getElementById("tituloFormFaccao")?.replaceChildren(document.createTextNode("Editar facção"));
-  form?.scrollIntoView({ behavior: "smooth", block: "start" });
-  document.getElementById("faccaoNome")?.focus({ preventScroll: true });
+  abrirEditorFaccaoModal329("editar");
 }
 async function alternarFaccao(id) {
   if (!ehAdmin()) {
