@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-11-08-editor-faccao-modal-329";
+  const APP_VERSION = "2026-11-08-processos-editor-faccoes-330";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 

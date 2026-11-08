@@ -829,6 +829,12 @@
                   <input id="faccaoCelular" type="tel" placeholder="Opcional" />
                 </label>
               </div>
+              <fieldset id="faccaoProcessosBloco330" class="gf330-processos" disabled>
+                <legend>Processos que esta facção realiza</legend>
+                <p>Marque um ou mais serviços. As opções vêm dos processos cadastrados no sistema.</p>
+                <div id="faccaoProcessosOpcoes330" class="gf330-processos-grade" aria-live="polite">Carregando processos...</div>
+                <p id="faccaoProcessosAviso330" class="gf330-aviso" role="status"></p>
+              </fieldset>
               <label>Observações
                 <textarea id="faccaoObs" rows="2" placeholder="Informações adicionais (opcional)"></textarea>
               </label>
@@ -1965,8 +1971,40 @@
       #editorFaccaoModal329 #formFaccao .gf328-form-grid { grid-template-columns: 1fr; }
     }
   </style>
-  <script src="update.js?v=2026-11-08-editor-faccao-modal-329"></script>
-  <script type="module" src="app.js?v=2026-11-08-editor-faccao-modal-329"></script>
+  <style id="gf330-processos-estilos">
+    #editorFaccaoModal329 .gf330-processos {
+      min-width:0; margin:0; padding:16px; border:1px solid #dbe4ef;
+      border-radius:13px; background:#f8fafc;
+    }
+    #editorFaccaoModal329 .gf330-processos legend {
+      padding:0 7px; font-size:15px; color:#0f172a; font-weight:800;
+    }
+    #editorFaccaoModal329 .gf330-processos > p {
+      margin:0 0 13px; color:#64748b; font-size:12px;
+    }
+    #editorFaccaoModal329 .gf330-processos-grade {
+      display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px;
+    }
+    #editorFaccaoModal329 .gf330-processo-item {
+      display:flex !important; flex-direction:row !important; align-items:center;
+      gap:9px; padding:11px 12px; min-height:44px;
+      border:1px solid #dbe4ef; border-radius:10px;
+      background:#fff; color:#334155; font-size:13px; font-weight:700; cursor:pointer;
+    }
+    #editorFaccaoModal329 .gf330-processo-item:has(input:checked) {
+      border-color:#7c3aed; background:#f5f3ff; color:#5b21b6;
+    }
+    #editorFaccaoModal329 .gf330-processo-item input {
+      width:17px !important; height:17px; min-width:17px !important;
+      margin:0; accent-color:#7c3aed;
+    }
+    #editorFaccaoModal329 .gf330-aviso { margin:10px 0 0 !important; }
+    @media(max-width:650px) {
+      #editorFaccaoModal329 .gf330-processos-grade { grid-template-columns:1fr; }
+    }
+  </style>
+  <script src="update.js?v=2026-11-08-processos-editor-faccoes-330"></script>
+  <script type="module" src="app.js?v=2026-11-08-processos-editor-faccoes-330"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
