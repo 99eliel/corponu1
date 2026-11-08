@@ -75,7 +75,6 @@
 
     faccoes: [
       MODULO_GRUPOS_FACCOES,
-      ["corponu-faccao-cadastro-recolhido.js", "faccao-cadastro-recolhido", "Não foi possível carregar o cadastro recolhido de facção."],
       ["corponu-faccoes-lateral-alca-v2-270.js", "faccoes-lateral-alca-v2-270", "Não foi possível carregar a área Lateral e Alça V2."],
       ["corponu-faccoes-tres-abas-saida.js", "faccoes-tres-abas-saida", "Não foi possível carregar as abas de Facções."],
       ["corponu-revisao-lateral-bojo-fix.js", "revisao-lateral-bojo-fix", "Não foi possível proteger Revisão lateral e bojo."],
