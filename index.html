@@ -1925,9 +1925,29 @@
       overscroll-behavior: contain;
     }
     #editorFaccaoModal329 #formFaccao {
+      display: grid;
+      gap: 14px;
+      padding: 20px;
       margin: 0 !important;
       max-width: none;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      background: #fff;
       box-shadow: none;
+    }
+    #editorFaccaoModal329 #formFaccao .gf328-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    #editorFaccaoModal329 #formFaccao label {
+      display: grid;
+      gap: 6px;
+    }
+    #editorFaccaoModal329 #formFaccao input,
+    #editorFaccaoModal329 #formFaccao textarea {
+      width: 100%;
+      min-width: 0;
     }
     #editorFaccaoModal329 #formFaccao .actions {
       position: sticky;
@@ -1941,6 +1961,8 @@
       #editorFaccaoModal329 .gf329-janela { max-height: 98vh; border-radius: 14px; }
       #editorFaccaoModal329 .gf329-cabecalho { padding: 16px; }
       #editorFaccaoModal329 .gf329-corpo { padding: 16px; }
+      #editorFaccaoModal329 #formFaccao { padding: 14px; }
+      #editorFaccaoModal329 #formFaccao .gf328-form-grid { grid-template-columns: 1fr; }
     }
   </style>
   <script src="update.js?v=2026-11-08-editor-faccao-modal-329"></script>
