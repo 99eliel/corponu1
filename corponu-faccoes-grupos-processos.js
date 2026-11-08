@@ -9,6 +9,10 @@
   const GERENCIADOR_ID = "gerenciadorGruposFaccoesProcessos";
   const FORM_PROCESSOS_ID = "processosPermitidosFaccao43";
   const CACHE_MS = 25 * 1000;
+  // Cadastro 328 usa lista e formulário próprios. Este módulo permanece ativo
+  // para os vínculos de processos no fluxo operacional, mas não altera a UI nova.
+  const cadastroNovo328 = () => Boolean(document.getElementById("filtroStatusFaccao"));
+
 
   const PROCESSOS_PADRAO = [
     { nome: "ENCAPAR BOJO", atendeSutia: true, atendeCalcinha: false },
@@ -243,6 +247,7 @@
   }
 
   function garantirGerenciador() {
+    if (cadastroNovo328()) return null;
     const painel = document.getElementById(PAINEL_ID);
     const form = document.getElementById(FORM_ID);
     if (!painel || !form) return null;
@@ -268,6 +273,7 @@
   }
 
   function garantirProcessosNoFormulario() {
+    if (cadastroNovo328()) return null;
     const form = document.getElementById(FORM_ID);
     if (!form) return null;
     let box = document.getElementById(FORM_PROCESSOS_ID);
@@ -327,6 +333,7 @@
   }
 
   async function prepararFormularioEdicao(novo = false) {
+    if (cadastroNovo328()) return null;
     const dados = await carregarDados();
     if (!ehAdmin(dados)) return;
     const faccao = novo ? null : faccaoAtualDoFormulario(dados);
@@ -521,6 +528,7 @@
   }
 
   function atualizarColunaProcessos(dados) {
+    if (cadastroNovo328()) return null;
     const tabela = document.querySelector("#listaFaccoes")?.closest("table");
     const cabecalho = tabela?.querySelector("thead tr");
     if (!tabela || !cabecalho) return;
@@ -547,6 +555,7 @@
   }
 
   function observarTabelaFaccoes() {
+    if (cadastroNovo328()) return null;
     const tbody = document.getElementById("listaFaccoes");
     if (!tbody || tabelaObservada === tbody) return;
     observadorTabela?.disconnect();
@@ -677,7 +686,7 @@
     });
 
     const form = document.getElementById(FORM_ID);
-    if (form && !form.dataset.gfp43Submit) {
+    if (form && !form.dataset.gfp43Submit && !cadastroNovo328()) {
       form.dataset.gfp43Submit = "1";
       form.addEventListener("submit", () => {
         const snapshot = {
