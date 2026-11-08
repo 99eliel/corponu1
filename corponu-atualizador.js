@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-10-30-alca-cortagem-montagem-sem-x2-326";
+  const LOCAL_RELEASE = "2026-11-08-gerenciar-faccoes-328";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
