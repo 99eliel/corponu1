@@ -450,8 +450,6 @@
     wrapper.innerHTML = `
       <div class="notice small"><strong>Planejamento da calcinha:</strong> necessidade, serviço e facção são opcionais. A necessidade pode ficar em branco e ser definida depois no Manejo; a linha Cotton Line/Corpo Nu também será informada no Manejo.</div>
       <div class="corponu-dual-grid">
-        <label class="corponu-dual-field">Início da necessidade (opcional)<input id="ordemCalcinhaNecessidadeInicio" type="date"></label>
-        <label class="corponu-dual-field">Final da necessidade (opcional)<input id="ordemCalcinhaNecessidadeFim" type="date"></label>
         <label class="corponu-dual-field">Serviço sugerido (opcional)<select id="ordemCalcinhaProcesso"><option value="">Definir no envio</option>${CALCINHA_PROCESSES.map(item => `<option value="${item}">${item}</option>`).join("")}</select></label>
         <label class="corponu-dual-field">Facção sugerida (opcional)<select id="ordemCalcinhaFaccao" disabled><option value="">Será escolhida no envio</option></select></label>
       </div>
@@ -816,8 +814,10 @@
     const color = normalize(document.getElementById("ordemCor")?.value);
     const quantity = Number(document.getElementById("ordemQuantidade")?.value || 0);
     const needFreeText = normalize(document.getElementById("ordemNecessidadeTexto")?.value || "");
-    const needStart = document.getElementById("ordemCalcinhaNecessidadeInicio")?.value || "";
-    const needEnd = document.getElementById("ordemCalcinhaNecessidadeFim")?.value || "";
+    // Datas específicas não são solicitadas no cadastro manual:
+    // a necessidade é informada exclusivamente no campo livre.
+    const needStart = "";
+    const needEnd = "";
     const process = normalize(document.getElementById("ordemCalcinhaProcesso")?.value);
     const faction = normalize(document.getElementById("ordemCalcinhaFaccao")?.value);
     const observation = String(document.getElementById("ordemObs")?.value || "").trim();
@@ -841,7 +841,7 @@
     }
     const user = currentUser();
     const needText = needFreeText || parseNeedFromDates(needStart, needEnd);
-    const year = Number(needStart.slice(0, 4)) || new Date().getFullYear();
+    const year = new Date().getFullYear();
     const documentId = currentId || `calcinha-${safeId(opNumber)}`;
     const { doc, setDoc, serverTimestamp } = state.firebase;
     const old = state.maps.ordens.get(currentId) || {};
@@ -912,8 +912,6 @@
         state.original.editarOrdem(id);
         if (type === "calcinha" && order) {
           setTimeout(() => {
-            document.getElementById("ordemCalcinhaNecessidadeInicio").value = order.necessidadeInicio || "";
-            document.getElementById("ordemCalcinhaNecessidadeFim").value = order.necessidadeFim || "";
             document.getElementById("ordemCalcinhaProcesso").value = normalize(order.processoPlanejado || order.processo);
             fillFactionSelect("ordemCalcinhaProcesso", "ordemCalcinhaFaccao", order.faccaoPlanejada || order.destino || "");
           }, 20);
