@@ -1704,9 +1704,16 @@
           <div id="pdfImportResumo" class="preview hidden"></div>
 
           <div class="table-wrap hidden" id="pdfPreviewWrap">
+            <div class="pdf-selecao-barra333">
+              <strong id="pdfContagemSelecionadas333" aria-live="polite">0 OPs selecionadas</strong>
+              <button type="button" class="btn btn-sm" id="pdfMarcarTodas333">Selecionar todas</button>
+              <button type="button" class="btn btn-sm" id="pdfDesmarcarTodas333">Desmarcar todas</button>
+              <span>Somente as OPs marcadas serão importadas.</span>
+            </div>
             <table>
               <thead>
                 <tr>
+                  <th><input type="checkbox" id="pdfSelecionarTodas333" checked aria-label="Selecionar todas as OPs" /></th>
                   <th>OP</th>
                   <th>Lote</th>
                   <th>Referência</th>
@@ -2003,8 +2010,17 @@
       #editorFaccaoModal329 .gf330-processos-grade { grid-template-columns:1fr; }
     }
   </style>
-  <script src="update.js?v=2026-11-09-data-opcional-importacao-332"></script>
-  <script type="module" src="app.js?v=2026-11-09-data-opcional-importacao-332"></script>
+  <style id="pdf-selecao-estilo333">
+    .pdf-selecao-barra333{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 0 12px;padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px}
+    .pdf-selecao-barra333 strong{color:#0f172a;font-size:14px;margin-right:8px}
+    .pdf-selecao-barra333 span{font-size:12px;color:#64748b}
+    #pdfPreviewWrap table th:first-child,#pdfPreviewWrap table td:first-child{text-align:center;width:48px}
+    #pdfPreviewBody input[type="checkbox"],#pdfSelecionarTodas333{width:18px;height:18px;accent-color:#7c3aed;cursor:pointer}
+    #pdfPreviewBody tr.pdf-op-desmarcada333{opacity:.5}
+    #pdfPreviewBody tr.pdf-op-desmarcada333 td{background:#f8fafc}
+  </style>
+  <script src="update.js?v=2026-11-09-selecao-ops-importacao-333"></script>
+  <script type="module" src="app.js?v=2026-11-09-selecao-ops-importacao-333"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
