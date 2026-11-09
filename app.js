@@ -11904,6 +11904,12 @@ function atualizarSelecaoPDF333() {
   if(contador)contador.textContent=`${escolhidas.length} de ${registros.length} OPs selecionadas`;
   const confirmar=document.getElementById("btnConfirmarImportacaoPDF");
   if(confirmar)confirmar.disabled=!escolhidas.length;
+  const refsResumo=document.getElementById("pdfRefsNovasSelecionadas333");
+  if(refsResumo){
+    const cadastradas=new Set(state.produtos.map(p=>normalizarReferencia(p.referencia)));
+    const novas=[...new Set(escolhidas.map(op=>op.referencia).filter(ref=>!cadastradas.has(ref)))];
+    refsResumo.textContent=`${novas.length}${novas.length ? " ("+novas.slice(0,12).join(", ")+(novas.length>12?", ...":"")+")" : ""}`;
+  }
   const todas=document.getElementById("pdfSelecionarTodas333");
   if(todas){todas.checked=registros.length>0&&escolhidas.length===registros.length;todas.indeterminate=escolhidas.length>0&&escolhidas.length<registros.length;}
   document.querySelectorAll("#pdfPreviewBody tr[data-pdf-indice333]").forEach(tr=>tr.classList.toggle("pdf-op-desmarcada333",!indicesPDFSelecionados333.has(Number(tr.dataset.pdfIndice333))));
@@ -11959,7 +11965,7 @@ function renderPreviewPDF(registros) {
     Ordens encontradas: ${registros.length}<br>
     Tipo: ${configPDF.ok ? configPDF.tipoPecaLabel : "Não informado"}<br>
     Necessidade: ${configPDF.ok ? configPDF.necessidadeTexto : "Não informada"}<br>
-    Referências novas: ${refsNovas.length}${refsNovas.length ? ` (${refsNovas.slice(0, 12).join(", ")}${refsNovas.length > 12 ? "..." : ""})` : ""}
+    Referências novas entre as OPs selecionadas: <span id="pdfRefsNovasSelecionadas333"></span>
   `;
 
   tbody.innerHTML = registros.map((item, indice) => {
