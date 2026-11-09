@@ -11664,15 +11664,19 @@ function getConfiguracaoImportacaoPDF() {
     return { ok: false, mensagem: "Selecione se o PDF é de calcinha ou sutiã." };
   }
 
-  if (!inicio || !fim) {
-    return { ok: false, mensagem: "Informe a data inicial e a data final da necessidade." };
-  }
-
-  if (inicio > fim) {
+  // O intervalo de necessidade é opcional na importação do relatório externo.
+  // Aceita também apenas uma das datas, sem inventar prazos para as OPs.
+  if (inicio && fim && inicio > fim) {
     return { ok: false, mensagem: "A data inicial não pode ser maior que a data final." };
   }
 
-  const necessidadeTexto = `${dataISOParaBR(inicio)} a ${dataISOParaBR(fim)}`;
+  const necessidadeTexto = inicio && fim
+    ? `${dataISOParaBR(inicio)} a ${dataISOParaBR(fim)}`
+    : inicio
+      ? `A partir de ${dataISOParaBR(inicio)}`
+      : fim
+        ? `Até ${dataISOParaBR(fim)}`
+        : "";
   const tipoPecaLabel = tipoPeca === "sutia" ? "Sutiã" : "Calcinha";
 
   return {
@@ -11957,8 +11961,9 @@ async function importarPDFConfirmado() {
   const criarProdutos = document.getElementById("pdfCriarProdutos").checked;
   const configPDF = getConfiguracaoImportacaoPDF();
   const semana = "";
-  const mes = configPDF.ok ? nomeMesPorDataISO(configPDF.necessidadeInicio) : "";
-  const ano = configPDF.ok ? anoPorDataISO(configPDF.necessidadeInicio) : new Date().getFullYear();
+  const dataBaseNecessidade = configPDF.necessidadeInicio || configPDF.necessidadeFim || "";
+  const mes = dataBaseNecessidade ? nomeMesPorDataISO(dataBaseNecessidade) : "";
+  const ano = dataBaseNecessidade ? anoPorDataISO(dataBaseNecessidade) : "";
 
   if (!configPDF.ok) {
     toast(configPDF.mensagem);
@@ -11973,7 +11978,8 @@ async function importarPDFConfirmado() {
     return;
   }
 
-  const confirmar = confirm(`Importar ${registros.length} ordens do PDF como ${configPDF.tipoPecaLabel}, com necessidade ${configPDF.necessidadeTexto}?`);
+  const necessidadeDescricao = configPDF.necessidadeTexto || "sem data de necessidade definida";
+  const confirmar = confirm(`Importar ${registros.length} ordens do PDF como ${configPDF.tipoPecaLabel}, ${necessidadeDescricao}?`);
   if (!confirmar) return;
 
   try {
@@ -12047,7 +12053,7 @@ async function importarPDFConfirmado() {
         referenciaPendente,
         statusReferencia: referenciaPendente ? "pendente" : "conferida",
         pendencia: referenciaPendente ? "Referência nova cadastrada automaticamente. Conferir alça, bojo e renda/sutiã no cadastro do produto." : "",
-        observacoes: `Importado do relatório externo PDF como ${configPDF.tipoPecaLabel}. Necessidade: ${configPDF.necessidadeTexto}. OP-Lote: ${item.opLote}.${referenciaPendente ? " Referência pendente de conferência." : ""}`,
+        observacoes: `Importado do relatório externo PDF como ${configPDF.tipoPecaLabel}. ${configPDF.necessidadeTexto ? `Necessidade: ${configPDF.necessidadeTexto}. ` : ""}OP-Lote: ${item.opLote}.${referenciaPendente ? " Referência pendente de conferência." : ""}`,
         status: "aberta",
         origem: "pdf_externo",
         criadoPor: state.currentUser.uid,
@@ -12069,7 +12075,7 @@ async function importarPDFConfirmado() {
       await batch.commit();
     }
 
-    await registrarLog("pdf_importado", "importacao", "relatorio-pdf", `${registros.length} ordens importadas do PDF como ${configPDF.tipoPecaLabel}. Necessidade: ${configPDF.necessidadeTexto}. Referências novas: ${refsNovas.length}.`);
+    await registrarLog("pdf_importado", "importacao", "relatorio-pdf", `${registros.length} ordens importadas do PDF como ${configPDF.tipoPecaLabel}. Necessidade: ${configPDF.necessidadeTexto || "não informada"}. Referências novas: ${refsNovas.length}.`);
 
     state.pdfImportacaoPendente = [];
     renderPreviewPDF([]);
