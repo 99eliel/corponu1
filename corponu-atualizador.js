@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-11-08-processos-editor-faccoes-330";
+  const LOCAL_RELEASE = "2026-11-09-impressao-manejo-filtros-331";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 

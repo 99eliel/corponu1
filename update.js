@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION = "2026-11-08-processos-editor-faccoes-330";
+  const APP_VERSION = "2026-11-09-impressao-manejo-filtros-331";
   const metaVersion = document.querySelector('meta[name="app-version"]');
   if (metaVersion) metaVersion.setAttribute("content", APP_VERSION);
 
@@ -5816,60 +5816,112 @@
       || "";
   }
 
+
+  // Impressão única do Manejo: os mesmos filtros da tela (digitados + Excel).
+  // Recalcula os filtros antes de fotografar as linhas, inclusive na digitação rápida.
   function imprimirManejoComFiltrosExcel() {
-    const linhas = [...document.querySelectorAll("#listaManejoInline tr[data-manejo-row='1']")]
-      .filter(linha => !linha.hidden && !linha.classList.contains("linha-oculta-filtro-excel"));
+    const setor = setorAtualFiltroExcelManejo();
+    const tbody = document.getElementById("listaManejoInline");
+    const tabela = tbody?.closest("table");
+    if (!tbody || !tabela) {
+      showUpdateToast("Abra a aba Manejo para imprimir os itens filtrados.");
+      return;
+    }
+
+    // O Manejo pagina o DOM para economizar memória. Expandir somente ao
+    // imprimir garante que nenhuma OP filtrada fique fora do relatório.
+    if (typeof window.mostrarTodosRenderTabela === "function") {
+      window.mostrarTodosRenderTabela(`manejo-${setor}`);
+    } else {
+      showUpdateToast("A lista completa ainda não está disponível. Atualize a página e tente novamente.");
+      return;
+    }
+    aplicarFiltrosExcelManejo();
+
+    const temExcel = haSelecaoAcumulativaManejo();
+    const linhas = [...document.querySelectorAll('#listaManejoInline tr[data-manejo-row="1"]')]
+      .filter(linha => !linha.hidden
+        && !linha.classList.contains("linha-oculta-filtro-excel")
+        // Durante edição uma linha pode permanecer visível embora não
+        // combine com o filtro escolhido. Isso não entra no relatório.
+        && (!temExcel || linhaCombinaSelecoesExcel(linha)));
+    if (!linhas.length) {
+      showUpdateToast("Nenhuma OP corresponde aos filtros selecionados. Nada será impresso.");
+      return;
+    }
+
+    const cabecalho = tabela.querySelector("thead tr.manejo-head-row")
+      || tabela.querySelector("thead tr");
+    const campos = [...(cabecalho?.cells || [])]
+      .map((celula, indice) => ({
+        indice,
+        titulo: String(celula.textContent || "").trim(),
+        oculto: celula.classList.contains("hidden")
+          || getComputedStyle(celula).display === "none"
+      }))
+      .filter(item => !item.oculto && item.titulo
+        && !/^(AÇÕES|ACOES)$/i.test(item.titulo));
+
+    const valores = linhas.map(linha => campos.map(coluna => {
+      const celula = linha.cells[coluna.indice];
+      if (!celula) return "—";
+      const controles = [...celula.querySelectorAll("input:not([type=hidden]), select, textarea")]
+        .filter(el => el.type !== "checkbox" && el.type !== "button" && !el.disabled);
+      if (controles.length) {
+        const partes = controles.map(el => {
+          if (el instanceof HTMLSelectElement) {
+            return el.selectedOptions?.[0]?.textContent?.trim() || el.value || "";
+          }
+          return String(el.value || "").trim();
+        }).filter(Boolean);
+        if (partes.length) return partes.join(" / ");
+      }
+      return String(celula.textContent || "").trim() || "—";
+    }));
+
+    const indiceQtd = campos.findIndex(item => /^(QTI|QUANTIDADE)$/i.test(item.titulo));
+    const totalPecas = indiceQtd < 0 ? 0 : valores.reduce((total, linha) => {
+      const n = Number(String(linha[indiceQtd] || "0").replace(/\./g, "").replace(",", "."));
+      return total + (Number.isFinite(n) ? n : 0);
+    }, 0);
+
+    const filtros = textoFiltrosExcelAtivos();
+    const setorTitulo = setor === "calcinha" ? "Calcinha" : setor === "sutia" ? "Sutiã" : setor;
     const janela = window.open("", "_blank", "width=1200,height=820");
     if (!janela) {
       showUpdateToast("O navegador bloqueou a janela de impressão. Libere pop-ups e tente novamente.");
       return;
     }
+    const corpo = valores.map(linha =>
+      `<tr>${linha.map(valor => `<td>${escaparHtmlFiltroExcelManejo(valor)}</td>`).join("")}</tr>`
+    ).join("");
 
-    const calcinha = setorAtualFiltroExcelManejo() === "calcinha";
-    const colunas = calcinha
-      ? [
-          { label: "OP", indice: 0 },
-          { label: "REF", indice: 1 },
-          { label: "LINHA", indice: 2 },
-          { label: "FASE", indice: 5 },
-          { label: "QTI", indice: 6 },
-          { label: "COR", indice: 7 },
-          { label: "NECESSIDADE", indice: 8 },
-          { label: "STATUS", indice: 9 }
-        ]
-      : [
-          { label: "OP", indice: 0 },
-          { label: "REF", indice: 1 },
-          { label: "SILK", indice: 3 },
-          { label: "TECIDO", indice: 4 },
-          { label: "FASE", indice: 5 },
-          { label: "QTI", indice: 6 },
-          { label: "COR", indice: 7 },
-          { label: "NECESSIDADE", indice: 8 },
-          { label: "STATUS", indice: 9 }
-        ];
-    const cabecalhos = colunas.map(item => item.label);
-    const corpo = linhas.map(linha => {
-      const valores = colunas.map(item => textoDaCelulaParaImpressao(linha, item.indice));
-      return `<tr>${valores.map(valor => `<td>${escaparHtmlFiltroExcelManejo(valor || "-")}</td>`).join("")}</tr>`;
-    }).join("");
-    const setor = calcinha ? "Calcinha" : "Sutiã";
-
-    janela.document.write(`
-      <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Manejo ${setor}</title>
+    janela.document.open();
+    janela.document.write(`<!doctype html>
+      <html lang="pt-BR"><head><meta charset="utf-8">
+      <title>Manejo ${escaparHtmlFiltroExcelManejo(setorTitulo)} — filtrado</title>
       <style>
-        body{font-family:Arial,sans-serif;color:#111827;margin:24px}h1{font-size:22px;margin:0 0 6px}p{margin:0 0 16px;color:#475569;font-size:12px}
-        table{width:100%;border-collapse:collapse;font-size:10px}th,td{border:1px solid #cbd5e1;padding:6px;text-align:left;vertical-align:top}th{background:#e2e8f0}
+        *{box-sizing:border-box}
+        body{font-family:Arial,sans-serif;color:#0f172a;margin:20px}
+        h1{font-size:20px;margin:0 0 8px}
+        .resumo{font-size:12px;color:#334155;margin-bottom:9px}
+        .filtros{font-size:11px;padding:9px;border:1px solid #cbd5e1;border-radius:6px;margin-bottom:12px;overflow-wrap:anywhere}
+        table{width:100%;border-collapse:collapse;font-size:10px}
+        th,td{border:1px solid #cbd5e1;padding:5px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+        th{background:#e2e8f0}
+        tr{break-inside:avoid}
         @page{size:landscape;margin:10mm}
+        @media print{body{margin:0}}
       </style></head><body>
-      <h1>Manejo ${setor} — itens filtrados</h1>
-      <p>${escaparHtmlFiltroExcelManejo(textoFiltrosExcelAtivos())} • ${linhas.length} OP(s)</p>
-      <table><thead><tr>${cabecalhos.map(item => `<th>${item}</th>`).join("")}</tr></thead><tbody>${corpo || `<tr><td colspan="${cabecalhos.length}">Nenhum item encontrado.</td></tr>`}</tbody></table>
-      </body></html>
-    `);
+      <h1>Manejo ${escaparHtmlFiltroExcelManejo(setorTitulo)} — itens filtrados</h1>
+      <div class="resumo">${linhas.length.toLocaleString("pt-BR")} OP(s) | ${totalPecas.toLocaleString("pt-BR")} peça(s) | ${escaparHtmlFiltroExcelManejo(new Date().toLocaleString("pt-BR"))}</div>
+      <div class="filtros">${escaparHtmlFiltroExcelManejo(filtros)}</div>
+      <table><thead><tr>${campos.map(item => `<th>${escaparHtmlFiltroExcelManejo(item.titulo)}</th>`).join("")}</tr></thead>
+      <tbody>${corpo}</tbody></table>
+      </body></html>`);
     janela.document.close();
     janela.focus();
-    setTimeout(() => janela.print(), 250);
+    setTimeout(() => { if (!janela.closed) janela.print(); }, 250);
   }
 
   function instalarEventosGlobaisFiltrosExcelManejo() {
@@ -5904,7 +5956,7 @@
 
     document.addEventListener("click", event => {
       const botaoImprimir = event.target.closest("#btnImprimirManejoFiltrado");
-      if (!botaoImprimir || !haSelecaoAcumulativaManejo()) return;
+      if (!botaoImprimir) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       imprimirManejoComFiltrosExcel();
