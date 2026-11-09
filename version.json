@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-09-data-opcional-importacao-332",
+  "version": "2026-11-09-selecao-ops-importacao-333",
   "updatedAt": "2026-11-09T07:27:00-03:00",
-  "notes": "Importação de relatório externo PDF permite necessidade sem data, apenas início, apenas fim ou intervalo completo. Sem data, campos de necessidade permanecem vazios."
+  "notes": "A prévia do relatório PDF permite selecionar individualmente quais OPs importar, com marcar todas, desmarcar todas e total selecionado. Apenas as escolhidas e suas referências novas são gravadas."
 }
