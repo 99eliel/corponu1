@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-11-09-impressao-manejo-filtros-331";
+  const LOCAL_RELEASE = "2026-11-09-data-opcional-importacao-332";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 

@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-09-impressao-manejo-filtros-331",
+  "version": "2026-11-09-data-opcional-importacao-332",
   "updatedAt": "2026-11-09T07:27:00-03:00",
-  "notes": "Unifica a impressão do Manejo para respeitar filtros digitados e filtros acumulativos por coluna; imprime somente linhas que correspondem aos filtros do setor, com quantidade e resumo."
+  "notes": "Importação de relatório externo PDF permite necessidade sem data, apenas início, apenas fim ou intervalo completo. Sem data, campos de necessidade permanecem vazios."
 }
