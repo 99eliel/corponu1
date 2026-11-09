@@ -11691,6 +11691,7 @@ function getConfiguracaoImportacaoPDF() {
 
 
 function configurarImportadorPDF() {
+  configurarSelecaoPDF333();
   const input = document.getElementById("inputImportarPDF");
   const confirmar = document.getElementById("btnConfirmarImportacaoPDF");
   const zerar = document.getElementById("btnZerarOrdens");
@@ -11719,6 +11720,7 @@ function configurarImportadorPDF() {
         const registros = extrairOrdensDoRelatorioPDF(texto);
 
         state.pdfImportacaoPendente = registros;
+        indicesPDFSelecionados333 = new Set(registros.map((_, i) => i));
         renderPreviewPDF(registros);
 
         if (registros.length) {
@@ -11893,6 +11895,38 @@ function numeroBrasileiroParaFloat(valor) {
   return Number(normalizado || 0);
 }
 
+
+let indicesPDFSelecionados333 = new Set();
+function atualizarSelecaoPDF333() {
+  const registros=state.pdfImportacaoPendente||[];
+  const escolhidas=registros.filter((_,i)=>indicesPDFSelecionados333.has(i));
+  const contador=document.getElementById("pdfContagemSelecionadas333");
+  if(contador)contador.textContent=`${escolhidas.length} de ${registros.length} OPs selecionadas`;
+  const confirmar=document.getElementById("btnConfirmarImportacaoPDF");
+  if(confirmar)confirmar.disabled=!escolhidas.length;
+  const todas=document.getElementById("pdfSelecionarTodas333");
+  if(todas){todas.checked=registros.length>0&&escolhidas.length===registros.length;todas.indeterminate=escolhidas.length>0&&escolhidas.length<registros.length;}
+  document.querySelectorAll("#pdfPreviewBody tr[data-pdf-indice333]").forEach(tr=>tr.classList.toggle("pdf-op-desmarcada333",!indicesPDFSelecionados333.has(Number(tr.dataset.pdfIndice333))));
+}
+function configurarSelecaoPDF333() {
+  document.getElementById("pdfPreviewBody")?.addEventListener("change",event=>{
+    const input=event.target.closest("input[data-pdf-check333]");
+    if(!input)return;
+    const i=Number(input.dataset.pdfCheck333);
+    if(!Number.isInteger(i)||i<0||i>=state.pdfImportacaoPendente.length)return;
+    if(input.checked)indicesPDFSelecionados333.add(i);else indicesPDFSelecionados333.delete(i);
+    atualizarSelecaoPDF333();
+  });
+  const selecionar=todas=>{
+    indicesPDFSelecionados333=todas?new Set(state.pdfImportacaoPendente.map((_,i)=>i)):new Set();
+    document.querySelectorAll("#pdfPreviewBody input[data-pdf-check333]").forEach(input=>{input.checked=indicesPDFSelecionados333.has(Number(input.dataset.pdfCheck333));});
+    atualizarSelecaoPDF333();
+  };
+  document.getElementById("pdfSelecionarTodas333")?.addEventListener("change",event=>selecionar(event.target.checked));
+  document.getElementById("pdfMarcarTodas333")?.addEventListener("click",()=>selecionar(true));
+  document.getElementById("pdfDesmarcarTodas333")?.addEventListener("click",()=>selecionar(false));
+}
+
 function renderPreviewPDF(registros) {
   const resumo = document.getElementById("pdfImportResumo");
   const wrap = document.getElementById("pdfPreviewWrap");
@@ -11907,6 +11941,7 @@ function renderPreviewPDF(registros) {
     btnConfirmar.disabled = true;
     resumo.innerHTML = "<strong>Nenhuma OP encontrada.</strong><br>Confira se o PDF está no formato correto.";
     tbody.innerHTML = "";
+    atualizarSelecaoPDF333();
     return;
   }
 
@@ -11927,10 +11962,11 @@ function renderPreviewPDF(registros) {
     Referências novas: ${refsNovas.length}${refsNovas.length ? ` (${refsNovas.slice(0, 12).join(", ")}${refsNovas.length > 12 ? "..." : ""})` : ""}
   `;
 
-  tbody.innerHTML = registros.slice(0, 300).map(item => {
+  tbody.innerHTML = registros.map((item, indice) => {
     const existe = referenciasExistentes.has(item.referencia);
     return `
-      <tr>
+      <tr data-pdf-indice333="${indice}">
+        <td><input type="checkbox" data-pdf-check333="${indice}" aria-label="Selecionar OP ${escapeHtml(item.numeroOP)}" ${indicesPDFSelecionados333.has(indice) ? "checked" : ""}/></td>
         <td><strong>${escapeHtml(item.numeroOP)}</strong></td>
         <td>${escapeHtml(item.lote || "-")}</td>
         <td>${escapeHtml(item.referencia)}</td>
@@ -11943,6 +11979,7 @@ function renderPreviewPDF(registros) {
       </tr>
     `;
   }).join("");
+  atualizarSelecaoPDF333();
 }
 
 async function importarPDFConfirmado() {
@@ -11951,10 +11988,15 @@ async function importarPDFConfirmado() {
     return;
   }
 
-  const registros = state.pdfImportacaoPendente || [];
+  const todas = state.pdfImportacaoPendente || [];
+  const registros = todas.filter((_, indice) => indicesPDFSelecionados333.has(indice));
 
-  if (!registros.length) {
+  if (!todas.length) {
     toast("Nenhum PDF lido para importar.");
+    return;
+  }
+  if (!registros.length) {
+    toast("Marque pelo menos uma OP para importar.");
     return;
   }
 
@@ -12078,6 +12120,7 @@ async function importarPDFConfirmado() {
     await registrarLog("pdf_importado", "importacao", "relatorio-pdf", `${registros.length} ordens importadas do PDF como ${configPDF.tipoPecaLabel}. Necessidade: ${configPDF.necessidadeTexto || "não informada"}. Referências novas: ${refsNovas.length}.`);
 
     state.pdfImportacaoPendente = [];
+    indicesPDFSelecionados333.clear();
     renderPreviewPDF([]);
 
     toast("PDF importado com sucesso.");
