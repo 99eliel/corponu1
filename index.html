@@ -1616,13 +1616,13 @@
           <div class="panel-header">
             <div>
               <h3>Importar relatório externo PDF</h3>
-              <p>Antes de ler o PDF, selecione o tipo da peça e o intervalo de necessidade das OPs. Não é mais necessário preencher semana ou mês.</p>
+              <p>Selecione o tipo da peça. As datas de necessidade são opcionais e podem ser preenchidas depois no Manejo.</p>
             </div>
           </div>
 
           <div class="notice small">
             <strong>Formato esperado:</strong> relatório com blocos contendo OP-Lote, Referência, Cor e Planejado.
-            O tipo da peça e o intervalo informado aqui serão aplicados em todas as OPs importadas.
+            O tipo da peça será aplicado em todas as OPs importadas. Se você informar datas de necessidade, elas também serão aplicadas; caso contrário, ficarão em branco.
           </div>
 
           <div class="pdf-pro-card">
@@ -1631,7 +1631,7 @@
                 <span class="pdf-step">1</span>
                 <div>
                   <h4>Configuração do relatório</h4>
-                  <p>Defina o tipo da peça e o prazo de necessidade antes de ler o PDF.</p>
+                  <p>O tipo da peça é obrigatório. As datas de necessidade são opcionais.</p>
                 </div>
               </div>
 
@@ -1646,13 +1646,13 @@
                 </label>
 
                 <label class="pro-field">
-                  <span>Início da necessidade</span>
-                  <input id="pdfNecessidadeInicio" type="date" required />
+                  <span>Início da necessidade (opcional)</span>
+                  <input id="pdfNecessidadeInicio" type="date" />
                 </label>
 
                 <label class="pro-field">
-                  <span>Final da necessidade</span>
-                  <input id="pdfNecessidadeFim" type="date" required />
+                  <span>Final da necessidade (opcional)</span>
+                  <input id="pdfNecessidadeFim" type="date" />
                 </label>
               </div>
             </div>
@@ -2003,8 +2003,8 @@
       #editorFaccaoModal329 .gf330-processos-grade { grid-template-columns:1fr; }
     }
   </style>
-  <script src="update.js?v=2026-11-09-impressao-manejo-filtros-331"></script>
-  <script type="module" src="app.js?v=2026-11-09-impressao-manejo-filtros-331"></script>
+  <script src="update.js?v=2026-11-09-data-opcional-importacao-332"></script>
+  <script type="module" src="app.js?v=2026-11-09-data-opcional-importacao-332"></script>
   <div class="modal-backdrop hidden" id="modalMovimentacao">
     <div class="modal-card movimentacao-modal-card">
       <div class="modal-header">
