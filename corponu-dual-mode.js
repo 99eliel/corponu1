@@ -1324,17 +1324,24 @@
   }
 
   function parsePreviewPdfRows() {
-    return [...document.querySelectorAll("#pdfPreviewBody tr")].map(row => {
+    // A prévia ganhou uma coluna inicial de seleção (revisão 333).
+    // Ler as colunas antigas deslocadas fazia o número da OP ficar vazio
+    // e o importador de Calcinha acreditar que o PDF não foi lido.
+    return [...document.querySelectorAll("#pdfPreviewBody tr")].flatMap(row => {
+      const checkbox = row.querySelector("input[data-pdf-check333]");
+      if (checkbox && !checkbox.checked) return [];
       const cells = [...row.cells].map(cell => String(cell.textContent || "").trim());
-      return {
-        numeroOP: normalize(cells[0]),
-        lote: normalize(cells[1]),
-        referencia: normalize(cells[2]),
-        produtoNome: cells[3] || `Calcinha Ref. ${cells[2] || ""}`,
-        cor: normalize(cells[4]),
-        quantidade: parseBrazilianNumber(cells[5])
-      };
-    }).filter(item => item.numeroOP && item.referencia && item.cor && item.quantidade > 0);
+      const deslocamento = checkbox ? 1 : 0;
+      const numeroOP = normalize(cells[deslocamento] || "");
+      const lote = normalize(cells[deslocamento + 1] || "");
+      const referencia = normalize(cells[deslocamento + 2] || "");
+      const produtoNome = cells[deslocamento + 3] || `Calcinha Ref. ${referencia}`;
+      const cor = normalize(cells[deslocamento + 4] || "");
+      const quantidade = parseBrazilianNumber(cells[deslocamento + 5] || "");
+      return numeroOP && referencia && cor && quantidade > 0
+        ? [{ numeroOP, lote, referencia, produtoNome, cor, quantidade }]
+        : [];
+    });
   }
 
   async function importCalcinhaPdf(event) {
@@ -1351,7 +1358,10 @@
     const process = normalize(document.getElementById("pdfCalcinhaProcesso")?.value);
     const faction = normalize(document.getElementById("pdfCalcinhaFaccao")?.value);
     if (!records.length) {
-      toast("Leia o PDF e confira a prévia antes de importar.", "error");
+      const temPrevia = Boolean(document.querySelector("#pdfPreviewBody tr[data-pdf-indice333]"));
+      toast(temPrevia
+        ? "Nenhuma OP válida está selecionada. Marque pelo menos uma OP para importar."
+        : "Leia o PDF e confira a prévia antes de importar.", "error");
       return;
     }
     if (!intervaloNecessidadeOpcionalValido(needStart, needEnd)) {
