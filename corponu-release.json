@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-09-op-manual-necessidade-unica-334",
-  "updatedAt": "2026-11-09T10:45:00-03:00",
-  "notes": "Remove campos redundantes de início e fim da necessidade no cadastro manual de OP de calcinha; mantém apenas Necessidade e preserva fluxos da importação de PDF."
+  "version": "2026-11-16-importacao-calcinha-selecao-335",
+  "updatedAt": "2026-11-16T19:15:00-03:00",
+  "notes": "Corrige importador PDF de Calcinha para ler a nova coluna de seleção, respeitando apenas OPs marcadas na prévia. Preserva o formato antigo."
 }
