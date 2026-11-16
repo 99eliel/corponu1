@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCAL_RELEASE = "2026-11-09-op-manual-necessidade-unica-334";
+  const LOCAL_RELEASE = "2026-11-16-importacao-calcinha-selecao-335";
   const INTERVALO_VERIFICACAO = 60 * 1000;
   const RELOAD_KEY = "corponu_web_release_recarregada";
 
